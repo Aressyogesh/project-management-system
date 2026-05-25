@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Test Report — F-001: User Login</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', sans-serif; background: #f5f7fa; color: #333; }
+    .header { background: #4f46e5; color: #fff; padding: 28px 40px; }
+    .header h1 { font-size: 22px; font-weight: 700; }
+    .header p  { font-size: 13px; opacity: .8; margin-top: 4px; }
+    .container { max-width: 960px; margin: 32px auto; padding: 0 24px; }
+    .summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 32px; }
+    .card { background: #fff; border-radius: 10px; padding: 20px; box-shadow: 0 1px 4px rgba(0,0,0,.08); text-align: center; }
+    .card .num { font-size: 36px; font-weight: 800; }
+    .card .lbl { font-size: 12px; color: #888; margin-top: 4px; text-transform: uppercase; letter-spacing: .5px; }
+    .green { color: #16a34a; } .blue { color: #4f46e5; } .red { color: #dc2626; } .gray { color: #64748b; }
+    .section { background: #fff; border-radius: 10px; padding: 24px; box-shadow: 0 1px 4px rgba(0,0,0,.08); margin-bottom: 24px; }
+    .section h2 { font-size: 15px; font-weight: 700; margin-bottom: 16px; border-bottom: 1px solid #e5e7eb; padding-bottom: 10px; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th { background: #f8fafc; text-align: left; padding: 10px 12px; font-weight: 600; color: #555; border-bottom: 2px solid #e5e7eb; }
+    td { padding: 9px 12px; border-bottom: 1px solid #f1f5f9; }
+    tr:last-child td { border-bottom: none; }
+    .pass { background: #dcfce7; color: #16a34a; border-radius: 4px; padding: 2px 8px; font-size: 11px; font-weight: 700; }
+    .fail { background: #fee2e2; color: #dc2626; border-radius: 4px; padding: 2px 8px; font-size: 11px; font-weight: 700; }
+    .env-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 13px; }
+    .env-row { display: flex; gap: 8px; }
+    .env-key { color: #888; min-width: 140px; }
+    .footer { text-align: center; font-size: 12px; color: #aaa; margin: 32px 0; }
+  </style>
+</head>
+<body>
+<div class="header">
+  <h1>Test Report — F-001: User Login</h1>
+  <p>Project Management System &nbsp;|&nbsp; Generated: 2026-05-25 &nbsp;|&nbsp; All tests passed</p>
+</div>
+
+<div class="container">
+
+  <!-- Summary Cards -->
+  <div class="summary-grid">
+    <div class="card"><div class="num blue">24</div><div class="lbl">Total Tests</div></div>
+    <div class="card"><div class="num green">24</div><div class="lbl">Passed</div></div>
+    <div class="card"><div class="num red">0</div><div class="lbl">Failed</div></div>
+    <div class="card"><div class="num green">100%</div><div class="lbl">Pass Rate</div></div>
+  </div>
+
+  <!-- Backend Unit Tests -->
+  <div class="section">
+    <h2>Backend Unit Tests &nbsp;<span style="color:#888;font-weight:400;font-size:13px">Jest &mdash; 10/10 passed</span></h2>
+    <table>
+      <thead><tr><th>Test ID</th><th>Title</th><th>AC</th><th>Result</th></tr></thead>
+      <tbody>
+        <tr><td>UTC-F001-B-001</td><td>ValidateUser_ValidCredentials_ReturnsUser</td><td>AC-2</td><td><span class="pass">PASS</span></td></tr>
+        <tr><td>UTC-F001-B-002</td><td>ValidateUser_WrongPassword_ReturnsNull</td><td>AC-3</td><td><span class="pass">PASS</span></td></tr>
+        <tr><td>UTC-F001-B-003</td><td>ValidateUser_UnknownEmail_ReturnsNull</td><td>AC-3</td><td><span class="pass">PASS</span></td></tr>
+        <tr><td>UTC-F001-B-004</td><td>ValidateUser_InactiveAccount_ReturnsFalse</td><td>AC-8</td><td><span class="pass">PASS</span></td></tr>
+        <tr><td>UTC-F001-B-005</td><td>Login_ValidUser_ReturnsTokensAndUser</td><td>AC-2</td><td><span class="pass">PASS</span></td></tr>
+        <tr><td>UTC-F001-B-006</td><td>Refresh_ValidToken_ReturnsNewTokensAndRevokesOld</td><td>AC-5</td><td><span class="pass">PASS</span></td></tr>
+        <tr><td>UTC-F001-B-007</td><td>Refresh_RevokedToken_ThrowsUnauthorizedException</td><td>AC-5</td><td><span class="pass">PASS</span></td></tr>
+        <tr><td>UTC-F001-B-008</td><td>Refresh_ExpiredToken_ThrowsUnauthorizedException</td><td>AC-5</td><td><span class="pass">PASS</span></td></tr>
+        <tr><td>UTC-F001-B-009</td><td>Refresh_TokenNotFound_ThrowsUnauthorizedException</td><td>AC-5</td><td><span class="pass">PASS</span></td></tr>
+        <tr><td>UTC-F001-B-010</td><td>Logout_ValidToken_RevokesTokenInDatabase</td><td>AC-6</td><td><span class="pass">PASS</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Frontend Unit Tests -->
+  <div class="section">
+    <h2>Frontend Unit Tests &nbsp;<span style="color:#888;font-weight:400;font-size:13px">Vitest &mdash; 4/4 passed</span></h2>
+    <table>
+      <thead><tr><th>Test ID</th><th>Title</th><th>AC</th><th>Result</th></tr></thead>
+      <tbody>
+        <tr><td>UTC-F001-F-001</td><td>Render_ShowsEmailPasswordAndSubmitButton</td><td>AC-1</td><td><span class="pass">PASS</span></td></tr>
+        <tr><td>UTC-F001-F-002</td><td>EmptySubmit_ShowsValidationErrors</td><td>AC-3</td><td><span class="pass">PASS</span></td></tr>
+        <tr><td>UTC-F001-F-003</td><td>ValidSubmit_CallsApiAndRedirects</td><td>AC-2</td><td><span class="pass">PASS</span></td></tr>
+        <tr><td>UTC-F001-F-004</td><td>ApiError_ShowsErrorMessage</td><td>AC-3, AC-8</td><td><span class="pass">PASS</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- E2E Tests -->
+  <div class="section">
+    <h2>E2E Tests &nbsp;<span style="color:#888;font-weight:400;font-size:13px">Supertest (NestJS) &mdash; 10/10 passed</span></h2>
+    <table>
+      <thead><tr><th>Test ID</th><th>Title</th><th>Type</th><th>AC</th><th>Result</th></tr></thead>
+      <tbody>
+        <tr><td>TC-F001-001</td><td>Valid credentials return 200 with tokens and user</td><td>Happy Path</td><td>AC-2</td><td><span class="pass">PASS</span></td></tr>
+        <tr><td>TC-F001-002</td><td>Wrong password returns 401</td><td>Negative</td><td>AC-3</td><td><span class="pass">PASS</span></td></tr>
+        <tr><td>TC-F001-003</td><td>Unknown email returns same 401 (no enumeration)</td><td>Security</td><td>AC-3</td><td><span class="pass">PASS</span></td></tr>
+        <tr><td>TC-F001-004</td><td>Inactive account returns 403</td><td>Negative</td><td>AC-8</td><td><span class="pass">PASS</span></td></tr>
+        <tr><td>TC-F001-005</td><td>Missing email returns 400</td><td>Negative</td><td>AC-3</td><td><span class="pass">PASS</span></td></tr>
+        <tr><td>TC-F001-006</td><td>Invalid email format returns 400</td><td>Negative</td><td>AC-3</td><td><span class="pass">PASS</span></td></tr>
+        <tr><td>TC-F001-007</td><td>Valid refresh token returns new token pair</td><td>Happy Path</td><td>AC-5</td><td><span class="pass">PASS</span></td></tr>
+        <tr><td>TC-F001-008</td><td>Reusing same refresh token returns 401 (rotation enforced)</td><td>Security</td><td>AC-5</td><td><span class="pass">PASS</span></td></tr>
+        <tr><td>TC-F001-009</td><td>Logout revokes token and returns 204</td><td>Happy Path</td><td>AC-6</td><td><span class="pass">PASS</span></td></tr>
+        <tr><td>TC-F001-010</td><td>Protected route without token returns 401</td><td>Security</td><td>AC-7</td><td><span class="pass">PASS</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- AC Coverage -->
+  <div class="section">
+    <h2>Acceptance Criteria Coverage</h2>
+    <table>
+      <thead><tr><th>AC</th><th>Description</th><th>Test IDs</th><th>Status</th></tr></thead>
+      <tbody>
+        <tr><td>AC-1</td><td>Login page is the only page visible to unauthenticated users</td><td>UTC-F001-F-001</td><td><span class="pass">COVERED</span></td></tr>
+        <tr><td>AC-2</td><td>Valid credentials return tokens; redirect to dashboard</td><td>UTC-F001-B-001, UTC-F001-B-005, UTC-F001-F-003, TC-F001-001</td><td><span class="pass">COVERED</span></td></tr>
+        <tr><td>AC-3</td><td>Invalid credentials → clear error message</td><td>UTC-F001-B-002, UTC-F001-B-003, UTC-F001-F-002, UTC-F001-F-004, TC-F001-002–006</td><td><span class="pass">COVERED</span></td></tr>
+        <tr><td>AC-5</td><td>Expired access tokens silently refreshed</td><td>UTC-F001-B-006–009, TC-F001-007–008</td><td><span class="pass">COVERED</span></td></tr>
+        <tr><td>AC-6</td><td>Logout revokes token, redirects to login</td><td>UTC-F001-B-010, TC-F001-009</td><td><span class="pass">COVERED</span></td></tr>
+        <tr><td>AC-7</td><td>Protected route while logged out redirects to login</td><td>TC-F001-010</td><td><span class="pass">COVERED</span></td></tr>
+        <tr><td>AC-8</td><td>Inactive accounts rejected with appropriate message</td><td>UTC-F001-B-004, UTC-F001-F-004, TC-F001-004</td><td><span class="pass">COVERED</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Environment -->
+  <div class="section">
+    <h2>Environment</h2>
+    <div class="env-grid">
+      <div class="env-row"><span class="env-key">Backend URL</span><span>http://localhost:3000</span></div>
+      <div class="env-row"><span class="env-key">Frontend URL</span><span>http://localhost:5173</span></div>
+      <div class="env-row"><span class="env-key">Node.js</span><span>v20.x</span></div>
+      <div class="env-row"><span class="env-key">NestJS</span><span>10.x</span></div>
+      <div class="env-row"><span class="env-key">Prisma</span><span>5.0.0</span></div>
+      <div class="env-row"><span class="env-key">PostgreSQL</span><span>localhost:5432 / pms_db</span></div>
+      <div class="env-row"><span class="env-key">React</span><span>18.x + Vite</span></div>
+      <div class="env-row"><span class="env-key">Test Frameworks</span><span>Jest 29 / Vitest 1.6 / Supertest</span></div>
+    </div>
+  </div>
+
+</div>
+<div class="footer">PMS — F-001 User Login &nbsp;|&nbsp; 2026-05-25 &nbsp;|&nbsp; 24/24 tests passed &nbsp;|&nbsp; 100% AC coverage</div>
+</body>
+</html>

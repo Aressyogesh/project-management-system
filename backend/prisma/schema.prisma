@@ -1,0 +1,49 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Enums ────────────────────────────────────────────────────────────────────
+
+enum SystemRole {
+  SUPER_USER
+  ADMIN
+  EMPLOYEE
+}
+
+// ─── Auth Models ──────────────────────────────────────────────────────────────
+
+model User {
+  id           String     @id @default(uuid())
+  fullName     String     @db.VarChar(100)
+  email        String     @unique @db.VarChar(255)
+  passwordHash String
+  systemRole   SystemRole @default(EMPLOYEE)
+  isActive     Boolean    @default(true)
+  createdAt    DateTime   @default(now())
+  lastLoginAt  DateTime?
+
+  refreshTokens RefreshToken[]
+
+  @@index([email])
+  @@map("users")
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  userId    String
+  expiresAt DateTime
+  isRevoked Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@index([userId])
+  @@map("refresh_tokens")
+}
