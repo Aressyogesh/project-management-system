@@ -3,6 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { APP_FILTER, APP_GUARD } from '@nestjs/core';
 import { AuthModule } from './auth/auth.module';
 import { ClientsModule } from './clients/clients.module';
+import { MilestonesModule } from './milestones/milestones.module';
 import { ProjectMembersModule } from './project-members/project-members.module';
 import { ProjectsModule } from './projects/projects.module';
 import { GlobalExceptionFilter } from './common/filters/global-exception.filter';
@@ -26,6 +27,7 @@ import { UsersModule } from './users/users.module';
     ClientsModule,
     ProjectsModule,
     ProjectMembersModule,
+    MilestonesModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: GlobalExceptionFilter },

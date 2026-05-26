@@ -1,10 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import { milestonesApi } from '../../../api/milestones.api';
 import { projectsApi } from '../../../api/projects.api';
 import { useAuthStore } from '../../../store/authStore';
+import type { Milestone, MilestoneStatus } from '../../../types/milestones.types';
 import type { ProjectMember, ProjectRole, ProjectStatus, ProjectType } from '../../../types/projects.types';
 import { AddMemberModal } from '../components/AddMemberModal';
+import { MilestoneFormModal } from '../components/MilestoneFormModal';
 
 const TYPE_LABEL: Record<ProjectType, string> = {
   DEDICATED: 'Dedicated',
@@ -48,6 +51,20 @@ const ROLE_COLOR: Record<ProjectRole, string> = {
   DEVOPS: 'bg-gray-100 text-gray-700',
 };
 
+const MS_STATUS_LABEL: Record<MilestoneStatus, string> = {
+  NOT_STARTED: 'Not Started',
+  IN_PROGRESS: 'In Progress',
+  COMPLETED: 'Completed',
+  DELAYED: 'Delayed',
+};
+
+const MS_STATUS_COLOR: Record<MilestoneStatus, string> = {
+  NOT_STARTED: 'bg-gray-100 text-gray-500',
+  IN_PROGRESS: 'bg-blue-100 text-blue-700',
+  COMPLETED: 'bg-green-100 text-green-700',
+  DELAYED: 'bg-red-100 text-red-600',
+};
+
 const ROLE_OPTIONS: { value: ProjectRole; label: string }[] = [
   { value: 'PROJECT_MANAGER', label: 'Project Manager' },
   { value: 'TEAM_LEAD', label: 'Team Lead' },
@@ -77,6 +94,8 @@ export function ProjectDetailPage() {
 
   const [showAddMember, setShowAddMember] = useState(false);
   const [editingRole, setEditingRole] = useState<{ userId: string; role: ProjectRole } | null>(null);
+  const [showMilestoneForm, setShowMilestoneForm] = useState(false);
+  const [editMilestone, setEditMilestone] = useState<Milestone | null>(null);
 
   const { data: project, isLoading: projLoading, error: projError } = useQuery({
     queryKey: ['project', projectId],
@@ -88,6 +107,17 @@ export function ProjectDetailPage() {
     queryKey: ['project-members', projectId],
     queryFn: () => projectsApi.listMembers(projectId!),
     enabled: !!projectId,
+  });
+
+  const { data: milestones = [], isLoading: milestonesLoading } = useQuery({
+    queryKey: ['milestones', projectId],
+    queryFn: () => milestonesApi.list(projectId!),
+    enabled: !!projectId,
+  });
+
+  const removeMilestoneMutation = useMutation({
+    mutationFn: (id: string) => milestonesApi.remove(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['milestones', projectId] }),
   });
 
   const updateRoleMutation = useMutation({
@@ -301,11 +331,122 @@ export function ProjectDetailPage() {
         )}
       </div>
 
+      {/* Milestones */}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-50">
+          <div>
+            <h2 className="text-sm font-semibold text-gray-900">Milestones</h2>
+            <p className="text-xs text-gray-400 mt-0.5">{milestones.length} milestone{milestones.length !== 1 ? 's' : ''}</p>
+          </div>
+          {canEdit && (
+            <button
+              onClick={() => { setEditMilestone(null); setShowMilestoneForm(true); }}
+              className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-lg transition"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              Add Milestone
+            </button>
+          )}
+        </div>
+
+        {milestonesLoading ? (
+          <div className="flex items-center justify-center py-12 text-sm text-gray-400">Loading…</div>
+        ) : milestones.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-14 gap-2 text-sm text-gray-400">
+            <svg className="w-10 h-10 text-gray-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+                d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+            </svg>
+            No milestones yet.{canEdit && ' Click "Add Milestone" to create one.'}
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="bg-gray-50 border-b border-gray-100">
+                  <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
+                  <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Dates</th>
+                  <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Responsible</th>
+                  <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                  {canEdit && <th className="px-6 py-3" />}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {milestones.map((ms: Milestone) => (
+                  <tr key={ms.id} className="hover:bg-gray-50 transition-colors">
+                    <td className="px-6 py-3">
+                      <p className="text-sm font-medium text-gray-800">{ms.description}</p>
+                      {ms.deliveryNote && (
+                        <p className="text-xs text-gray-400 mt-0.5 line-clamp-1">{ms.deliveryNote}</p>
+                      )}
+                    </td>
+                    <td className="px-6 py-3 text-xs text-gray-500 whitespace-nowrap">
+                      {ms.startDate
+                        ? new Date(ms.startDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+                        : '—'}
+                      {' → '}
+                      {ms.dueDate
+                        ? new Date(ms.dueDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+                        : '—'}
+                    </td>
+                    <td className="px-6 py-3 text-sm text-gray-500">
+                      {ms.responsibleUser?.fullName ?? '—'}
+                    </td>
+                    <td className="px-6 py-3">
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${MS_STATUS_COLOR[ms.status]}`}>
+                        {MS_STATUS_LABEL[ms.status]}
+                      </span>
+                    </td>
+                    {canEdit && (
+                      <td className="px-6 py-3">
+                        <div className="flex items-center gap-1 justify-end">
+                          <button
+                            title="Edit"
+                            onClick={() => { setEditMilestone(ms); setShowMilestoneForm(true); }}
+                            className="p-1.5 rounded-lg text-gray-400 hover:text-primary-600 hover:bg-primary-50 transition"
+                          >
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                                d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                          </button>
+                          <button
+                            title="Delete"
+                            onClick={() => removeMilestoneMutation.mutate(ms.id)}
+                            disabled={removeMilestoneMutation.isPending}
+                            className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition"
+                          >
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                          </button>
+                        </div>
+                      </td>
+                    )}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
       {showAddMember && (
         <AddMemberModal
           projectId={projectId!}
           existingMembers={members}
           onClose={() => setShowAddMember(false)}
+        />
+      )}
+
+      {showMilestoneForm && (
+        <MilestoneFormModal
+          projectId={projectId!}
+          milestone={editMilestone ?? undefined}
+          onClose={() => { setShowMilestoneForm(false); setEditMilestone(null); }}
         />
       )}
     </div>
