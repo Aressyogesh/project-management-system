@@ -12,6 +12,7 @@ import type { Task, TaskPriority, TaskStatus } from '../../../types/task.types';
 import type { TaskList, TaskListType } from '../../../types/taskList.types';
 import { AddMemberModal } from '../components/AddMemberModal';
 import { MilestoneFormModal } from '../components/MilestoneFormModal';
+import { TaskDetailModal } from '../components/TaskDetailModal';
 import { TaskFormModal } from '../components/TaskFormModal';
 import { TaskListFormModal } from '../components/TaskListFormModal';
 
@@ -141,6 +142,7 @@ export function ProjectDetailPage() {
   const [editTaskList, setEditTaskList] = useState<TaskList | null>(null);
   const [showTaskForm, setShowTaskForm] = useState(false);
   const [editTask, setEditTask] = useState<Task | null>(null);
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [collapsedLists, setCollapsedLists] = useState<Record<string, boolean>>({});
 
   const { data: project, isLoading: projLoading, error: projError } = useQuery({
@@ -697,7 +699,12 @@ export function ProjectDetailPage() {
                             {listTasks.map((task: Task) => (
                               <tr key={task.id} className="hover:bg-gray-50 transition-colors">
                                 <td className="px-8 py-3">
-                                  <p className="text-sm font-medium text-gray-800">{task.title}</p>
+                                  <button
+                                    onClick={() => setSelectedTask(task)}
+                                    className="text-sm font-medium text-gray-800 hover:text-primary-600 text-left transition"
+                                  >
+                                    {task.title}
+                                  </button>
                                   {task.milestone && (
                                     <p className="text-xs text-gray-400 mt-0.5 truncate max-w-xs">
                                       &#127937; {task.milestone.description}
@@ -773,6 +780,15 @@ export function ProjectDetailPage() {
           projectId={projectId!}
           editTaskList={editTaskList}
           onClose={() => { setShowTaskListForm(false); setEditTaskList(null); }}
+        />
+      )}
+
+      {selectedTask && (
+        <TaskDetailModal
+          task={selectedTask}
+          onClose={() => setSelectedTask(null)}
+          canEdit={canEdit}
+          currentUserId={user?.id ?? ''}
         />
       )}
 

@@ -115,6 +115,8 @@ model User {
   responsibleMilestones Milestone[]
   assignedTasks         Task[]         @relation("AssignedTasks")
   createdTasks          Task[]         @relation("CreatedTasks")
+  uploadedAttachments   TaskAttachment[] @relation("UploadedAttachments")
+  authoredComments      TaskComment[]   @relation("AuthoredComments")
 
   @@index([email])
   @@map("users")
@@ -275,11 +277,49 @@ model Task {
   milestone  Milestone? @relation(fields: [milestoneId], references: [id], onDelete: SetNull)
   assignedTo User?     @relation("AssignedTasks", fields: [assignedToId], references: [id], onDelete: SetNull)
   createdBy  User      @relation("CreatedTasks", fields: [createdById], references: [id])
+  attachments TaskAttachment[]
+  comments    TaskComment[]
 
   @@index([projectId])
   @@index([taskListId])
   @@index([assignedToId])
   @@map("tasks")
+}
+
+// ─── Task Attachment ──────────────────────────────────────────────────────────
+
+model TaskAttachment {
+  id           String   @id @default(uuid())
+  taskId       String
+  filename     String   @db.VarChar(255)
+  originalName String   @db.VarChar(255)
+  mimeType     String   @db.VarChar(100)
+  size         Int
+  uploadedById String
+  createdAt    DateTime @default(now())
+
+  task       Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  uploadedBy User @relation("UploadedAttachments", fields: [uploadedById], references: [id])
+
+  @@index([taskId])
+  @@map("task_attachments")
+}
+
+// ─── Task Comment ─────────────────────────────────────────────────────────────
+
+model TaskComment {
+  id        String   @id @default(uuid())
+  taskId    String
+  content   String   @db.VarChar(2000)
+  authorId  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  task   Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  author User @relation("AuthoredComments", fields: [authorId], references: [id])
+
+  @@index([taskId])
+  @@map("task_comments")
 }
 
 // ─── Project Member ───────────────────────────────────────────────────────────
