@@ -1193,7 +1193,7 @@ Epic: <Epic Name>
 - A PR must never be raised if any test is failing
 - Assign at least one reviewer
 
-#### Command
+#### Command — Option A: GitHub CLI (recommended)
 ```bash
 gh pr create \
   --title "feat(F-XXX): <Feature Name>" \
@@ -1201,6 +1201,23 @@ gh pr create \
   --head feature/F-XXX-<feature-name> \
   --body "<PR body from template above>"
 ```
+
+> **`gh` not installed?**  
+> Install it from [cli.github.com](https://cli.github.com) then run `gh auth login`.
+
+#### Command — Option B: Manual via GitHub web (fallback)
+
+When `gh` is not available, the PR URL is printed by `git push` itself:
+
+```
+remote: Create a pull request for 'feature/F-XXX-…' on GitHub by visiting:
+remote:     https://github.com/<org>/<repo>/pull/new/feature/F-XXX-<feature-name>
+```
+
+1. Copy that URL from the push output and open it in a browser.
+2. Set **base** to `main` and **compare** to `feature/F-XXX-<feature-name>`.
+3. Paste the PR body from the template above into the description field.
+4. Click **Create pull request**.
 
 ---
 
@@ -1423,6 +1440,7 @@ This document is a **living standard**. It is expected to improve over time as t
 | 4.0 | 2026-05-25 | Made fully generic — tech-stack agnostic, applicable to any project | Team |
 | 5.0 | 2026-05-25 | Added Step 6c (Code Review — Clean Code, SOLID, linting) and Step 6d (Security Review — OWASP Top 10, ASVS, API Security Top 10) | Team |
 | 6.0 | 2026-05-25 | Step 7a expanded: feature-wise HTML reports for test results, code review, and security review stored in Test Cases/; added project-wide consolidated-report.html updated after every feature delivery | Team |
+| 7.0 | 2026-05-26 | Step 7c: added Option B (manual PR via GitHub web) as a fallback when `gh` CLI is not installed; URL is printed by `git push` output | Team |
 
 ### How to Propose a Change
 
@@ -1456,6 +1474,6 @@ These gates are non-negotiable regardless of project pressure:
 
 ---
 
-*Procedure version: 6.0 — Updated: 2026-05-25*
+*Procedure version: 7.0 — Updated: 2026-05-26*
 *This document is universal and mandatory for every feature on every project.*
 *Adapt the tooling to your stack — the steps and gates never change.*
