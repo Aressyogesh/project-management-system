@@ -12,6 +12,7 @@ import { ShiftConfigPage } from './features/settings/pages/ShiftConfigPage';
 import { UserSettingsPage } from './features/settings/pages/UserSettingsPage';
 import { ClientsPage } from './features/clients/pages/ClientsPage';
 import { DepartmentsPage } from './features/departments/pages/DepartmentsPage';
+import { ProjectsPage } from './features/projects/pages/ProjectsPage';
 import { UsersPage } from './features/users/pages/UsersPage';
 
 const queryClient = new QueryClient({
@@ -19,7 +20,6 @@ const queryClient = new QueryClient({
 });
 
 const comingSoonPaths = [
-  '/projects',
   '/timesheets',
   '/leave-logs',
   '/bugs',
@@ -48,6 +48,9 @@ export default function App() {
 
               {/* Client Management */}
               <Route path="/clients" element={<ClientsPage />} />
+
+              {/* Project Management */}
+              <Route path="/projects" element={<ProjectsPage />} />
 
               {/* Settings — nested under SettingsLayout */}
               <Route path="/settings" element={<SettingsLayout />}>
