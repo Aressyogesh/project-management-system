@@ -3,11 +3,14 @@ import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { milestonesApi } from '../../../api/milestones.api';
 import { projectsApi } from '../../../api/projects.api';
+import { taskListsApi } from '../../../api/taskLists.api';
 import { useAuthStore } from '../../../store/authStore';
 import type { Milestone, MilestoneStatus } from '../../../types/milestones.types';
 import type { ProjectMember, ProjectRole, ProjectStatus, ProjectType } from '../../../types/projects.types';
+import type { TaskList, TaskListType } from '../../../types/taskList.types';
 import { AddMemberModal } from '../components/AddMemberModal';
 import { MilestoneFormModal } from '../components/MilestoneFormModal';
+import { TaskListFormModal } from '../components/TaskListFormModal';
 
 const TYPE_LABEL: Record<ProjectType, string> = {
   DEDICATED: 'Dedicated',
@@ -49,6 +52,22 @@ const ROLE_COLOR: Record<ProjectRole, string> = {
   QA: 'bg-orange-100 text-orange-700',
   DESIGNER: 'bg-pink-100 text-pink-700',
   DEVOPS: 'bg-gray-100 text-gray-700',
+};
+
+const TL_TYPE_LABEL: Record<TaskListType, string> = {
+  GENERAL: 'General',
+  PROJECT_MANAGEMENT: 'PM',
+  DEVELOPMENT: 'Development',
+  QA: 'QA',
+  SPRINT: 'Sprint',
+};
+
+const TL_TYPE_COLOR: Record<TaskListType, string> = {
+  GENERAL: 'bg-gray-100 text-gray-600',
+  PROJECT_MANAGEMENT: 'bg-indigo-100 text-indigo-700',
+  DEVELOPMENT: 'bg-teal-100 text-teal-700',
+  QA: 'bg-orange-100 text-orange-700',
+  SPRINT: 'bg-blue-100 text-blue-700',
 };
 
 const MS_STATUS_LABEL: Record<MilestoneStatus, string> = {
@@ -96,6 +115,8 @@ export function ProjectDetailPage() {
   const [editingRole, setEditingRole] = useState<{ userId: string; role: ProjectRole } | null>(null);
   const [showMilestoneForm, setShowMilestoneForm] = useState(false);
   const [editMilestone, setEditMilestone] = useState<Milestone | null>(null);
+  const [showTaskListForm, setShowTaskListForm] = useState(false);
+  const [editTaskList, setEditTaskList] = useState<TaskList | null>(null);
 
   const { data: project, isLoading: projLoading, error: projError } = useQuery({
     queryKey: ['project', projectId],
@@ -115,9 +136,20 @@ export function ProjectDetailPage() {
     enabled: !!projectId,
   });
 
+  const { data: taskLists = [], isLoading: taskListsLoading } = useQuery({
+    queryKey: ['task-lists', projectId],
+    queryFn: () => taskListsApi.list(projectId!),
+    enabled: !!projectId,
+  });
+
   const removeMilestoneMutation = useMutation({
     mutationFn: (id: string) => milestonesApi.remove(id),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['milestones', projectId] }),
+  });
+
+  const removeTaskListMutation = useMutation({
+    mutationFn: (id: string) => taskListsApi.remove(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['task-lists', projectId] }),
   });
 
   const updateRoleMutation = useMutation({
@@ -434,6 +466,103 @@ export function ProjectDetailPage() {
         )}
       </div>
 
+      {/* Task Lists */}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-50">
+          <div>
+            <h2 className="text-sm font-semibold text-gray-900">Task Lists</h2>
+            <p className="text-xs text-gray-400 mt-0.5">{taskLists.length} list{taskLists.length !== 1 ? 's' : ''}</p>
+          </div>
+          {canEdit && (
+            <button
+              onClick={() => { setEditTaskList(null); setShowTaskListForm(true); }}
+              className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-lg transition"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              Add Task List
+            </button>
+          )}
+        </div>
+
+        {taskListsLoading ? (
+          <div className="flex items-center justify-center py-12 text-sm text-gray-400">Loading…</div>
+        ) : taskLists.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-14 gap-2 text-sm text-gray-400">
+            <svg className="w-10 h-10 text-gray-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+                d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+            </svg>
+            No task lists yet.{canEdit && ' Click "Add Task List" to create one.'}
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="bg-gray-50 border-b border-gray-100">
+                  <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                  <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                  <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
+                  <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
+                  {canEdit && <th className="px-6 py-3" />}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {taskLists.map((tl: TaskList) => (
+                  <tr key={tl.id} className="hover:bg-gray-50 transition-colors">
+                    <td className="px-6 py-3">
+                      <p className="text-sm font-medium text-gray-800">{tl.name}</p>
+                      {tl.type === 'SPRINT' && tl.sprintNumber && (
+                        <p className="text-xs text-gray-400 mt-0.5">Sprint {tl.sprintNumber}</p>
+                      )}
+                    </td>
+                    <td className="px-6 py-3">
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${TL_TYPE_COLOR[tl.type]}`}>
+                        {TL_TYPE_LABEL[tl.type]}
+                      </span>
+                    </td>
+                    <td className="px-6 py-3 text-sm text-gray-500 max-w-xs truncate">
+                      {tl.description ?? '—'}
+                    </td>
+                    <td className="px-6 py-3 text-sm text-gray-400 whitespace-nowrap">
+                      {new Date(tl.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+                    </td>
+                    {canEdit && (
+                      <td className="px-6 py-3">
+                        <div className="flex items-center gap-1 justify-end">
+                          <button
+                            title="Edit"
+                            onClick={() => { setEditTaskList(tl); setShowTaskListForm(true); }}
+                            className="p-1.5 rounded-lg text-gray-400 hover:text-primary-600 hover:bg-primary-50 transition"
+                          >
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                                d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                          </button>
+                          <button
+                            title="Delete"
+                            onClick={() => removeTaskListMutation.mutate(tl.id)}
+                            disabled={removeTaskListMutation.isPending}
+                            className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition"
+                          >
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                          </button>
+                        </div>
+                      </td>
+                    )}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
       {showAddMember && (
         <AddMemberModal
           projectId={projectId!}
@@ -447,6 +576,14 @@ export function ProjectDetailPage() {
           projectId={projectId!}
           milestone={editMilestone ?? undefined}
           onClose={() => { setShowMilestoneForm(false); setEditMilestone(null); }}
+        />
+      )}
+
+      {showTaskListForm && (
+        <TaskListFormModal
+          projectId={projectId!}
+          editTaskList={editTaskList}
+          onClose={() => { setShowTaskListForm(false); setEditTaskList(null); }}
         />
       )}
     </div>

@@ -49,6 +49,14 @@ enum MilestoneStatus {
   DELAYED
 }
 
+enum TaskListType {
+  GENERAL
+  PROJECT_MANAGEMENT
+  DEVELOPMENT
+  QA
+  SPRINT
+}
+
 // ─── Department ───────────────────────────────────────────────────────────────
 
 model Department {
@@ -172,6 +180,7 @@ model Project {
   department Department?     @relation(fields: [departmentId], references: [id])
   members    ProjectMember[]
   milestones Milestone[]
+  taskLists  TaskList[]
 
   @@index([status])
   @@index([projectType])
@@ -197,6 +206,24 @@ model Milestone {
 
   @@index([projectId])
   @@map("milestones")
+}
+
+// ─── Task List ────────────────────────────────────────────────────────────────
+
+model TaskList {
+  id           String       @id @default(uuid())
+  projectId    String
+  name         String       @db.VarChar(200)
+  type         TaskListType
+  sprintNumber Int?
+  description  String?      @db.VarChar(500)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@map("task_lists")
 }
 
 // ─── Project Member ───────────────────────────────────────────────────────────
