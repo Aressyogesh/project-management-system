@@ -14,6 +14,7 @@ import { AddMemberModal } from '../components/AddMemberModal';
 import { MilestoneFormModal } from '../components/MilestoneFormModal';
 import { TaskDetailModal } from '../components/TaskDetailModal';
 import { TaskFormModal } from '../components/TaskFormModal';
+import { TaskKanbanBoard } from '../components/TaskKanbanBoard';
 import { TaskListFormModal } from '../components/TaskListFormModal';
 
 const TYPE_LABEL: Record<ProjectType, string> = {
@@ -144,6 +145,7 @@ export function ProjectDetailPage() {
   const [editTask, setEditTask] = useState<Task | null>(null);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [collapsedLists, setCollapsedLists] = useState<Record<string, boolean>>({});
+  const [taskView, setTaskView] = useState<'list' | 'board'>('list');
 
   const { data: project, isLoading: projLoading, error: projError } = useQuery({
     queryKey: ['project', projectId],
@@ -624,23 +626,45 @@ export function ProjectDetailPage() {
             <h2 className="text-sm font-semibold text-gray-900">Tasks</h2>
             <p className="text-xs text-gray-400 mt-0.5">{tasks.length} task{tasks.length !== 1 ? 's' : ''}</p>
           </div>
-          {canEdit && (
-            <button
-              onClick={() => { setEditTask(null); setShowTaskForm(true); }}
-              disabled={taskLists.length === 0}
-              title={taskLists.length === 0 ? 'Create a task list first' : undefined}
-              className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-lg transition disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-              Add Task
-            </button>
-          )}
+          <div className="flex items-center gap-3">
+            {/* View toggle */}
+            <div className="flex items-center rounded-lg border border-gray-200 overflow-hidden">
+              <button
+                onClick={() => setTaskView('list')}
+                aria-label="List view"
+                className={`px-3 py-1.5 text-xs font-medium transition ${taskView === 'list' ? 'bg-primary-600 text-white' : 'text-gray-500 hover:bg-gray-50'}`}
+              >
+                List
+              </button>
+              <button
+                onClick={() => setTaskView('board')}
+                aria-label="Board view"
+                className={`px-3 py-1.5 text-xs font-medium transition ${taskView === 'board' ? 'bg-primary-600 text-white' : 'text-gray-500 hover:bg-gray-50'}`}
+              >
+                Board
+              </button>
+            </div>
+
+            {canEdit && (
+              <button
+                onClick={() => { setEditTask(null); setShowTaskForm(true); }}
+                disabled={taskLists.length === 0}
+                title={taskLists.length === 0 ? 'Create a task list first' : undefined}
+                className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-lg transition disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                Add Task
+              </button>
+            )}
+          </div>
         </div>
 
         {tasksLoading ? (
           <div className="flex items-center justify-center py-12 text-sm text-gray-400">Loading…</div>
+        ) : taskView === 'board' ? (
+          <TaskKanbanBoard tasks={tasks} onTaskClick={setSelectedTask} />
         ) : taskLists.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-14 gap-2 text-sm text-gray-400">
             <svg className="w-10 h-10 text-gray-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
