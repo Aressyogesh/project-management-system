@@ -6,6 +6,7 @@ import { ClientsModule } from './clients/clients.module';
 import { MilestonesModule } from './milestones/milestones.module';
 import { ProjectMembersModule } from './project-members/project-members.module';
 import { TaskListsModule } from './task-lists/task-lists.module';
+import { TasksModule } from './tasks/tasks.module';
 import { ProjectsModule } from './projects/projects.module';
 import { GlobalExceptionFilter } from './common/filters/global-exception.filter';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
@@ -30,6 +31,7 @@ import { UsersModule } from './users/users.module';
     ProjectMembersModule,
     MilestonesModule,
     TaskListsModule,
+    TasksModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: GlobalExceptionFilter },
