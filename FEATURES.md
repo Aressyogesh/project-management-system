@@ -1,6 +1,6 @@
 # PMS — Feature Tracker
 
-> Last updated: 2026-05-26 (F-010 complete)
+> Last updated: 2026-05-26 (F-011 complete)
 > ~~Strikethrough~~ = completed and in production. Plain text = pending development.
 
 ---
@@ -68,12 +68,9 @@
 ## Phase 5 — Task Lists & Tasks
 
 - ~~**Task List Management** — task list CRUD per project (General, Sprint, QA, PM, Development types; sprint number support); type-colour badges; RBAC gated write actions~~
-- Task List management per project (General, Sprint, QA, PM types; sprint number support)
-- Task create / edit form (task list, milestone, assignee, estimated hours, priority, billing status, start/due dates, status)
+- ~~**Task Management** — full CRUD per project; title, description, task list, milestone, assignee, estimated hours, priority (LOW/MEDIUM/HIGH/CRITICAL), status (NOT_STARTED/IN_PROGRESS/ON_REVIEW/COMPLETED), billing status, start/due dates; tasks grouped by task list on project detail page; cross-project FK validation; RBAC gated write actions~~
 - File attachment upload / download on tasks (PDF, DOCX, XLSX, PNG/JPG, TXT, MP4)
 - Task list view + Kanban board view
-- Task assignment to project team members
-- Task status transitions: Not Started → In Progress → On Review → Completed
 - Task comments / history
 - My Task widget on dashboard (live data from DB)
 
