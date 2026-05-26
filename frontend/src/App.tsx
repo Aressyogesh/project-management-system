@@ -12,6 +12,7 @@ import { ShiftConfigPage } from './features/settings/pages/ShiftConfigPage';
 import { UserSettingsPage } from './features/settings/pages/UserSettingsPage';
 import { ClientsPage } from './features/clients/pages/ClientsPage';
 import { DepartmentsPage } from './features/departments/pages/DepartmentsPage';
+import { ProjectDetailPage } from './features/projects/pages/ProjectDetailPage';
 import { ProjectsPage } from './features/projects/pages/ProjectsPage';
 import { UsersPage } from './features/users/pages/UsersPage';
 
@@ -51,6 +52,7 @@ export default function App() {
 
               {/* Project Management */}
               <Route path="/projects" element={<ProjectsPage />} />
+              <Route path="/projects/:id" element={<ProjectDetailPage />} />
 
               {/* Settings — nested under SettingsLayout */}
               <Route path="/settings" element={<SettingsLayout />}>

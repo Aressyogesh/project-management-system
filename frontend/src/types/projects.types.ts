@@ -35,6 +35,29 @@ export interface ProjectSummary {
   overdue: number;
 }
 
+export type ProjectRole =
+  | 'PROJECT_MANAGER'
+  | 'TEAM_LEAD'
+  | 'DEVELOPER'
+  | 'QA'
+  | 'DESIGNER'
+  | 'DEVOPS';
+
+export interface ProjectMemberUser {
+  id: string;
+  fullName: string;
+  email: string;
+  profilePhoto: string | null;
+  department: { id: string; name: string } | null;
+}
+
+export interface ProjectMember {
+  id: string;
+  projectRole: ProjectRole;
+  joinedAt: string;
+  user: ProjectMemberUser;
+}
+
 export interface CreateProjectPayload {
   name: string;
   projectType: ProjectType;
