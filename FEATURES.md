@@ -1,6 +1,6 @@
 # PMS — Feature Tracker
 
-> Last updated: 2026-05-26 (F-013 complete)
+> Last updated: 2026-05-26 (F-014 complete)
 > ~~Strikethrough~~ = completed and in production. Plain text = pending development.
 
 ---
@@ -71,7 +71,7 @@
 - ~~**Task Management** — full CRUD per project; title, description, task list, milestone, assignee, estimated hours, priority (LOW/MEDIUM/HIGH/CRITICAL), status (NOT_STARTED/IN_PROGRESS/ON_REVIEW/COMPLETED), billing status, start/due dates; tasks grouped by task list on project detail page; cross-project FK validation; RBAC gated write actions~~
 - ~~**Task Attachments & Comments** — file upload to tasks (PDF, DOCX, XLSX, PNG, JPG, TXT, MP4; 10 MB max; ADMIN+); download via blob streaming; delete with disk cleanup; comments by any auth user; author/admin-only delete; TaskDetailModal with Details/Attachments/Comments tabs~~
 - ~~**Task List View + Kanban Board View** — List/Board toggle on Project Detail Tasks section; Kanban board with 4 status columns (NOT_STARTED, IN_PROGRESS, ON_REVIEW, COMPLETED); task cards with title, priority badge, assignee, task list name; click to open TaskDetailModal; frontend-only feature~~
-- My Task widget on dashboard (live data from DB)
+- ~~**My Task Widget — Live DB Data** — `DashboardService.getStats` updated to return live tasks assigned to the current user; tasksProgress counts from DB; stat cards (Active Projects, Total Tasks, Completed Tasks) from DB; all queries run in parallel via `Promise.all`~~
 
 ---
 
