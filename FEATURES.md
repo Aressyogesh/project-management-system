@@ -1,6 +1,6 @@
 # PMS — Feature Tracker
 
-> Last updated: 2026-05-26
+> Last updated: 2026-05-26 (F-006 complete)
 > ~~Strikethrough~~ = completed and in production. Plain text = pending development.
 
 ---
@@ -51,7 +51,7 @@
 ## Phase 3 — Department, Client & User Management
 
 - ~~**Department Management** — create / edit / deactivate departments; fully dynamic (no seeded data)~~
-- **Client Management** — create / edit / deactivate clients (name, contact, email, phone, address)
+- ~~**Client Management** — create / edit / deactivate clients (name, contact, email, phone, address)~~
 - ~~**User Management** — full CRUD: create user with Full Name, Email, Password, Department, Shift, System Role, Profile Photo, Phone, Join Date; edit, deactivate~~
 
 ---

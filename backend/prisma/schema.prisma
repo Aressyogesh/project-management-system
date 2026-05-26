@@ -121,6 +121,22 @@ model Holiday {
   @@map("holidays")
 }
 
+// ─── Client ───────────────────────────────────────────────────────────────────
+
+model Client {
+  id            String   @id @default(uuid())
+  name          String   @unique @db.VarChar(150)
+  contactPerson String   @db.VarChar(100)
+  email         String   @db.VarChar(255)
+  phone         String?  @db.VarChar(20)
+  address       String?  @db.VarChar(300)
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@map("clients")
+}
+
 model RefreshToken {
   id        String   @id @default(uuid())
   token     String   @unique
