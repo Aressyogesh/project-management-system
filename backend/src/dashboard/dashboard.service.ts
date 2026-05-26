@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { SystemRole } from '@prisma/client';
+import { SystemRole, TaskStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 
 export interface StatCard {
@@ -46,28 +46,74 @@ export class DashboardService {
   constructor(private prisma: PrismaService) {}
 
   async getStats(userId: string, role: SystemRole): Promise<DashboardStats> {
-    const activeUserCount = await this.prisma.user.count({ where: { isActive: true } });
+    const [
+      activeUserCount,
+      activeProjectCount,
+      totalTaskCount,
+      completedTaskCount,
+      notStartedCount,
+      inProgressCount,
+      onReviewCount,
+      completedCount,
+      rawMyTasks,
+    ] = await Promise.all([
+      this.prisma.user.count({ where: { isActive: true } }),
+      this.prisma.project.count({ where: { status: 'ACTIVE' } }),
+      this.prisma.task.count(),
+      this.prisma.task.count({ where: { status: TaskStatus.COMPLETED } }),
+      this.prisma.task.count({ where: { status: TaskStatus.NOT_STARTED } }),
+      this.prisma.task.count({ where: { status: TaskStatus.IN_PROGRESS } }),
+      this.prisma.task.count({ where: { status: TaskStatus.ON_REVIEW } }),
+      this.prisma.task.count({ where: { status: TaskStatus.COMPLETED } }),
+      this.prisma.task.findMany({
+        where: { assignedToId: userId },
+        select: {
+          id: true,
+          title: true,
+          priority: true,
+          status: true,
+          assignedTo: { select: { fullName: true } },
+          project: { select: { name: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 10,
+      }),
+    ]);
+
+    const myTasks: MyTask[] = rawMyTasks.map((t) => ({
+      id: t.id,
+      projectName: t.project.name,
+      taskName: t.title,
+      assignee: t.assignedTo?.fullName ?? '—',
+      priority: t.priority,
+      status: t.status,
+    }));
 
     const cards: StatCard[] =
       role === SystemRole.EMPLOYEE
         ? [
             { label: 'My Projects', value: 0, change: 0, trend: 'up', color: 'green' },
-            { label: 'My Tasks', value: 0, change: 0, trend: 'up', color: 'blue' },
-            { label: 'Assigned To Me', value: 0, change: 0, trend: 'up', color: 'purple' },
-            { label: 'Completed', value: 0, change: 0, trend: 'up', color: 'rose' },
+            { label: 'My Tasks', value: rawMyTasks.length, change: 0, trend: 'up', color: 'blue' },
+            { label: 'Assigned To Me', value: rawMyTasks.length, change: 0, trend: 'up', color: 'purple' },
+            { label: 'Completed', value: rawMyTasks.filter((t) => t.status === TaskStatus.COMPLETED).length, change: 0, trend: 'up', color: 'rose' },
           ]
         : [
-            { label: 'Active Projects', value: 0, change: 12, trend: 'up', color: 'green' },
-            { label: 'Total Tasks', value: 0, change: 21, trend: 'up', color: 'blue' },
+            { label: 'Active Projects', value: activeProjectCount, change: 0, trend: 'up', color: 'green' },
+            { label: 'Total Tasks', value: totalTaskCount, change: 0, trend: 'up', color: 'blue' },
             { label: 'Total Users', value: activeUserCount, change: 0, trend: 'up', color: 'purple' },
-            { label: 'Completed Tasks', value: 0, change: 37, trend: 'up', color: 'rose' },
+            { label: 'Completed Tasks', value: completedTaskCount, change: 0, trend: 'up', color: 'rose' },
           ];
 
     return {
       cards,
       activityData: this.buildActivityData(),
-      tasksProgress: { notStarted: 0, inProgress: 0, onReview: 0, completed: 0 },
-      myTasks: [],
+      tasksProgress: {
+        notStarted: notStartedCount,
+        inProgress: inProgressCount,
+        onReview: onReviewCount,
+        completed: completedCount,
+      },
+      myTasks,
       todayTask: null,
       teamPerformance: { score: 0, change: 0 },
     };
