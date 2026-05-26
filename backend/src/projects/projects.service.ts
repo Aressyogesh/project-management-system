@@ -1,0 +1,111 @@
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { ProjectStatus } from '@prisma/client';
+import { PrismaService } from '../prisma/prisma.service';
+import { CreateProjectDto, ProjectsQueryDto, UpdateProjectDto } from './dto/project.dto';
+
+const PROJECT_SELECT = {
+  id: true,
+  name: true,
+  description: true,
+  startDate: true,
+  endDate: true,
+  budget: true,
+  projectType: true,
+  status: true,
+  createdAt: true,
+  client: { select: { id: true, name: true } },
+  department: { select: { id: true, name: true } },
+};
+
+@Injectable()
+export class ProjectsService {
+  constructor(private prisma: PrismaService) {}
+
+  findAll(query: ProjectsQueryDto = {}) {
+    return this.prisma.project.findMany({
+      where: {
+        ...(query.status ? { status: query.status } : {}),
+        ...(query.type ? { projectType: query.type } : {}),
+      },
+      select: PROJECT_SELECT,
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async findOne(id: string) {
+    const project = await this.prisma.project.findUnique({ where: { id }, select: PROJECT_SELECT });
+    if (!project) throw new NotFoundException('Project not found');
+    return project;
+  }
+
+  async getSummary() {
+    const projects = await this.prisma.project.findMany({
+      select: { status: true, projectType: true, endDate: true },
+    });
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    return {
+      active:    projects.filter((p) => p.status === 'ACTIVE').length,
+      archive:   projects.filter((p) => p.status === 'ARCHIVE').length,
+      onHold:    projects.filter((p) => p.status === 'ON_HOLD').length,
+      dedicated: projects.filter((p) => p.projectType === 'DEDICATED').length,
+      tAndM:     projects.filter((p) => p.projectType === 'T_AND_M').length,
+      fixed:     projects.filter((p) => p.projectType === 'FIXED').length,
+      overdue:   projects.filter((p) => p.status === 'ACTIVE' && p.endDate !== null && new Date(p.endDate) < today).length,
+    };
+  }
+
+  async create(dto: CreateProjectDto) {
+    this.validateDates(dto.startDate, dto.endDate);
+    return this.prisma.project.create({
+      data: {
+        name: dto.name.trim(),
+        projectType: dto.projectType,
+        clientId: dto.clientId ?? null,
+        departmentId: dto.departmentId ?? null,
+        description: dto.description?.trim() ?? null,
+        startDate: dto.startDate ? new Date(dto.startDate) : null,
+        endDate: dto.endDate ? new Date(dto.endDate) : null,
+        budget: dto.budget ?? null,
+      },
+      select: PROJECT_SELECT,
+    });
+  }
+
+  async update(id: string, dto: UpdateProjectDto) {
+    const project = await this.prisma.project.findUnique({ where: { id } });
+    if (!project) throw new NotFoundException('Project not found');
+
+    const startDate = dto.startDate !== undefined ? dto.startDate : project.startDate?.toISOString().split('T')[0];
+    const endDate = dto.endDate !== undefined ? dto.endDate : project.endDate?.toISOString().split('T')[0];
+    this.validateDates(startDate, endDate);
+
+    return this.prisma.project.update({
+      where: { id },
+      data: {
+        ...(dto.name !== undefined ? { name: dto.name.trim() } : {}),
+        ...(dto.projectType !== undefined ? { projectType: dto.projectType } : {}),
+        ...(dto.clientId !== undefined ? { clientId: dto.clientId } : {}),
+        ...(dto.departmentId !== undefined ? { departmentId: dto.departmentId } : {}),
+        ...(dto.description !== undefined ? { description: dto.description?.trim() ?? null } : {}),
+        ...(dto.startDate !== undefined ? { startDate: dto.startDate ? new Date(dto.startDate) : null } : {}),
+        ...(dto.endDate !== undefined ? { endDate: dto.endDate ? new Date(dto.endDate) : null } : {}),
+        ...(dto.budget !== undefined ? { budget: dto.budget } : {}),
+      },
+      select: PROJECT_SELECT,
+    });
+  }
+
+  async setStatus(id: string, status: ProjectStatus) {
+    const project = await this.prisma.project.findUnique({ where: { id } });
+    if (!project) throw new NotFoundException('Project not found');
+    return this.prisma.project.update({ where: { id }, data: { status }, select: PROJECT_SELECT });
+  }
+
+  private validateDates(startDate?: string, endDate?: string) {
+    if (startDate && endDate && new Date(endDate) < new Date(startDate)) {
+      throw new BadRequestException('End date must be on or after start date');
+    }
+  }
+}
