@@ -52,7 +52,7 @@
 
 - **Department Management** — create / edit / deactivate departments (Digital, Mobile, SalesForce)
 - **Client Management** — create / edit / deactivate clients (name, contact, email, phone, address)
-- **User Management** — full CRUD: create user with Full Name, Email, Password, Department, Shift, System Role, Profile Photo, Phone, Join Date; edit, deactivate
+- ~~**User Management** — full CRUD: create user with Full Name, Email, Password, Department, Shift, System Role, Profile Photo, Phone, Join Date; edit, deactivate~~
 
 ---
 

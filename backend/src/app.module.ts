@@ -6,8 +6,10 @@ import { GlobalExceptionFilter } from './common/filters/global-exception.filter'
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
 import { DashboardModule } from './dashboard/dashboard.module';
+import { DepartmentsModule } from './departments/departments.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { SettingsModule } from './settings/settings.module';
+import { UsersModule } from './users/users.module';
 
 @Module({
   imports: [
@@ -16,6 +18,8 @@ import { SettingsModule } from './settings/settings.module';
     AuthModule,
     DashboardModule,
     SettingsModule,
+    DepartmentsModule,
+    UsersModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: GlobalExceptionFilter },

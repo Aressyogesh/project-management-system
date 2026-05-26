@@ -6,6 +6,16 @@ const prisma = new PrismaClient();
 async function main(): Promise<void> {
   console.log('Seeding database...');
 
+  // Seed departments
+  const departments = ['Digital', 'Mobile', 'SalesForce'];
+  for (const name of departments) {
+    await prisma.department.upsert({
+      where: { name },
+      update: {},
+      create: { name },
+    });
+  }
+
   const passwordHash = await bcrypt.hash('Password@123', 10);
 
   await prisma.user.upsert({
