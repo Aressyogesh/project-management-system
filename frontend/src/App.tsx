@@ -10,6 +10,7 @@ import { PortalConfigPage } from './features/settings/pages/PortalConfigPage';
 import { SettingsLayout } from './features/settings/pages/SettingsLayout';
 import { ShiftConfigPage } from './features/settings/pages/ShiftConfigPage';
 import { UserSettingsPage } from './features/settings/pages/UserSettingsPage';
+import { DepartmentsPage } from './features/departments/pages/DepartmentsPage';
 import { UsersPage } from './features/users/pages/UsersPage';
 
 const queryClient = new QueryClient({
@@ -17,7 +18,6 @@ const queryClient = new QueryClient({
 });
 
 const comingSoonPaths = [
-  '/departments',
   '/clients',
   '/projects',
   '/timesheets',
@@ -42,6 +42,9 @@ export default function App() {
 
               {/* User Management */}
               <Route path="/users" element={<UsersPage />} />
+
+              {/* Department Management */}
+              <Route path="/departments" element={<DepartmentsPage />} />
 
               {/* Settings — nested under SettingsLayout */}
               <Route path="/settings" element={<SettingsLayout />}>
