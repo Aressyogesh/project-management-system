@@ -1,5 +1,5 @@
 import { apiClient } from './client';
-import type { CreateProjectPayload, Project, ProjectStatus, ProjectSummary, ProjectType } from '../types/projects.types';
+import type { CreateProjectPayload, Project, ProjectMember, ProjectRole, ProjectStatus, ProjectSummary, ProjectType } from '../types/projects.types';
 
 export const projectsApi = {
   list: (params?: { status?: ProjectStatus; type?: ProjectType }) =>
@@ -19,4 +19,16 @@ export const projectsApi = {
 
   setStatus: (id: string, status: ProjectStatus) =>
     apiClient.patch<Project>(`/projects/${id}/status`, { status }).then((r) => r.data),
+
+  listMembers: (projectId: string) =>
+    apiClient.get<ProjectMember[]>(`/projects/${projectId}/members`).then((r) => r.data),
+
+  addMember: (projectId: string, userId: string, projectRole: ProjectRole) =>
+    apiClient.post<ProjectMember>(`/projects/${projectId}/members`, { userId, projectRole }).then((r) => r.data),
+
+  updateMemberRole: (projectId: string, userId: string, projectRole: ProjectRole) =>
+    apiClient.patch<ProjectMember>(`/projects/${projectId}/members/${userId}`, { projectRole }).then((r) => r.data),
+
+  removeMember: (projectId: string, userId: string) =>
+    apiClient.delete(`/projects/${projectId}/members/${userId}`),
 };

@@ -3,6 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { APP_FILTER, APP_GUARD } from '@nestjs/core';
 import { AuthModule } from './auth/auth.module';
 import { ClientsModule } from './clients/clients.module';
+import { ProjectMembersModule } from './project-members/project-members.module';
 import { ProjectsModule } from './projects/projects.module';
 import { GlobalExceptionFilter } from './common/filters/global-exception.filter';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
@@ -24,6 +25,7 @@ import { UsersModule } from './users/users.module';
     UsersModule,
     ClientsModule,
     ProjectsModule,
+    ProjectMembersModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: GlobalExceptionFilter },

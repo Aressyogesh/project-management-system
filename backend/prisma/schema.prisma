@@ -33,6 +33,15 @@ enum ProjectStatus {
   ON_HOLD
 }
 
+enum ProjectRole {
+  PROJECT_MANAGER
+  TEAM_LEAD
+  DEVELOPER
+  QA
+  DESIGNER
+  DEVOPS
+}
+
 // ─── Department ───────────────────────────────────────────────────────────────
 
 model Department {
@@ -67,7 +76,8 @@ model User {
 
   department    Department?  @relation(fields: [departmentId], references: [id])
   shift         Shift?       @relation(fields: [shiftId], references: [id])
-  refreshTokens RefreshToken[]
+  refreshTokens  RefreshToken[]
+  projectMembers ProjectMember[]
 
   @@index([email])
   @@map("users")
@@ -150,12 +160,30 @@ model Project {
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
 
-  client     Client?     @relation(fields: [clientId], references: [id])
-  department Department? @relation(fields: [departmentId], references: [id])
+  client     Client?         @relation(fields: [clientId], references: [id])
+  department Department?     @relation(fields: [departmentId], references: [id])
+  members    ProjectMember[]
 
   @@index([status])
   @@index([projectType])
   @@map("projects")
+}
+
+// ─── Project Member ───────────────────────────────────────────────────────────
+
+model ProjectMember {
+  id          String      @id @default(uuid())
+  projectId   String
+  userId      String
+  projectRole ProjectRole
+  joinedAt    DateTime    @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, userId])
+  @@index([projectId])
+  @@map("project_members")
 }
 
 // ─── Client ───────────────────────────────────────────────────────────────────
