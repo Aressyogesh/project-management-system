@@ -15,6 +15,12 @@ enum SystemRole {
   EMPLOYEE
 }
 
+enum ShiftType {
+  DAY
+  AFTERNOON
+  NIGHT
+}
+
 // ─── Auth Models ──────────────────────────────────────────────────────────────
 
 model User {
@@ -31,6 +37,65 @@ model User {
 
   @@index([email])
   @@map("users")
+}
+
+model CompanySettings {
+  id               String   @id @default("singleton")
+  companyName      String   @default("") @db.VarChar(200)
+  webAddress       String?
+  street           String?
+  city             String?
+  state            String?
+  country          String   @default("India")
+  zipCode          String?  @db.VarChar(20)
+  timezone         String   @default("Asia/Kolkata")
+  backDateLogValue Int      @default(8)
+  backDateLogUnit  String   @default("Days") @db.VarChar(10)
+  emailDomains     String[]
+  updatedAt        DateTime @updatedAt
+
+  @@map("company_settings")
+}
+
+model PortalConfig {
+  id                       String   @id @default("singleton")
+  dateFormat               String   @default("DD-MM-YYYY") @db.VarChar(20)
+  timeFormat               String   @default("24") @db.VarChar(4)
+  taskDurationIn           String   @default("hours") @db.VarChar(10)
+  firstDayOfWeek           String   @default("Monday") @db.VarChar(10)
+  businessHoursStart       String   @default("10:00") @db.VarChar(6)
+  businessHoursStartPeriod String   @default("AM") @db.VarChar(2)
+  businessHoursEnd         String   @default("07:00") @db.VarChar(6)
+  businessHoursEndPeriod   String   @default("PM") @db.VarChar(2)
+  workingDays              Json     @default("{\"monday\":true,\"tuesday\":true,\"wednesday\":true,\"thursday\":true,\"friday\":true,\"saturday\":false,\"sunday\":false}")
+  updatedAt                DateTime @updatedAt
+
+  @@map("portal_config")
+}
+
+model Shift {
+  id        String    @id @default(uuid())
+  name      String    @db.VarChar(50)
+  shiftType ShiftType @unique
+  startTime String    @db.VarChar(8)
+  endTime   String    @db.VarChar(8)
+  workHours Int       @default(8)
+  isActive  Boolean   @default(true)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@map("shifts")
+}
+
+model Holiday {
+  id          String   @id @default(uuid())
+  name        String   @db.VarChar(100)
+  date        DateTime @db.Date
+  isRecurring Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  @@unique([date])
+  @@map("holidays")
 }
 
 model RefreshToken {

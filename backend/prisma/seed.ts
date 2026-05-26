@@ -1,4 +1,4 @@
-import { PrismaClient, SystemRole } from '@prisma/client';
+import { PrismaClient, ShiftType, SystemRole } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 
 const prisma = new PrismaClient();
@@ -43,6 +43,20 @@ async function main(): Promise<void> {
       isActive: true,
     },
   });
+
+  // Seed default shifts
+  const defaultShifts = [
+    { name: 'Day',       shiftType: ShiftType.DAY,       startTime: '10:00', endTime: '19:00', workHours: 8 },
+    { name: 'Afternoon', shiftType: ShiftType.AFTERNOON,  startTime: '15:00', endTime: '00:00', workHours: 8 },
+    { name: 'Night',     shiftType: ShiftType.NIGHT,      startTime: '23:00', endTime: '08:00', workHours: 8 },
+  ];
+  for (const shift of defaultShifts) {
+    await prisma.shift.upsert({
+      where: { shiftType: shift.shiftType },
+      update: {},
+      create: shift,
+    });
+  }
 
   console.log('Seed complete. Default password for all users: Password@123');
 }
