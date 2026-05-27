@@ -12,14 +12,14 @@ const MONTH_NAMES = [
   'July', 'August', 'September', 'October', 'November', 'December',
 ];
 
-function toLocalDateStr(date: Date): string {
+export function toLocalDateStr(date: Date): string {
   const y = date.getFullYear();
   const m = String(date.getMonth() + 1).padStart(2, '0');
   const d = String(date.getDate()).padStart(2, '0');
   return `${y}-${m}-${d}`;
 }
 
-function buildCalendarWeeks(year: number, month: number): (Date | null)[][] {
+export function buildCalendarWeeks(year: number, month: number): (Date | null)[][] {
   const firstDay = new Date(year, month, 1);
   const lastDay = new Date(year, month + 1, 0);
 
@@ -39,14 +39,14 @@ function buildCalendarWeeks(year: number, month: number): (Date | null)[][] {
   return weeks;
 }
 
-function dayColor(totalHours: number): string {
+export function dayColor(totalHours: number): string {
   if (totalHours === 0) return '';
   if (totalHours >= 8) return 'bg-red-50 border-red-200';
   if (totalHours >= 6) return 'bg-yellow-50 border-yellow-200';
   return 'bg-green-50 border-green-200';
 }
 
-function hoursBarColor(totalHours: number): string {
+export function hoursBarColor(totalHours: number): string {
   if (totalHours >= 8) return 'bg-red-400';
   if (totalHours >= 6) return 'bg-yellow-400';
   return 'bg-green-400';
