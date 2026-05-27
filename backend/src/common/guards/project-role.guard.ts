@@ -98,6 +98,14 @@ export class ProjectRoleGuard implements CanActivate {
       return ms?.projectId ?? null;
     }
 
+    if (source === 'allocation') {
+      const alloc = await this.prisma.taskAllocation.findUnique({
+        where: { id },
+        select: { task: { select: { projectId: true } } },
+      });
+      return alloc?.task?.projectId ?? null;
+    }
+
     return null;
   }
 }
