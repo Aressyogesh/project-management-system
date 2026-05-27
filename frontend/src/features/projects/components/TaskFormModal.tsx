@@ -60,6 +60,8 @@ export function TaskFormModal({ projectId, taskLists, milestones, members, editT
     }
   }, [editTask, taskLists]);
 
+  const [serverError, setServerError] = useState('');
+
   const mutation = useMutation({
     mutationFn: (payload: CreateTaskPayload) =>
       isEdit
@@ -68,6 +70,10 @@ export function TaskFormModal({ projectId, taskLists, milestones, members, editT
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['tasks', projectId] });
       onClose();
+    },
+    onError: (err: any) => {
+      const msg = err?.response?.data?.message;
+      setServerError(Array.isArray(msg) ? msg.join(', ') : (msg ?? 'Something went wrong. Please try again.'));
     },
   });
 
@@ -120,6 +126,7 @@ export function TaskFormModal({ projectId, taskLists, milestones, members, editT
                 onChange={(e) => setTaskListId(e.target.value)}
                 required
               >
+                {taskLists.length === 0 && <option value="">— No task lists —</option>}
                 {taskLists.map((tl) => (
                   <option key={tl.id} value={tl.id}>{tl.name}</option>
                 ))}
@@ -239,8 +246,8 @@ export function TaskFormModal({ projectId, taskLists, milestones, members, editT
             </div>
           </div>
 
-          {mutation.isError && (
-            <p className="text-xs text-red-600">Something went wrong. Please try again.</p>
+          {serverError && (
+            <p className="text-xs text-red-600">{serverError}</p>
           )}
 
           <div className="flex justify-end gap-3 pt-2">
