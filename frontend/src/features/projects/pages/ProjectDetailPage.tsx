@@ -3,14 +3,17 @@ import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { milestonesApi } from '../../../api/milestones.api';
 import { projectsApi } from '../../../api/projects.api';
+import { taskAllocationsApi } from '../../../api/taskAllocations.api';
 import { taskListsApi } from '../../../api/taskLists.api';
 import { tasksApi } from '../../../api/tasks.api';
 import { useAuthStore } from '../../../store/authStore';
 import type { Milestone, MilestoneStatus } from '../../../types/milestones.types';
 import type { ProjectMember, ProjectRole, ProjectStatus, ProjectType } from '../../../types/projects.types';
 import type { Task, TaskPriority, TaskStatus } from '../../../types/task.types';
+import type { TaskAllocation } from '../../../types/taskAllocation.types';
 import type { TaskList, TaskListType } from '../../../types/taskList.types';
 import { AddMemberModal } from '../components/AddMemberModal';
+import { AllocationFormModal } from '../components/AllocationFormModal';
 import { MilestoneFormModal } from '../components/MilestoneFormModal';
 import { TaskDetailModal } from '../components/TaskDetailModal';
 import { TaskFormModal } from '../components/TaskFormModal';
@@ -146,6 +149,8 @@ export function ProjectDetailPage() {
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [collapsedLists, setCollapsedLists] = useState<Record<string, boolean>>({});
   const [taskView, setTaskView] = useState<'list' | 'board'>('list');
+  const [showAllocationForm, setShowAllocationForm] = useState(false);
+  const [editAllocation, setEditAllocation] = useState<TaskAllocation | null>(null);
 
   const { data: project, isLoading: projLoading, error: projError } = useQuery({
     queryKey: ['project', projectId],
@@ -192,6 +197,17 @@ export function ProjectDetailPage() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['tasks', projectId] }),
   });
 
+  const { data: allocations = [], isLoading: allocationsLoading } = useQuery({
+    queryKey: ['task-allocations', projectId],
+    queryFn: () => taskAllocationsApi.listByProject(projectId!),
+    enabled: !!projectId,
+  });
+
+  const removeAllocationMutation = useMutation({
+    mutationFn: (id: string) => taskAllocationsApi.remove(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['task-allocations', projectId] }),
+  });
+
   const updateRoleMutation = useMutation({
     mutationFn: ({ userId, role }: { userId: string; role: ProjectRole }) =>
       projectsApi.updateMemberRole(projectId!, userId, role),
@@ -205,6 +221,12 @@ export function ProjectDetailPage() {
     mutationFn: (userId: string) => projectsApi.removeMember(projectId!, userId),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['project-members', projectId] }),
   });
+
+  const myProjectRole = members.find((m) => m.user.id === user?.id)?.projectRole;
+  const canManageAllocations =
+    canEdit ||
+    myProjectRole === 'PROJECT_MANAGER' ||
+    myProjectRole === 'TEAM_LEAD';
 
   if (projLoading) {
     return <div className="flex items-center justify-center py-20 text-sm text-gray-400">Loading…</div>;
@@ -814,6 +836,103 @@ export function ProjectDetailPage() {
         )}
       </div>
 
+      {/* Task Allocations */}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-50">
+          <div>
+            <h2 className="text-sm font-semibold text-gray-900">Task Allocations</h2>
+            <p className="text-xs text-gray-400 mt-0.5">{allocations.length} allocation{allocations.length !== 1 ? 's' : ''}</p>
+          </div>
+          {canManageAllocations && (
+            <button
+              onClick={() => { setEditAllocation(null); setShowAllocationForm(true); }}
+              disabled={tasks.length === 0}
+              title={tasks.length === 0 ? 'Add tasks first' : undefined}
+              className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-lg transition disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              Log Hours
+            </button>
+          )}
+        </div>
+
+        {allocationsLoading ? (
+          <div className="flex items-center justify-center py-12 text-sm text-gray-400">Loading…</div>
+        ) : allocations.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-14 gap-2 text-sm text-gray-400">
+            <svg className="w-10 h-10 text-gray-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+                d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            No allocations yet.{canManageAllocations && ' Click "Log Hours" to assign hours.'}
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="bg-gray-50 border-b border-gray-100">
+                  <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Task</th>
+                  <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Member</th>
+                  <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                  <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Hours</th>
+                  {canManageAllocations && <th className="px-6 py-3" />}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {allocations.map((alloc: TaskAllocation) => (
+                  <tr key={alloc.id} className="hover:bg-gray-50 transition-colors">
+                    <td className="px-6 py-3 text-sm text-gray-800">{alloc.task.title}</td>
+                    <td className="px-6 py-3">
+                      <div className="flex items-center gap-2">
+                        <Avatar name={alloc.user.fullName} photo={alloc.user.profilePhoto} />
+                        <span className="text-sm text-gray-700">{alloc.user.fullName}</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-3 text-sm text-gray-500 whitespace-nowrap">
+                      {new Date(alloc.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+                    </td>
+                    <td className="px-6 py-3">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700">
+                        {alloc.allocatedHours}h
+                      </span>
+                    </td>
+                    {canManageAllocations && (
+                      <td className="px-6 py-3">
+                        <div className="flex items-center gap-1 justify-end">
+                          <button
+                            title="Edit"
+                            onClick={() => { setEditAllocation(alloc); setShowAllocationForm(true); }}
+                            className="p-1.5 rounded-lg text-gray-400 hover:text-primary-600 hover:bg-primary-50 transition"
+                          >
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                                d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                          </button>
+                          <button
+                            title="Delete"
+                            onClick={() => removeAllocationMutation.mutate(alloc.id)}
+                            disabled={removeAllocationMutation.isPending}
+                            className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition"
+                          >
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                          </button>
+                        </div>
+                      </td>
+                    )}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
       {showTaskListForm && (
         <TaskListFormModal
           projectId={projectId!}
@@ -843,6 +962,16 @@ export function ProjectDetailPage() {
           }))}
           editTask={editTask}
           onClose={() => { setShowTaskForm(false); setEditTask(null); }}
+        />
+      )}
+
+      {showAllocationForm && (
+        <AllocationFormModal
+          projectId={projectId!}
+          tasks={tasks}
+          members={members}
+          allocation={editAllocation ?? undefined}
+          onClose={() => { setShowAllocationForm(false); setEditAllocation(null); }}
         />
       )}
     </div>

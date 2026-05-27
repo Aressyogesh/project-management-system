@@ -6,6 +6,7 @@ import { ClientsModule } from './clients/clients.module';
 import { MilestonesModule } from './milestones/milestones.module';
 import { ProjectMembersModule } from './project-members/project-members.module';
 import { TaskAttachmentsModule } from './task-attachments/task-attachments.module';
+import { TaskAllocationsModule } from './task-allocations/task-allocations.module';
 import { TaskCommentsModule } from './task-comments/task-comments.module';
 import { TaskListsModule } from './task-lists/task-lists.module';
 import { TasksModule } from './tasks/tasks.module';
@@ -36,6 +37,7 @@ import { UsersModule } from './users/users.module';
     TasksModule,
     TaskAttachmentsModule,
     TaskCommentsModule,
+    TaskAllocationsModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: GlobalExceptionFilter },
