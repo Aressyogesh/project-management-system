@@ -1,6 +1,6 @@
 # PMS — Feature Tracker
 
-> Last updated: 2026-05-26 (F-014 complete)
+> Last updated: 2026-05-27 (F-015 complete)
 > ~~Strikethrough~~ = completed and in production. Plain text = pending development.
 
 ---
@@ -30,7 +30,7 @@
 - ~~"Coming Soon" placeholder page for all pending modules~~
 - Extend Prisma schema with all remaining models (Project, Task, Bug, etc. — see PLAN.md)
 - `FileStorageService` — Multer disk storage for task/bug attachments
-- `ProjectRoleGuard` — checks user's project-level role (Project Manager, Team Lead, etc.)
+- ~~`ProjectRoleGuard` — checks user's project-level role (Project Manager, Team Lead, etc.)~~
 - Forgotten password flow (email OTP / reset link)
 - Sign-up / registration page (pending Admin approval)
 
