@@ -441,6 +441,7 @@ export function ProjectDetailPage() {
                   <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
                   <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Dates</th>
                   <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Responsible</th>
+                  <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Progress</th>
                   <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                   {canEdit && <th className="px-6 py-3" />}
                 </tr>
@@ -465,6 +466,20 @@ export function ProjectDetailPage() {
                     </td>
                     <td className="px-6 py-3 text-sm text-gray-500">
                       {ms.responsibleUser?.fullName ?? '—'}
+                    </td>
+                    <td className="px-6 py-3 min-w-[140px]">
+                      <div className="flex flex-col gap-1">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs text-gray-500">{ms.completedTasks} / {ms.totalTasks} tasks</span>
+                          <span className="text-xs font-medium text-gray-700">{ms.progressPercent}%</span>
+                        </div>
+                        <div className="w-full bg-gray-100 rounded-full h-1.5">
+                          <div
+                            className="bg-primary-500 h-1.5 rounded-full transition-all duration-300"
+                            style={{ width: `${ms.progressPercent}%` }}
+                          />
+                        </div>
+                      </div>
                     </td>
                     <td className="px-6 py-3">
                       <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${MS_STATUS_COLOR[ms.status]}`}>

@@ -15,6 +15,9 @@ export interface Milestone {
   status: MilestoneStatus;
   createdAt: string;
   responsibleUser: MilestoneUser | null;
+  totalTasks: number;
+  completedTasks: number;
+  progressPercent: number;
 }
 
 export interface CreateMilestonePayload {

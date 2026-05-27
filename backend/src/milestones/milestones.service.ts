@@ -26,11 +26,23 @@ export class MilestonesService {
 
   async findAll(projectId: string) {
     await this.requireProject(projectId);
-    return this.prisma.milestone.findMany({
+    const rows = await this.prisma.milestone.findMany({
       where: { projectId },
-      select: MILESTONE_SELECT,
+      select: {
+        ...MILESTONE_SELECT,
+        _count: { select: { tasks: true } },
+        tasks: { where: { status: 'COMPLETED' }, select: { id: true } },
+      },
       orderBy: [{ dueDate: 'asc' }, { createdAt: 'asc' }],
     });
+
+    return rows.map(({ _count, tasks: doneTasks, ...ms }) => ({
+      ...ms,
+      totalTasks: _count.tasks,
+      completedTasks: doneTasks.length,
+      progressPercent:
+        _count.tasks > 0 ? Math.round((doneTasks.length / _count.tasks) * 100) : 0,
+    }));
   }
 
   async create(projectId: string, dto: CreateMilestoneDto) {

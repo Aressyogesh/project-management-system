@@ -25,6 +25,19 @@ const mockMilestone = {
   createdAt: new Date(),
   responsibleUser: null,
 };
+const mockMilestoneRow = {
+  ...mockMilestone,
+  _count: { tasks: 0 },
+  tasks: [],
+};
+
+function makeRow(completedCount: number, totalCount: number) {
+  return {
+    ...mockMilestone,
+    _count: { tasks: totalCount },
+    tasks: Array.from({ length: completedCount }, (_, i) => ({ id: `t${i}` })),
+  };
+}
 
 describe('MilestonesService', () => {
   let service: MilestonesService;
@@ -37,7 +50,7 @@ describe('MilestonesService', () => {
       ],
     }).compile();
     service = module.get<MilestonesService>(MilestonesService);
-    jest.clearAllMocks();
+    jest.resetAllMocks();
   });
 
   // UTC-F-009-B-001
@@ -100,10 +113,58 @@ describe('MilestonesService', () => {
   // UTC-F-009-B-008
   it('ListMilestones_ValidProject_ReturnsList', async () => {
     mockPrisma.project.findUnique.mockResolvedValue(mockProject);
-    mockPrisma.milestone.findMany.mockResolvedValue([mockMilestone]);
+    mockPrisma.milestone.findMany.mockResolvedValue([mockMilestoneRow]);
 
     const result = await service.findAll('proj-001');
     expect(result).toHaveLength(1);
     expect(result[0].description).toBe('Phase 1 Delivery');
+  });
+
+  // UTC-F016-B-001
+  it('findAll_MilestoneWithPartialCompletion_ReturnsCorrectProgress', async () => {
+    mockPrisma.project.findUnique.mockResolvedValue(mockProject);
+    mockPrisma.milestone.findMany.mockResolvedValueOnce([makeRow(3, 5)]);
+    const result = await service.findAll('proj-001');
+    expect(result[0].totalTasks).toBe(5);
+    expect(result[0].completedTasks).toBe(3);
+    expect(result[0].progressPercent).toBe(60);
+  });
+
+  // UTC-F016-B-002
+  it('findAll_MilestoneWithNoTasks_ReturnsZeroProgress', async () => {
+    mockPrisma.project.findUnique.mockResolvedValue(mockProject);
+    mockPrisma.milestone.findMany.mockResolvedValueOnce([makeRow(0, 0)]);
+    const result = await service.findAll('proj-001');
+    expect(result[0].totalTasks).toBe(0);
+    expect(result[0].completedTasks).toBe(0);
+    expect(result[0].progressPercent).toBe(0);
+  });
+
+  // UTC-F016-B-003
+  it('findAll_AllTasksCompleted_Returns100Percent', async () => {
+    mockPrisma.project.findUnique.mockResolvedValue(mockProject);
+    mockPrisma.milestone.findMany.mockResolvedValueOnce([makeRow(3, 3)]);
+    const result = await service.findAll('proj-001');
+    expect(result[0].progressPercent).toBe(100);
+  });
+
+  // UTC-F016-B-004
+  it('findAll_MultipleMilestones_EachHasIndependentProgress', async () => {
+    mockPrisma.project.findUnique.mockResolvedValue(mockProject);
+    mockPrisma.milestone.findMany.mockResolvedValueOnce([
+      { ...makeRow(2, 4), id: 'ms-1' },
+      { ...makeRow(2, 2), id: 'ms-2' },
+    ]);
+    const result = await service.findAll('proj-001');
+    expect(result[0].progressPercent).toBe(50);
+    expect(result[1].progressPercent).toBe(100);
+  });
+
+  // UTC-F016-B-005
+  it('findAll_ProgressPercent_RoundsToNearestInteger', async () => {
+    mockPrisma.project.findUnique.mockResolvedValue(mockProject);
+    mockPrisma.milestone.findMany.mockResolvedValueOnce([makeRow(1, 3)]);
+    const result = await service.findAll('proj-001');
+    expect(result[0].progressPercent).toBe(33);
   });
 });
