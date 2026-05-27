@@ -1,6 +1,6 @@
 # PMS — Feature Tracker
 
-> Last updated: 2026-05-27 (F-015 complete)
+> Last updated: 2026-05-27 (F-016 complete)
 > ~~Strikethrough~~ = completed and in production. Plain text = pending development.
 
 ---
@@ -61,7 +61,7 @@
 - ~~**Project Management** — card grid list with status filter; Summary panel (Active/Archive/On Hold/Dedicated/T&M/Fixed/Overdue counts); create/edit form (name, type, client, department, description, start/end date, budget); archive/restore; overdue indicator~~
 - ~~**Project Member Management** — project detail page; add/remove team members; assign/change project roles (Project Manager, Team Lead, Developer, QA, Designer, DevOps); role-colour badges; avatar with initials fallback~~
 - ~~**Milestone Management** — milestones section on project detail page; create/edit/delete milestones (description, delivery note, start/due dates, responsible user, status); status badges (NOT_STARTED / IN_PROGRESS / COMPLETED / DELAYED); RBAC gated write actions~~
-- Milestone progress tracking via linked tasks
+- ~~Milestone progress tracking via linked tasks~~
 
 ---
 
