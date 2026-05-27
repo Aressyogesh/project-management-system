@@ -14,6 +14,7 @@ import { ClientsPage } from './features/clients/pages/ClientsPage';
 import { DepartmentsPage } from './features/departments/pages/DepartmentsPage';
 import { ProjectDetailPage } from './features/projects/pages/ProjectDetailPage';
 import { ProjectsPage } from './features/projects/pages/ProjectsPage';
+import { AllocationCalendarPage } from './features/taskAllocations/pages/AllocationCalendarPage';
 import { UsersPage } from './features/users/pages/UsersPage';
 
 const queryClient = new QueryClient({
@@ -27,6 +28,7 @@ const comingSoonPaths = [
   '/kpi',
   '/reports',
 ];
+
 
 export default function App() {
   return (
@@ -53,6 +55,9 @@ export default function App() {
               {/* Project Management */}
               <Route path="/projects" element={<ProjectsPage />} />
               <Route path="/projects/:id" element={<ProjectDetailPage />} />
+
+              {/* Task Allocation Calendar */}
+              <Route path="/allocations" element={<AllocationCalendarPage />} />
 
               {/* Settings — nested under SettingsLayout */}
               <Route path="/settings" element={<SettingsLayout />}>
