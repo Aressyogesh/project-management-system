@@ -11,14 +11,16 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
-import { SystemRole } from '@prisma/client';
-import { Roles } from '../common/decorators/roles.decorator';
-import { RolesGuard } from '../common/guards/roles.guard';
+import { ProjectRole } from '@prisma/client';
+import { ProjectIdFrom, ProjectRoles } from '../common/decorators/project-roles.decorator';
+import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
+import { ProjectRoleGuard } from '../common/guards/project-role.guard';
 import { CreateMilestoneDto, UpdateMilestoneDto } from './dto/milestone.dto';
 import { MilestonesService } from './milestones.service';
 
 @ApiTags('Milestones')
 @ApiBearerAuth()
+@UseGuards(JwtAuthGuard)
 @Controller()
 export class MilestonesController {
   constructor(private readonly service: MilestonesService) {}
@@ -29,8 +31,9 @@ export class MilestonesController {
   }
 
   @Post('projects/:projectId/milestones')
-  @UseGuards(RolesGuard)
-  @Roles(SystemRole.SUPER_USER, SystemRole.ADMIN)
+  @UseGuards(ProjectRoleGuard)
+  @ProjectRoles(ProjectRole.PROJECT_MANAGER)
+  @ProjectIdFrom('param')
   create(
     @Param('projectId') projectId: string,
     @Body() dto: CreateMilestoneDto,
@@ -39,15 +42,17 @@ export class MilestonesController {
   }
 
   @Patch('milestones/:id')
-  @UseGuards(RolesGuard)
-  @Roles(SystemRole.SUPER_USER, SystemRole.ADMIN)
+  @UseGuards(ProjectRoleGuard)
+  @ProjectRoles(ProjectRole.PROJECT_MANAGER)
+  @ProjectIdFrom('milestone')
   update(@Param('id') id: string, @Body() dto: UpdateMilestoneDto) {
     return this.service.update(id, dto);
   }
 
   @Delete('milestones/:id')
-  @UseGuards(RolesGuard)
-  @Roles(SystemRole.SUPER_USER, SystemRole.ADMIN)
+  @UseGuards(ProjectRoleGuard)
+  @ProjectRoles(ProjectRole.PROJECT_MANAGER)
+  @ProjectIdFrom('milestone')
   @HttpCode(HttpStatus.NO_CONTENT)
   remove(@Param('id') id: string) {
     return this.service.remove(id);

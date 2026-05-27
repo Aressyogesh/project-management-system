@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><title>Security Review — F-015 ProjectRoleGuard</title>
+<style>
+  body{font-family:Arial,sans-serif;margin:32px;color:#1a1a1a}
+  h1{color:#1d4ed8}h2{color:#374151;border-bottom:1px solid #e5e7eb;padding-bottom:6px}
+  table{border-collapse:collapse;width:100%;margin-bottom:24px}
+  th,td{border:1px solid #d1d5db;padding:8px 12px;text-align:left}
+  th{background:#f3f4f6;font-weight:600}
+  .pass{color:#16a34a;font-weight:600}.na{color:#6b7280}
+  .verdict{background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:16px;margin-bottom:24px}
+</style>
+</head>
+<body>
+<h1>Security Review Report — F-015: ProjectRoleGuard</h1>
+<p><strong>Reviewer:</strong> Claude Sonnet 4.6 &nbsp;|&nbsp; <strong>Date:</strong> 2026-05-27</p>
+
+<div class="verdict"><strong>Verdict: <span class="pass">CLEARED</span></strong> — No critical or high findings.</div>
+
+<h2>OWASP Checks</h2>
+<table>
+  <tr><th>Check</th><th>Finding</th><th>Status</th></tr>
+  <tr><td>SEC-1 (A01) Broken Access Control</td><td>Guard enforces project membership + role on every write endpoint. SUPER_USER/ADMIN bypass is explicit, not implicit. GET endpoints unguarded by design (public read). No IDOR — projectId resolved from DB for PATCH/DELETE routes, not user-supplied.</td><td><span class="pass">PASS</span></td></tr>
+  <tr><td>SEC-1 Vertical escalation</td><td>EMPLOYEE cannot call PROJECT_MANAGER-only endpoints (milestone write). Tested in UTC-B-006.</td><td><span class="pass">PASS</span></td></tr>
+  <tr><td>SEC-1 Horizontal escalation</td><td>User can only act within projects they are a member of. Non-member check explicit.</td><td><span class="pass">PASS</span></td></tr>
+  <tr><td>SEC-3 (A03) Injection</td><td>projectId and userId come from JWT payload (server-set), not user input. Prisma ORM used — no raw SQL.</td><td><span class="pass">PASS</span></td></tr>
+  <tr><td>SEC-5 (A05) Misconfiguration</td><td>Guard applied at handler level, not class level — read routes correctly unguarded.</td><td><span class="pass">PASS</span></td></tr>
+  <tr><td>API-01 Object Level Auth</td><td>Resource ownership validated: for PATCH/DELETE, projectId resolved from DB resource, not route param.</td><td><span class="pass">PASS</span></td></tr>
+  <tr><td>API-05 Function Level Auth</td><td>Milestone write restricted to PROJECT_MANAGER only. Task/task-list write restricted to PM + TL.</td><td><span class="pass">PASS</span></td></tr>
+</table>
+
+<h2>Open Risk Items</h2>
+<p>None.</p>
+</body>
+</html>

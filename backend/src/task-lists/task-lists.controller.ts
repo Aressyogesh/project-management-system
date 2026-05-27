@@ -10,10 +10,10 @@ import {
   Post,
   UseGuards,
 } from '@nestjs/common';
-import { SystemRole } from '@prisma/client';
-import { Roles } from '../common/decorators/roles.decorator';
+import { ProjectRole } from '@prisma/client';
+import { ProjectIdFrom, ProjectRoles } from '../common/decorators/project-roles.decorator';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
-import { RolesGuard } from '../common/guards/roles.guard';
+import { ProjectRoleGuard } from '../common/guards/project-role.guard';
 import { CreateTaskListDto, UpdateTaskListDto } from './dto/task-list.dto';
 import { TaskListsService } from './task-lists.service';
 
@@ -28,8 +28,9 @@ export class TaskListsController {
   }
 
   @Post('projects/:projectId/task-lists')
-  @UseGuards(RolesGuard)
-  @Roles(SystemRole.SUPER_USER, SystemRole.ADMIN)
+  @UseGuards(ProjectRoleGuard)
+  @ProjectRoles(ProjectRole.PROJECT_MANAGER, ProjectRole.TEAM_LEAD)
+  @ProjectIdFrom('param')
   create(
     @Param('projectId') projectId: string,
     @Body() dto: CreateTaskListDto,
@@ -38,16 +39,18 @@ export class TaskListsController {
   }
 
   @Patch('task-lists/:id')
-  @UseGuards(RolesGuard)
-  @Roles(SystemRole.SUPER_USER, SystemRole.ADMIN)
+  @UseGuards(ProjectRoleGuard)
+  @ProjectRoles(ProjectRole.PROJECT_MANAGER, ProjectRole.TEAM_LEAD)
+  @ProjectIdFrom('taskList')
   update(@Param('id') id: string, @Body() dto: UpdateTaskListDto) {
     return this.taskListsService.update(id, dto);
   }
 
   @Delete('task-lists/:id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  @UseGuards(RolesGuard)
-  @Roles(SystemRole.SUPER_USER, SystemRole.ADMIN)
+  @UseGuards(ProjectRoleGuard)
+  @ProjectRoles(ProjectRole.PROJECT_MANAGER, ProjectRole.TEAM_LEAD)
+  @ProjectIdFrom('taskList')
   remove(@Param('id') id: string) {
     return this.taskListsService.remove(id);
   }
