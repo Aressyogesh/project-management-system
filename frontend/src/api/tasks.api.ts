@@ -1,5 +1,5 @@
 import { CreateTaskPayload, Task } from '../types/task.types';
-import apiClient from './client';
+import { apiClient } from './client';
 
 export const tasksApi = {
   list: (projectId: string) =>
