@@ -1,6 +1,6 @@
 # PMS — Feature Tracker
 
-> Last updated: 2026-05-27 (F-016 complete)
+> Last updated: 2026-05-27 (F-017 complete)
 > ~~Strikethrough~~ = completed and in production. Plain text = pending development.
 
 ---
@@ -77,8 +77,7 @@
 
 ## Phase 6 — Task Allocation Tracking
 
-- Task allocation form (assign hours per user per date)
-- 8-hour daily cap validation (warn / block on over-allocation per shift)
+- ~~**Task Allocation CRUD + 8h Daily Cap Validation** — `TaskAllocation` model (`@@unique([taskId, userId, date])`); `assertCap()` aggregate check throws `422` if daily 8h cap exceeded; P2002 → `409 Conflict`; write endpoints restricted to `PROJECT_MANAGER` / `TEAM_LEAD` via `ProjectRoleGuard` with `'allocation'` source; `GET /task-allocations/check` returns allocated + remaining hours; Task Allocations section on Project Detail page (Log Hours form, table with task/member/date/hours, edit/delete); 13 unit tests~~
 - Employee allocation calendar view
 - Team capacity view (manager sees all team member allocations)
 - Task allocation report
