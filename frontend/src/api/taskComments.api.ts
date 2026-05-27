@@ -1,5 +1,5 @@
 import { CreateCommentPayload, TaskComment } from '../types/taskComment.types';
-import apiClient from './client';
+import { apiClient } from './client';
 
 export const taskCommentsApi = {
   list: (taskId: string) =>

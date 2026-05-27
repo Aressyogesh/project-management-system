@@ -1,5 +1,5 @@
 import { TaskAttachment } from '../types/taskAttachment.types';
-import apiClient from './client';
+import { apiClient } from './client';
 
 export const taskAttachmentsApi = {
   list: (taskId: string) =>

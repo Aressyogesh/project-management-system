@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { departmentsApi } from '../../../api/departments.api';
 import { settingsApi } from '../../../api/settings.api';
 import { usersApi } from '../../../api/users.api';
@@ -37,7 +37,7 @@ export function UserFormModal({ mode, user, onClose }: Props) {
 
   const { data: departments = [] } = useQuery({
     queryKey: ['departments'],
-    queryFn: departmentsApi.list,
+    queryFn: () => departmentsApi.list(),
   });
 
   const { data: shiftsResponse } = useQuery({
