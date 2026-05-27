@@ -7,7 +7,7 @@
     "build": "nest build",
     "start": "node dist/main",
     "start:dev": "nest start --watch",
-    "start:prod": "node dist/main",
+    "start:prod": "node dist/src/main",
     "start:debug": "nest start --debug --watch",
     "test": "jest",
     "test:watch": "jest --watch",
