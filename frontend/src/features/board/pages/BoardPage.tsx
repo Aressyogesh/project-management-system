@@ -1,0 +1,157 @@
+import { DragDropContext, type DropResult } from '@hello-pangea/dnd';
+import { useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
+import { Link, useParams } from 'react-router-dom';
+import { projectsApi } from '../../../api/projects.api';
+import { useAuthStore } from '../../../store/authStore';
+import type { BoardFiltersQuery } from '../api/boardApi';
+import { BoardToolbar } from '../components/BoardToolbar';
+import { KanbanColumn } from '../components/KanbanColumn';
+import { SprintManager } from '../components/SprintManager';
+import { CreateWorkItemModal, WorkItemModal } from '../components/WorkItemModal';
+import { useBoard } from '../hooks/useBoard';
+import { useSprints } from '../hooks/useSprints';
+import type { BoardStatus, WorkItem } from '../types/board.types';
+
+export function BoardPage() {
+  const { id: projectId } = useParams<{ id: string }>();
+  const user = useAuthStore((s) => s.user);
+
+  const [filters, setFilters] = useState<BoardFiltersQuery>({});
+  const [selectedItem, setSelectedItem] = useState<WorkItem | null>(null);
+  const [showCreate, setShowCreate] = useState(false);
+  const [showSprintManager, setShowSprintManager] = useState(false);
+
+  const { columns, move } = useBoard(projectId!, filters);
+  const { sprints, activeSprint } = useSprints(projectId!);
+
+  const { data: project } = useQuery({
+    queryKey: ['project', projectId],
+    queryFn: () => projectsApi.getById(projectId!),
+    enabled: !!projectId,
+  });
+
+  const { data: members = [] } = useQuery({
+    queryKey: ['project-members', projectId],
+    queryFn: () => projectsApi.listMembers(projectId!),
+    enabled: !!projectId,
+  });
+
+  const systemRole = user?.systemRole;
+  const myProjectRole = members.find((m) => m.user.id === user?.id)?.projectRole;
+
+  const canManageSprints =
+    systemRole === 'SUPER_USER' ||
+    systemRole === 'ADMIN' ||
+    myProjectRole === 'PROJECT_MANAGER';
+
+  function handleDragEnd(result: DropResult) {
+    const { destination, source, draggableId } = result;
+    if (!destination) return;
+    if (destination.droppableId === source.droppableId && destination.index === source.index) return;
+
+    const newStatus = destination.droppableId as BoardStatus;
+    move.mutate({ id: draggableId, status: newStatus, position: destination.index });
+  }
+
+  const memberOptions = members.map((m) => ({ id: m.user.id, fullName: m.user.fullName }));
+
+  return (
+    <div className="flex flex-col h-full min-h-0">
+      {/* Page header */}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm px-5 py-4 mb-4 shrink-0">
+        <div className="flex items-center gap-2 mb-1">
+          <Link to="/projects" className="text-xs text-gray-400 hover:text-primary-600 transition">Projects</Link>
+          <svg className="w-3 h-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+          <span className="text-xs text-gray-500">{project?.name ?? '…'}</span>
+          <svg className="w-3 h-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+          <span className="text-xs font-medium text-gray-700">Board</span>
+        </div>
+
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <h1 className="text-base font-semibold text-gray-900">
+              {project?.name ?? 'Loading…'}
+            </h1>
+            {activeSprint && (
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700">
+                {activeSprint.name} · Active
+              </span>
+            )}
+          </div>
+          <Link
+            to={`/projects/${projectId}`}
+            className="text-xs text-gray-500 hover:text-primary-600 transition flex items-center gap-1"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            Project Details
+          </Link>
+        </div>
+
+        {/* Toolbar */}
+        <div className="mt-3">
+          <BoardToolbar
+            sprints={sprints}
+            filters={filters}
+            onFiltersChange={setFilters}
+            members={memberOptions}
+            onCreateItem={() => setShowCreate(true)}
+            onManageSprints={() => setShowSprintManager(true)}
+            canManageSprints={canManageSprints}
+          />
+        </div>
+      </div>
+
+      {/* Kanban board */}
+      <div className="flex-1 overflow-x-auto min-h-0 pb-4">
+        <DragDropContext onDragEnd={handleDragEnd}>
+          <div className="flex gap-3 h-full min-h-[500px] px-1">
+            {columns.map((col) => (
+              <KanbanColumn
+                key={col.status}
+                status={col.status}
+                label={col.label}
+                headerClass={col.headerClass}
+                items={col.items}
+                onCardClick={setSelectedItem}
+              />
+            ))}
+          </div>
+        </DragDropContext>
+      </div>
+
+      {/* Modals */}
+      {selectedItem && (
+        <WorkItemModal
+          item={selectedItem}
+          sprints={sprints}
+          onClose={() => setSelectedItem(null)}
+          onSaved={() => setSelectedItem(null)}
+        />
+      )}
+
+      {showCreate && (
+        <CreateWorkItemModal
+          projectId={projectId!}
+          sprints={sprints}
+          members={memberOptions}
+          onClose={() => setShowCreate(false)}
+          onSaved={() => setShowCreate(false)}
+        />
+      )}
+
+      {showSprintManager && (
+        <SprintManager
+          projectId={projectId!}
+          onClose={() => setShowSprintManager(false)}
+        />
+      )}
+    </div>
+  );
+}

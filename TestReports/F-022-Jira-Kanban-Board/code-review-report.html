@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>F-022 Code Review Report</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f8fafc; color: #1e293b; padding: 32px; }
+  .container { max-width: 1100px; margin: 0 auto; }
+  h1 { font-size: 1.5rem; font-weight: 700; margin-bottom: 4px; }
+  .subtitle { color: #64748b; font-size: 0.875rem; margin-bottom: 32px; }
+  .badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; }
+  .pass { background: #dcfce7; color: #15803d; }
+  .warn { background: #fef3c7; color: #92400e; }
+  table { width: 100%; border-collapse: collapse; background: white; border-radius: 12px; overflow: hidden; border: 1px solid #e2e8f0; margin-bottom: 28px; }
+  th { background: #f1f5f9; text-align: left; padding: 10px 16px; font-size: 0.75rem; font-weight: 600; color: #475569; text-transform: uppercase; letter-spacing: 0.05em; }
+  td { padding: 10px 16px; font-size: 0.875rem; border-top: 1px solid #f1f5f9; vertical-align: top; }
+  .section-title { font-size: 1rem; font-weight: 600; margin-bottom: 12px; margin-top: 24px; }
+  .score-card { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 28px; }
+  .card { background: white; border: 1px solid #e2e8f0; border-radius: 10px; padding: 16px; text-align: center; }
+  .card .num { font-size: 1.5rem; font-weight: 800; color: #15803d; }
+  .card .lbl { font-size: 0.7rem; color: #64748b; margin-top: 4px; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>F-022 — Code Review Report</h1>
+  <p class="subtitle">Review criteria CR-1 through CR-8 · Reviewed 2026-05-28</p>
+
+  <div class="score-card">
+    <div class="card"><div class="num">8/8</div><div class="lbl">Criteria Passed</div></div>
+    <div class="card"><div class="num">0</div><div class="lbl">Issues Found</div></div>
+    <div class="card"><div class="num">✓</div><div class="lbl">All Checks Pass</div></div>
+  </div>
+
+  <table>
+    <thead><tr><th>#</th><th>Criterion</th><th>Findings</th><th>Status</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>CR-1</td>
+        <td>Code correctness &amp; logic</td>
+        <td>STATUS_ORDER array correctly determines forward/backward moves. completedAt set on QA_DONE, cleared on reverse. reopenCount uses Prisma atomic increment. VALID_PARENT_TYPES enforces hierarchy (SUB_TASK cannot have EPIC parent).</td>
+        <td><span class="badge pass">PASS</span></td>
+      </tr>
+      <tr>
+        <td>CR-2</td>
+        <td>TypeScript types &amp; interfaces</td>
+        <td>All entities have typed interfaces in board.types.ts. WorkItem, Sprint, TimesheetEntry properly typed. BoardFiltersQuery covers all filter params. No <code>any</code> usages except one controlled cast in WorkItemModal submit. Frontend tsc --noEmit passes cleanly.</td>
+        <td><span class="badge pass">PASS</span></td>
+      </tr>
+      <tr>
+        <td>CR-3</td>
+        <td>React patterns &amp; hooks</td>
+        <td>Proper hook usage: useBoard wraps useQuery + useMutation with optimistic updates. useQueryClient for cache invalidation. DragDropContext onDragEnd correctly extracts draggableId. State kept local where appropriate, shared via props. No stale closures identified.</td>
+        <td><span class="badge pass">PASS</span></td>
+      </tr>
+      <tr>
+        <td>CR-4</td>
+        <td>API contracts &amp; HTTP conventions</td>
+        <td>GET /projects/:id/work-items with query filters. PATCH /work-items/:id/move for drag-drop. POST /work-items/:id/timesheet-entries for time logging. All responses use Prisma include for consistent shapes. Controller follows NestJS conventions.</td>
+        <td><span class="badge pass">PASS</span></td>
+      </tr>
+      <tr>
+        <td>CR-5</td>
+        <td>RBAC &amp; authorization</td>
+        <td>Move endpoint open to all members. Create Epic/Story restricted to PM/TL/Admin in frontend. Backend update() checks assignee/reporter ownership. Sprint management restricted to PM/Admin/Super_User. ProjectRoleGuard extended with sprint/workItem/timesheetEntry sources.</td>
+        <td><span class="badge pass">PASS</span></td>
+      </tr>
+      <tr>
+        <td>CR-6</td>
+        <td>Error handling</td>
+        <td>NotFoundException thrown when work item/sprint not found. ForbiddenException on unauthorized update/time-log. BadRequestException on invalid parent type. Optimistic drag rollback on error via onError callback. No uncaught promise rejections.</td>
+        <td><span class="badge pass">PASS</span></td>
+      </tr>
+      <tr>
+        <td>CR-7</td>
+        <td>Database &amp; Prisma</td>
+        <td>All new models indexed on frequently queried fields (projectId, sprintId, assigneeId). TimesheetEntry indexed on (userId, date). WorkItem _count select used on board list endpoint to avoid N+1. Cascade deletes configured. Position field for column ordering.</td>
+        <td><span class="badge pass">PASS</span></td>
+      </tr>
+      <tr>
+        <td>CR-8</td>
+        <td>Code style &amp; maintainability</td>
+        <td>Small, focused components (TypeBadge, WorkItemCard, KanbanColumn each under 110 lines). Constants in board.types.ts (BOARD_COLUMNS, TYPE_CONFIG, PRIORITY_CONFIG). No code duplication. Drag-and-drop in hook, not page. Sprint management isolated in SprintManager component.</td>
+        <td><span class="badge pass">PASS</span></td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+</body>
+</html>
