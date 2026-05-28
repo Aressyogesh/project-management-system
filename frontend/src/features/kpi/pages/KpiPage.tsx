@@ -339,7 +339,7 @@ interface ScoreCellProps {
   pct: number;
 }
 
-function ScoreCell({ score, max, pct }: ScoreCellProps) {
+function ScoreCell({ score, max: _max, pct }: ScoreCellProps) {
   const color =
     pct >= 80 ? '#10B981' : pct >= 60 ? '#3B82F6' : pct >= 40 ? '#F59E0B' : '#EF4444';
   return (
