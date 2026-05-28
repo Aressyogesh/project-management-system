@@ -1,6 +1,6 @@
 # PMS — Feature Tracker
 
-> Last updated: 2026-05-28 (F-019 complete)
+> Last updated: 2026-05-28 (F-020 complete)
 > ~~Strikethrough~~ = completed and in production. Plain text = pending development.
 
 ---
@@ -128,19 +128,16 @@
 
 ## Phase 11 — Dashboard (Live Data) & Reports
 
+- ~~**F-020** — Team Reports Dashboard (static data): 4 tabs (Team Productivity, KPI Appraisal, Project Summary, Bug Summary), Announcements widget on Dashboard, RBAC for ADMIN/EMPLOYEE views~~
 - Role-based dashboard with live DB data:
   - Stat cards: Active Projects, Total Tasks, Assigned Tasks, Completed Tasks (with % change)
   - Team Activity Summary bar chart (monthly, High/Low)
   - My Task table (Project, Assignee, Priority, Stage)
   - Today Task widget + Team Performance score
   - Tasks Progress donut chart (Not Started / In Progress / On Review / Completed)
-  - Announcements / What's New section
 - Project summary report (tasks, timesheets, bugs per project)
-- Team productivity report (hours logged, tasks completed per member)
 - Task allocation report (daily/weekly per employee)
 - Timesheet report (approved hours per project/employee)
-- Bug report (open/closed by project, severity/classification breakdown, Internal vs External)
-- KPI appraisal report (team scores and grades per period)
 - PDF / CSV export for all reports
 
 ---
