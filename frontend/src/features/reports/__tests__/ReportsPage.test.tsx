@@ -8,6 +8,8 @@ import {
   STATIC_PRODUCTIVITY_DATA,
   STATIC_PROJECT_DATA,
   STATIC_BUG_SEVERITY_DATA,
+  STATIC_ALLOCATION_DATA,
+  STATIC_TIMESHEET_DATA,
 } from '../data/reportsStaticData';
 
 // ─── Mock recharts (jsdom has no canvas) ─────────────────────────────────────
@@ -211,5 +213,127 @@ describe('ReportsPage — EMPLOYEE role', () => {
       screen.queryByText(/My Performance/i) ??
       screen.queryByText(/personal/i);
     expect(personal).toBeInTheDocument();
+  });
+});
+
+// ═════════════════════════════════════════════════════════════════════════════
+// F-021 — Phase 11 Complete: Task Allocation, Timesheet & Export Reports
+// ═════════════════════════════════════════════════════════════════════════════
+
+// ─── UTC-F021-FE-001 — 6 tabs ────────────────────────────────────────────────
+describe('ReportsPage tabs — F-021', () => {
+  beforeEach(() => { mockCurrentUser = adminUser; });
+
+  it('UTC-F021-FE-001: renders all 6 tab buttons after F-021', () => {
+    renderReportsPage();
+    expect(screen.getByText('Team Productivity')).toBeInTheDocument();
+    expect(screen.getByText('KPI Appraisal')).toBeInTheDocument();
+    expect(screen.getByText('Project Summary')).toBeInTheDocument();
+    expect(screen.getByText('Bug Summary')).toBeInTheDocument();
+    expect(screen.getByText('Task Allocation')).toBeInTheDocument();
+    expect(screen.getByText('Timesheet')).toBeInTheDocument();
+  });
+});
+
+// ─── UTC-F021-FE-002/003 — New tab navigation ────────────────────────────────
+describe('ReportsPage — Task Allocation & Timesheet tabs', () => {
+  beforeEach(() => { mockCurrentUser = adminUser; });
+
+  it('UTC-F021-FE-002: clicking Task Allocation tab shows allocation content', async () => {
+    renderReportsPage();
+    await userEvent.click(screen.getByText('Task Allocation'));
+    expect(screen.getByText('Task Allocation Details')).toBeInTheDocument();
+  });
+
+  it('UTC-F021-FE-003: clicking Timesheet tab shows timesheet content', async () => {
+    renderReportsPage();
+    await userEvent.click(screen.getByText('Timesheet'));
+    expect(screen.getByText('Timesheet Summary — May 2026')).toBeInTheDocument();
+  });
+});
+
+// ─── UTC-F021-FE-004/005/006 — Allocation static data ────────────────────────
+describe('Static data integrity — allocation', () => {
+  it('UTC-F021-FE-004: STATIC_ALLOCATION_DATA has 14 entries', () => {
+    expect(STATIC_ALLOCATION_DATA.length).toBe(14);
+  });
+
+  it('UTC-F021-FE-005: Hemant Atre has highest allocation hours', () => {
+    const sorted = [...STATIC_ALLOCATION_DATA].sort((a, b) => b.hoursAllocated - a.hoursAllocated);
+    expect(sorted[0].name).toBe('Hemant Atre');
+  });
+
+  it('UTC-F021-FE-006: Jayvant Bagul has lowest allocation hours', () => {
+    const sorted = [...STATIC_ALLOCATION_DATA].sort((a, b) => a.hoursAllocated - b.hoursAllocated);
+    expect(sorted[0].name).toBe('Jayvant Bagul');
+  });
+});
+
+// ─── UTC-F021-FE-007/008/009 — Timesheet static data ────────────────────────
+describe('Static data integrity — timesheet', () => {
+  it('UTC-F021-FE-007: STATIC_TIMESHEET_DATA has 14 entries', () => {
+    expect(STATIC_TIMESHEET_DATA.length).toBe(14);
+  });
+
+  it('UTC-F021-FE-008: total timesheet hours sums correctly', () => {
+    const total = STATIC_TIMESHEET_DATA.reduce((s, r) => s + r.hoursLogged, 0);
+    expect(total).toBe(1562);
+  });
+
+  it('UTC-F021-FE-009: approved timesheet count is 8', () => {
+    const approved = STATIC_TIMESHEET_DATA.filter((r) => r.status === 'Approved');
+    expect(approved.length).toBe(8);
+  });
+});
+
+// ─── UTC-F021-FE-010/011 — Data in rendered tabs ─────────────────────────────
+describe('ReportsPage — rendered allocation & timesheet data', () => {
+  beforeEach(() => { mockCurrentUser = adminUser; });
+
+  it('UTC-F021-FE-010: shows Hemant Atre in allocation table', async () => {
+    renderReportsPage();
+    await userEvent.click(screen.getByText('Task Allocation'));
+    expect(screen.getAllByText('Hemant Atre').length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('UTC-F021-FE-011: shows Yogesh Lolage in timesheet table', async () => {
+    renderReportsPage();
+    await userEvent.click(screen.getByText('Timesheet'));
+    expect(screen.getAllByText('Yogesh Lolage').length).toBeGreaterThanOrEqual(1);
+  });
+});
+
+// ─── UTC-F021-FE-012/013 — Export CSV buttons ────────────────────────────────
+describe('CSV Export buttons', () => {
+  beforeEach(() => { mockCurrentUser = adminUser; });
+
+  it('UTC-F021-FE-012: Export CSV button present on Task Allocation tab', async () => {
+    renderReportsPage();
+    await userEvent.click(screen.getByText('Task Allocation'));
+    expect(screen.getByText(/Export CSV/i)).toBeInTheDocument();
+  });
+
+  it('UTC-F021-FE-013: Export CSV button present on Timesheet tab', async () => {
+    renderReportsPage();
+    await userEvent.click(screen.getByText('Timesheet'));
+    expect(screen.getByText(/Export CSV/i)).toBeInTheDocument();
+  });
+});
+
+// ─── UTC-F021-FE-014 — Employee sees personal allocation ─────────────────────
+describe('ReportsPage — EMPLOYEE allocation view', () => {
+  beforeEach(() => { mockCurrentUser = employeeUser; });
+
+  it('UTC-F021-FE-014: Employee sees personal allocation summary', () => {
+    renderReportsPage();
+    expect(screen.getByText(/My Allocation & Timesheet/i)).toBeInTheDocument();
+  });
+});
+
+// ─── UTC-F021-FE-015 — Total allocated hours ─────────────────────────────────
+describe('Static data integrity — allocation totals', () => {
+  it('UTC-F021-FE-015: total allocated hours across all users is 1600', () => {
+    const total = STATIC_ALLOCATION_DATA.reduce((s, r) => s + r.hoursAllocated, 0);
+    expect(total).toBe(1600);
   });
 });

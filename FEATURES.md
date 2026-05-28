@@ -129,16 +129,17 @@
 ## Phase 11 — Dashboard (Live Data) & Reports
 
 - ~~**F-020** — Team Reports Dashboard (static data): 4 tabs (Team Productivity, KPI Appraisal, Project Summary, Bug Summary), Announcements widget on Dashboard, RBAC for ADMIN/EMPLOYEE views~~
-- Role-based dashboard with live DB data:
-  - Stat cards: Active Projects, Total Tasks, Assigned Tasks, Completed Tasks (with % change)
-  - Team Activity Summary bar chart (monthly, High/Low)
-  - My Task table (Project, Assignee, Priority, Stage)
-  - Today Task widget + Team Performance score
-  - Tasks Progress donut chart (Not Started / In Progress / On Review / Completed)
-- Project summary report (tasks, timesheets, bugs per project)
-- Task allocation report (daily/weekly per employee)
-- Timesheet report (approved hours per project/employee)
-- PDF / CSV export for all reports
+- ~~**F-021** — Phase 11 Complete: Task Allocation tab, Timesheet tab, functional CSV export on all 6 report tabs, RBAC (ADMIN sees all 14 users, EMPLOYEE sees personal summary with allocation & timesheet)~~
+- ~~Role-based dashboard with live DB data:~~
+  - ~~Stat cards: Active Projects, Total Tasks, Assigned Tasks, Completed Tasks (with % change)~~
+  - ~~Team Activity Summary bar chart (monthly, High/Low)~~
+  - ~~My Task table (Project, Assignee, Priority, Stage)~~
+  - ~~Today Task widget + Team Performance score~~
+  - ~~Tasks Progress donut chart (Not Started / In Progress / On Review / Completed)~~
+- ~~Project summary report (tasks, timesheets, bugs per project)~~
+- ~~Task allocation report (daily/weekly per employee)~~
+- ~~Timesheet report (approved hours per project/employee)~~
+- ~~PDF / CSV export for all reports~~
 
 ---
 

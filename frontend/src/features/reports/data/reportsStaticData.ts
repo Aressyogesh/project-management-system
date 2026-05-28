@@ -1,5 +1,7 @@
 // Static report data for May 2026 — same 14 users as STATIC_KPI_DATA
 
+export type TimesheetStatus = 'Approved' | 'Submitted' | 'Draft';
+
 export interface ProductivityRecord {
   userId: string;
   name: string;
@@ -68,6 +70,58 @@ export const STATIC_BUG_CLASSIFICATION_DATA: BugClassificationRecord[] = [
   { classification: 'Enhancement',   count:  8, color: '#8B5CF6' },
   { classification: 'Performance',   count:  4, color: '#F59E0B' },
   { classification: 'Other',         count:  4, color: '#6B7280' },
+];
+
+export interface AllocationRecord {
+  userId: string;
+  name: string;
+  role: string;
+  tasksAllocated: number;
+  hoursAllocated: number;
+  utilisationPct: number;
+}
+
+export interface TimesheetRecord {
+  userId: string;
+  name: string;
+  role: string;
+  project: string;
+  hoursLogged: number;
+  status: TimesheetStatus;
+}
+
+export const STATIC_ALLOCATION_DATA: AllocationRecord[] = [
+  { userId: '49fad96a-559a-4105-9cb9-b888e97f54c4', name: 'Hemant Atre',        role: 'Senior Developer', tasksAllocated: 30, hoursAllocated: 176, utilisationPct: 110 },
+  { userId: 'be927bba-6130-4361-8bd2-f7569bfc5903', name: 'Yogesh Lolage',      role: 'Team Lead',        tasksAllocated: 26, hoursAllocated: 160, utilisationPct: 100 },
+  { userId: '907700b2-4cea-4e70-91c4-313b99046f5e', name: 'Pratiksha Khairnar', role: 'QA Engineer',      tasksAllocated: 24, hoursAllocated: 152, utilisationPct: 95  },
+  { userId: 'e828e62b-a73e-460f-9201-1da121732e9f', name: 'Gaurav Patil',       role: 'Developer',        tasksAllocated: 22, hoursAllocated: 144, utilisationPct: 90  },
+  { userId: '68665a5e-fd7a-435f-ad60-cdea8179fa30', name: 'Shital Joshi',       role: 'Developer',        tasksAllocated: 21, hoursAllocated: 136, utilisationPct: 85  },
+  { userId: 'e10eba00-cd85-4933-abc9-82c335f0a201', name: 'System Admin',       role: 'Admin',            tasksAllocated: 20, hoursAllocated: 128, utilisationPct: 80  },
+  { userId: '75482b9f-45ab-42c0-9cd2-cf6c15f89c17', name: 'Deepali Jawharkar',  role: 'Designer',         tasksAllocated: 19, hoursAllocated: 128, utilisationPct: 80  },
+  { userId: 'adde42f0-6b96-48c9-99c8-1a91cde645ed', name: 'Prashik Shirsat',    role: 'Developer',        tasksAllocated: 18, hoursAllocated: 120, utilisationPct: 75  },
+  { userId: 'b6a87b34-491b-4a6e-bfa2-8c37be562c33', name: 'John Developer',     role: 'Developer',        tasksAllocated: 15, hoursAllocated: 104, utilisationPct: 65  },
+  { userId: '3110773f-7e26-4a8b-8ec5-aaac112f12c0', name: 'Ganesh Khalkar',     role: 'Developer',        tasksAllocated: 14, hoursAllocated: 96,  utilisationPct: 60  },
+  { userId: 'ffeaf90e-a2dc-4900-9125-3a28a515130f', name: 'Rohit More',         role: 'Developer',        tasksAllocated: 13, hoursAllocated: 88,  utilisationPct: 55  },
+  { userId: '052f928c-896d-4b39-a276-21759f6beb27', name: 'Yash Boraste',       role: 'Developer',        tasksAllocated: 12, hoursAllocated: 80,  utilisationPct: 50  },
+  { userId: '2dd7b0e2-0d2a-4ff1-b735-e41469aaa5fc', name: 'Super Admin',        role: 'Super Admin',      tasksAllocated:  7, hoursAllocated: 48,  utilisationPct: 30  },
+  { userId: 'f887a347-4aac-47de-a0cf-471b536be9d7', name: 'Jayvant Bagul',      role: 'DevOps Engineer',  tasksAllocated:  6, hoursAllocated: 40,  utilisationPct: 25  },
+];
+
+export const STATIC_TIMESHEET_DATA: TimesheetRecord[] = [
+  { userId: '49fad96a-559a-4105-9cb9-b888e97f54c4', name: 'Hemant Atre',        role: 'Senior Developer', project: 'PMS Web App',            hoursLogged: 168, status: 'Approved'  },
+  { userId: 'be927bba-6130-4361-8bd2-f7569bfc5903', name: 'Yogesh Lolage',      role: 'Team Lead',        project: 'PMS Web App',            hoursLogged: 152, status: 'Approved'  },
+  { userId: '907700b2-4cea-4e70-91c4-313b99046f5e', name: 'Pratiksha Khairnar', role: 'QA Engineer',      project: 'PMS Web App',            hoursLogged: 144, status: 'Approved'  },
+  { userId: 'e10eba00-cd85-4933-abc9-82c335f0a201', name: 'System Admin',       role: 'Admin',            project: 'PMS Web App',            hoursLogged: 120, status: 'Approved'  },
+  { userId: 'e828e62b-a73e-460f-9201-1da121732e9f', name: 'Gaurav Patil',       role: 'Developer',        project: 'Mobile CRM',             hoursLogged: 136, status: 'Approved'  },
+  { userId: '68665a5e-fd7a-435f-ad60-cdea8179fa30', name: 'Shital Joshi',       role: 'Developer',        project: 'Mobile CRM',             hoursLogged: 130, status: 'Approved'  },
+  { userId: '3110773f-7e26-4a8b-8ec5-aaac112f12c0', name: 'Ganesh Khalkar',     role: 'Developer',        project: 'SalesForce Integration', hoursLogged: 98,  status: 'Approved'  },
+  { userId: '2dd7b0e2-0d2a-4ff1-b735-e41469aaa5fc', name: 'Super Admin',        role: 'Super Admin',      project: 'SalesForce Integration', hoursLogged: 48,  status: 'Approved'  },
+  { userId: '75482b9f-45ab-42c0-9cd2-cf6c15f89c17', name: 'Deepali Jawharkar',  role: 'Designer',         project: 'PMS Web App',            hoursLogged: 124, status: 'Submitted' },
+  { userId: 'adde42f0-6b96-48c9-99c8-1a91cde645ed', name: 'Prashik Shirsat',    role: 'Developer',        project: 'PMS Web App',            hoursLogged: 118, status: 'Submitted' },
+  { userId: 'b6a87b34-491b-4a6e-bfa2-8c37be562c33', name: 'John Developer',     role: 'Developer',        project: 'Mobile CRM',             hoursLogged: 104, status: 'Submitted' },
+  { userId: 'ffeaf90e-a2dc-4900-9125-3a28a515130f', name: 'Rohit More',         role: 'Developer',        project: 'Mobile CRM',             hoursLogged: 92,  status: 'Submitted' },
+  { userId: '052f928c-896d-4b39-a276-21759f6beb27', name: 'Yash Boraste',       role: 'Developer',        project: 'PMS Web App',            hoursLogged: 88,  status: 'Draft'     },
+  { userId: 'f887a347-4aac-47de-a0cf-471b536be9d7', name: 'Jayvant Bagul',      role: 'DevOps Engineer',  project: 'SalesForce Integration', hoursLogged: 40,  status: 'Draft'     },
 ];
 
 export const REPORT_PERIODS = [
