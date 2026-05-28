@@ -1,6 +1,6 @@
 # PMS — Feature Tracker
 
-> Last updated: 2026-05-27 (F-018 complete)
+> Last updated: 2026-05-28 (F-019 complete)
 > ~~Strikethrough~~ = completed and in production. Plain text = pending development.
 
 ---
@@ -119,12 +119,10 @@
 
 ## Phase 10 — KPI Store
 
-- KPI entry form (per employee, per appraisal period, per metric category)
-- KPI categories and metrics per Digital Appraisal System (13 metrics, weighted to 100%)
-- Auto-calculated total score and letter grade (A / B / C / D)
-- KPI summary per employee per period
-- KPI history table
-- Configurable metric weightages (Super User only)
+- ~~**KPI Store — Digital Appraisal System** — team KPI dashboard at `/kpi`; 13 metrics, 5 categories, 100 pts, grades A/B/C/D; RadarChart (per-employee), BarChart (team category avg), PieChart (grade distribution); leaderboard top 5; expandable employee table with full metric detail panel; RBAC (Admin/SuperUser see team view, Employee sees own); 14 actual DB users with real UUIDs; 23/23 unit tests~~
+-
+
+
 
 ---
 
