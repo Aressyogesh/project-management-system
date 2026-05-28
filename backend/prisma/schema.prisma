@@ -77,6 +77,39 @@ enum BillingStatus {
   NON_BILLABLE
 }
 
+enum WorkItemType {
+  EPIC
+  USER_STORY
+  TASK
+  SUB_TASK
+  BUG
+}
+
+enum BoardStatus {
+  TODO
+  IN_PROGRESS
+  BLOCKED
+  IN_REVIEW
+  QA
+  QA_DONE
+}
+
+enum BugSeverity {
+  BLOCKER
+  CRITICAL
+  MAJOR
+  MINOR
+  TRIVIAL
+}
+
+enum BugClassification {
+  UI_USABILITY
+  NEW_BUG
+  ENHANCEMENT
+  PERFORMANCE
+  OTHER
+}
+
 // ─── Department ───────────────────────────────────────────────────────────────
 
 model Department {
@@ -119,6 +152,16 @@ model User {
   uploadedAttachments   TaskAttachment[] @relation("UploadedAttachments")
   authoredComments      TaskComment[]   @relation("AuthoredComments")
   taskAllocations       TaskAllocation[]
+  assignedWorkItems     WorkItem[]           @relation("AssignedWorkItems")
+  reportedWorkItems     WorkItem[]           @relation("ReportedWorkItems")
+  workItemComments      WorkItemComment[]    @relation("WorkItemComments")
+  workItemAttachments   WorkItemAttachment[] @relation("WorkItemAttachments")
+  timesheetEntries      TimesheetEntry[]     @relation("TimesheetEntries")
+  kpiRecords            KpiRecord[]          @relation("KpiRecords")
+  enteredKpiRecords     KpiRecord[]          @relation("EnteredKpiRecords")
+  leaveLogs             LeaveLog[]           @relation("LeaveLogs")
+  learningLogs          LearningLog[]        @relation("LearningLogs")
+  innovationLogs        InnovationLog[]      @relation("InnovationLogs")
 
   @@index([email])
   @@map("users")
@@ -207,6 +250,8 @@ model Project {
   milestones Milestone[]
   taskLists  TaskList[]
   tasks      Task[]
+  sprints    Sprint[]
+  workItems  WorkItem[]
 
   @@index([status])
   @@index([projectType])
@@ -390,4 +435,200 @@ model RefreshToken {
   @@index([token])
   @@index([userId])
   @@map("refresh_tokens")
+}
+
+// ─── Sprint ───────────────────────────────────────────────────────────────────
+
+model Sprint {
+  id        String    @id @default(uuid())
+  projectId String
+  name      String    @db.VarChar(100)
+  goal      String?   @db.VarChar(500)
+  startDate DateTime? @db.Date
+  endDate   DateTime? @db.Date
+  isActive  Boolean   @default(false)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  project   Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  workItems WorkItem[]
+
+  @@index([projectId])
+  @@map("sprints")
+}
+
+// ─── Work Item ────────────────────────────────────────────────────────────────
+
+model WorkItem {
+  id                String             @id @default(uuid())
+  projectId         String
+  parentId          String?
+  sprintId          String?
+  type              WorkItemType
+  status            BoardStatus        @default(TODO)
+  title             String             @db.VarChar(300)
+  description       String?            @db.VarChar(5000)
+  priority          TaskPriority       @default(MEDIUM)
+  assigneeId        String?
+  reporterId        String
+  storyPoints       Int?
+  estimatedHours    Decimal?           @db.Decimal(6, 2)
+  labels            String[]
+  components        String[]
+  fixVersion        String?            @db.VarChar(100)
+  severity          BugSeverity?
+  bugClassification BugClassification?
+  environment       String?            @db.VarChar(200)
+  stepsToRepro      String?            @db.VarChar(3000)
+  completedAt       DateTime?
+  reopenCount       Int                @default(0)
+  position          Int                @default(0)
+  startDate         DateTime?          @db.Date
+  dueDate           DateTime?          @db.Date
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+
+  project          Project              @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  parent           WorkItem?            @relation("WorkItemChildren", fields: [parentId], references: [id], onDelete: SetNull)
+  children         WorkItem[]           @relation("WorkItemChildren")
+  sprint           Sprint?              @relation(fields: [sprintId], references: [id], onDelete: SetNull)
+  assignee         User?                @relation("AssignedWorkItems", fields: [assigneeId], references: [id], onDelete: SetNull)
+  reporter         User                 @relation("ReportedWorkItems", fields: [reporterId], references: [id])
+  comments         WorkItemComment[]
+  attachments      WorkItemAttachment[]
+  timesheetEntries TimesheetEntry[]
+
+  @@index([projectId])
+  @@index([sprintId])
+  @@index([assigneeId])
+  @@index([parentId])
+  @@map("work_items")
+}
+
+// ─── Timesheet Entry ──────────────────────────────────────────────────────────
+
+model TimesheetEntry {
+  id          String   @id @default(uuid())
+  workItemId  String
+  userId      String
+  date        DateTime @db.Date
+  hours       Decimal  @db.Decimal(5, 2)
+  description String?  @db.VarChar(500)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  workItem WorkItem @relation(fields: [workItemId], references: [id], onDelete: Cascade)
+  user     User     @relation("TimesheetEntries", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([workItemId])
+  @@index([userId, date])
+  @@map("timesheet_entries")
+}
+
+// ─── Work Item Comment ────────────────────────────────────────────────────────
+
+model WorkItemComment {
+  id         String   @id @default(uuid())
+  workItemId String
+  content    String   @db.VarChar(3000)
+  authorId   String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  workItem WorkItem @relation(fields: [workItemId], references: [id], onDelete: Cascade)
+  author   User     @relation("WorkItemComments", fields: [authorId], references: [id])
+
+  @@index([workItemId])
+  @@map("work_item_comments")
+}
+
+// ─── Work Item Attachment ─────────────────────────────────────────────────────
+
+model WorkItemAttachment {
+  id           String   @id @default(uuid())
+  workItemId   String
+  filename     String   @db.VarChar(255)
+  originalName String   @db.VarChar(255)
+  mimeType     String   @db.VarChar(100)
+  size         Int
+  uploadedById String
+  createdAt    DateTime @default(now())
+
+  workItem   WorkItem @relation(fields: [workItemId], references: [id], onDelete: Cascade)
+  uploadedBy User     @relation("WorkItemAttachments", fields: [uploadedById], references: [id])
+
+  @@index([workItemId])
+  @@map("work_item_attachments")
+}
+
+// ─── KPI Record ───────────────────────────────────────────────────────────────
+
+model KpiRecord {
+  id          String   @id @default(uuid())
+  userId      String
+  period      String   @db.VarChar(7)
+  metricId    String   @db.VarChar(50)
+  points      Float
+  notes       String?  @db.VarChar(500)
+  enteredById String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user      User @relation("KpiRecords", fields: [userId], references: [id], onDelete: Cascade)
+  enteredBy User @relation("EnteredKpiRecords", fields: [enteredById], references: [id])
+
+  @@unique([userId, period, metricId])
+  @@index([userId, period])
+  @@map("kpi_records")
+}
+
+// ─── Leave Log ────────────────────────────────────────────────────────────────
+
+model LeaveLog {
+  id          String   @id @default(uuid())
+  userId      String
+  date        DateTime @db.Date
+  type        String   @db.VarChar(20)
+  description String?  @db.VarChar(200)
+  createdAt   DateTime @default(now())
+
+  user User @relation("LeaveLogs", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date])
+  @@index([userId])
+  @@map("leave_logs")
+}
+
+// ─── Learning Log ─────────────────────────────────────────────────────────────
+
+model LearningLog {
+  id          String   @id @default(uuid())
+  userId      String
+  period      String   @db.VarChar(7)
+  topic       String   @db.VarChar(200)
+  hours       Float
+  description String?  @db.VarChar(500)
+  createdAt   DateTime @default(now())
+
+  user User @relation("LearningLogs", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, period])
+  @@map("learning_logs")
+}
+
+// ─── Innovation Log ───────────────────────────────────────────────────────────
+
+model InnovationLog {
+  id        String   @id @default(uuid())
+  userId    String
+  period    String   @db.VarChar(7)
+  title     String   @db.VarChar(200)
+  impact    String   @db.VarChar(500)
+  type      String   @db.VarChar(30)
+  createdAt DateTime @default(now())
+
+  user User @relation("InnovationLogs", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, period])
+  @@map("innovation_logs")
 }

@@ -19,6 +19,9 @@ import { DepartmentsModule } from './departments/departments.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { SettingsModule } from './settings/settings.module';
 import { UsersModule } from './users/users.module';
+import { SprintsModule } from './sprints/sprints.module';
+import { WorkItemsModule } from './work-items/work-items.module';
+import { TimesheetEntriesModule } from './timesheet-entries/timesheet-entries.module';
 
 @Module({
   imports: [
@@ -38,6 +41,9 @@ import { UsersModule } from './users/users.module';
     TaskAttachmentsModule,
     TaskCommentsModule,
     TaskAllocationsModule,
+    SprintsModule,
+    WorkItemsModule,
+    TimesheetEntriesModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: GlobalExceptionFilter },

@@ -43,35 +43,11 @@ function IconProjects() {
     </svg>
   );
 }
-function IconAllocations() {
-  return (
-    <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-        d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-    </svg>
-  );
-}
-function IconTimesheets() {
-  return (
-    <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-        d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-    </svg>
-  );
-}
 function IconLeave() {
   return (
     <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
         d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-    </svg>
-  );
-}
-function IconBugs() {
-  return (
-    <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-        d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
     </svg>
   );
 }
@@ -127,10 +103,7 @@ const navItems: NavItem[] = [
   { path: '/departments', label: 'Departments', Icon: IconDepartments, roles: ['SUPER_USER', 'ADMIN'] },
   { path: '/clients',     label: 'Clients',     Icon: IconClients,     roles: ['SUPER_USER', 'ADMIN'] },
   { path: '/projects',    label: 'Projects',    Icon: IconProjects },
-  { path: '/allocations', label: 'Allocations', Icon: IconAllocations },
-  { path: '/timesheets',  label: 'Timesheets',  Icon: IconTimesheets },
   { path: '/leave-logs',  label: 'Leave & OT',  Icon: IconLeave },
-  { path: '/bugs',        label: 'Bugs',        Icon: IconBugs },
   { path: '/kpi',         label: 'KPI',         Icon: IconKpi },
   { path: '/reports',     label: 'Reports',     Icon: IconReports },
 ];

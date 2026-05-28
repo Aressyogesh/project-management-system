@@ -139,7 +139,7 @@ export function ProjectsPage() {
             <div
               key={project.id}
               className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
-              onClick={() => navigate(`/projects/${project.id}`)}
+              onClick={() => navigate(`/projects/${project.id}/board`)}
             >
               {/* Card Header */}
               <div className="px-5 pt-5 pb-3">

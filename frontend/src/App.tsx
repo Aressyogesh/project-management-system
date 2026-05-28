@@ -14,7 +14,7 @@ import { ClientsPage } from './features/clients/pages/ClientsPage';
 import { DepartmentsPage } from './features/departments/pages/DepartmentsPage';
 import { ProjectDetailPage } from './features/projects/pages/ProjectDetailPage';
 import { ProjectsPage } from './features/projects/pages/ProjectsPage';
-import { AllocationCalendarPage } from './features/taskAllocations/pages/AllocationCalendarPage';
+import { BoardPage } from './features/board/pages/BoardPage';
 import { UsersPage } from './features/users/pages/UsersPage';
 import { KpiPage } from './features/kpi/pages/KpiPage';
 import { ReportsPage } from './features/reports/pages/ReportsPage';
@@ -22,13 +22,6 @@ import { ReportsPage } from './features/reports/pages/ReportsPage';
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 30_000 } },
 });
-
-const comingSoonPaths = [
-  '/timesheets',
-  '/leave-logs',
-  '/bugs',
-];
-
 
 export default function App() {
   return (
@@ -55,9 +48,7 @@ export default function App() {
               {/* Project Management */}
               <Route path="/projects" element={<ProjectsPage />} />
               <Route path="/projects/:id" element={<ProjectDetailPage />} />
-
-              {/* Task Allocation Calendar */}
-              <Route path="/allocations" element={<AllocationCalendarPage />} />
+              <Route path="/projects/:id/board" element={<BoardPage />} />
 
               {/* KPI Store */}
               <Route path="/kpi" element={<KpiPage />} />
@@ -74,9 +65,8 @@ export default function App() {
                 <Route path="shifts"  element={<ShiftConfigPage />} />
               </Route>
 
-              {comingSoonPaths.map((path) => (
-                <Route key={path} path={path} element={<ComingSoon />} />
-              ))}
+              {/* Leave logs (kept as coming soon for now) */}
+              <Route path="/leave-logs" element={<ComingSoon />} />
             </Route>
           </Route>
 

@@ -106,6 +106,30 @@ export class ProjectRoleGuard implements CanActivate {
       return alloc?.task?.projectId ?? null;
     }
 
+    if (source === 'sprint') {
+      const sprint = await this.prisma.sprint.findUnique({
+        where: { id },
+        select: { projectId: true },
+      });
+      return sprint?.projectId ?? null;
+    }
+
+    if (source === 'workItem') {
+      const item = await this.prisma.workItem.findUnique({
+        where: { id },
+        select: { projectId: true },
+      });
+      return item?.projectId ?? null;
+    }
+
+    if (source === 'timesheetEntry') {
+      const entry = await this.prisma.timesheetEntry.findUnique({
+        where: { id },
+        select: { workItem: { select: { projectId: true } } },
+      });
+      return entry?.workItem?.projectId ?? null;
+    }
+
     return null;
   }
 }
