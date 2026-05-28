@@ -132,6 +132,85 @@ export const REPORT_PERIODS = [
   { value: '2026-01', label: 'January 2026' },
 ];
 
+// ─── Project selector options ─────────────────────────────────────────────────
+
+export const PROJECT_OPTIONS = [
+  { value: 'all',    label: 'All Projects'           },
+  { value: 'proj-1', label: 'PMS Web App'            },
+  { value: 'proj-2', label: 'Mobile CRM'             },
+  { value: 'proj-3', label: 'SalesForce Integration' },
+];
+
+// ─── User → Project mapping (derived from STATIC_TIMESHEET_DATA) ──────────────
+
+export const USER_PROJECT_MAP: Record<string, string> = {
+  '49fad96a-559a-4105-9cb9-b888e97f54c4': 'proj-1', // Hemant Atre         → PMS Web App
+  'be927bba-6130-4361-8bd2-f7569bfc5903': 'proj-1', // Yogesh Lolage        → PMS Web App
+  '907700b2-4cea-4e70-91c4-313b99046f5e': 'proj-1', // Pratiksha Khairnar  → PMS Web App
+  'e10eba00-cd85-4933-abc9-82c335f0a201': 'proj-1', // System Admin         → PMS Web App
+  'e828e62b-a73e-460f-9201-1da121732e9f': 'proj-2', // Gaurav Patil         → Mobile CRM
+  '68665a5e-fd7a-435f-ad60-cdea8179fa30': 'proj-2', // Shital Joshi         → Mobile CRM
+  '75482b9f-45ab-42c0-9cd2-cf6c15f89c17': 'proj-1', // Deepali Jawharkar   → PMS Web App
+  'adde42f0-6b96-48c9-99c8-1a91cde645ed': 'proj-1', // Prashik Shirsat      → PMS Web App
+  'b6a87b34-491b-4a6e-bfa2-8c37be562c33': 'proj-2', // John Developer       → Mobile CRM
+  '3110773f-7e26-4a8b-8ec5-aaac112f12c0': 'proj-3', // Ganesh Khalkar       → SalesForce
+  'ffeaf90e-a2dc-4900-9125-3a28a515130f': 'proj-2', // Rohit More           → Mobile CRM
+  '052f928c-896d-4b39-a276-21759f6beb27': 'proj-1', // Yash Boraste         → PMS Web App
+  '2dd7b0e2-0d2a-4ff1-b735-e41469aaa5fc': 'proj-3', // Super Admin          → SalesForce
+  'f887a347-4aac-47de-a0cf-471b536be9d7': 'proj-3', // Jayvant Bagul        → SalesForce
+};
+
+// ─── Project-specific bug data ────────────────────────────────────────────────
+// Severity sums: PMS(23) + Mobile(14) + SF(3) = All(40) ✓
+// Classification sums match per-project totals ✓
+
+export const BUG_SEVERITY_BY_PROJECT: Record<string, BugSeverityRecord[]> = {
+  all: STATIC_BUG_SEVERITY_DATA,
+  'proj-1': [
+    { severity: 'Show Stopper', count:  1, color: '#EF4444' },
+    { severity: 'Critical',     count:  3, color: '#F97316' },
+    { severity: 'Major',        count:  7, color: '#F59E0B' },
+    { severity: 'Minor',        count: 12, color: '#10B981' },
+  ],
+  'proj-2': [
+    { severity: 'Show Stopper', count: 1, color: '#EF4444' },
+    { severity: 'Critical',     count: 2, color: '#F97316' },
+    { severity: 'Major',        count: 4, color: '#F59E0B' },
+    { severity: 'Minor',        count: 7, color: '#10B981' },
+  ],
+  'proj-3': [
+    { severity: 'Show Stopper', count: 0, color: '#EF4444' },
+    { severity: 'Critical',     count: 0, color: '#F97316' },
+    { severity: 'Major',        count: 1, color: '#F59E0B' },
+    { severity: 'Minor',        count: 2, color: '#10B981' },
+  ],
+};
+
+export const BUG_CLASSIFICATION_BY_PROJECT: Record<string, BugClassificationRecord[]> = {
+  all: STATIC_BUG_CLASSIFICATION_DATA,
+  'proj-1': [
+    { classification: 'UI/Usability', count:  8, color: '#3B82F6' },
+    { classification: 'New Bug',      count:  6, color: '#EF4444' },
+    { classification: 'Enhancement',  count:  5, color: '#8B5CF6' },
+    { classification: 'Performance',  count:  2, color: '#F59E0B' },
+    { classification: 'Other',        count:  2, color: '#6B7280' },
+  ],
+  'proj-2': [
+    { classification: 'UI/Usability', count: 5, color: '#3B82F6' },
+    { classification: 'New Bug',      count: 3, color: '#EF4444' },
+    { classification: 'Enhancement',  count: 2, color: '#8B5CF6' },
+    { classification: 'Performance',  count: 2, color: '#F59E0B' },
+    { classification: 'Other',        count: 2, color: '#6B7280' },
+  ],
+  'proj-3': [
+    { classification: 'UI/Usability', count: 1, color: '#3B82F6' },
+    { classification: 'New Bug',      count: 1, color: '#EF4444' },
+    { classification: 'Enhancement',  count: 1, color: '#8B5CF6' },
+    { classification: 'Performance',  count: 0, color: '#F59E0B' },
+    { classification: 'Other',        count: 0, color: '#6B7280' },
+  ],
+};
+
 export const ANNOUNCEMENTS = [
   {
     id: '1',

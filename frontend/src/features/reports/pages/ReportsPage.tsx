@@ -13,6 +13,10 @@ import {
   STATIC_ALLOCATION_DATA,
   STATIC_TIMESHEET_DATA,
   REPORT_PERIODS,
+  PROJECT_OPTIONS,
+  USER_PROJECT_MAP,
+  BUG_SEVERITY_BY_PROJECT,
+  BUG_CLASSIFICATION_BY_PROJECT,
   type TimesheetStatus,
 } from '../data/reportsStaticData';
 
@@ -40,55 +44,71 @@ function downloadCsv(filename: string, rows: string[][]): void {
   URL.revokeObjectURL(url);
 }
 
-function csvForTab(tab: Tab): void {
+function filterByProject<T extends { userId: string }>(data: T[], project: string): T[] {
+  return project === 'all' ? data : data.filter((r) => USER_PROJECT_MAP[r.userId] === project);
+}
+
+function csvForTab(tab: Tab, project: string): void {
   switch (tab) {
-    case 'productivity':
+    case 'productivity': {
+      const rows = filterByProject(STATIC_PRODUCTIVITY_DATA, project);
       downloadCsv('team-productivity-report-may-2026.csv', [
         ['Name', 'Role', 'Tasks Done', 'Hours Logged', 'On-Time %', 'Score'],
-        ...STATIC_PRODUCTIVITY_DATA.map((r) => [r.name, r.role, String(r.tasksDone), String(r.hoursLogged), `${r.onTimePct}%`, String(r.score)]),
+        ...rows.map((r) => [r.name, r.role, String(r.tasksDone), String(r.hoursLogged), `${r.onTimePct}%`, String(r.score)]),
       ]);
       break;
-    case 'kpi':
+    }
+    case 'kpi': {
+      const rows = filterByProject(STATIC_KPI_DATA, project);
       downloadCsv('kpi-appraisal-report-may-2026.csv', [
         ['Name', 'Role', 'Department', 'Total Score', 'Grade'],
-        ...[...STATIC_KPI_DATA].sort((a, b) => b.totalScore - a.totalScore).map((e) => [e.name, e.role, e.department, String(e.totalScore), e.grade]),
+        ...[...rows].sort((a, b) => b.totalScore - a.totalScore).map((e) => [e.name, e.role, e.department, String(e.totalScore), e.grade]),
       ]);
       break;
-    case 'projects':
+    }
+    case 'projects': {
+      const rows = project === 'all' ? STATIC_PROJECT_DATA : STATIC_PROJECT_DATA.filter((p) => p.id === project);
       downloadCsv('project-summary-report-may-2026.csv', [
         ['Project', 'Total Tasks', 'Done', 'Team Size', 'Completion %', 'Status'],
-        ...STATIC_PROJECT_DATA.map((p) => [p.name, String(p.tasks), String(p.done), String(p.teamSize), `${Math.round((p.done / p.tasks) * 100)}%`, p.status]),
+        ...rows.map((p) => [p.name, String(p.tasks), String(p.done), String(p.teamSize), `${Math.round((p.done / p.tasks) * 100)}%`, p.status]),
       ]);
       break;
-    case 'bugs':
+    }
+    case 'bugs': {
+      const severityRows = BUG_SEVERITY_BY_PROJECT[project] ?? STATIC_BUG_SEVERITY_DATA;
       downloadCsv('bug-summary-report-may-2026.csv', [
         ['Severity', 'Count'],
-        ...STATIC_BUG_SEVERITY_DATA.map((d) => [d.severity, String(d.count)]),
+        ...severityRows.map((d) => [d.severity, String(d.count)]),
       ]);
       break;
-    case 'allocation':
+    }
+    case 'allocation': {
+      const rows = filterByProject(STATIC_ALLOCATION_DATA, project);
       downloadCsv('task-allocation-report-may-2026.csv', [
         ['Name', 'Role', 'Tasks Allocated', 'Hours Allocated', 'Utilisation %'],
-        ...STATIC_ALLOCATION_DATA.map((r) => [r.name, r.role, String(r.tasksAllocated), String(r.hoursAllocated), `${r.utilisationPct}%`]),
+        ...rows.map((r) => [r.name, r.role, String(r.tasksAllocated), String(r.hoursAllocated), `${r.utilisationPct}%`]),
       ]);
       break;
-    case 'timesheet':
+    }
+    case 'timesheet': {
+      const rows = filterByProject(STATIC_TIMESHEET_DATA, project);
       downloadCsv('timesheet-report-may-2026.csv', [
         ['Name', 'Role', 'Project', 'Hours Logged', 'Status'],
-        ...STATIC_TIMESHEET_DATA.map((r) => [r.name, r.role, r.project, String(r.hoursLogged), r.status]),
+        ...rows.map((r) => [r.name, r.role, r.project, String(r.hoursLogged), r.status]),
       ]);
       break;
+    }
   }
 }
 
-// ─── Shared export button ─────────────────────────────────────────────────────
+// ─── Export bar ───────────────────────────────────────────────────────────────
 
-function ExportBar({ tab }: { tab: Tab }) {
+function ExportBar({ onExportCsv }: { onExportCsv: () => void }) {
   return (
-    <div className="flex justify-end gap-2">
+    <div className="flex justify-end gap-2 mb-4">
       <button
-        className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium text-gray-500 border border-gray-200 hover:bg-gray-50 transition-colors"
-        onClick={() => csvForTab(tab)}
+        className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium text-gray-600 border border-gray-200 hover:bg-gray-50 transition-colors"
+        onClick={onExportCsv}
         data-testid="export-csv-btn"
       >
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -112,6 +132,94 @@ function ExportBar({ tab }: { tab: Tab }) {
   );
 }
 
+// ─── Pagination ───────────────────────────────────────────────────────────────
+
+const PAGE_SIZE_OPTIONS = [5, 10, 25];
+
+function usePagination<T>(data: T[], defaultPageSize = 10) {
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(defaultPageSize);
+
+  const totalPages = Math.max(1, Math.ceil(data.length / pageSize));
+  const safePage = Math.min(page, totalPages);
+  const start = (safePage - 1) * pageSize;
+  const paginatedData = data.slice(start, start + pageSize);
+
+  function handlePageSizeChange(size: number) {
+    setPageSize(size);
+    setPage(1);
+  }
+
+  return {
+    paginatedData,
+    page: safePage,
+    setPage,
+    pageSize,
+    setPageSize: handlePageSizeChange,
+    totalPages,
+    totalItems: data.length,
+    startIndex: data.length === 0 ? 0 : start + 1,
+    endIndex: Math.min(start + pageSize, data.length),
+  };
+}
+
+function PaginationBar({
+  page, totalPages, totalItems, startIndex, endIndex, pageSize, onPageChange, onPageSizeChange,
+}: {
+  page: number; totalPages: number; totalItems: number; startIndex: number; endIndex: number;
+  pageSize: number; onPageChange: (p: number) => void; onPageSizeChange: (s: number) => void;
+}) {
+  return (
+    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-5 py-3 border-t border-gray-50">
+      <div className="flex items-center gap-2 text-xs text-gray-500">
+        <span>Rows per page:</span>
+        <select
+          value={pageSize}
+          onChange={(e) => onPageSizeChange(Number(e.target.value))}
+          className="border border-gray-200 rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-primary-300"
+        >
+          {PAGE_SIZE_OPTIONS.map((s) => (
+            <option key={s} value={s}>{s}</option>
+          ))}
+        </select>
+        <span className="ml-1">
+          Showing {startIndex}–{endIndex} of {totalItems} records
+        </span>
+      </div>
+
+      <div className="flex items-center gap-1">
+        <button
+          onClick={() => onPageChange(page - 1)}
+          disabled={page <= 1}
+          className="px-2.5 py-1 text-xs rounded-lg border border-gray-200 disabled:opacity-40 hover:bg-gray-50 transition-colors"
+        >
+          ‹ Prev
+        </button>
+        {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+          <button
+            key={p}
+            onClick={() => onPageChange(p)}
+            className={`w-7 h-7 text-xs rounded-lg border transition-colors ${
+              p === page
+                ? 'bg-blue-600 text-white border-blue-600'
+                : 'border-gray-200 hover:bg-gray-50 text-gray-600'
+            }`}
+          >
+            {p}
+          </button>
+        ))}
+        <button
+          onClick={() => onPageChange(page + 1)}
+          disabled={page >= totalPages}
+          className="px-2.5 py-1 text-xs rounded-lg border border-gray-200 disabled:opacity-40 hover:bg-gray-50 transition-colors"
+        >
+          Next ›
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ─── Score bar helper ─────────────────────────────────────────────────────────
 
 function ScoreBar({ value, max = 100, color = '#3B82F6' }: { value: number; max?: number; color?: string }) {
@@ -128,17 +236,18 @@ function ScoreBar({ value, max = 100, color = '#3B82F6' }: { value: number; max?
 
 // ─── Team Productivity Tab ────────────────────────────────────────────────────
 
-function TeamProductivityTab({ currentUserId }: { currentUserId?: string }) {
-  const chartData = STATIC_PRODUCTIVITY_DATA.slice(0, 10).map((r) => ({
-    name: r.name.split(' ')[0],
-    tasks: r.tasksDone,
-  }));
+function TeamProductivityTab({ currentUserId, project }: { currentUserId?: string; project: string }) {
+  const data = filterByProject(STATIC_PRODUCTIVITY_DATA, project);
+  const chartData = data.slice(0, 10).map((r) => ({ name: r.name.split(' ')[0], tasks: r.tasksDone }));
+  const { paginatedData, page, setPage, pageSize, setPageSize, totalPages, totalItems, startIndex, endIndex } = usePagination(data);
 
   return (
     <div className="space-y-6">
       <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
         <h3 className="text-sm font-semibold text-gray-800 mb-1">Tasks Completed — May 2026</h3>
-        <p className="text-xs text-gray-400 mb-4">Top 10 team members by tasks completed</p>
+        <p className="text-xs text-gray-400 mb-4">
+          {data.length > 10 ? 'Top 10 team members' : `${data.length} team members`} by tasks completed
+        </p>
         <ResponsiveContainer width="100%" height={220}>
           <BarChart data={chartData} margin={{ top: 4, right: 8, bottom: 4, left: -20 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" />
@@ -170,11 +279,11 @@ function TeamProductivityTab({ currentUserId }: { currentUserId?: string }) {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              {STATIC_PRODUCTIVITY_DATA.map((r, i) => {
+              {paginatedData.map((r, i) => {
                 const isMe = r.userId === currentUserId;
                 return (
                   <tr key={r.userId} className={isMe ? 'bg-blue-50' : 'hover:bg-gray-50/50'}>
-                    <td className="px-5 py-3 text-gray-400 text-xs">{i + 1}</td>
+                    <td className="px-5 py-3 text-gray-400 text-xs">{startIndex + i}</td>
                     <td className="px-5 py-3">
                       <div className="flex items-center gap-2">
                         <div className="w-7 h-7 rounded-full bg-primary-100 flex items-center justify-center shrink-0">
@@ -201,16 +310,23 @@ function TeamProductivityTab({ currentUserId }: { currentUserId?: string }) {
             </tbody>
           </table>
         </div>
+        {totalItems > 0 && (
+          <PaginationBar
+            page={page} totalPages={totalPages} totalItems={totalItems}
+            startIndex={startIndex} endIndex={endIndex} pageSize={pageSize}
+            onPageChange={setPage} onPageSizeChange={setPageSize}
+          />
+        )}
       </div>
-      <ExportBar tab="productivity" />
     </div>
   );
 }
 
 // ─── KPI Appraisal Tab ────────────────────────────────────────────────────────
 
-function KpiAppraisalTab({ currentUserId }: { currentUserId?: string }) {
-  const summary = buildTeamSummary(STATIC_KPI_DATA, '2026-05');
+function KpiAppraisalTab({ currentUserId, project }: { currentUserId?: string; project: string }) {
+  const kpiData = filterByProject(STATIC_KPI_DATA, project);
+  const summary = buildTeamSummary(kpiData, '2026-05');
 
   const pieData = [
     { name: 'Grade A', value: summary.gradeACcount, color: '#10B981' },
@@ -220,14 +336,17 @@ function KpiAppraisalTab({ currentUserId }: { currentUserId?: string }) {
   ].filter((d) => d.value > 0);
 
   const gradeConfig = GRADE_CONFIG[summary.teamGrade];
-  const topPerformers = [...STATIC_KPI_DATA].sort((a, b) => b.totalScore - a.totalScore).slice(0, 3);
+  const topPerformers = [...kpiData].sort((a, b) => b.totalScore - a.totalScore).slice(0, 3);
+  const sortedKpi = [...kpiData].sort((a, b) => b.totalScore - a.totalScore);
+
+  const { paginatedData, page, setPage, pageSize, setPageSize, totalPages, totalItems, startIndex, endIndex } = usePagination(sortedKpi);
 
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
           <h3 className="text-sm font-semibold text-gray-800 mb-1">Grade Distribution</h3>
-          <p className="text-xs text-gray-400 mb-3">{STATIC_KPI_DATA.length} employees this period</p>
+          <p className="text-xs text-gray-400 mb-3">{kpiData.length} employees this period</p>
           <ResponsiveContainer width="100%" height={140}>
             <PieChart>
               <Pie data={pieData} cx="50%" cy="50%" innerRadius={40} outerRadius={60} paddingAngle={3} dataKey="value">
@@ -297,46 +416,52 @@ function KpiAppraisalTab({ currentUserId }: { currentUserId?: string }) {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              {[...STATIC_KPI_DATA]
-                .sort((a, b) => b.totalScore - a.totalScore)
-                .map((e) => {
-                  const gc = GRADE_CONFIG[e.grade];
-                  const isMe = e.userId === currentUserId;
-                  return (
-                    <tr key={e.userId} className={isMe ? 'bg-blue-50' : 'hover:bg-gray-50/50'}>
-                      <td className="px-5 py-3">
-                        <div className="flex items-center gap-2">
-                          <div className="w-7 h-7 rounded-full bg-primary-100 flex items-center justify-center shrink-0">
-                            <span className="text-xs font-semibold text-primary-700">
-                              {e.name.split(' ').map((n) => n[0]).join('').slice(0, 2)}
-                            </span>
-                          </div>
-                          <span className="font-medium text-gray-800 text-xs">{e.name}</span>
-                          {isMe && <span className="ml-1 text-xs bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-full font-medium">You</span>}
+              {paginatedData.map((e) => {
+                const gc = GRADE_CONFIG[e.grade];
+                const isMe = e.userId === currentUserId;
+                return (
+                  <tr key={e.userId} className={isMe ? 'bg-blue-50' : 'hover:bg-gray-50/50'}>
+                    <td className="px-5 py-3">
+                      <div className="flex items-center gap-2">
+                        <div className="w-7 h-7 rounded-full bg-primary-100 flex items-center justify-center shrink-0">
+                          <span className="text-xs font-semibold text-primary-700">
+                            {e.name.split(' ').map((n) => n[0]).join('').slice(0, 2)}
+                          </span>
                         </div>
-                      </td>
-                      <td className="px-5 py-3 text-gray-500 text-xs">{e.role}</td>
-                      <td className="px-5 py-3 text-right font-semibold text-gray-700">{e.totalScore}</td>
-                      <td className="px-5 py-3 text-center">
-                        <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${gc.bg} ${gc.text}`}>
-                          {e.grade} — {gc.label}
-                        </span>
-                      </td>
-                    </tr>
-                  );
-                })}
+                        <span className="font-medium text-gray-800 text-xs">{e.name}</span>
+                        {isMe && <span className="ml-1 text-xs bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-full font-medium">You</span>}
+                      </div>
+                    </td>
+                    <td className="px-5 py-3 text-gray-500 text-xs">{e.role}</td>
+                    <td className="px-5 py-3 text-right font-semibold text-gray-700">{e.totalScore}</td>
+                    <td className="px-5 py-3 text-center">
+                      <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${gc.bg} ${gc.text}`}>
+                        {e.grade} — {gc.label}
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
+        {totalItems > 0 && (
+          <PaginationBar
+            page={page} totalPages={totalPages} totalItems={totalItems}
+            startIndex={startIndex} endIndex={endIndex} pageSize={pageSize}
+            onPageChange={setPage} onPageSizeChange={setPageSize}
+          />
+        )}
       </div>
-      <ExportBar tab="kpi" />
     </div>
   );
 }
 
 // ─── Project Summary Tab ──────────────────────────────────────────────────────
 
-function ProjectSummaryTab() {
+function ProjectSummaryTab({ project }: { project: string }) {
+  const projects = project === 'all' ? STATIC_PROJECT_DATA : STATIC_PROJECT_DATA.filter((p) => p.id === project);
+
   const statusColors: Record<string, { bg: string; text: string }> = {
     Active:    { bg: 'bg-blue-100',    text: 'text-blue-700'    },
     Completed: { bg: 'bg-emerald-100', text: 'text-emerald-700' },
@@ -345,34 +470,34 @@ function ProjectSummaryTab() {
 
   return (
     <div className="space-y-4">
-      {STATIC_PROJECT_DATA.map((project) => {
-        const pct = Math.round((project.done / project.tasks) * 100);
-        const sc = statusColors[project.status];
+      {projects.map((proj) => {
+        const pct = Math.round((proj.done / proj.tasks) * 100);
+        const sc = statusColors[proj.status];
         return (
-          <div key={project.id} className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
+          <div key={proj.id} className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
             <div className="flex items-start justify-between mb-4">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: `${project.color}20` }}>
-                  <svg className="w-5 h-5" fill="none" stroke={project.color} viewBox="0 0 24 24">
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: `${proj.color}20` }}>
+                  <svg className="w-5 h-5" fill="none" stroke={proj.color} viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
                       d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
                   </svg>
                 </div>
                 <div>
-                  <h3 className="text-sm font-semibold text-gray-800">{project.name}</h3>
-                  <p className="text-xs text-gray-400">{project.teamSize} team members</p>
+                  <h3 className="text-sm font-semibold text-gray-800">{proj.name}</h3>
+                  <p className="text-xs text-gray-400">{proj.teamSize} team members</p>
                 </div>
               </div>
-              <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${sc.bg} ${sc.text}`}>{project.status}</span>
+              <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${sc.bg} ${sc.text}`}>{proj.status}</span>
             </div>
 
             <div className="grid grid-cols-3 gap-4 mb-4">
               <div className="text-center">
-                <p className="text-xl font-bold text-gray-800">{project.done}</p>
+                <p className="text-xl font-bold text-gray-800">{proj.done}</p>
                 <p className="text-xs text-gray-400">Tasks Done</p>
               </div>
               <div className="text-center">
-                <p className="text-xl font-bold text-gray-800">{project.tasks}</p>
+                <p className="text-xl font-bold text-gray-800">{proj.tasks}</p>
                 <p className="text-xs text-gray-400">Total Tasks</p>
               </div>
               <div className="text-center">
@@ -387,21 +512,24 @@ function ProjectSummaryTab() {
                 <span>{pct}%</span>
               </div>
               <div className="w-full bg-gray-100 rounded-full h-2">
-                <div className="h-2 rounded-full transition-all" style={{ width: `${pct}%`, backgroundColor: project.color }} />
+                <div className="h-2 rounded-full transition-all" style={{ width: `${pct}%`, backgroundColor: proj.color }} />
               </div>
             </div>
           </div>
         );
       })}
-      <ExportBar tab="projects" />
     </div>
   );
 }
 
 // ─── Bug Summary Tab ──────────────────────────────────────────────────────────
 
-function BugSummaryTab() {
-  const total = STATIC_BUG_SEVERITY_DATA.reduce((s, d) => s + d.count, 0);
+function BugSummaryTab({ project }: { project: string }) {
+  const allSeverity = BUG_SEVERITY_BY_PROJECT[project] ?? STATIC_BUG_SEVERITY_DATA;
+  const allClassification = BUG_CLASSIFICATION_BY_PROJECT[project] ?? STATIC_BUG_CLASSIFICATION_DATA;
+  const severityData = allSeverity.filter((d) => d.count > 0);
+  const classificationData = allClassification.filter((d) => d.count > 0);
+  const total = severityData.reduce((s, d) => s + d.count, 0);
 
   return (
     <div className="space-y-6">
@@ -411,9 +539,9 @@ function BugSummaryTab() {
           <p className="text-xs text-gray-400 mb-3">Total: {total} bugs — May 2026</p>
           <ResponsiveContainer width="100%" height={200}>
             <PieChart>
-              <Pie data={STATIC_BUG_SEVERITY_DATA} cx="50%" cy="50%" innerRadius={55} outerRadius={80}
+              <Pie data={severityData} cx="50%" cy="50%" innerRadius={55} outerRadius={80}
                 paddingAngle={3} dataKey="count" nameKey="severity">
-                {STATIC_BUG_SEVERITY_DATA.map((entry, idx) => (
+                {severityData.map((entry, idx) => (
                   <Cell key={idx} fill={entry.color} stroke="none" />
                 ))}
               </Pie>
@@ -424,7 +552,7 @@ function BugSummaryTab() {
             </PieChart>
           </ResponsiveContainer>
           <div className="grid grid-cols-2 gap-2 mt-1">
-            {STATIC_BUG_SEVERITY_DATA.map((d) => (
+            {severityData.map((d) => (
               <div key={d.severity} className="flex items-center gap-2">
                 <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: d.color }} />
                 <span className="text-xs text-gray-500">{d.severity} — <span className="font-semibold text-gray-700">{d.count}</span></span>
@@ -436,14 +564,14 @@ function BugSummaryTab() {
         <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
           <h3 className="text-sm font-semibold text-gray-800 mb-4">Bug Classification</h3>
           <div className="space-y-3">
-            {STATIC_BUG_CLASSIFICATION_DATA.map((d) => (
+            {classificationData.map((d) => (
               <div key={d.classification}>
                 <div className="flex justify-between text-xs mb-1">
                   <span className="text-gray-600 font-medium">{d.classification}</span>
                   <span className="text-gray-500">{d.count}</span>
                 </div>
                 <div className="w-full bg-gray-100 rounded-full h-1.5">
-                  <div className="h-1.5 rounded-full" style={{ width: `${Math.round((d.count / total) * 100)}%`, backgroundColor: d.color }} />
+                  <div className="h-1.5 rounded-full" style={{ width: `${total > 0 ? Math.round((d.count / total) * 100) : 0}%`, backgroundColor: d.color }} />
                 </div>
               </div>
             ))}
@@ -452,7 +580,7 @@ function BugSummaryTab() {
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        {STATIC_BUG_SEVERITY_DATA.map((d) => (
+        {allSeverity.map((d) => (
           <div key={d.severity} className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm text-center">
             <p className="text-2xl font-bold text-gray-800">{d.count}</p>
             <p className="text-xs text-gray-400 mt-1">{d.severity}</p>
@@ -460,28 +588,24 @@ function BugSummaryTab() {
           </div>
         ))}
       </div>
-      <ExportBar tab="bugs" />
     </div>
   );
 }
 
 // ─── Task Allocation Tab ──────────────────────────────────────────────────────
 
-function TaskAllocationTab({ currentUserId }: { currentUserId?: string }) {
-  const chartData = STATIC_ALLOCATION_DATA.slice(0, 10).map((r) => ({
-    name: r.name.split(' ')[0],
-    hours: r.hoursAllocated,
-  }));
+function TaskAllocationTab({ currentUserId, project }: { currentUserId?: string; project: string }) {
+  const data = filterByProject(STATIC_ALLOCATION_DATA, project);
+  const chartData = data.slice(0, 10).map((r) => ({ name: r.name.split(' ')[0], hours: r.hoursAllocated }));
 
-  const totalHours = STATIC_ALLOCATION_DATA.reduce((s, r) => s + r.hoursAllocated, 0);
-  const avgUtilisation = Math.round(
-    STATIC_ALLOCATION_DATA.reduce((s, r) => s + r.utilisationPct, 0) / STATIC_ALLOCATION_DATA.length,
-  );
-  const overAllocated = STATIC_ALLOCATION_DATA.filter((r) => r.utilisationPct > 100).length;
+  const totalHours = data.reduce((s, r) => s + r.hoursAllocated, 0);
+  const avgUtilisation = data.length > 0 ? Math.round(data.reduce((s, r) => s + r.utilisationPct, 0) / data.length) : 0;
+  const overAllocated = data.filter((r) => r.utilisationPct > 100).length;
+
+  const { paginatedData, page, setPage, pageSize, setPageSize, totalPages, totalItems, startIndex, endIndex } = usePagination(data);
 
   return (
     <div className="space-y-6">
-      {/* Summary cards */}
       <div className="grid grid-cols-3 gap-4">
         <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm text-center">
           <p className="text-2xl font-bold text-gray-800">{totalHours}h</p>
@@ -497,10 +621,11 @@ function TaskAllocationTab({ currentUserId }: { currentUserId?: string }) {
         </div>
       </div>
 
-      {/* Bar chart */}
       <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
         <h3 className="text-sm font-semibold text-gray-800 mb-1">Hours Allocated — May 2026</h3>
-        <p className="text-xs text-gray-400 mb-4">Top 10 team members by allocated hours</p>
+        <p className="text-xs text-gray-400 mb-4">
+          {data.length > 10 ? 'Top 10 team members' : `${data.length} team members`} by allocated hours
+        </p>
         <ResponsiveContainer width="100%" height={220}>
           <BarChart data={chartData} margin={{ top: 4, right: 8, bottom: 4, left: -20 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" />
@@ -515,7 +640,6 @@ function TaskAllocationTab({ currentUserId }: { currentUserId?: string }) {
         </ResponsiveContainer>
       </div>
 
-      {/* Table */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
         <div className="px-5 py-4 border-b border-gray-50">
           <h3 className="text-sm font-semibold text-gray-800">Task Allocation Details</h3>
@@ -532,12 +656,12 @@ function TaskAllocationTab({ currentUserId }: { currentUserId?: string }) {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              {STATIC_ALLOCATION_DATA.map((r, i) => {
+              {paginatedData.map((r, i) => {
                 const isMe = r.userId === currentUserId;
                 const isOver = r.utilisationPct > 100;
                 return (
                   <tr key={r.userId} className={isMe ? 'bg-blue-50' : isOver ? 'bg-red-50/30' : 'hover:bg-gray-50/50'}>
-                    <td className="px-5 py-3 text-gray-400 text-xs">{i + 1}</td>
+                    <td className="px-5 py-3 text-gray-400 text-xs">{startIndex + i}</td>
                     <td className="px-5 py-3">
                       <div className="flex items-center gap-2">
                         <div className="w-7 h-7 rounded-full bg-purple-100 flex items-center justify-center shrink-0">
@@ -577,8 +701,14 @@ function TaskAllocationTab({ currentUserId }: { currentUserId?: string }) {
             </tbody>
           </table>
         </div>
+        {totalItems > 0 && (
+          <PaginationBar
+            page={page} totalPages={totalPages} totalItems={totalItems}
+            startIndex={startIndex} endIndex={endIndex} pageSize={pageSize}
+            onPageChange={setPage} onPageSizeChange={setPageSize}
+          />
+        )}
       </div>
-      <ExportBar tab="allocation" />
     </div>
   );
 }
@@ -591,15 +721,17 @@ const TIMESHEET_STATUS_STYLE: Record<TimesheetStatus, { bg: string; text: string
   Draft:     { bg: 'bg-gray-100',    text: 'text-gray-600'    },
 };
 
-function TimesheetTab({ currentUserId }: { currentUserId?: string }) {
-  const totalHours = STATIC_TIMESHEET_DATA.reduce((s, r) => s + r.hoursLogged, 0);
-  const approvedCount = STATIC_TIMESHEET_DATA.filter((r) => r.status === 'Approved').length;
-  const submittedCount = STATIC_TIMESHEET_DATA.filter((r) => r.status === 'Submitted').length;
-  const draftCount = STATIC_TIMESHEET_DATA.filter((r) => r.status === 'Draft').length;
+function TimesheetTab({ currentUserId, project }: { currentUserId?: string; project: string }) {
+  const data = filterByProject(STATIC_TIMESHEET_DATA, project);
+  const totalHours = data.reduce((s, r) => s + r.hoursLogged, 0);
+  const approvedCount = data.filter((r) => r.status === 'Approved').length;
+  const submittedCount = data.filter((r) => r.status === 'Submitted').length;
+  const draftCount = data.filter((r) => r.status === 'Draft').length;
+
+  const { paginatedData, page, setPage, pageSize, setPageSize, totalPages, totalItems, startIndex, endIndex } = usePagination(data);
 
   return (
     <div className="space-y-6">
-      {/* Summary cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm text-center">
           <p className="text-2xl font-bold text-gray-800">{totalHours}h</p>
@@ -619,7 +751,6 @@ function TimesheetTab({ currentUserId }: { currentUserId?: string }) {
         </div>
       </div>
 
-      {/* Table */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
         <div className="px-5 py-4 border-b border-gray-50">
           <h3 className="text-sm font-semibold text-gray-800">Timesheet Summary — May 2026</h3>
@@ -636,12 +767,12 @@ function TimesheetTab({ currentUserId }: { currentUserId?: string }) {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              {STATIC_TIMESHEET_DATA.map((r, i) => {
+              {paginatedData.map((r, i) => {
                 const isMe = r.userId === currentUserId;
                 const sc = TIMESHEET_STATUS_STYLE[r.status];
                 return (
                   <tr key={r.userId} className={isMe ? 'bg-blue-50' : 'hover:bg-gray-50/50'}>
-                    <td className="px-5 py-3 text-gray-400 text-xs">{i + 1}</td>
+                    <td className="px-5 py-3 text-gray-400 text-xs">{startIndex + i}</td>
                     <td className="px-5 py-3">
                       <div className="flex items-center gap-2">
                         <div className="w-7 h-7 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
@@ -669,8 +800,14 @@ function TimesheetTab({ currentUserId }: { currentUserId?: string }) {
             </tbody>
           </table>
         </div>
+        {totalItems > 0 && (
+          <PaginationBar
+            page={page} totalPages={totalPages} totalItems={totalItems}
+            startIndex={startIndex} endIndex={endIndex} pageSize={pageSize}
+            onPageChange={setPage} onPageSizeChange={setPageSize}
+          />
+        )}
       </div>
-      <ExportBar tab="timesheet" />
     </div>
   );
 }
@@ -744,6 +881,7 @@ export function ReportsPage() {
   const user = useAuthStore((s) => s.user);
   const [activeTab, setActiveTab] = useState<Tab>('productivity');
   const [period, setPeriod] = useState('2026-05');
+  const [project, setProject] = useState('all');
 
   const isAdminView = user?.systemRole === 'ADMIN' || user?.systemRole === 'SUPER_USER';
 
@@ -755,7 +893,16 @@ export function ReportsPage() {
           <h1 className="text-xl font-bold text-gray-900">Reports</h1>
           <p className="text-xs text-gray-400 mt-0.5">Team performance overview and analytics</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          <select
+            value={project}
+            onChange={(e) => setProject(e.target.value)}
+            className="text-sm border border-gray-200 rounded-xl px-3 py-2 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary-300"
+          >
+            {PROJECT_OPTIONS.map((p) => (
+              <option key={p.value} value={p.value}>{p.label}</option>
+            ))}
+          </select>
           <select
             value={period}
             onChange={(e) => setPeriod(e.target.value)}
@@ -776,28 +923,35 @@ export function ReportsPage() {
       {/* Tabs — visible to admin/super user */}
       {isAdminView && (
         <>
-          <div className="flex flex-wrap gap-1 bg-gray-100/70 p-1 rounded-2xl w-fit">
-            {TABS.map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors ${
-                  activeTab === tab.id
-                    ? 'bg-white text-gray-900 shadow-sm'
-                    : 'text-gray-500 hover:text-gray-700'
-                }`}
-              >
-                {tab.label}
-              </button>
-            ))}
+          {/* Tab nav + Export buttons in one row */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div className="flex flex-wrap gap-1 bg-gray-100/70 p-1 rounded-2xl w-fit">
+              {TABS.map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors ${
+                    activeTab === tab.id
+                      ? 'bg-white text-gray-900 shadow-sm'
+                      : 'text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Export bar — top-right, always visible */}
+            <ExportBar onExportCsv={() => csvForTab(activeTab, project)} />
           </div>
 
-          {activeTab === 'productivity' && <TeamProductivityTab currentUserId={user?.id} />}
-          {activeTab === 'kpi'          && <KpiAppraisalTab    currentUserId={user?.id} />}
-          {activeTab === 'projects'     && <ProjectSummaryTab />}
-          {activeTab === 'bugs'         && <BugSummaryTab />}
-          {activeTab === 'allocation'   && <TaskAllocationTab  currentUserId={user?.id} />}
-          {activeTab === 'timesheet'    && <TimesheetTab       currentUserId={user?.id} />}
+          {/* Tab content — key=project resets pagination state on project change */}
+          {activeTab === 'productivity' && <TeamProductivityTab key={`prod-${project}`} currentUserId={user?.id} project={project} />}
+          {activeTab === 'kpi'          && <KpiAppraisalTab    key={`kpi-${project}`}  currentUserId={user?.id} project={project} />}
+          {activeTab === 'projects'     && <ProjectSummaryTab  key={`proj-${project}`} project={project} />}
+          {activeTab === 'bugs'         && <BugSummaryTab      key={`bug-${project}`}  project={project} />}
+          {activeTab === 'allocation'   && <TaskAllocationTab  key={`alloc-${project}`} currentUserId={user?.id} project={project} />}
+          {activeTab === 'timesheet'    && <TimesheetTab       key={`ts-${project}`}   currentUserId={user?.id} project={project} />}
         </>
       )}
     </div>
