@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { dashboardApi } from '../../../api/dashboard.api';
 import { useAuthStore } from '../../../store/authStore';
 import { ActivityChart } from '../components/ActivityChart';
+import { AnnouncementsWidget } from '../components/AnnouncementsWidget';
 import { MyTaskTable } from '../components/MyTaskTable';
 import { StatCard } from '../components/StatCard';
 import { TasksProgressChart } from '../components/TasksProgressChart';
@@ -95,6 +96,9 @@ export function DashboardPage() {
           <TasksProgressChart data={data.tasksProgress} />
         </div>
       </div>
+
+      {/* Announcements widget */}
+      <AnnouncementsWidget />
     </div>
   );
 }

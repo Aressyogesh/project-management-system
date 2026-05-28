@@ -17,6 +17,7 @@ import { ProjectsPage } from './features/projects/pages/ProjectsPage';
 import { AllocationCalendarPage } from './features/taskAllocations/pages/AllocationCalendarPage';
 import { UsersPage } from './features/users/pages/UsersPage';
 import { KpiPage } from './features/kpi/pages/KpiPage';
+import { ReportsPage } from './features/reports/pages/ReportsPage';
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 30_000 } },
@@ -26,7 +27,6 @@ const comingSoonPaths = [
   '/timesheets',
   '/leave-logs',
   '/bugs',
-  '/reports',
 ];
 
 
@@ -61,6 +61,9 @@ export default function App() {
 
               {/* KPI Store */}
               <Route path="/kpi" element={<KpiPage />} />
+
+              {/* Reports Dashboard */}
+              <Route path="/reports" element={<ReportsPage />} />
 
               {/* Settings — nested under SettingsLayout */}
               <Route path="/settings" element={<SettingsLayout />}>
