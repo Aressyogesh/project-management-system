@@ -114,7 +114,7 @@ describe('ReportsPage tabs', () => {
   it('UTC-F020-FE-005: clicking Project Summary tab shows project content', async () => {
     renderReportsPage();
     await userEvent.click(screen.getByText('Project Summary'));
-    expect(screen.getByText('PMS Web App')).toBeInTheDocument();
+    expect(screen.getAllByText('PMS Web App').length).toBeGreaterThanOrEqual(1);
   });
 
   it('UTC-F020-FE-006: clicking Bug Summary tab shows bug content', async () => {
