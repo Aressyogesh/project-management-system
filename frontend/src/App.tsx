@@ -16,6 +16,7 @@ import { ProjectDetailPage } from './features/projects/pages/ProjectDetailPage';
 import { ProjectsPage } from './features/projects/pages/ProjectsPage';
 import { AllocationCalendarPage } from './features/taskAllocations/pages/AllocationCalendarPage';
 import { UsersPage } from './features/users/pages/UsersPage';
+import { KpiPage } from './features/kpi/pages/KpiPage';
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 30_000 } },
@@ -25,7 +26,6 @@ const comingSoonPaths = [
   '/timesheets',
   '/leave-logs',
   '/bugs',
-  '/kpi',
   '/reports',
 ];
 
@@ -58,6 +58,9 @@ export default function App() {
 
               {/* Task Allocation Calendar */}
               <Route path="/allocations" element={<AllocationCalendarPage />} />
+
+              {/* KPI Store */}
+              <Route path="/kpi" element={<KpiPage />} />
 
               {/* Settings — nested under SettingsLayout */}
               <Route path="/settings" element={<SettingsLayout />}>
