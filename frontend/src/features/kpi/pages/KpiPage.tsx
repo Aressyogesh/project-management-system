@@ -1,15 +1,12 @@
 import { useState, useMemo } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { EmployeeKpiRecord } from '../../../types/kpi.types';
 import { useAuthStore } from '../../../store/authStore';
 import {
   GRADE_CONFIG,
   buildTeamSummary,
-  computeGrade,
-  computeCategoryScores,
+  STATIC_KPI_DATA,
+  KPI_METRICS,
 } from '../data/kpiStaticData';
-import { analyticsApi, type LiveEmployeeKpiRecord, type KpiRecord } from '../../../api/analyticsApi';
-import { KPI_METRICS } from '../data/kpiStaticData';
 import { KpiSummaryCards } from '../components/KpiSummaryCards';
 import { KpiCategoryBarChart } from '../components/KpiCategoryBarChart';
 import { KpiGradePieChart } from '../components/KpiGradePieChart';
@@ -35,72 +32,29 @@ const MANUAL_METRICS = [
   { id: 'positive_behaviour', label: 'Positive Behaviour', max: 5 },
 ];
 
-function liveToRecord(live: LiveEmployeeKpiRecord): EmployeeKpiRecord {
-  const metrics = live.metrics.map((m) => ({ metricId: m.metricId, points: m.points }));
-  const categoryScores = computeCategoryScores(metrics);
-  return {
-    ...live,
-    metrics,
-    categoryScores,
-    grade: computeGrade(live.totalScore),
-  };
-}
-
 // ─── KPI Score Entry Panel ────────────────────────────────────────────────────
 
 function KpiScoreEntryPanel({
   employees,
   period,
-  existingRecords,
   onClose,
 }: {
   employees: EmployeeKpiRecord[];
   period: string;
-  existingRecords: KpiRecord[];
   onClose: () => void;
 }) {
-  const qc = useQueryClient();
-
-  // Build initial scores from existing records
   const initialScores = () => {
     const map: Record<string, Record<string, number>> = {};
     for (const emp of employees) {
       map[emp.userId] = {};
       for (const m of MANUAL_METRICS) {
-        const existing = existingRecords.find(
-          (r) => r.userId === emp.userId && r.metricId === m.id,
-        );
-        map[emp.userId][m.id] = existing?.points ?? 5;
+        map[emp.userId][m.id] = 5;
       }
     }
     return map;
   };
 
   const [scores, setScores] = useState<Record<string, Record<string, number>>>(initialScores);
-
-  const saveMutation = useMutation({
-    mutationFn: async () => {
-      const promises: Promise<KpiRecord>[] = [];
-      for (const emp of employees) {
-        for (const m of MANUAL_METRICS) {
-          promises.push(
-            analyticsApi.upsertKpiRecord({
-              userId: emp.userId,
-              period,
-              metricId: m.id,
-              points: scores[emp.userId]?.[m.id] ?? 5,
-            }),
-          );
-        }
-      }
-      return Promise.all(promises);
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['kpi', period] });
-      qc.invalidateQueries({ queryKey: ['kpi-records', period] });
-      onClose();
-    },
-  });
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
@@ -179,11 +133,10 @@ function KpiScoreEntryPanel({
             Cancel
           </button>
           <button
-            onClick={() => saveMutation.mutate()}
-            disabled={saveMutation.isPending}
-            className="text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 px-5 py-2 rounded-lg transition disabled:opacity-50"
+            onClick={onClose}
+            className="text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 px-5 py-2 rounded-lg transition"
           >
-            {saveMutation.isPending ? 'Saving…' : 'Save All Scores'}
+            Save All Scores
           </button>
         </div>
       </div>
@@ -195,7 +148,6 @@ function KpiScoreEntryPanel({
 
 export function KpiPage() {
   const user = useAuthStore((s) => s.user);
-  const qc = useQueryClient();
   const isAdminOrSuper = user?.systemRole === 'SUPER_USER' || user?.systemRole === 'ADMIN';
 
   const [selectedPeriod, setSelectedPeriod] = useState('2026-05');
@@ -204,21 +156,7 @@ export function KpiPage() {
   const [expandedUserId, setExpandedUserId] = useState<string | null>(null);
   const [showScoreEntry, setShowScoreEntry] = useState(false);
 
-  const { data: liveData = [], isLoading } = useQuery({
-    queryKey: ['kpi', selectedPeriod],
-    queryFn: () => analyticsApi.getKpi(selectedPeriod),
-  });
-
-  const { data: kpiRecords = [] } = useQuery({
-    queryKey: ['kpi-records', selectedPeriod],
-    queryFn: () => analyticsApi.getKpiRecords(undefined, selectedPeriod),
-    enabled: isAdminOrSuper,
-  });
-
-  const employees = useMemo(
-    () => liveData.map(liveToRecord),
-    [liveData],
-  );
+  const employees = useMemo(() => STATIC_KPI_DATA as EmployeeKpiRecord[], []);
 
   const filteredEmployees = useMemo(() => {
     return employees.filter((emp) => {
@@ -243,14 +181,6 @@ export function KpiPage() {
   // Employee view — show own KPI
   if (!isAdminOrSuper) {
     const ownRecord = employees.find((e) => e.userId === user?.id);
-
-    if (isLoading) {
-      return (
-        <div className="flex items-center justify-center py-20 text-sm text-gray-400">
-          Loading KPI data…
-        </div>
-      );
-    }
 
     if (!ownRecord) {
       return (
@@ -303,10 +233,7 @@ export function KpiPage() {
           <label className="text-xs text-gray-500 font-medium shrink-0">Period:</label>
           <select
             value={selectedPeriod}
-            onChange={(e) => {
-              setSelectedPeriod(e.target.value);
-              qc.invalidateQueries({ queryKey: ['kpi', e.target.value] });
-            }}
+            onChange={(e) => setSelectedPeriod(e.target.value)}
             className="text-sm border border-gray-200 rounded-lg px-3 py-1.5 bg-white text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             {AVAILABLE_PERIODS.map((p) => (
@@ -318,12 +245,7 @@ export function KpiPage() {
         </div>
       </div>
 
-      {isLoading ? (
-        <div className="flex items-center justify-center py-20 text-sm text-gray-400">
-          Loading KPI data…
-        </div>
-      ) : (
-        <>
+      <>
           {summary && (
             <>
               <KpiSummaryCards summary={summary} />
@@ -410,7 +332,7 @@ export function KpiPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredEmployees.length === 0 && !isLoading && (
+                  {filteredEmployees.length === 0 && (
                     <tr>
                       <td colSpan={9} className="text-center py-10 text-sm text-gray-400">
                         No employees match the current filters.
@@ -431,14 +353,12 @@ export function KpiPage() {
               </table>
             </div>
           </div>
-        </>
-      )}
+      </>
 
       {showScoreEntry && (
         <KpiScoreEntryPanel
           employees={filteredEmployees}
           period={selectedPeriod}
-          existingRecords={kpiRecords}
           onClose={() => setShowScoreEntry(false)}
         />
       )}
