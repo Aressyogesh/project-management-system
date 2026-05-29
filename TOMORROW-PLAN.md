@@ -4,7 +4,8 @@
 1. **Test entire application** — every feature, every role, every form saves to DB correctly
 2. **Fix any bugs found** during testing before moving to live data
 3. **Make Overview / KPI / Reports dynamic** — step by step, one tab at a time
-4. **Goal**: Every user action captured in DB → accurate data flows into all report parameters
+4. **Deploy end-to-end** — working application live on Vercel + Render + Supabase
+5. **Goal**: Every user action captured in DB → accurate data flows into all report parameters
 
 ---
 
@@ -192,3 +193,113 @@ Show existing logs for the selected period with delete option.
 - Each Reports tab shows data that changes when DB data changes
 - KPI scores reflect actual work items, timesheets, and manual entries
 - No hardcoded static arrays driving any UI that the user sees as "live" data
+- Application fully accessible on Vercel (frontend) + Render (backend) + Supabase (DB)
+
+---
+
+## Phase 7 — Production Deployment (Vercel + Render + Supabase)
+
+### Known Issues from Last Attempt
+- Supabase **direct connection** (`db.xxx.supabase.co:5432`) uses IPv6 → blocked by Render and most local networks
+- Must use **Session Mode Pooler URL** (`aws-0-ap-south-1.pooler.supabase.com:5432`) for both Render and local `prisma db push`
+- PowerShell `$env:DATABASE_URL` overrides `.env` locally — clear it before running Prisma commands locally
+- Production DB (Supabase) is missing schema for F-022 onwards — needs `prisma migrate deploy` or `prisma db push`
+
+---
+
+### Step 1 — Supabase: Apply Schema
+
+Run schema sync from local machine using the **pooler URL** (not direct):
+
+```powershell
+# Clear any shell env overrides first
+Remove-Item Env:DATABASE_URL -ErrorAction SilentlyContinue
+Remove-Item Env:DIRECT_URL -ErrorAction SilentlyContinue
+
+# Set pooler URL temporarily for this command only
+$env:DATABASE_URL = "postgresql://postgres.[project-ref]:[password]@aws-0-ap-south-1.pooler.supabase.com:5432/postgres?sslmode=require"
+$env:DIRECT_URL  = "postgresql://postgres.[project-ref]:[password]@aws-0-ap-south-1.pooler.supabase.com:5432/postgres?sslmode=require"
+
+cd backend
+npx prisma db push
+```
+
+Verify in Supabase Table Editor that new tables exist: `work_items`, `sprints`, `kpi_records`, `leave_logs`, `learning_logs`, `innovation_logs`
+
+---
+
+### Step 2 — Render: Backend Environment Variables
+
+In Render dashboard → PMS Backend service → Environment:
+
+| Variable | Value |
+|----------|-------|
+| `DATABASE_URL` | `postgresql://postgres.[ref]:[pass]@aws-0-ap-south-1.pooler.supabase.com:5432/postgres?sslmode=require` |
+| `DIRECT_URL` | same pooler URL |
+| `JWT_SECRET` | (keep existing) |
+| `JWT_REFRESH_SECRET` | (keep existing) |
+| `FRONTEND_URL` | `https://[your-vercel-app].vercel.app` |
+| `PORT` | `3000` |
+
+---
+
+### Step 3 — Render: Build Command
+
+Ensure the Render build command includes schema sync:
+
+```
+npm install --include=dev && npx prisma generate && npx prisma db push && npm run build
+```
+
+> `prisma db push` on Render uses the `DATABASE_URL` env var (pooler URL) — this is safe and idempotent.
+
+---
+
+### Step 4 — Vercel: Frontend Environment Variables
+
+In Vercel dashboard → PMS Frontend project → Settings → Environment Variables:
+
+| Variable | Value |
+|----------|-------|
+| `VITE_API_URL` | `https://pms-backend-zhez.onrender.com/api/v1` |
+
+Redeploy frontend after setting this.
+
+---
+
+### Step 5 — Verify End-to-End
+
+After both deploys succeed:
+
+- [ ] Open Vercel URL → login page loads
+- [ ] Login with SUPER_USER credentials → dashboard shows live counts
+- [ ] Create a project → appears in projects list
+- [ ] Create a work item on the board → status drag updates correctly
+- [ ] Log timesheet hours → saved in Supabase DB
+- [ ] Reports page → Productivity tab shows data (once live wiring is done)
+- [ ] KPI page loads without errors
+- [ ] Image upload in rich-text editor → stored on Render filesystem (note: Render ephemeral disk — images lost on redeploy; production fix = use Supabase Storage or Cloudinary, defer to later)
+
+---
+
+### Step 6 — Seed Production Data (Optional)
+
+To see meaningful data in reports, create test data in production:
+1. Create 1–2 projects with members
+2. Create a sprint, add work items, move some to QA_DONE
+3. Log timesheet hours on those items
+4. Admin enters manual KPI scores for one employee
+
+This gives non-zero values across all report tabs.
+
+---
+
+### Deployment Checklist
+
+- [ ] Supabase schema up to date (`prisma db push` succeeds with pooler URL)
+- [ ] Render redeploy successful (build log shows no errors)
+- [ ] Vercel redeploy successful
+- [ ] `VITE_API_URL` points to Render backend
+- [ ] `FRONTEND_URL` on Render points to Vercel domain (CORS)
+- [ ] Login works on production URL
+- [ ] At least one full user flow works end-to-end in production
