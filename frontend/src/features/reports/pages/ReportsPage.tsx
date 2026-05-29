@@ -3,35 +3,39 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell,
 } from 'recharts';
+import { useQuery } from '@tanstack/react-query';
 import { useAuthStore } from '../../../store/authStore';
-import { STATIC_KPI_DATA, buildTeamSummary, GRADE_CONFIG } from '../../kpi/data/kpiStaticData';
+import { GRADE_CONFIG, buildTeamSummary } from '../../kpi/data/kpiStaticData';
 import {
-  STATIC_PRODUCTIVITY_DATA,
-  STATIC_PROJECT_DATA,
-  STATIC_BUG_SEVERITY_DATA,
-  STATIC_BUG_CLASSIFICATION_DATA,
-  STATIC_ALLOCATION_DATA,
-  STATIC_TIMESHEET_DATA,
-  REPORT_PERIODS,
-  PROJECT_OPTIONS,
-  USER_PROJECT_MAP,
-  BUG_SEVERITY_BY_PROJECT,
-  BUG_CLASSIFICATION_BY_PROJECT,
-  type TimesheetStatus,
-} from '../data/reportsStaticData';
+  analyticsApi,
+  type ProductivityRecord,
+  type AllocationRecord,
+  type TimesheetRecord,
+} from '../../../api/analyticsApi';
+import { CapacityReportTab } from '../components/CapacityReportTab';
 
-type Tab = 'productivity' | 'kpi' | 'projects' | 'bugs' | 'allocation' | 'timesheet';
+type Tab = 'productivity' | 'kpi' | 'projects' | 'bugs' | 'allocation' | 'timesheet' | 'capacity';
+type TimesheetStatus = 'Approved' | 'Submitted' | 'Draft';
 
 const TABS: { id: Tab; label: string }[] = [
   { id: 'productivity', label: 'Team Productivity' },
-  { id: 'kpi',         label: 'KPI Appraisal'    },
-  { id: 'projects',    label: 'Project Summary'  },
-  { id: 'bugs',        label: 'Bug Summary'       },
-  { id: 'allocation',  label: 'Task Allocation'  },
-  { id: 'timesheet',   label: 'Timesheet'        },
+  { id: 'kpi',          label: 'KPI Appraisal'     },
+  { id: 'projects',     label: 'Project Summary'   },
+  { id: 'bugs',         label: 'Bug Summary'        },
+  { id: 'allocation',   label: 'Task Allocation'   },
+  { id: 'timesheet',    label: 'Timesheet'         },
+  { id: 'capacity',     label: 'Capacity'           },
 ];
 
-// ─── CSV export utility ───────────────────────────────────────────────────────
+const REPORT_PERIODS = [
+  { value: '2026-05', label: 'May 2026'       },
+  { value: '2026-04', label: 'April 2026'     },
+  { value: '2026-03', label: 'March 2026'     },
+  { value: '2026-02', label: 'February 2026'  },
+  { value: '2026-01', label: 'January 2026'   },
+];
+
+// ─── CSV utility ──────────────────────────────────────────────────────────────
 
 function downloadCsv(filename: string, rows: string[][]): void {
   const csv = rows.map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
@@ -44,94 +48,6 @@ function downloadCsv(filename: string, rows: string[][]): void {
   URL.revokeObjectURL(url);
 }
 
-function filterByProject<T extends { userId: string }>(data: T[], project: string): T[] {
-  return project === 'all' ? data : data.filter((r) => USER_PROJECT_MAP[r.userId] === project);
-}
-
-function csvForTab(tab: Tab, project: string): void {
-  switch (tab) {
-    case 'productivity': {
-      const rows = filterByProject(STATIC_PRODUCTIVITY_DATA, project);
-      downloadCsv('team-productivity-report-may-2026.csv', [
-        ['Name', 'Role', 'Tasks Done', 'Hours Logged', 'On-Time %', 'Score'],
-        ...rows.map((r) => [r.name, r.role, String(r.tasksDone), String(r.hoursLogged), `${r.onTimePct}%`, String(r.score)]),
-      ]);
-      break;
-    }
-    case 'kpi': {
-      const rows = filterByProject(STATIC_KPI_DATA, project);
-      downloadCsv('kpi-appraisal-report-may-2026.csv', [
-        ['Name', 'Role', 'Department', 'Total Score', 'Grade'],
-        ...[...rows].sort((a, b) => b.totalScore - a.totalScore).map((e) => [e.name, e.role, e.department, String(e.totalScore), e.grade]),
-      ]);
-      break;
-    }
-    case 'projects': {
-      const rows = project === 'all' ? STATIC_PROJECT_DATA : STATIC_PROJECT_DATA.filter((p) => p.id === project);
-      downloadCsv('project-summary-report-may-2026.csv', [
-        ['Project', 'Total Tasks', 'Done', 'Team Size', 'Completion %', 'Status'],
-        ...rows.map((p) => [p.name, String(p.tasks), String(p.done), String(p.teamSize), `${Math.round((p.done / p.tasks) * 100)}%`, p.status]),
-      ]);
-      break;
-    }
-    case 'bugs': {
-      const severityRows = BUG_SEVERITY_BY_PROJECT[project] ?? STATIC_BUG_SEVERITY_DATA;
-      downloadCsv('bug-summary-report-may-2026.csv', [
-        ['Severity', 'Count'],
-        ...severityRows.map((d) => [d.severity, String(d.count)]),
-      ]);
-      break;
-    }
-    case 'allocation': {
-      const rows = filterByProject(STATIC_ALLOCATION_DATA, project);
-      downloadCsv('task-allocation-report-may-2026.csv', [
-        ['Name', 'Role', 'Tasks Allocated', 'Hours Allocated', 'Utilisation %'],
-        ...rows.map((r) => [r.name, r.role, String(r.tasksAllocated), String(r.hoursAllocated), `${r.utilisationPct}%`]),
-      ]);
-      break;
-    }
-    case 'timesheet': {
-      const rows = filterByProject(STATIC_TIMESHEET_DATA, project);
-      downloadCsv('timesheet-report-may-2026.csv', [
-        ['Name', 'Role', 'Project', 'Hours Logged', 'Status'],
-        ...rows.map((r) => [r.name, r.role, r.project, String(r.hoursLogged), r.status]),
-      ]);
-      break;
-    }
-  }
-}
-
-// ─── Export bar ───────────────────────────────────────────────────────────────
-
-function ExportBar({ onExportCsv }: { onExportCsv: () => void }) {
-  return (
-    <div className="flex justify-end gap-2 mb-4">
-      <button
-        className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium text-gray-600 border border-gray-200 hover:bg-gray-50 transition-colors"
-        onClick={onExportCsv}
-        data-testid="export-csv-btn"
-      >
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-            d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-        </svg>
-        Export CSV
-      </button>
-      <button
-        className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium text-gray-400 border border-gray-200 cursor-not-allowed opacity-60"
-        onClick={() => undefined}
-        title="PDF export coming in a future phase"
-      >
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-            d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-        </svg>
-        Export PDF
-      </button>
-    </div>
-  );
-}
-
 // ─── Pagination ───────────────────────────────────────────────────────────────
 
 const PAGE_SIZE_OPTIONS = [5, 10, 25];
@@ -139,25 +55,14 @@ const PAGE_SIZE_OPTIONS = [5, 10, 25];
 function usePagination<T>(data: T[], defaultPageSize = 10) {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(defaultPageSize);
-
   const totalPages = Math.max(1, Math.ceil(data.length / pageSize));
   const safePage = Math.min(page, totalPages);
   const start = (safePage - 1) * pageSize;
   const paginatedData = data.slice(start, start + pageSize);
-
-  function handlePageSizeChange(size: number) {
-    setPageSize(size);
-    setPage(1);
-  }
-
+  function handlePageSizeChange(size: number) { setPageSize(size); setPage(1); }
   return {
-    paginatedData,
-    page: safePage,
-    setPage,
-    pageSize,
-    setPageSize: handlePageSizeChange,
-    totalPages,
-    totalItems: data.length,
+    paginatedData, page: safePage, setPage, pageSize,
+    setPageSize: handlePageSizeChange, totalPages, totalItems: data.length,
     startIndex: data.length === 0 ? 0 : start + 1,
     endIndex: Math.min(start + pageSize, data.length),
   };
@@ -178,41 +83,25 @@ function PaginationBar({
           onChange={(e) => onPageSizeChange(Number(e.target.value))}
           className="border border-gray-200 rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-primary-300"
         >
-          {PAGE_SIZE_OPTIONS.map((s) => (
-            <option key={s} value={s}>{s}</option>
-          ))}
+          {PAGE_SIZE_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
         </select>
-        <span className="ml-1">
-          Showing {startIndex}–{endIndex} of {totalItems} records
-        </span>
+        <span className="ml-1">Showing {startIndex}–{endIndex} of {totalItems} records</span>
       </div>
-
       <div className="flex items-center gap-1">
-        <button
-          onClick={() => onPageChange(page - 1)}
-          disabled={page <= 1}
-          className="px-2.5 py-1 text-xs rounded-lg border border-gray-200 disabled:opacity-40 hover:bg-gray-50 transition-colors"
-        >
+        <button onClick={() => onPageChange(page - 1)} disabled={page <= 1}
+          className="px-2.5 py-1 text-xs rounded-lg border border-gray-200 disabled:opacity-40 hover:bg-gray-50 transition-colors">
           ‹ Prev
         </button>
         {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-          <button
-            key={p}
-            onClick={() => onPageChange(p)}
+          <button key={p} onClick={() => onPageChange(p)}
             className={`w-7 h-7 text-xs rounded-lg border transition-colors ${
-              p === page
-                ? 'bg-blue-600 text-white border-blue-600'
-                : 'border-gray-200 hover:bg-gray-50 text-gray-600'
-            }`}
-          >
+              p === page ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-200 hover:bg-gray-50 text-gray-600'
+            }`}>
             {p}
           </button>
         ))}
-        <button
-          onClick={() => onPageChange(page + 1)}
-          disabled={page >= totalPages}
-          className="px-2.5 py-1 text-xs rounded-lg border border-gray-200 disabled:opacity-40 hover:bg-gray-50 transition-colors"
-        >
+        <button onClick={() => onPageChange(page + 1)} disabled={page >= totalPages}
+          className="px-2.5 py-1 text-xs rounded-lg border border-gray-200 disabled:opacity-40 hover:bg-gray-50 transition-colors">
           Next ›
         </button>
       </div>
@@ -220,7 +109,7 @@ function PaginationBar({
   );
 }
 
-// ─── Score bar helper ─────────────────────────────────────────────────────────
+// ─── Shared sub-components ────────────────────────────────────────────────────
 
 function ScoreBar({ value, max = 100, color = '#3B82F6' }: { value: number; max?: number; color?: string }) {
   const pct = Math.min(Math.round((value / max) * 100), 100);
@@ -234,17 +123,58 @@ function ScoreBar({ value, max = 100, color = '#3B82F6' }: { value: number; max?
   );
 }
 
+function TabLoading() {
+  return (
+    <div className="flex items-center justify-center py-16 text-sm text-gray-400">
+      Loading report data…
+    </div>
+  );
+}
+
+function CsvButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium text-gray-600 border border-gray-200 hover:bg-gray-50 transition-colors"
+      data-testid="export-csv-btn"
+    >
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+          d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+      </svg>
+      Export CSV
+    </button>
+  );
+}
+
 // ─── Team Productivity Tab ────────────────────────────────────────────────────
 
-function TeamProductivityTab({ currentUserId, project }: { currentUserId?: string; project: string }) {
-  const data = filterByProject(STATIC_PRODUCTIVITY_DATA, project);
+function TeamProductivityTab({ currentUserId, period, project }: { currentUserId?: string; period: string; project: string }) {
+  const { data = [], isLoading } = useQuery({
+    queryKey: ['report-productivity', period, project],
+    queryFn: () => analyticsApi.getProductivity(period, project),
+  });
+
   const chartData = data.slice(0, 10).map((r) => ({ name: r.name.split(' ')[0], tasks: r.tasksDone }));
   const { paginatedData, page, setPage, pageSize, setPageSize, totalPages, totalItems, startIndex, endIndex } = usePagination(data);
 
+  function exportCsv() {
+    downloadCsv(`team-productivity-report-${period}.csv`, [
+      ['Name', 'Role', 'Tasks Done', 'Hours Logged', 'On-Time %', 'Score'],
+      ...data.map((r) => [r.name, r.role, String(r.tasksDone), String(r.hoursLogged), `${r.onTimePct}%`, String(r.score)]),
+    ]);
+  }
+
+  if (isLoading) return <TabLoading />;
+
   return (
     <div className="space-y-6">
+      <div className="flex justify-end">
+        <CsvButton onClick={exportCsv} />
+      </div>
+
       <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
-        <h3 className="text-sm font-semibold text-gray-800 mb-1">Tasks Completed — May 2026</h3>
+        <h3 className="text-sm font-semibold text-gray-800 mb-1">Tasks Completed — {REPORT_PERIODS.find((p) => p.value === period)?.label ?? period}</h3>
         <p className="text-xs text-gray-400 mb-4">
           {data.length > 10 ? 'Top 10 team members' : `${data.length} team members`} by tasks completed
         </p>
@@ -253,10 +183,8 @@ function TeamProductivityTab({ currentUserId, project }: { currentUserId?: strin
             <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" />
             <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#9CA3AF' }} />
             <YAxis tick={{ fontSize: 11, fill: '#9CA3AF' }} />
-            <Tooltip
-              contentStyle={{ borderRadius: 10, fontSize: 12, border: '1px solid #E5E7EB' }}
-              formatter={(v: number) => [`${v} tasks`, 'Completed']}
-            />
+            <Tooltip contentStyle={{ borderRadius: 10, fontSize: 12, border: '1px solid #E5E7EB' }}
+              formatter={(v: number) => [`${v} tasks`, 'Completed']} />
             <Bar dataKey="tasks" fill="#3B82F6" radius={[4, 4, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
@@ -279,6 +207,9 @@ function TeamProductivityTab({ currentUserId, project }: { currentUserId?: strin
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
+              {paginatedData.length === 0 && (
+                <tr><td colSpan={6} className="text-center py-8 text-sm text-gray-400">No data for this period.</td></tr>
+              )}
               {paginatedData.map((r, i) => {
                 const isMe = r.userId === currentUserId;
                 return (
@@ -311,11 +242,9 @@ function TeamProductivityTab({ currentUserId, project }: { currentUserId?: strin
           </table>
         </div>
         {totalItems > 0 && (
-          <PaginationBar
-            page={page} totalPages={totalPages} totalItems={totalItems}
+          <PaginationBar page={page} totalPages={totalPages} totalItems={totalItems}
             startIndex={startIndex} endIndex={endIndex} pageSize={pageSize}
-            onPageChange={setPage} onPageSizeChange={setPageSize}
-          />
+            onPageChange={setPage} onPageSizeChange={setPageSize} />
         )}
       </div>
     </div>
@@ -324,25 +253,53 @@ function TeamProductivityTab({ currentUserId, project }: { currentUserId?: strin
 
 // ─── KPI Appraisal Tab ────────────────────────────────────────────────────────
 
-function KpiAppraisalTab({ currentUserId, project }: { currentUserId?: string; project: string }) {
-  const kpiData = filterByProject(STATIC_KPI_DATA, project);
-  const summary = buildTeamSummary(kpiData, '2026-05');
+function KpiAppraisalTab({ currentUserId, period }: { currentUserId?: string; period: string }) {
+  const { data: liveData = [], isLoading } = useQuery({
+    queryKey: ['kpi', period],
+    queryFn: () => analyticsApi.getKpi(period),
+  });
 
-  const pieData = [
+  const kpiData = liveData.map((live) => ({
+    ...live,
+    grade: (() => {
+      if (live.totalScore >= 90) return 'A';
+      if (live.totalScore >= 75) return 'B';
+      if (live.totalScore >= 60) return 'C';
+      return 'D';
+    })() as 'A' | 'B' | 'C' | 'D',
+    categoryScores: [] as { category: string; earned: number; max: number; percentage: number }[],
+  }));
+
+  const summary = kpiData.length > 0 ? buildTeamSummary(kpiData as Parameters<typeof buildTeamSummary>[0], period) : null;
+
+  const pieData = summary ? [
     { name: 'Grade A', value: summary.gradeACcount, color: '#10B981' },
     { name: 'Grade B', value: summary.gradeBCount,  color: '#3B82F6' },
     { name: 'Grade C', value: summary.gradeCCount,  color: '#F59E0B' },
     { name: 'Grade D', value: summary.gradeDCount,  color: '#EF4444' },
-  ].filter((d) => d.value > 0);
+  ].filter((d) => d.value > 0) : [];
 
-  const gradeConfig = GRADE_CONFIG[summary.teamGrade];
   const topPerformers = [...kpiData].sort((a, b) => b.totalScore - a.totalScore).slice(0, 3);
   const sortedKpi = [...kpiData].sort((a, b) => b.totalScore - a.totalScore);
-
   const { paginatedData, page, setPage, pageSize, setPageSize, totalPages, totalItems, startIndex, endIndex } = usePagination(sortedKpi);
+
+  function exportCsv() {
+    downloadCsv(`kpi-appraisal-report-${period}.csv`, [
+      ['Name', 'Role', 'Department', 'Total Score', 'Grade'],
+      ...sortedKpi.map((e) => [e.name, e.role, e.department, String(e.totalScore), e.grade]),
+    ]);
+  }
+
+  if (isLoading) return <TabLoading />;
+
+  const gradeConfig = summary ? GRADE_CONFIG[summary.teamGrade] : GRADE_CONFIG['C'];
 
   return (
     <div className="space-y-6">
+      <div className="flex justify-end">
+        <CsvButton onClick={exportCsv} />
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
           <h3 className="text-sm font-semibold text-gray-800 mb-1">Grade Distribution</h3>
@@ -350,14 +307,10 @@ function KpiAppraisalTab({ currentUserId, project }: { currentUserId?: string; p
           <ResponsiveContainer width="100%" height={140}>
             <PieChart>
               <Pie data={pieData} cx="50%" cy="50%" innerRadius={40} outerRadius={60} paddingAngle={3} dataKey="value">
-                {pieData.map((entry, idx) => (
-                  <Cell key={idx} fill={entry.color} stroke="none" />
-                ))}
+                {pieData.map((entry, idx) => <Cell key={idx} fill={entry.color} stroke="none" />)}
               </Pie>
-              <Tooltip
-                contentStyle={{ borderRadius: 10, fontSize: 12, border: '1px solid #E5E7EB' }}
-                formatter={(v: number, name: string) => [`${v} employee${v !== 1 ? 's' : ''}`, name]}
-              />
+              <Tooltip contentStyle={{ borderRadius: 10, fontSize: 12, border: '1px solid #E5E7EB' }}
+                formatter={(v: number, name: string) => [`${v} employee${v !== 1 ? 's' : ''}`, name]} />
             </PieChart>
           </ResponsiveContainer>
           <div className="grid grid-cols-2 gap-1 mt-2">
@@ -373,8 +326,8 @@ function KpiAppraisalTab({ currentUserId, project }: { currentUserId?: string; p
         <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm flex flex-col items-center justify-center">
           <p className="text-xs text-gray-400 mb-2">Team Average Score</p>
           <div className={`w-20 h-20 rounded-full flex flex-col items-center justify-center border-4 ${gradeConfig.border}`}>
-            <span className="text-2xl font-bold text-gray-800">{summary.teamAverage}</span>
-            <span className={`text-sm font-bold ${gradeConfig.text}`}>{summary.teamGrade}</span>
+            <span className="text-2xl font-bold text-gray-800">{summary?.teamAverage ?? 0}</span>
+            <span className={`text-sm font-bold ${gradeConfig.text}`}>{summary?.teamGrade ?? '—'}</span>
           </div>
           <p className={`mt-3 text-xs font-semibold px-3 py-1 rounded-full ${gradeConfig.bg} ${gradeConfig.text}`}>
             {gradeConfig.label}
@@ -403,7 +356,7 @@ function KpiAppraisalTab({ currentUserId, project }: { currentUserId?: string; p
 
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
         <div className="px-5 py-4 border-b border-gray-50">
-          <h3 className="text-sm font-semibold text-gray-800">Employee KPI Details — May 2026</h3>
+          <h3 className="text-sm font-semibold text-gray-800">Employee KPI Details — {REPORT_PERIODS.find((p) => p.value === period)?.label ?? period}</h3>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -416,6 +369,9 @@ function KpiAppraisalTab({ currentUserId, project }: { currentUserId?: string; p
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
+              {paginatedData.length === 0 && (
+                <tr><td colSpan={4} className="text-center py-8 text-sm text-gray-400">No KPI data for this period.</td></tr>
+              )}
               {paginatedData.map((e) => {
                 const gc = GRADE_CONFIG[e.grade];
                 const isMe = e.userId === currentUserId;
@@ -446,11 +402,9 @@ function KpiAppraisalTab({ currentUserId, project }: { currentUserId?: string; p
           </table>
         </div>
         {totalItems > 0 && (
-          <PaginationBar
-            page={page} totalPages={totalPages} totalItems={totalItems}
+          <PaginationBar page={page} totalPages={totalPages} totalItems={totalItems}
             startIndex={startIndex} endIndex={endIndex} pageSize={pageSize}
-            onPageChange={setPage} onPageSizeChange={setPageSize}
-          />
+            onPageChange={setPage} onPageSizeChange={setPageSize} />
         )}
       </div>
     </div>
@@ -459,8 +413,21 @@ function KpiAppraisalTab({ currentUserId, project }: { currentUserId?: string; p
 
 // ─── Project Summary Tab ──────────────────────────────────────────────────────
 
-function ProjectSummaryTab({ project }: { project: string }) {
-  const projects = project === 'all' ? STATIC_PROJECT_DATA : STATIC_PROJECT_DATA.filter((p) => p.id === project);
+function ProjectSummaryTab({ period, project }: { period: string; project: string }) {
+  const { data: projects = [], isLoading } = useQuery({
+    queryKey: ['report-projects', period, project],
+    queryFn: () => analyticsApi.getProjects(period, project),
+  });
+
+  function exportCsv() {
+    downloadCsv(`project-summary-report-${period}.csv`, [
+      ['Project', 'Total Tasks', 'Done', 'Team Size', 'Completion %', 'Status'],
+      ...projects.map((p) => [p.name, String(p.tasks), String(p.done), String(p.teamSize),
+        `${p.tasks > 0 ? Math.round((p.done / p.tasks) * 100) : 0}%`, p.status]),
+    ]);
+  }
+
+  if (isLoading) return <TabLoading />;
 
   const statusColors: Record<string, { bg: string; text: string }> = {
     Active:    { bg: 'bg-blue-100',    text: 'text-blue-700'    },
@@ -470,9 +437,17 @@ function ProjectSummaryTab({ project }: { project: string }) {
 
   return (
     <div className="space-y-4">
+      <div className="flex justify-end">
+        <CsvButton onClick={exportCsv} />
+      </div>
+
+      {projects.length === 0 && (
+        <div className="text-center py-12 text-sm text-gray-400">No active projects for this period.</div>
+      )}
+
       {projects.map((proj) => {
-        const pct = Math.round((proj.done / proj.tasks) * 100);
-        const sc = statusColors[proj.status];
+        const pct = proj.tasks > 0 ? Math.round((proj.done / proj.tasks) * 100) : 0;
+        const sc = statusColors[proj.status] ?? { bg: 'bg-gray-100', text: 'text-gray-600' };
         return (
           <div key={proj.id} className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
             <div className="flex items-start justify-between mb-4">
@@ -490,7 +465,6 @@ function ProjectSummaryTab({ project }: { project: string }) {
               </div>
               <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${sc.bg} ${sc.text}`}>{proj.status}</span>
             </div>
-
             <div className="grid grid-cols-3 gap-4 mb-4">
               <div className="text-center">
                 <p className="text-xl font-bold text-gray-800">{proj.done}</p>
@@ -505,11 +479,9 @@ function ProjectSummaryTab({ project }: { project: string }) {
                 <p className="text-xs text-gray-400">Complete</p>
               </div>
             </div>
-
             <div>
               <div className="flex justify-between text-xs text-gray-400 mb-1">
-                <span>Progress</span>
-                <span>{pct}%</span>
+                <span>Progress</span><span>{pct}%</span>
               </div>
               <div className="w-full bg-gray-100 rounded-full h-2">
                 <div className="h-2 rounded-full transition-all" style={{ width: `${pct}%`, backgroundColor: proj.color }} />
@@ -524,33 +496,52 @@ function ProjectSummaryTab({ project }: { project: string }) {
 
 // ─── Bug Summary Tab ──────────────────────────────────────────────────────────
 
-function BugSummaryTab({ project }: { project: string }) {
-  const allSeverity = BUG_SEVERITY_BY_PROJECT[project] ?? STATIC_BUG_SEVERITY_DATA;
-  const allClassification = BUG_CLASSIFICATION_BY_PROJECT[project] ?? STATIC_BUG_CLASSIFICATION_DATA;
-  const severityData = allSeverity.filter((d) => d.count > 0);
-  const classificationData = allClassification.filter((d) => d.count > 0);
+function BugSummaryTab({ period, project }: { period: string; project: string }) {
+  const { data, isLoading } = useQuery({
+    queryKey: ['report-bugs', period, project],
+    queryFn: () => analyticsApi.getBugs(period, project),
+  });
+
+  const severityData = (data?.severity ?? []).filter((d) => d.count > 0);
+  const classificationData = (data?.classification ?? []).filter((d) => d.count > 0);
+  const allSeverity = data?.severity ?? [];
   const total = severityData.reduce((s, d) => s + d.count, 0);
+
+  function exportCsv() {
+    downloadCsv(`bug-summary-report-${period}.csv`, [
+      ['Severity', 'Count'],
+      ...allSeverity.map((d) => [d.severity, String(d.count)]),
+    ]);
+  }
+
+  if (isLoading) return <TabLoading />;
 
   return (
     <div className="space-y-6">
+      <div className="flex justify-end">
+        <CsvButton onClick={exportCsv} />
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
           <h3 className="text-sm font-semibold text-gray-800 mb-1">Bug Severity Distribution</h3>
-          <p className="text-xs text-gray-400 mb-3">Total: {total} bugs — May 2026</p>
-          <ResponsiveContainer width="100%" height={200}>
-            <PieChart>
-              <Pie data={severityData} cx="50%" cy="50%" innerRadius={55} outerRadius={80}
-                paddingAngle={3} dataKey="count" nameKey="severity">
-                {severityData.map((entry, idx) => (
-                  <Cell key={idx} fill={entry.color} stroke="none" />
-                ))}
-              </Pie>
-              <Tooltip
-                contentStyle={{ borderRadius: 10, fontSize: 12, border: '1px solid #E5E7EB' }}
-                formatter={(v: number, name: string) => [`${v} bugs`, name]}
-              />
-            </PieChart>
-          </ResponsiveContainer>
+          <p className="text-xs text-gray-400 mb-3">
+            Total: {total} bug{total !== 1 ? 's' : ''} — {REPORT_PERIODS.find((p) => p.value === period)?.label ?? period}
+          </p>
+          {severityData.length === 0 ? (
+            <div className="flex items-center justify-center h-32 text-sm text-gray-400">No bugs this period.</div>
+          ) : (
+            <ResponsiveContainer width="100%" height={200}>
+              <PieChart>
+                <Pie data={severityData} cx="50%" cy="50%" innerRadius={55} outerRadius={80}
+                  paddingAngle={3} dataKey="count" nameKey="severity">
+                  {severityData.map((entry, idx) => <Cell key={idx} fill={entry.color} stroke="none" />)}
+                </Pie>
+                <Tooltip contentStyle={{ borderRadius: 10, fontSize: 12, border: '1px solid #E5E7EB' }}
+                  formatter={(v: number, name: string) => [`${v} bugs`, name]} />
+              </PieChart>
+            </ResponsiveContainer>
+          )}
           <div className="grid grid-cols-2 gap-2 mt-1">
             {severityData.map((d) => (
               <div key={d.severity} className="flex items-center gap-2">
@@ -563,23 +554,28 @@ function BugSummaryTab({ project }: { project: string }) {
 
         <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
           <h3 className="text-sm font-semibold text-gray-800 mb-4">Bug Classification</h3>
-          <div className="space-y-3">
-            {classificationData.map((d) => (
-              <div key={d.classification}>
-                <div className="flex justify-between text-xs mb-1">
-                  <span className="text-gray-600 font-medium">{d.classification}</span>
-                  <span className="text-gray-500">{d.count}</span>
+          {classificationData.length === 0 ? (
+            <div className="flex items-center justify-center h-32 text-sm text-gray-400">No bugs this period.</div>
+          ) : (
+            <div className="space-y-3">
+              {classificationData.map((d) => (
+                <div key={d.classification}>
+                  <div className="flex justify-between text-xs mb-1">
+                    <span className="text-gray-600 font-medium">{d.classification}</span>
+                    <span className="text-gray-500">{d.count}</span>
+                  </div>
+                  <div className="w-full bg-gray-100 rounded-full h-1.5">
+                    <div className="h-1.5 rounded-full"
+                      style={{ width: `${total > 0 ? Math.round((d.count / total) * 100) : 0}%`, backgroundColor: d.color }} />
+                  </div>
                 </div>
-                <div className="w-full bg-gray-100 rounded-full h-1.5">
-                  <div className="h-1.5 rounded-full" style={{ width: `${total > 0 ? Math.round((d.count / total) * 100) : 0}%`, backgroundColor: d.color }} />
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
         {allSeverity.map((d) => (
           <div key={d.severity} className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm text-center">
             <p className="text-2xl font-bold text-gray-800">{d.count}</p>
@@ -594,18 +590,34 @@ function BugSummaryTab({ project }: { project: string }) {
 
 // ─── Task Allocation Tab ──────────────────────────────────────────────────────
 
-function TaskAllocationTab({ currentUserId, project }: { currentUserId?: string; project: string }) {
-  const data = filterByProject(STATIC_ALLOCATION_DATA, project);
-  const chartData = data.slice(0, 10).map((r) => ({ name: r.name.split(' ')[0], hours: r.hoursAllocated }));
+function TaskAllocationTab({ currentUserId, period, project }: { currentUserId?: string; period: string; project: string }) {
+  const { data = [], isLoading } = useQuery({
+    queryKey: ['report-allocation', period, project],
+    queryFn: () => analyticsApi.getAllocation(period, project),
+  });
 
+  const chartData = data.slice(0, 10).map((r) => ({ name: r.name.split(' ')[0], hours: r.hoursAllocated }));
   const totalHours = data.reduce((s, r) => s + r.hoursAllocated, 0);
   const avgUtilisation = data.length > 0 ? Math.round(data.reduce((s, r) => s + r.utilisationPct, 0) / data.length) : 0;
   const overAllocated = data.filter((r) => r.utilisationPct > 100).length;
 
   const { paginatedData, page, setPage, pageSize, setPageSize, totalPages, totalItems, startIndex, endIndex } = usePagination(data);
 
+  function exportCsv() {
+    downloadCsv(`task-allocation-report-${period}.csv`, [
+      ['Name', 'Role', 'Tasks Allocated', 'Hours Allocated', 'Utilisation %'],
+      ...data.map((r) => [r.name, r.role, String(r.tasksAllocated), String(r.hoursAllocated), `${r.utilisationPct}%`]),
+    ]);
+  }
+
+  if (isLoading) return <TabLoading />;
+
   return (
     <div className="space-y-6">
+      <div className="flex justify-end">
+        <CsvButton onClick={exportCsv} />
+      </div>
+
       <div className="grid grid-cols-3 gap-4">
         <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm text-center">
           <p className="text-2xl font-bold text-gray-800">{totalHours}h</p>
@@ -622,7 +634,7 @@ function TaskAllocationTab({ currentUserId, project }: { currentUserId?: string;
       </div>
 
       <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
-        <h3 className="text-sm font-semibold text-gray-800 mb-1">Hours Allocated — May 2026</h3>
+        <h3 className="text-sm font-semibold text-gray-800 mb-1">Hours Allocated — {REPORT_PERIODS.find((p) => p.value === period)?.label ?? period}</h3>
         <p className="text-xs text-gray-400 mb-4">
           {data.length > 10 ? 'Top 10 team members' : `${data.length} team members`} by allocated hours
         </p>
@@ -631,10 +643,8 @@ function TaskAllocationTab({ currentUserId, project }: { currentUserId?: string;
             <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" />
             <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#9CA3AF' }} />
             <YAxis tick={{ fontSize: 11, fill: '#9CA3AF' }} />
-            <Tooltip
-              contentStyle={{ borderRadius: 10, fontSize: 12, border: '1px solid #E5E7EB' }}
-              formatter={(v: number) => [`${v}h`, 'Allocated']}
-            />
+            <Tooltip contentStyle={{ borderRadius: 10, fontSize: 12, border: '1px solid #E5E7EB' }}
+              formatter={(v: number) => [`${v}h`, 'Allocated']} />
             <Bar dataKey="hours" fill="#8B5CF6" radius={[4, 4, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
@@ -656,6 +666,9 @@ function TaskAllocationTab({ currentUserId, project }: { currentUserId?: string;
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
+              {paginatedData.length === 0 && (
+                <tr><td colSpan={5} className="text-center py-8 text-sm text-gray-400">No allocation data for this period.</td></tr>
+              )}
               {paginatedData.map((r, i) => {
                 const isMe = r.userId === currentUserId;
                 const isOver = r.utilisationPct > 100;
@@ -682,13 +695,9 @@ function TaskAllocationTab({ currentUserId, project }: { currentUserId?: string;
                     <td className="px-5 py-3">
                       <div className="flex items-center gap-2">
                         <div className="flex-1 bg-gray-100 rounded-full h-1.5">
-                          <div
-                            className="h-1.5 rounded-full"
-                            style={{
-                              width: `${Math.min(r.utilisationPct, 100)}%`,
-                              backgroundColor: isOver ? '#EF4444' : r.utilisationPct >= 80 ? '#10B981' : '#F59E0B',
-                            }}
-                          />
+                          <div className="h-1.5 rounded-full"
+                            style={{ width: `${Math.min(r.utilisationPct, 100)}%`,
+                              backgroundColor: isOver ? '#EF4444' : r.utilisationPct >= 80 ? '#10B981' : '#F59E0B' }} />
                         </div>
                         <span className={`text-xs font-semibold w-10 text-right ${isOver ? 'text-red-600' : 'text-gray-700'}`}>
                           {r.utilisationPct}%
@@ -702,11 +711,9 @@ function TaskAllocationTab({ currentUserId, project }: { currentUserId?: string;
           </table>
         </div>
         {totalItems > 0 && (
-          <PaginationBar
-            page={page} totalPages={totalPages} totalItems={totalItems}
+          <PaginationBar page={page} totalPages={totalPages} totalItems={totalItems}
             startIndex={startIndex} endIndex={endIndex} pageSize={pageSize}
-            onPageChange={setPage} onPageSizeChange={setPageSize}
-          />
+            onPageChange={setPage} onPageSizeChange={setPageSize} />
         )}
       </div>
     </div>
@@ -721,8 +728,12 @@ const TIMESHEET_STATUS_STYLE: Record<TimesheetStatus, { bg: string; text: string
   Draft:     { bg: 'bg-gray-100',    text: 'text-gray-600'    },
 };
 
-function TimesheetTab({ currentUserId, project }: { currentUserId?: string; project: string }) {
-  const data = filterByProject(STATIC_TIMESHEET_DATA, project);
+function TimesheetTab({ currentUserId, period, project }: { currentUserId?: string; period: string; project: string }) {
+  const { data = [], isLoading } = useQuery({
+    queryKey: ['report-timesheet', period, project],
+    queryFn: () => analyticsApi.getTimesheet(period, project),
+  });
+
   const totalHours = data.reduce((s, r) => s + r.hoursLogged, 0);
   const approvedCount = data.filter((r) => r.status === 'Approved').length;
   const submittedCount = data.filter((r) => r.status === 'Submitted').length;
@@ -730,8 +741,21 @@ function TimesheetTab({ currentUserId, project }: { currentUserId?: string; proj
 
   const { paginatedData, page, setPage, pageSize, setPageSize, totalPages, totalItems, startIndex, endIndex } = usePagination(data);
 
+  function exportCsv() {
+    downloadCsv(`timesheet-report-${period}.csv`, [
+      ['Name', 'Role', 'Project', 'Hours Logged', 'Status'],
+      ...data.map((r) => [r.name, r.role, r.project, String(r.hoursLogged), r.status]),
+    ]);
+  }
+
+  if (isLoading) return <TabLoading />;
+
   return (
     <div className="space-y-6">
+      <div className="flex justify-end">
+        <CsvButton onClick={exportCsv} />
+      </div>
+
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm text-center">
           <p className="text-2xl font-bold text-gray-800">{totalHours}h</p>
@@ -753,7 +777,9 @@ function TimesheetTab({ currentUserId, project }: { currentUserId?: string; proj
 
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
         <div className="px-5 py-4 border-b border-gray-50">
-          <h3 className="text-sm font-semibold text-gray-800">Timesheet Summary — May 2026</h3>
+          <h3 className="text-sm font-semibold text-gray-800">
+            Timesheet Summary — {REPORT_PERIODS.find((p) => p.value === period)?.label ?? period}
+          </h3>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -767,9 +793,12 @@ function TimesheetTab({ currentUserId, project }: { currentUserId?: string; proj
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
+              {paginatedData.length === 0 && (
+                <tr><td colSpan={5} className="text-center py-8 text-sm text-gray-400">No timesheet data for this period.</td></tr>
+              )}
               {paginatedData.map((r, i) => {
                 const isMe = r.userId === currentUserId;
-                const sc = TIMESHEET_STATUS_STYLE[r.status];
+                const sc = TIMESHEET_STATUS_STYLE[r.status as TimesheetStatus] ?? TIMESHEET_STATUS_STYLE['Approved'];
                 return (
                   <tr key={r.userId} className={isMe ? 'bg-blue-50' : 'hover:bg-gray-50/50'}>
                     <td className="px-5 py-3 text-gray-400 text-xs">{startIndex + i}</td>
@@ -801,67 +830,86 @@ function TimesheetTab({ currentUserId, project }: { currentUserId?: string; proj
           </table>
         </div>
         {totalItems > 0 && (
-          <PaginationBar
-            page={page} totalPages={totalPages} totalItems={totalItems}
+          <PaginationBar page={page} totalPages={totalPages} totalItems={totalItems}
             startIndex={startIndex} endIndex={endIndex} pageSize={pageSize}
-            onPageChange={setPage} onPageSizeChange={setPageSize}
-          />
+            onPageChange={setPage} onPageSizeChange={setPageSize} />
         )}
       </div>
     </div>
   );
 }
 
-// ─── Employee Personal Summary (EMPLOYEE role) ────────────────────────────────
+// ─── Employee Personal Summary ────────────────────────────────────────────────
 
-function MyPerformanceSummary({ userId, userName }: { userId: string; userName: string }) {
-  const myProd = STATIC_PRODUCTIVITY_DATA.find((r) => r.userId === userId);
-  const myKpi = STATIC_KPI_DATA.find((e) => e.userId === userId);
-  const myAllocation = STATIC_ALLOCATION_DATA.find((r) => r.userId === userId);
-  const myTimesheet = STATIC_TIMESHEET_DATA.find((r) => r.userId === userId);
+function MyPerformanceSummary({ userId, userName, period }: { userId: string; userName: string; period: string }) {
+  const { data: kpiData = [] } = useQuery({
+    queryKey: ['kpi', period],
+    queryFn: () => analyticsApi.getKpi(period),
+  });
+  const { data: prodData = [] } = useQuery({
+    queryKey: ['report-productivity', period, 'all'],
+    queryFn: () => analyticsApi.getProductivity(period),
+  });
+  const { data: allocData = [] } = useQuery({
+    queryKey: ['report-allocation', period, 'all'],
+    queryFn: () => analyticsApi.getAllocation(period),
+  });
+  const { data: tsData = [] } = useQuery({
+    queryKey: ['report-timesheet', period, 'all'],
+    queryFn: () => analyticsApi.getTimesheet(period),
+  });
+
+  const myKpi = kpiData[0];
+  const myProd = prodData.find((r) => r.userId === userId);
+  const myAlloc = allocData.find((r) => r.userId === userId);
+  const myTs = tsData.find((r) => r.userId === userId);
+
+  const grade = myKpi
+    ? myKpi.totalScore >= 90 ? 'A' : myKpi.totalScore >= 75 ? 'B' : myKpi.totalScore >= 60 ? 'C' : 'D'
+    : null;
 
   return (
     <div className="space-y-6">
       <div className="bg-blue-50 border border-blue-100 rounded-2xl p-5">
-        <h3 className="text-sm font-semibold text-blue-800 mb-1">My Performance — May 2026</h3>
+        <h3 className="text-sm font-semibold text-blue-800 mb-1">
+          My Performance — {REPORT_PERIODS.find((p) => p.value === period)?.label ?? period}
+        </h3>
         <p className="text-xs text-blue-600">{userName}</p>
       </div>
 
-      {myProd && myKpi && (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm text-center">
-            <p className="text-2xl font-bold text-gray-800">{myProd.tasksDone}</p>
-            <p className="text-xs text-gray-400 mt-1">Tasks Done</p>
-          </div>
-          <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm text-center">
-            <p className="text-2xl font-bold text-gray-800">{myProd.hoursLogged}h</p>
-            <p className="text-xs text-gray-400 mt-1">Hours Logged</p>
-          </div>
-          <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm text-center">
-            <p className="text-2xl font-bold text-gray-800">{myKpi.totalScore}</p>
-            <p className="text-xs text-gray-400 mt-1">KPI Score (Grade {myKpi.grade})</p>
-          </div>
-          {myAllocation && (
-            <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm text-center">
-              <p className="text-2xl font-bold text-gray-800">{myAllocation.utilisationPct}%</p>
-              <p className="text-xs text-gray-400 mt-1">Utilisation</p>
-            </div>
-          )}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm text-center">
+          <p className="text-2xl font-bold text-gray-800">{myProd?.tasksDone ?? '—'}</p>
+          <p className="text-xs text-gray-400 mt-1">Tasks Done</p>
         </div>
-      )}
+        <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm text-center">
+          <p className="text-2xl font-bold text-gray-800">{myProd ? `${myProd.hoursLogged}h` : '—'}</p>
+          <p className="text-xs text-gray-400 mt-1">Hours Logged</p>
+        </div>
+        <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm text-center">
+          <p className="text-2xl font-bold text-gray-800">{myKpi ? myKpi.totalScore : '—'}</p>
+          <p className="text-xs text-gray-400 mt-1">KPI Score{grade ? ` (Grade ${grade})` : ''}</p>
+        </div>
+        <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm text-center">
+          <p className="text-2xl font-bold text-gray-800">{myAlloc ? `${myAlloc.utilisationPct}%` : '—'}</p>
+          <p className="text-xs text-gray-400 mt-1">Utilisation</p>
+        </div>
+      </div>
 
-      {myTimesheet && (
+      {myTs && (
         <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
-          <h3 className="text-sm font-semibold text-gray-800 mb-3">My Allocation & Timesheet</h3>
+          <h3 className="text-sm font-semibold text-gray-800 mb-3">My Allocation &amp; Timesheet</h3>
           <div className="flex items-center justify-between">
             <div>
               <p className="text-xs text-gray-400">Project</p>
-              <p className="text-sm font-semibold text-gray-800 mt-0.5">{myTimesheet.project}</p>
+              <p className="text-sm font-semibold text-gray-800 mt-0.5">{myTs.project}</p>
             </div>
             <div className="text-right">
               <p className="text-xs text-gray-400">Timesheet Status</p>
-              <span className={`text-xs font-semibold px-2 py-0.5 rounded-full mt-0.5 inline-block ${TIMESHEET_STATUS_STYLE[myTimesheet.status].bg} ${TIMESHEET_STATUS_STYLE[myTimesheet.status].text}`}>
-                {myTimesheet.status}
+              <span className={`text-xs font-semibold px-2 py-0.5 rounded-full mt-0.5 inline-block
+                ${TIMESHEET_STATUS_STYLE[myTs.status as TimesheetStatus]?.bg ?? 'bg-gray-100'}
+                ${TIMESHEET_STATUS_STYLE[myTs.status as TimesheetStatus]?.text ?? 'text-gray-600'}`}>
+                {myTs.status}
               </span>
             </div>
           </div>
@@ -885,6 +933,12 @@ export function ReportsPage() {
 
   const isAdminView = user?.systemRole === 'ADMIN' || user?.systemRole === 'SUPER_USER';
 
+  const { data: projectOptions = [] } = useQuery({
+    queryKey: ['report-project-list', period],
+    queryFn: () => analyticsApi.getProjects(period),
+    enabled: isAdminView,
+  });
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -894,15 +948,18 @@ export function ReportsPage() {
           <p className="text-xs text-gray-400 mt-0.5">Team performance overview and analytics</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          <select
-            value={project}
-            onChange={(e) => setProject(e.target.value)}
-            className="text-sm border border-gray-200 rounded-xl px-3 py-2 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary-300"
-          >
-            {PROJECT_OPTIONS.map((p) => (
-              <option key={p.value} value={p.value}>{p.label}</option>
-            ))}
-          </select>
+          {isAdminView && (
+            <select
+              value={project}
+              onChange={(e) => setProject(e.target.value)}
+              className="text-sm border border-gray-200 rounded-xl px-3 py-2 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary-300"
+            >
+              <option value="all">All Projects</option>
+              {projectOptions.map((p) => (
+                <option key={p.id} value={p.id}>{p.name}</option>
+              ))}
+            </select>
+          )}
           <select
             value={period}
             onChange={(e) => setPeriod(e.target.value)}
@@ -917,41 +974,35 @@ export function ReportsPage() {
 
       {/* Employee personal view */}
       {!isAdminView && user && (
-        <MyPerformanceSummary userId={user.id} userName={user.fullName} />
+        <MyPerformanceSummary userId={user.id} userName={user.fullName} period={period} />
       )}
 
-      {/* Tabs — visible to admin/super user */}
+      {/* Admin tabs */}
       {isAdminView && (
         <>
-          {/* Tab nav + Export buttons in one row */}
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <div className="flex flex-wrap gap-1 bg-gray-100/70 p-1 rounded-2xl w-fit">
-              {TABS.map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors ${
-                    activeTab === tab.id
-                      ? 'bg-white text-gray-900 shadow-sm'
-                      : 'text-gray-500 hover:text-gray-700'
-                  }`}
-                >
-                  {tab.label}
-                </button>
-              ))}
-            </div>
-
-            {/* Export bar — top-right, always visible */}
-            <ExportBar onExportCsv={() => csvForTab(activeTab, project)} />
+          <div className="flex flex-wrap gap-1 bg-gray-100/70 p-1 rounded-2xl w-fit">
+            {TABS.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors ${
+                  activeTab === tab.id
+                    ? 'bg-white text-gray-900 shadow-sm'
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
           </div>
 
-          {/* Tab content — key=project resets pagination state on project change */}
-          {activeTab === 'productivity' && <TeamProductivityTab key={`prod-${project}`} currentUserId={user?.id} project={project} />}
-          {activeTab === 'kpi'          && <KpiAppraisalTab    key={`kpi-${project}`}  currentUserId={user?.id} project={project} />}
-          {activeTab === 'projects'     && <ProjectSummaryTab  key={`proj-${project}`} project={project} />}
-          {activeTab === 'bugs'         && <BugSummaryTab      key={`bug-${project}`}  project={project} />}
-          {activeTab === 'allocation'   && <TaskAllocationTab  key={`alloc-${project}`} currentUserId={user?.id} project={project} />}
-          {activeTab === 'timesheet'    && <TimesheetTab       key={`ts-${project}`}   currentUserId={user?.id} project={project} />}
+          {activeTab === 'productivity' && <TeamProductivityTab key={`prod-${period}-${project}`} currentUserId={user?.id} period={period} project={project} />}
+          {activeTab === 'kpi'          && <KpiAppraisalTab    key={`kpi-${period}`}               currentUserId={user?.id} period={period} />}
+          {activeTab === 'projects'     && <ProjectSummaryTab  key={`proj-${period}-${project}`}   period={period} project={project} />}
+          {activeTab === 'bugs'         && <BugSummaryTab      key={`bug-${period}-${project}`}    period={period} project={project} />}
+          {activeTab === 'allocation'   && <TaskAllocationTab  key={`alloc-${period}-${project}`}  currentUserId={user?.id} period={period} project={project} />}
+          {activeTab === 'timesheet'    && <TimesheetTab       key={`ts-${period}-${project}`}     currentUserId={user?.id} period={period} project={project} />}
+          {activeTab === 'capacity'     && <CapacityReportTab />}
         </>
       )}
     </div>

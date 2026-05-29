@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -8,6 +8,7 @@ import {
   STATIC_PRODUCTIVITY_DATA,
   STATIC_PROJECT_DATA,
   STATIC_BUG_SEVERITY_DATA,
+  STATIC_BUG_CLASSIFICATION_DATA,
   STATIC_ALLOCATION_DATA,
   STATIC_TIMESHEET_DATA,
 } from '../data/reportsStaticData';
@@ -39,6 +40,36 @@ vi.mock('recharts', async () => {
   };
 });
 
+// ─── Mock analyticsApi (live data) ───────────────────────────────────────────
+const mockKpiLive = STATIC_PRODUCTIVITY_DATA.map((r) => ({
+  userId: r.userId,
+  name: r.name,
+  role: r.role,
+  department: 'Digital',
+  period: '2026-05',
+  metrics: [],
+  totalScore: r.score,
+}));
+
+vi.mock('../../../api/analyticsApi', () => ({
+  analyticsApi: {
+    getProductivity: vi.fn(() => Promise.resolve(STATIC_PRODUCTIVITY_DATA)),
+    getProjects: vi.fn(() => Promise.resolve(STATIC_PROJECT_DATA)),
+    getBugs: vi.fn(() => Promise.resolve({
+      severity: STATIC_BUG_SEVERITY_DATA,
+      classification: STATIC_BUG_CLASSIFICATION_DATA,
+    })),
+    getAllocation: vi.fn(() => Promise.resolve(STATIC_ALLOCATION_DATA)),
+    getTimesheet: vi.fn(() => Promise.resolve(STATIC_TIMESHEET_DATA)),
+    getKpi: vi.fn(() => Promise.resolve(mockKpiLive)),
+    getCapacity: vi.fn(() => Promise.resolve({
+      period: '2026-05', year: 2026, month: 5, daysInMonth: 31, days: [], employees: [],
+    })),
+    upsertKpiRecord: vi.fn(() => Promise.resolve({})),
+    getKpiRecords: vi.fn(() => Promise.resolve([])),
+  },
+}));
+
 // ─── Auth store mocks ─────────────────────────────────────────────────────────
 const adminUser = {
   id: 'e10eba00-cd85-4933-abc9-82c335f0a201',
@@ -56,7 +87,7 @@ const employeeUser = {
   isActive: true,
 };
 
-let mockCurrentUser = adminUser;
+let mockCurrentUser: typeof adminUser | typeof employeeUser = adminUser;
 
 vi.mock('../../../store/authStore', () => ({
   useAuthStore: (selector: (state: { user: typeof adminUser }) => unknown) =>
@@ -97,32 +128,35 @@ describe('ReportsPage tabs', () => {
     expect(screen.getByText('Bug Summary')).toBeInTheDocument();
   });
 
-  it('UTC-F020-FE-003: Team Productivity tab is active by default', () => {
+  it('UTC-F020-FE-003: Team Productivity tab is active by default', async () => {
     renderReportsPage();
-    expect(screen.getByText('Team Productivity Details')).toBeInTheDocument();
+    expect(await screen.findByText('Team Productivity Details')).toBeInTheDocument();
   });
 
   it('UTC-F020-FE-004: clicking KPI Appraisal tab shows KPI content', async () => {
     renderReportsPage();
     await userEvent.click(screen.getByText('KPI Appraisal'));
-    expect(
-      screen.getByText('Grade Distribution') ||
-      screen.getByText('Team Average Score'),
-    ).toBeInTheDocument();
+    await waitFor(() => {
+      expect(
+        screen.queryByText('Grade Distribution') ?? screen.queryByText('Team Average Score'),
+      ).toBeInTheDocument();
+    });
   });
 
   it('UTC-F020-FE-005: clicking Project Summary tab shows project content', async () => {
     renderReportsPage();
     await userEvent.click(screen.getByText('Project Summary'));
-    expect(screen.getAllByText('PMS Web App').length).toBeGreaterThanOrEqual(1);
+    expect(await screen.findAllByText('PMS Web App')).not.toHaveLength(0);
   });
 
   it('UTC-F020-FE-006: clicking Bug Summary tab shows bug content', async () => {
     renderReportsPage();
     await userEvent.click(screen.getByText('Bug Summary'));
-    const showStoppers = screen.queryAllByText(/Show Stopper/i);
-    const criticals = screen.queryAllByText(/Critical/i);
-    expect(showStoppers.length > 0 || criticals.length > 0).toBe(true);
+    await waitFor(() => {
+      const showStoppers = screen.queryAllByText(/Show Stopper/i);
+      const criticals = screen.queryAllByText(/Critical/i);
+      expect(showStoppers.length > 0 || criticals.length > 0).toBe(true);
+    });
   });
 });
 
@@ -169,9 +203,9 @@ describe('Static data integrity — bugs', () => {
 describe('ReportsPage render — team productivity', () => {
   beforeEach(() => { mockCurrentUser = adminUser; });
 
-  it('UTC-F020-FE-013: shows Hemant Atre in productivity table', () => {
+  it('UTC-F020-FE-013: shows Hemant Atre in productivity table', async () => {
     renderReportsPage();
-    expect(screen.getAllByText('Hemant Atre').length).toBeGreaterThanOrEqual(1);
+    expect(await screen.findAllByText('Hemant Atre')).not.toHaveLength(0);
   });
 });
 
@@ -182,7 +216,7 @@ describe('ReportsPage — KPI tab', () => {
   it('UTC-F020-FE-014: KPI tab shows Yogesh Lolage', async () => {
     renderReportsPage();
     await userEvent.click(screen.getByText('KPI Appraisal'));
-    expect(screen.getAllByText('Yogesh Lolage').length).toBeGreaterThanOrEqual(1);
+    expect(await screen.findAllByText('Yogesh Lolage')).not.toHaveLength(0);
   });
 });
 
@@ -242,13 +276,13 @@ describe('ReportsPage — Task Allocation & Timesheet tabs', () => {
   it('UTC-F021-FE-002: clicking Task Allocation tab shows allocation content', async () => {
     renderReportsPage();
     await userEvent.click(screen.getByText('Task Allocation'));
-    expect(screen.getByText('Task Allocation Details')).toBeInTheDocument();
+    expect(await screen.findByText('Task Allocation Details')).toBeInTheDocument();
   });
 
   it('UTC-F021-FE-003: clicking Timesheet tab shows timesheet content', async () => {
     renderReportsPage();
     await userEvent.click(screen.getByText('Timesheet'));
-    expect(screen.getByText('Timesheet Summary — May 2026')).toBeInTheDocument();
+    expect(await screen.findByText(/Timesheet Summary/i)).toBeInTheDocument();
   });
 });
 
@@ -293,13 +327,13 @@ describe('ReportsPage — rendered allocation & timesheet data', () => {
   it('UTC-F021-FE-010: shows Hemant Atre in allocation table', async () => {
     renderReportsPage();
     await userEvent.click(screen.getByText('Task Allocation'));
-    expect(screen.getAllByText('Hemant Atre').length).toBeGreaterThanOrEqual(1);
+    expect(await screen.findAllByText('Hemant Atre')).not.toHaveLength(0);
   });
 
   it('UTC-F021-FE-011: shows Yogesh Lolage in timesheet table', async () => {
     renderReportsPage();
     await userEvent.click(screen.getByText('Timesheet'));
-    expect(screen.getAllByText('Yogesh Lolage').length).toBeGreaterThanOrEqual(1);
+    expect(await screen.findAllByText('Yogesh Lolage')).not.toHaveLength(0);
   });
 });
 
@@ -310,13 +344,13 @@ describe('CSV Export buttons', () => {
   it('UTC-F021-FE-012: Export CSV button present on Task Allocation tab', async () => {
     renderReportsPage();
     await userEvent.click(screen.getByText('Task Allocation'));
-    expect(screen.getByText(/Export CSV/i)).toBeInTheDocument();
+    expect(await screen.findByText(/Export CSV/i)).toBeInTheDocument();
   });
 
   it('UTC-F021-FE-013: Export CSV button present on Timesheet tab', async () => {
     renderReportsPage();
     await userEvent.click(screen.getByText('Timesheet'));
-    expect(screen.getByText(/Export CSV/i)).toBeInTheDocument();
+    expect(await screen.findByText(/Export CSV/i)).toBeInTheDocument();
   });
 });
 
@@ -324,9 +358,9 @@ describe('CSV Export buttons', () => {
 describe('ReportsPage — EMPLOYEE allocation view', () => {
   beforeEach(() => { mockCurrentUser = employeeUser; });
 
-  it('UTC-F021-FE-014: Employee sees personal allocation summary', () => {
+  it('UTC-F021-FE-014: Employee sees personal allocation summary', async () => {
     renderReportsPage();
-    expect(screen.getByText(/My Allocation & Timesheet/i)).toBeInTheDocument();
+    expect(await screen.findByText(/My Allocation & Timesheet/i)).toBeInTheDocument();
   });
 });
 
@@ -335,5 +369,68 @@ describe('Static data integrity — allocation totals', () => {
   it('UTC-F021-FE-015: total allocated hours across all users is 1600', () => {
     const total = STATIC_ALLOCATION_DATA.reduce((s, r) => s + r.hoursAllocated, 0);
     expect(total).toBe(1600);
+  });
+});
+
+// ═════════════════════════════════════════════════════════════════════════════
+// F-023 — Dynamic KPI & Reports (live data)
+// ═════════════════════════════════════════════════════════════════════════════
+
+// ─── UTC-F023-FE-001 — 7 tabs ────────────────────────────────────────────────
+describe('ReportsPage tabs — F-023', () => {
+  beforeEach(() => { mockCurrentUser = adminUser; });
+
+  it('UTC-F023-FE-001: renders all 7 tabs including Capacity', () => {
+    renderReportsPage();
+    expect(screen.getByText('Team Productivity')).toBeInTheDocument();
+    expect(screen.getByText('KPI Appraisal')).toBeInTheDocument();
+    expect(screen.getByText('Project Summary')).toBeInTheDocument();
+    expect(screen.getByText('Bug Summary')).toBeInTheDocument();
+    expect(screen.getByText('Task Allocation')).toBeInTheDocument();
+    expect(screen.getByText('Timesheet')).toBeInTheDocument();
+    expect(screen.getByText('Capacity')).toBeInTheDocument();
+  });
+});
+
+// ─── UTC-F023-FE-002 — Live productivity data ────────────────────────────────
+describe('ReportsPage — F-023 live data', () => {
+  beforeEach(() => { mockCurrentUser = adminUser; });
+
+  it('UTC-F023-FE-002: Productivity tab fetches and renders live data', async () => {
+    renderReportsPage();
+    expect(await screen.findByText('Team Productivity Details')).toBeInTheDocument();
+    expect(await screen.findAllByText('Hemant Atre')).not.toHaveLength(0);
+  });
+
+  it('UTC-F023-FE-003: KPI tab renders live employee scores', async () => {
+    renderReportsPage();
+    await userEvent.click(screen.getByText('KPI Appraisal'));
+    expect(await screen.findAllByText('Yogesh Lolage')).not.toHaveLength(0);
+  });
+
+  it('UTC-F023-FE-004: Project tab renders live project data', async () => {
+    renderReportsPage();
+    await userEvent.click(screen.getByText('Project Summary'));
+    expect(await screen.findAllByText('PMS Web App')).not.toHaveLength(0);
+  });
+
+  it('UTC-F023-FE-005: Capacity tab renders Monthly Capacity Report heading', async () => {
+    renderReportsPage();
+    await userEvent.click(screen.getByText('Capacity'));
+    expect(await screen.findByText('Monthly Capacity Report')).toBeInTheDocument();
+  });
+
+  it('UTC-F023-FE-006: each tab shows Export CSV button', async () => {
+    renderReportsPage();
+    for (const tab of ['Team Productivity', 'Bug Summary', 'Task Allocation', 'Timesheet']) {
+      await userEvent.click(screen.getByText(tab));
+      expect(await screen.findByText(/Export CSV/i)).toBeInTheDocument();
+    }
+  });
+
+  it('UTC-F023-FE-007: Employee sees My Performance section with live data', async () => {
+    mockCurrentUser = employeeUser;
+    renderReportsPage();
+    expect(screen.getByText(/My Performance/i)).toBeInTheDocument();
   });
 });
