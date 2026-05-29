@@ -77,6 +77,13 @@ enum BillingStatus {
   NON_BILLABLE
 }
 
+enum TimesheetApprovalStatus {
+  PENDING
+  SUBMITTED
+  APPROVED
+  REJECTED
+}
+
 enum WorkItemType {
   EPIC
   USER_STORY
@@ -95,6 +102,7 @@ enum BoardStatus {
 }
 
 enum BugSeverity {
+  SHOW_STOPPER
   BLOCKER
   CRITICAL
   MAJOR
@@ -103,11 +111,55 @@ enum BugSeverity {
 }
 
 enum BugClassification {
-  UI_USABILITY
-  NEW_BUG
-  ENHANCEMENT
+  SECURITY
+  CRASH_HANG
+  DATA_LOSS
   PERFORMANCE
+  UI_USABILITY
+  OTHER_BUG
   OTHER
+  FEATURE_NEW
+  ENHANCEMENT
+  DESIGN
+  NEW_BUG
+  CODE_REVIEW
+  UNIT_TESTING
+  SUGGESTION
+  PROJECT_MANAGEMENT
+  EXISTING_APPLICATION
+}
+
+enum BugFlag {
+  INTERNAL
+  EXTERNAL
+}
+
+enum BugReproducibility {
+  ALWAYS
+  SOMETIMES
+  RARELY
+  UNABLE
+  NEVER_TRIED
+  NOT_APPLICABLE
+}
+
+enum BugReminderType {
+  NONE
+  DAILY
+  ONE_DAY
+  TWO_DAYS
+  THREE_DAYS
+}
+
+enum BugStatus {
+  OPEN
+  REOPEN
+  TO_BE_TESTED
+  IN_PROGRESS
+  CLOSED
+  ACKNOWLEDGED
+  DEFERRED
+  ON_HOLD
 }
 
 // ─── Department ───────────────────────────────────────────────────────────────
@@ -154,9 +206,11 @@ model User {
   taskAllocations       TaskAllocation[]
   assignedWorkItems     WorkItem[]           @relation("AssignedWorkItems")
   reportedWorkItems     WorkItem[]           @relation("ReportedWorkItems")
+  responsibleWorkItems  WorkItem[]           @relation("ResponsibleWorkItems")
   workItemComments      WorkItemComment[]    @relation("WorkItemComments")
   workItemAttachments   WorkItemAttachment[] @relation("WorkItemAttachments")
   timesheetEntries      TimesheetEntry[]     @relation("TimesheetEntries")
+  timesheetApprovals    TimesheetEntry[]     @relation("TimesheetApprovals")
   kpiRecords            KpiRecord[]          @relation("KpiRecords")
   enteredKpiRecords     KpiRecord[]          @relation("EnteredKpiRecords")
   leaveLogs             LeaveLog[]           @relation("LeaveLogs")
@@ -272,9 +326,11 @@ model Milestone {
   createdAt         DateTime        @default(now())
   updatedAt         DateTime        @updatedAt
 
-  project         Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  responsibleUser User?   @relation(fields: [responsibleUserId], references: [id], onDelete: SetNull)
+  project         Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  responsibleUser User?      @relation(fields: [responsibleUserId], references: [id], onDelete: SetNull)
   tasks           Task[]
+  releaseWorkItems  WorkItem[] @relation("ReleaseMilestoneItems")
+  affectedWorkItems WorkItem[] @relation("AffectedMilestoneItems")
 
   @@index([projectId])
   @@map("milestones")
@@ -476,27 +532,42 @@ model WorkItem {
   labels            String[]
   components        String[]
   fixVersion        String?            @db.VarChar(100)
-  severity          BugSeverity?
-  bugClassification BugClassification?
-  environment       String?            @db.VarChar(200)
-  stepsToRepro      String?            @db.VarChar(3000)
-  completedAt       DateTime?
-  reopenCount       Int                @default(0)
-  position          Int                @default(0)
-  startDate         DateTime?          @db.Date
-  dueDate           DateTime?          @db.Date
-  createdAt         DateTime           @default(now())
-  updatedAt         DateTime           @updatedAt
+  severity             BugSeverity?
+  bugClassification    BugClassification?
+  environment          String?            @db.VarChar(200)
+  stepsToRepro         String?            @db.VarChar(3000)
+  completedAt          DateTime?
+  reopenCount          Int                @default(0)
+  position             Int                @default(0)
+  startDate            DateTime?          @db.Date
+  dueDate              DateTime?          @db.Date
+  // Phase 9 Bug Management fields
+  bugFlag              BugFlag?
+  bugReproducibility   BugReproducibility?
+  bugStatus            BugStatus?
+  module               String?            @db.VarChar(100)
+  responsibleUserId    String?
+  billingStatus        BillingStatus?
+  affectedBuildVersion String?            @db.VarChar(50)
+  fixedBuildVersion    String?            @db.VarChar(50)
+  reminderType         BugReminderType?   @default(NONE)
+  releaseMilestoneId   String?
+  affectedMilestoneId  String?
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
 
-  project          Project              @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  parent           WorkItem?            @relation("WorkItemChildren", fields: [parentId], references: [id], onDelete: SetNull)
-  children         WorkItem[]           @relation("WorkItemChildren")
-  sprint           Sprint?              @relation(fields: [sprintId], references: [id], onDelete: SetNull)
-  assignee         User?                @relation("AssignedWorkItems", fields: [assigneeId], references: [id], onDelete: SetNull)
-  reporter         User                 @relation("ReportedWorkItems", fields: [reporterId], references: [id])
-  comments         WorkItemComment[]
-  attachments      WorkItemAttachment[]
-  timesheetEntries TimesheetEntry[]
+  project           Project              @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  parent            WorkItem?            @relation("WorkItemChildren", fields: [parentId], references: [id], onDelete: SetNull)
+  children          WorkItem[]           @relation("WorkItemChildren")
+  sprint            Sprint?              @relation(fields: [sprintId], references: [id], onDelete: SetNull)
+  assignee          User?                @relation("AssignedWorkItems", fields: [assigneeId], references: [id], onDelete: SetNull)
+  reporter          User                 @relation("ReportedWorkItems", fields: [reporterId], references: [id])
+  responsibleUser   User?                @relation("ResponsibleWorkItems", fields: [responsibleUserId], references: [id], onDelete: SetNull)
+  releaseMilestone  Milestone?           @relation("ReleaseMilestoneItems", fields: [releaseMilestoneId], references: [id], onDelete: SetNull)
+  affectedMilestone Milestone?           @relation("AffectedMilestoneItems", fields: [affectedMilestoneId], references: [id], onDelete: SetNull)
+  comments          WorkItemComment[]
+  attachments       WorkItemAttachment[]
+  timesheetEntries  TimesheetEntry[]
 
   @@index([projectId])
   @@index([sprintId])
@@ -508,17 +579,22 @@ model WorkItem {
 // ─── Timesheet Entry ──────────────────────────────────────────────────────────
 
 model TimesheetEntry {
-  id          String   @id @default(uuid())
-  workItemId  String
-  userId      String
-  date        DateTime @db.Date
-  hours       Decimal  @db.Decimal(5, 2)
-  description String?  @db.VarChar(500)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id             String                   @id @default(uuid())
+  workItemId     String
+  userId         String
+  date           DateTime                 @db.Date
+  hours          Decimal                  @db.Decimal(5, 2)
+  description    String?                  @db.VarChar(500)
+  approvalStatus TimesheetApprovalStatus  @default(PENDING)
+  approvedById   String?
+  approvedAt     DateTime?
+  rejectionNote  String?                  @db.VarChar(500)
+  createdAt      DateTime                 @default(now())
+  updatedAt      DateTime                 @updatedAt
 
-  workItem WorkItem @relation(fields: [workItemId], references: [id], onDelete: Cascade)
-  user     User     @relation("TimesheetEntries", fields: [userId], references: [id], onDelete: Cascade)
+  workItem   WorkItem @relation(fields: [workItemId], references: [id], onDelete: Cascade)
+  user       User     @relation("TimesheetEntries", fields: [userId], references: [id], onDelete: Cascade)
+  approvedBy User?    @relation("TimesheetApprovals", fields: [approvedById], references: [id], onDelete: SetNull)
 
   @@index([workItemId])
   @@index([userId, date])

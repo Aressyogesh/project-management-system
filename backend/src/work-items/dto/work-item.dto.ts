@@ -13,9 +13,14 @@ import {
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
 import {
+  BillingStatus,
   BoardStatus,
   BugClassification,
+  BugFlag,
+  BugReminderType,
+  BugReproducibility,
   BugSeverity,
+  BugStatus,
   TaskPriority,
   WorkItemType,
 } from '@prisma/client';
@@ -39,6 +44,18 @@ export class CreateWorkItemDto {
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(3000) stepsToRepro?: string;
   @ApiPropertyOptional() @IsOptional() @IsDateString() startDate?: string;
   @ApiPropertyOptional() @IsOptional() @IsDateString() dueDate?: string;
+  // Phase 9 Bug Management fields
+  @ApiPropertyOptional({ enum: BugFlag }) @IsOptional() @IsEnum(BugFlag) bugFlag?: BugFlag;
+  @ApiPropertyOptional({ enum: BugReproducibility }) @IsOptional() @IsEnum(BugReproducibility) bugReproducibility?: BugReproducibility;
+  @ApiPropertyOptional({ enum: BugStatus }) @IsOptional() @IsEnum(BugStatus) bugStatus?: BugStatus;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(100) module?: string;
+  @ApiPropertyOptional() @IsOptional() @IsUUID() responsibleUserId?: string;
+  @ApiPropertyOptional({ enum: BillingStatus }) @IsOptional() @IsEnum(BillingStatus) billingStatus?: BillingStatus;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(50) affectedBuildVersion?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(50) fixedBuildVersion?: string;
+  @ApiPropertyOptional({ enum: BugReminderType }) @IsOptional() @IsEnum(BugReminderType) reminderType?: BugReminderType;
+  @ApiPropertyOptional() @IsOptional() @IsUUID() releaseMilestoneId?: string;
+  @ApiPropertyOptional() @IsOptional() @IsUUID() affectedMilestoneId?: string;
 }
 
 export class UpdateWorkItemDto extends PartialType(CreateWorkItemDto) {}

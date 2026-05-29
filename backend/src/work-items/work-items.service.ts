@@ -28,11 +28,15 @@ const VALID_PARENT_TYPES: Partial<Record<WorkItemType, WorkItemType[]>> = {
 
 const ITEM_INCLUDE = {
   assignee: { select: { id: true, fullName: true, profilePhoto: true } },
-  reporter: { select: { id: true, fullName: true } },
+  reporter: { select: { id: true, fullName: true, profilePhoto: true } },
+  responsibleUser: { select: { id: true, fullName: true, profilePhoto: true } },
   sprint: { select: { id: true, name: true } },
-  parent: { select: { id: true, title: true, type: true } },
+  parent: { select: { id: true, title: true, type: true, status: true } },
+  releaseMilestone: { select: { id: true, description: true } },
+  affectedMilestone: { select: { id: true, description: true } },
   children: {
     select: { id: true, title: true, type: true, status: true, priority: true, assigneeId: true },
+    orderBy: { createdAt: 'asc' as const },
   },
   comments: {
     include: { author: { select: { id: true, fullName: true, profilePhoto: true } } },
@@ -127,11 +131,20 @@ export class WorkItemsService {
         stepsToRepro: dto.stepsToRepro,
         startDate: dto.startDate,
         dueDate: dto.dueDate,
+        // Phase 9 bug fields
+        bugFlag: dto.bugFlag,
+        bugReproducibility: dto.bugReproducibility,
+        bugStatus: dto.bugStatus,
+        module: dto.module,
+        responsibleUserId: dto.responsibleUserId,
+        billingStatus: dto.billingStatus,
+        affectedBuildVersion: dto.affectedBuildVersion,
+        fixedBuildVersion: dto.fixedBuildVersion,
+        reminderType: dto.reminderType,
+        releaseMilestoneId: dto.releaseMilestoneId,
+        affectedMilestoneId: dto.affectedMilestoneId,
       },
-      include: {
-        assignee: { select: { id: true, fullName: true, profilePhoto: true } },
-        reporter: { select: { id: true, fullName: true } },
-      },
+      include: ITEM_INCLUDE,
     });
   }
 

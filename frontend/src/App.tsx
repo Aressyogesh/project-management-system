@@ -18,6 +18,7 @@ import { BoardPage } from './features/board/pages/BoardPage';
 import { UsersPage } from './features/users/pages/UsersPage';
 import { KpiPage } from './features/kpi/pages/KpiPage';
 import { ReportsPage } from './features/reports/pages/ReportsPage';
+import { MyTimesheetPage } from './features/timesheet/pages/MyTimesheetPage';
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 30_000 } },
@@ -49,6 +50,9 @@ export default function App() {
               <Route path="/projects" element={<ProjectsPage />} />
               <Route path="/projects/:id" element={<ProjectDetailPage />} />
               <Route path="/projects/:id/board" element={<BoardPage />} />
+
+              {/* Timesheet */}
+              <Route path="/timesheet" element={<MyTimesheetPage />} />
 
               {/* KPI Store */}
               <Route path="/kpi" element={<KpiPage />} />
