@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -11,6 +11,25 @@ import {
   KPI_METRICS,
 } from '../data/kpiStaticData';
 import type { KpiMetricScore } from '../../../types/kpi.types';
+
+// ─── Mock analyticsApi (live KPI data) ───────────────────────────────────────
+const mockLiveKpiData = STATIC_KPI_DATA.map((r) => ({
+  userId: r.userId,
+  name: r.name,
+  role: r.role,
+  department: r.department,
+  period: '2026-05',
+  metrics: r.metrics,
+  totalScore: r.totalScore,
+}));
+
+vi.mock('../../../api/analyticsApi', () => ({
+  analyticsApi: {
+    getKpi: vi.fn(() => Promise.resolve(mockLiveKpiData)),
+    getKpiRecords: vi.fn(() => Promise.resolve([])),
+    upsertKpiRecord: vi.fn(() => Promise.resolve({})),
+  },
+}));
 
 // ─── Mock recharts (jsdom has no canvas) ─────────────────────────────────────
 vi.mock('recharts', async () => {
@@ -223,17 +242,16 @@ describe('KpiPage (ADMIN role)', () => {
     expect(periodSelect).toHaveValue('2026-05');
   });
 
-  it('UTC-F019-FE-004: renders Grade A, B, C/D summary cards', () => {
+  it('UTC-F019-FE-004: renders Grade A, B, C/D summary cards', async () => {
     renderKpiPage();
-    expect(screen.getByText('Grade A')).toBeInTheDocument();
+    expect(await screen.findByText('Grade A')).toBeInTheDocument();
     expect(screen.getByText('Grade B')).toBeInTheDocument();
     expect(screen.getByText('Grade C / D')).toBeInTheDocument();
   });
 
-  it('UTC-F019-FE-009: shows actual DB users in the table', () => {
+  it('UTC-F019-FE-009: shows actual DB users in the table', async () => {
     renderKpiPage();
-    // Some employees appear in both leaderboard and table — use getAllByText
-    expect(screen.getAllByText('Hemant Atre').length).toBeGreaterThanOrEqual(1);
+    expect(await screen.findAllByText('Hemant Atre')).not.toHaveLength(0);
     expect(screen.getAllByText('Yogesh Lolage').length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText('Gaurav Patil').length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText('Rohit More').length).toBeGreaterThanOrEqual(1);
@@ -242,27 +260,23 @@ describe('KpiPage (ADMIN role)', () => {
 
   it('UTC-F019-FE-013: expands detail panel when employee row is clicked', async () => {
     renderKpiPage();
-    // Hemant appears in leaderboard and table — find inside the employee table section
-    const allHemantElements = screen.getAllByText('Hemant Atre');
-    // The last occurrence is the table row (leaderboard is first rendered)
+    const allHemantElements = await screen.findAllByText('Hemant Atre');
     const hemantCell = allHemantElements[allHemantElements.length - 1];
     await userEvent.click(hemantCell);
-    // After click, Sprint Reliability metric should appear in detail panel
     const sprintElements = screen.getAllByText('Sprint Reliability');
     expect(sprintElements.length).toBeGreaterThan(0);
   });
 
-  it('UTC-F019-FE-011: Grade A badge has emerald colour classes', () => {
+  it('UTC-F019-FE-011: Grade A badge has emerald colour classes', async () => {
     renderKpiPage();
-    // Find grade badge "A" elements — they should have emerald classes
+    await screen.findByText('Grade A');
     const gradeBadges = document.querySelectorAll('.bg-emerald-100');
     expect(gradeBadges.length).toBeGreaterThan(0);
   });
 
-  it('UTC-F019-FE-012: leaderboard shows Hemant Atre in top position', () => {
+  it('UTC-F019-FE-012: leaderboard shows Hemant Atre in top position', async () => {
     renderKpiPage();
-    expect(screen.getByText('Top Performers')).toBeInTheDocument();
-    // Hemant (96 pts) is the highest scorer and should appear multiple times
+    expect(await screen.findByText('Top Performers')).toBeInTheDocument();
     const allHemantElements = screen.getAllByText('Hemant Atre');
     expect(allHemantElements.length).toBeGreaterThanOrEqual(2); // leaderboard + table
   });
@@ -273,9 +287,9 @@ describe('KpiPage (SUPER_USER role)', () => {
     mockUser.systemRole = 'SUPER_USER';
   });
 
-  it('UTC-F019-FE-001: renders team dashboard for Super User', () => {
+  it('UTC-F019-FE-001: renders team dashboard for Super User', async () => {
     renderKpiPage();
     expect(screen.getByText('KPI Appraisal')).toBeInTheDocument();
-    expect(screen.getByText('Team Average')).toBeInTheDocument();
+    expect(await screen.findByText('Team Average')).toBeInTheDocument();
   });
 });

@@ -22,6 +22,9 @@ import { UsersModule } from './users/users.module';
 import { SprintsModule } from './sprints/sprints.module';
 import { WorkItemsModule } from './work-items/work-items.module';
 import { TimesheetEntriesModule } from './timesheet-entries/timesheet-entries.module';
+import { AnalyticsModule } from './analytics/analytics.module';
+import { KpiRecordsModule } from './kpi-records/kpi-records.module';
+import { SelfLogsModule } from './self-logs/self-logs.module';
 
 @Module({
   imports: [
@@ -44,6 +47,9 @@ import { TimesheetEntriesModule } from './timesheet-entries/timesheet-entries.mo
     SprintsModule,
     WorkItemsModule,
     TimesheetEntriesModule,
+    AnalyticsModule,
+    KpiRecordsModule,
+    SelfLogsModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: GlobalExceptionFilter },

@@ -1,6 +1,6 @@
 # PMS — Feature Tracker
 
-> Last updated: 2026-05-28 (F-020 complete)
+> Last updated: 2026-05-28 (F-022 complete, F-023 in progress)
 > ~~Strikethrough~~ = completed and in production. Plain text = pending development.
 
 ---
@@ -140,6 +140,13 @@
 - ~~Task allocation report (daily/weekly per employee)~~
 - ~~Timesheet report (approved hours per project/employee)~~
 - ~~PDF / CSV export for all reports~~
+
+---
+
+## Phase 12 — JIRA Kanban Board + Dynamic KPI & Reports
+
+- ~~**F-022 — JIRA Kanban Board** — Full JIRA-style project board at `/projects/:id/board`; 6 Kanban columns (TODO, IN_PROGRESS, BLOCKED, IN_REVIEW, QA, QA_DONE); drag-and-drop via `@hello-pangea/dnd` with optimistic updates; Sprint model + Sprint Manager (create/edit/activate/delete sprints); WorkItem model with full hierarchy (Epic → Story → Task → SubTask → Bug) with RBAC; TimesheetEntry model ("Log Work" per item, JIRA-style); WorkItemModal (5 tabs: Details, Log Time, Comments, Attachments, Child Items); TypeBadge component; BoardToolbar with sprint/type/assignee/priority/search filters; removed `/allocations`, `/timesheets`, `/bugs` nav items; project cards now navigate to board; ProjectDetailPage "Open Board" link; 9 backend unit tests + 26 frontend unit tests; code review + security review HTML reports~~
+- **F-023 — Dynamic KPI + Reports + Monthly Capacity** — Replace all static KPI and Reports data with live DB queries; Analytics module (`GET /analytics/kpi`, 6 report endpoints); KPI Records module (admin monthly manual scores); Self-logs modules (leave-logs, learning-logs, innovation-logs); all 13 KPI metrics auto-computed from `WorkItem`/`TimesheetEntry` data; `KpiScoreEntryPanel` for admin input; Reports page 7th tab — Monthly Capacity matrix (employees × days, colour-coded: orange=holiday, gray=weekly-off, pink=leave, dark-blue=≥8h, amber=1–7.9h, light-green=available); sticky columns, horizontal scroll, today-highlight, hover tooltip, legend
 
 ---
 
