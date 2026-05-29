@@ -1,6 +1,5 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { analyticsApi, type CapacityCell } from '../../../api/analyticsApi';
+import { STATIC_CAPACITY_DATA, type CapacityCell } from '../data/capacityStaticData';
 
 const DAY_ABBR: Record<string, string> = {
   monday: 'Mon', tuesday: 'Tue', wednesday: 'Wed',
@@ -56,10 +55,7 @@ export function CapacityReportTab() {
 
   const { year, month } = parsePeriod(period);
 
-  const { data, isLoading } = useQuery({
-    queryKey: ['capacity', period],
-    queryFn: () => analyticsApi.getCapacity(period),
-  });
+  const data = STATIC_CAPACITY_DATA[period] ?? null;
 
   function prevMonth() {
     const d = new Date(year, month - 2, 1);
@@ -127,11 +123,7 @@ export function CapacityReportTab() {
           ))}
         </div>
 
-        {isLoading ? (
-          <div className="flex items-center justify-center py-12 text-sm text-gray-400">
-            Loading capacity data…
-          </div>
-        ) : !data || data.employees.length === 0 ? (
+        {!data || data.employees.length === 0 ? (
           <div className="flex items-center justify-center py-12 text-sm text-gray-400">
             No employee data for this period.
           </div>
