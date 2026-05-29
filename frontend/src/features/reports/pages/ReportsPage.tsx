@@ -6,12 +6,7 @@ import {
 import { useQuery } from '@tanstack/react-query';
 import { useAuthStore } from '../../../store/authStore';
 import { GRADE_CONFIG, buildTeamSummary } from '../../kpi/data/kpiStaticData';
-import {
-  analyticsApi,
-  type ProductivityRecord,
-  type AllocationRecord,
-  type TimesheetRecord,
-} from '../../../api/analyticsApi';
+import { analyticsApi } from '../../../api/analyticsApi';
 import { CapacityReportTab } from '../components/CapacityReportTab';
 
 type Tab = 'productivity' | 'kpi' | 'projects' | 'bugs' | 'allocation' | 'timesheet' | 'capacity';
