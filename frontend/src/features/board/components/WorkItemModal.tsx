@@ -22,6 +22,7 @@ import {
 import { TypeBadge } from './TypeBadge';
 import { useAuthStore } from '../../../store/authStore';
 import type { Milestone } from '../../../types/milestones.types';
+import { RichTextEditor } from '../../../components/shared/RichTextEditor';
 
 type ActivityTab = 'comments' | 'logTime' | 'attachments';
 
@@ -240,13 +241,11 @@ export function WorkItemModal({ item, sprints, members, milestones, onClose, onS
                 <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Description</p>
                 {editingDesc ? (
                   <div className="space-y-2">
-                    <textarea
-                      autoFocus
+                    <RichTextEditor
                       value={descDraft}
-                      onChange={(e) => setDescDraft(e.target.value)}
-                      rows={6}
-                      className="w-full text-sm text-gray-700 border border-gray-200 rounded-lg p-3 resize-none focus:outline-none focus:ring-2 focus:ring-primary-400"
+                      onChange={setDescDraft}
                       placeholder="Add a description…"
+                      minHeight="140px"
                     />
                     <div className="flex gap-2">
                       <button onClick={saveDesc} className="btn-primary text-xs px-3 py-1.5">Save</button>
@@ -259,7 +258,10 @@ export function WorkItemModal({ item, sprints, members, milestones, onClose, onS
                     className="cursor-pointer rounded-lg p-3 hover:bg-gray-50 transition min-h-[60px] border border-transparent hover:border-gray-200"
                   >
                     {detail.description ? (
-                      <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">{detail.description}</p>
+                      <div
+                        className="prose prose-sm max-w-none text-gray-700"
+                        dangerouslySetInnerHTML={{ __html: detail.description }}
+                      />
                     ) : (
                       <p className="text-sm text-gray-400 italic">Click to add a description…</p>
                     )}
@@ -821,6 +823,38 @@ export function WorkItemModal({ item, sprints, members, milestones, onClose, onS
                 />
               </SidebarRow>
 
+              {/* Release Milestone — all item types */}
+              {milestones.length > 0 && (
+                <SidebarRow label="Release Milestone">
+                  <select
+                    value={detail.releaseMilestoneId ?? ''}
+                    onChange={(e) => updateMut.mutate({ releaseMilestoneId: e.target.value || undefined })}
+                    className="input-sm w-full text-xs"
+                  >
+                    <option value="">— none —</option>
+                    {milestones.map((m) => (
+                      <option key={m.id} value={m.id}>{m.description}</option>
+                    ))}
+                  </select>
+                </SidebarRow>
+              )}
+
+              {/* Affected Milestone — all item types */}
+              {milestones.length > 0 && (
+                <SidebarRow label="Affected Milestone">
+                  <select
+                    value={detail.affectedMilestoneId ?? ''}
+                    onChange={(e) => updateMut.mutate({ affectedMilestoneId: e.target.value || undefined })}
+                    className="input-sm w-full text-xs"
+                  >
+                    <option value="">— none —</option>
+                    {milestones.map((m) => (
+                      <option key={m.id} value={m.id}>{m.description}</option>
+                    ))}
+                  </select>
+                </SidebarRow>
+              )}
+
               {/* Completed At */}
               {detail.completedAt && (
                 <SidebarRow label="Completed">
@@ -995,34 +1029,6 @@ export function WorkItemModal({ item, sprints, members, milestones, onClose, onS
                       <option value="ONE_DAY">1 Day before</option>
                       <option value="TWO_DAYS">2 Days before</option>
                       <option value="THREE_DAYS">3 Days before</option>
-                    </select>
-                  </SidebarRow>
-
-                  {/* Release Milestone */}
-                  <SidebarRow label="Release Milestone">
-                    <select
-                      value={detail.releaseMilestoneId ?? ''}
-                      onChange={(e) => updateMut.mutate({ releaseMilestoneId: e.target.value || undefined })}
-                      className="input-sm w-full text-xs"
-                    >
-                      <option value="">— none —</option>
-                      {milestones.map((m) => (
-                        <option key={m.id} value={m.id}>{m.description}</option>
-                      ))}
-                    </select>
-                  </SidebarRow>
-
-                  {/* Affected Milestone */}
-                  <SidebarRow label="Affected Milestone">
-                    <select
-                      value={detail.affectedMilestoneId ?? ''}
-                      onChange={(e) => updateMut.mutate({ affectedMilestoneId: e.target.value || undefined })}
-                      className="input-sm w-full text-xs"
-                    >
-                      <option value="">— none —</option>
-                      {milestones.map((m) => (
-                        <option key={m.id} value={m.id}>{m.description}</option>
-                      ))}
                     </select>
                   </SidebarRow>
 

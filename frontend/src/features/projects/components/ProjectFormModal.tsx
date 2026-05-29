@@ -4,6 +4,7 @@ import { clientsApi } from '../../../api/clients.api';
 import { departmentsApi } from '../../../api/departments.api';
 import { projectsApi } from '../../../api/projects.api';
 import type { Project, ProjectType } from '../../../types/projects.types';
+import { RichTextEditor } from '../../../components/shared/RichTextEditor';
 
 interface Props {
   project?: Project;
@@ -25,7 +26,7 @@ export function ProjectFormModal({ project, onClose }: Props) {
   const [description, setDescription] = useState(project?.description ?? '');
   const [startDate, setStartDate] = useState(project?.startDate?.split('T')[0] ?? '');
   const [endDate, setEndDate] = useState(project?.endDate?.split('T')[0] ?? '');
-  const [budget, setBudget] = useState(project?.budget ?? '');
+  const [isOngoing, setIsOngoing] = useState(project ? !project.endDate : false);
   const [error, setError] = useState('');
 
   const { data: clients = [] } = useQuery({ queryKey: ['clients-active'], queryFn: () => clientsApi.list(false) });
@@ -38,10 +39,9 @@ export function ProjectFormModal({ project, onClose }: Props) {
         projectType,
         clientId: clientId || undefined,
         departmentId: departmentId || undefined,
-        description: description.trim() || undefined,
+        description: description || undefined,
         startDate: startDate || undefined,
-        endDate: endDate || undefined,
-        budget: budget ? Number(budget) : undefined,
+        endDate: isOngoing ? null : (endDate || undefined),
       };
       return project ? projectsApi.update(project.id, payload) : projectsApi.create(payload);
     },
@@ -57,7 +57,7 @@ export function ProjectFormModal({ project, onClose }: Props) {
     e.preventDefault();
     setError('');
     if (!name.trim()) { setError('Project name is required'); return; }
-    if (startDate && endDate && endDate < startDate) { setError('End date must be on or after start date'); return; }
+    if (!isOngoing && startDate && endDate && endDate < startDate) { setError('End date must be on or after start date'); return; }
     mutation.mutate();
   }
 
@@ -126,9 +126,12 @@ export function ProjectFormModal({ project, onClose }: Props) {
 
           <div>
             <label className={labelCls}>Description</label>
-            <textarea value={description} onChange={(e) => setDescription(e.target.value)}
-              maxLength={1000} rows={3} placeholder="Brief project overview…"
-              className={inputCls + ' resize-none'} />
+            <RichTextEditor
+              value={description}
+              onChange={setDescription}
+              placeholder="Brief project overview…"
+              minHeight="100px"
+            />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
@@ -137,16 +140,29 @@ export function ProjectFormModal({ project, onClose }: Props) {
               <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className={inputCls} />
             </div>
             <div>
-              <label className={labelCls}>End Date</label>
-              <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)}
-                min={startDate || undefined} className={inputCls} />
+              <div className="flex items-center justify-between mb-1">
+                <label className={labelCls.replace('mb-1', '')}>End Date</label>
+                {projectType === 'DEDICATED' && (
+                  <label className="flex items-center gap-1.5 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={isOngoing}
+                      onChange={(e) => { setIsOngoing(e.target.checked); if (e.target.checked) setEndDate(''); }}
+                      className="w-3.5 h-3.5 rounded accent-primary-600"
+                    />
+                    <span className="text-xs text-gray-500">Ongoing</span>
+                  </label>
+                )}
+              </div>
+              {isOngoing ? (
+                <div className="w-full px-3 py-2 text-sm border border-dashed border-gray-200 rounded-lg bg-gray-50 text-gray-400">
+                  No end date (ongoing)
+                </div>
+              ) : (
+                <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)}
+                  min={startDate || undefined} className={inputCls} />
+              )}
             </div>
-          </div>
-
-          <div>
-            <label className={labelCls}>Budget (₹)</label>
-            <input type="number" value={budget} onChange={(e) => setBudget(e.target.value)}
-              min={0} step={1000} placeholder="e.g. 500000" className={inputCls} />
           </div>
 
           <div className="flex justify-end gap-3 pt-1">

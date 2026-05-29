@@ -30,14 +30,8 @@ const STATUS_LABEL: Record<ProjectStatus, string> = {
   ON_HOLD: 'On Hold',
 };
 
-function SummaryCard({ label, value, color }: { label: string; value: number; color: string }) {
-  return (
-    <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 flex flex-col gap-1">
-      <span className="text-2xl font-bold text-gray-800">{value}</span>
-      <span className={`text-xs font-medium ${color}`}>{label}</span>
-    </div>
-  );
-}
+
+type QuickFilter = 'ACTIVE' | 'ARCHIVE' | 'ON_HOLD' | 'DEDICATED' | 'T_AND_M' | 'FIXED' | 'OVERDUE' | '';
 
 export function ProjectsPage() {
   const qc = useQueryClient();
@@ -47,17 +41,34 @@ export function ProjectsPage() {
 
   const [showForm, setShowForm] = useState(false);
   const [editTarget, setEditTarget] = useState<Project | null>(null);
-  const [filterStatus, setFilterStatus] = useState<ProjectStatus | ''>('');
+  const [quickFilter, setQuickFilter] = useState<QuickFilter>('');
 
-  const { data: projects = [], isLoading, error } = useQuery({
-    queryKey: ['projects', filterStatus],
-    queryFn: () => projectsApi.list(filterStatus ? { status: filterStatus } : undefined),
+  const { data: allProjects = [], isLoading, error } = useQuery({
+    queryKey: ['projects'],
+    queryFn: () => projectsApi.list(),
   });
 
   const { data: summary } = useQuery({
     queryKey: ['projects-summary'],
     queryFn: () => projectsApi.summary(),
   });
+
+  const isOverdue = (p: Project) =>
+    p.status === 'ACTIVE' && p.endDate !== null && new Date(p.endDate) < new Date();
+
+  const projects = allProjects.filter((p) => {
+    if (!quickFilter) return p.status !== 'ARCHIVE';
+    if (quickFilter === 'ACTIVE') return p.status === 'ACTIVE';
+    if (quickFilter === 'ARCHIVE') return p.status === 'ARCHIVE';
+    if (quickFilter === 'ON_HOLD') return p.status === 'ON_HOLD';
+    if (quickFilter === 'DEDICATED') return p.projectType === 'DEDICATED';
+    if (quickFilter === 'T_AND_M') return p.projectType === 'T_AND_M';
+    if (quickFilter === 'FIXED') return p.projectType === 'FIXED';
+    if (quickFilter === 'OVERDUE') return isOverdue(p);
+    return true;
+  });
+
+  const archivedCount = allProjects.filter((p) => p.status === 'ARCHIVE').length;
 
   const statusMutation = useMutation({
     mutationFn: ({ id, status }: { id: string; status: ProjectStatus }) =>
@@ -68,9 +79,6 @@ export function ProjectsPage() {
     },
   });
 
-  const isOverdue = (p: Project) =>
-    p.status === 'ACTIVE' && p.endDate !== null && new Date(p.endDate) < new Date();
-
   return (
     <div className="space-y-5">
       {/* Header */}
@@ -78,20 +86,24 @@ export function ProjectsPage() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-base font-semibold text-gray-900">Projects</h1>
-            <p className="text-xs text-gray-400 mt-0.5">{projects.length} project{projects.length !== 1 ? 's' : ''} shown</p>
+            <p className="text-xs text-gray-400 mt-0.5">
+              {projects.length} project{projects.length !== 1 ? 's' : ''}
+              {quickFilter && <button onClick={() => setQuickFilter('')} className="ml-2 text-primary-600 hover:underline">Clear filter</button>}
+            </p>
           </div>
           <div className="flex items-center gap-3">
-            {/* Status filter */}
-            <select
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value as ProjectStatus | '')}
-              className="text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500"
-            >
-              <option value="">All Status</option>
-              <option value="ACTIVE">Active</option>
-              <option value="ARCHIVE">Archive</option>
-              <option value="ON_HOLD">On Hold</option>
-            </select>
+            {!quickFilter && archivedCount > 0 && (
+              <button
+                onClick={() => setQuickFilter('ARCHIVE')}
+                className="flex items-center gap-1.5 text-xs font-medium px-3 py-2 rounded-lg border border-gray-200 text-gray-500 hover:border-gray-400 transition"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                    d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+                </svg>
+                Show Archived ({archivedCount})
+              </button>
+            )}
             {canEdit && (
               <button
                 onClick={() => { setEditTarget(null); setShowForm(true); }}
@@ -107,16 +119,29 @@ export function ProjectsPage() {
         </div>
       </div>
 
-      {/* Summary Panel */}
+      {/* Summary Panel — clickable to filter */}
       {summary && (
         <div className="grid grid-cols-4 gap-3 sm:grid-cols-7">
-          <SummaryCard label="Active"    value={summary.active}    color="text-green-600" />
-          <SummaryCard label="Archive"   value={summary.archive}   color="text-gray-500" />
-          <SummaryCard label="On Hold"   value={summary.onHold}    color="text-yellow-600" />
-          <SummaryCard label="Dedicated" value={summary.dedicated} color="text-blue-600" />
-          <SummaryCard label="T&M"       value={summary.tAndM}     color="text-purple-600" />
-          <SummaryCard label="Fixed"     value={summary.fixed}     color="text-orange-600" />
-          <SummaryCard label="Overdue"   value={summary.overdue}   color="text-red-600" />
+          {([
+            { label: 'Active',    value: summary.active,    color: 'text-green-600',  ring: 'ring-green-400',  filter: 'ACTIVE'    },
+            { label: 'Archive',   value: summary.archive,   color: 'text-gray-500',   ring: 'ring-gray-400',   filter: 'ARCHIVE'   },
+            { label: 'On Hold',   value: summary.onHold,    color: 'text-yellow-600', ring: 'ring-yellow-400', filter: 'ON_HOLD'   },
+            { label: 'Dedicated', value: summary.dedicated, color: 'text-blue-600',   ring: 'ring-blue-400',   filter: 'DEDICATED' },
+            { label: 'T&M',       value: summary.tAndM,     color: 'text-purple-600', ring: 'ring-purple-400', filter: 'T_AND_M'   },
+            { label: 'Fixed',     value: summary.fixed,     color: 'text-orange-600', ring: 'ring-orange-400', filter: 'FIXED'     },
+            { label: 'Overdue',   value: summary.overdue,   color: 'text-red-600',    ring: 'ring-red-400',    filter: 'OVERDUE'   },
+          ] as { label: string; value: number; color: string; ring: string; filter: QuickFilter }[]).map((card) => (
+            <button
+              key={card.filter}
+              onClick={() => setQuickFilter(quickFilter === card.filter ? '' : card.filter)}
+              className={`bg-white rounded-xl border shadow-sm p-4 flex flex-col gap-1 text-left transition hover:shadow-md ${
+                quickFilter === card.filter ? `border-transparent ring-2 ${card.ring}` : 'border-gray-100'
+              }`}
+            >
+              <span className="text-2xl font-bold text-gray-800">{card.value}</span>
+              <span className={`text-xs font-medium ${card.color}`}>{card.label}</span>
+            </button>
+          ))}
         </div>
       )}
 
@@ -165,42 +190,49 @@ export function ProjectsPage() {
                     <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${TYPE_COLOR[project.projectType]}`}>
                       {TYPE_LABEL[project.projectType]}
                     </span>
+                    {!project.endDate && (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-teal-50 text-teal-600">
+                        Ongoing
+                      </span>
+                    )}
                   </div>
                 </div>
 
                 {project.description && (
-                  <p className="text-xs text-gray-500 mt-2 line-clamp-2">{project.description}</p>
+                  <div
+                    className="mt-2 line-clamp-3 prose prose-sm max-w-none text-gray-500 prose-p:my-0 prose-headings:text-sm prose-headings:font-semibold prose-headings:my-0 prose-headings:text-gray-600"
+                    dangerouslySetInnerHTML={{ __html: project.description }}
+                  />
                 )}
               </div>
 
               {/* Card Footer */}
               <div className="px-5 pb-4 pt-2 border-t border-gray-50 flex items-center justify-between">
                 <div className="text-xs text-gray-400 space-y-0.5">
-                  {(project.startDate || project.endDate) && (
-                    <div className="flex items-center gap-1">
-                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                      </svg>
-                      {project.startDate ? new Date(project.startDate).toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' }) : '—'}
-                      {' → '}
-                      {project.endDate ? new Date(project.endDate).toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' }) : '—'}
-                      {isOverdue(project) && <span className="text-red-500 ml-1 font-medium">Overdue</span>}
-                    </div>
-                  )}
-                  {project.budget && (
-                    <div>₹{Number(project.budget).toLocaleString('en-IN')}</div>
-                  )}
+                  <div className="flex items-center gap-1">
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    {project.startDate
+                      ? new Date(project.startDate).toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' })
+                      : '—'}
+                    {' → '}
+                    {project.endDate
+                      ? new Date(project.endDate).toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' })
+                      : <span className="text-teal-600 font-medium">Ongoing</span>}
+                    {isOverdue(project) && <span className="text-red-500 ml-1 font-medium">Overdue</span>}
+                  </div>
                 </div>
 
                 {/* Actions — stop propagation so card click doesn't fire */}
                 {canEdit && (
-                  <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                  <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
                     <button
                       title="Edit"
                       onClick={() => { setEditTarget(project); setShowForm(true); }}
-                      className="p-1.5 rounded-lg text-gray-400 hover:text-primary-600 hover:bg-primary-50 transition"
+                      className="p-2 rounded-lg text-gray-500 hover:text-primary-600 hover:bg-primary-50 transition"
                     >
-                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-4.5 h-4.5" style={{width:'18px',height:'18px'}} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                           d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                       </svg>
@@ -210,9 +242,9 @@ export function ProjectsPage() {
                         title="Archive"
                         onClick={() => statusMutation.mutate({ id: project.id, status: 'ARCHIVE' })}
                         disabled={statusMutation.isPending}
-                        className="p-1.5 rounded-lg text-gray-400 hover:text-yellow-600 hover:bg-yellow-50 transition"
+                        className="p-2 rounded-lg text-gray-500 hover:text-yellow-600 hover:bg-yellow-50 transition"
                       >
-                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg style={{width:'18px',height:'18px'}} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                             d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
                         </svg>
@@ -222,9 +254,9 @@ export function ProjectsPage() {
                         title="Restore to Active"
                         onClick={() => statusMutation.mutate({ id: project.id, status: 'ACTIVE' })}
                         disabled={statusMutation.isPending}
-                        className="p-1.5 rounded-lg text-gray-400 hover:text-green-600 hover:bg-green-50 transition"
+                        className="p-2 rounded-lg text-gray-500 hover:text-green-600 hover:bg-green-50 transition"
                       >
-                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg style={{width:'18px',height:'18px'}} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                             d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
