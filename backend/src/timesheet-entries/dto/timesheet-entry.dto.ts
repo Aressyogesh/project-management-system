@@ -8,3 +8,7 @@ export class CreateTimesheetEntryDto {
 }
 
 export class UpdateTimesheetEntryDto extends PartialType(CreateTimesheetEntryDto) {}
+
+export class RejectTimesheetEntryDto {
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(500) rejectionNote?: string;
+}

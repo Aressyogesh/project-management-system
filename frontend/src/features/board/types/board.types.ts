@@ -1,8 +1,17 @@
 export type WorkItemType = 'EPIC' | 'USER_STORY' | 'TASK' | 'SUB_TASK' | 'BUG';
 export type BoardStatus = 'TODO' | 'IN_PROGRESS' | 'BLOCKED' | 'IN_REVIEW' | 'QA' | 'QA_DONE';
-export type BugSeverity = 'BLOCKER' | 'CRITICAL' | 'MAJOR' | 'MINOR' | 'TRIVIAL';
-export type BugClassification = 'UI_USABILITY' | 'NEW_BUG' | 'ENHANCEMENT' | 'PERFORMANCE' | 'OTHER';
+export type BugSeverity = 'SHOW_STOPPER' | 'BLOCKER' | 'CRITICAL' | 'MAJOR' | 'MINOR' | 'TRIVIAL';
+export type BugClassification =
+  | 'SECURITY' | 'CRASH_HANG' | 'DATA_LOSS' | 'PERFORMANCE' | 'UI_USABILITY'
+  | 'OTHER_BUG' | 'OTHER' | 'FEATURE_NEW' | 'ENHANCEMENT' | 'DESIGN'
+  | 'NEW_BUG' | 'CODE_REVIEW' | 'UNIT_TESTING' | 'SUGGESTION'
+  | 'PROJECT_MANAGEMENT' | 'EXISTING_APPLICATION';
 export type TaskPriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+export type BugFlag = 'INTERNAL' | 'EXTERNAL';
+export type BugReproducibility = 'ALWAYS' | 'SOMETIMES' | 'RARELY' | 'UNABLE' | 'NEVER_TRIED' | 'NOT_APPLICABLE';
+export type BugReminderType = 'NONE' | 'DAILY' | 'ONE_DAY' | 'TWO_DAYS' | 'THREE_DAYS';
+export type BugStatus = 'OPEN' | 'REOPEN' | 'TO_BE_TESTED' | 'IN_PROGRESS' | 'CLOSED' | 'ACKNOWLEDGED' | 'DEFERRED' | 'ON_HOLD';
+export type BillingStatus = 'BILLABLE' | 'NON_BILLABLE';
 
 export interface WorkItemUser {
   id: string;
@@ -63,6 +72,11 @@ export interface WorkItemChild {
   assigneeId?: string | null;
 }
 
+export interface WorkItemMilestone {
+  id: string;
+  description: string;
+}
+
 export interface WorkItem {
   id: string;
   projectId: string;
@@ -91,15 +105,30 @@ export interface WorkItem {
   dueDate?: string | null;
   createdAt: string;
   updatedAt: string;
+  // Phase 9 Bug Management fields
+  bugFlag?: BugFlag | null;
+  bugReproducibility?: BugReproducibility | null;
+  bugStatus?: BugStatus | null;
+  module?: string | null;
+  responsibleUserId?: string | null;
+  billingStatus?: BillingStatus | null;
+  affectedBuildVersion?: string | null;
+  fixedBuildVersion?: string | null;
+  reminderType?: BugReminderType | null;
+  releaseMilestoneId?: string | null;
+  affectedMilestoneId?: string | null;
   // relations
   assignee?: WorkItemUser | null;
   reporter: WorkItemUser;
+  responsibleUser?: WorkItemUser | null;
   sprint?: Sprint | null;
   parent?: WorkItemChild | null;
   children?: WorkItemChild[];
   comments?: WorkItemComment[];
   attachments?: WorkItemAttachment[];
   timesheetEntries?: TimesheetEntry[];
+  releaseMilestone?: WorkItemMilestone | null;
+  affectedMilestone?: WorkItemMilestone | null;
   // computed
   _count?: { children: number; comments: number; timesheetEntries: number };
 }
@@ -134,4 +163,15 @@ export const PRIORITY_CONFIG: Record<TaskPriority, { label: string; bg: string; 
   MEDIUM:   { label: 'Medium',   bg: 'bg-blue-100',   text: 'text-blue-700' },
   HIGH:     { label: 'High',     bg: 'bg-orange-100', text: 'text-orange-700' },
   CRITICAL: { label: 'Critical', bg: 'bg-red-100',    text: 'text-red-600' },
+};
+
+export const BUG_STATUS_CONFIG: Record<BugStatus, { label: string; bg: string; text: string }> = {
+  OPEN:          { label: 'Open',          bg: 'bg-red-100',    text: 'text-red-700' },
+  REOPEN:        { label: 'Reopen',        bg: 'bg-orange-100', text: 'text-orange-700' },
+  TO_BE_TESTED:  { label: 'To Be Tested',  bg: 'bg-purple-100', text: 'text-purple-700' },
+  IN_PROGRESS:   { label: 'In Progress',   bg: 'bg-blue-100',   text: 'text-blue-700' },
+  CLOSED:        { label: 'Closed',        bg: 'bg-gray-100',   text: 'text-gray-600' },
+  ACKNOWLEDGED:  { label: 'Acknowledged',  bg: 'bg-teal-100',   text: 'text-teal-700' },
+  DEFERRED:      { label: 'Deferred',      bg: 'bg-yellow-100', text: 'text-yellow-700' },
+  ON_HOLD:       { label: 'On Hold',       bg: 'bg-slate-100',  text: 'text-slate-700' },
 };

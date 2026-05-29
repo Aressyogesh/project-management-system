@@ -2,6 +2,7 @@ import { DragDropContext, type DropResult } from '@hello-pangea/dnd';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import { milestonesApi } from '../../../api/milestones.api';
 import { projectsApi } from '../../../api/projects.api';
 import { useAuthStore } from '../../../store/authStore';
 import type { BoardFiltersQuery } from '../api/boardApi';
@@ -34,6 +35,12 @@ export function BoardPage() {
   const { data: members = [] } = useQuery({
     queryKey: ['project-members', projectId],
     queryFn: () => projectsApi.listMembers(projectId!),
+    enabled: !!projectId,
+  });
+
+  const { data: milestones = [] } = useQuery({
+    queryKey: ['milestones', projectId],
+    queryFn: () => milestonesApi.list(projectId!),
     enabled: !!projectId,
   });
 
@@ -131,6 +138,8 @@ export function BoardPage() {
         <WorkItemModal
           item={selectedItem}
           sprints={sprints}
+          members={memberOptions}
+          milestones={milestones}
           onClose={() => setSelectedItem(null)}
           onSaved={() => setSelectedItem(null)}
         />
@@ -141,6 +150,7 @@ export function BoardPage() {
           projectId={projectId!}
           sprints={sprints}
           members={memberOptions}
+          milestones={milestones}
           onClose={() => setShowCreate(false)}
           onSaved={() => setShowCreate(false)}
         />

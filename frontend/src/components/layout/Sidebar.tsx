@@ -51,6 +51,14 @@ function IconLeave() {
     </svg>
   );
 }
+function IconTimesheet() {
+  return (
+    <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+        d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+    </svg>
+  );
+}
 function IconKpi() {
   return (
     <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -103,7 +111,8 @@ const navItems: NavItem[] = [
   { path: '/departments', label: 'Departments', Icon: IconDepartments, roles: ['SUPER_USER', 'ADMIN'] },
   { path: '/clients',     label: 'Clients',     Icon: IconClients,     roles: ['SUPER_USER', 'ADMIN'] },
   { path: '/projects',    label: 'Projects',    Icon: IconProjects },
-  { path: '/leave-logs',  label: 'Leave & OT',  Icon: IconLeave },
+  { path: '/timesheet',   label: 'Timesheet',   Icon: IconTimesheet },
+  { path: '/leave-logs',  label: 'Leaves Management',  Icon: IconLeave },
   { path: '/kpi',         label: 'KPI',         Icon: IconKpi },
   { path: '/reports',     label: 'Reports',     Icon: IconReports },
 ];
