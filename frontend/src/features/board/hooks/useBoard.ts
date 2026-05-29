@@ -37,7 +37,10 @@ export function useBoard(projectId: string, filters: BoardFiltersQuery) {
     onError: (_err, _vars, ctx) => {
       if (ctx?.prev) qc.setQueryData(key, ctx.prev);
     },
-    onSettled: () => qc.invalidateQueries({ queryKey: key }),
+    onSettled: (_data, _err, vars) => {
+      qc.invalidateQueries({ queryKey: key });
+      qc.invalidateQueries({ queryKey: ['workItem', vars.id] });
+    },
   });
 
   const create = useMutation({

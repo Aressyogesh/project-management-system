@@ -25,6 +25,7 @@ import { TimesheetEntriesModule } from './timesheet-entries/timesheet-entries.mo
 import { AnalyticsModule } from './analytics/analytics.module';
 import { KpiRecordsModule } from './kpi-records/kpi-records.module';
 import { SelfLogsModule } from './self-logs/self-logs.module';
+import { UploadsModule } from './uploads/uploads.module';
 
 @Module({
   imports: [
@@ -50,6 +51,7 @@ import { SelfLogsModule } from './self-logs/self-logs.module';
     AnalyticsModule,
     KpiRecordsModule,
     SelfLogsModule,
+    UploadsModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: GlobalExceptionFilter },
