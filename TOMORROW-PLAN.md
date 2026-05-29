@@ -1,118 +1,194 @@
-# Plan: Wire Live DB Data to KPI & Reports Pages + Full Feature Testing
+# Tomorrow's Plan: Full Application Testing + Live Data (Step by Step)
 
-## Context
-All features F-001 through F-024 are built. However, **KpiPage and ReportsPage are 100% static** — they import hardcoded arrays from `kpiStaticData.ts` and `reportsStaticData.ts` instead of calling the backend. The backend `analytics.service.ts` is fully implemented with 7 live DB endpoints, and `analyticsApi.ts` on the frontend has all the API calls ready — they just aren't wired to the UI yet. Tomorrow's session replaces static data with live API calls, runs a full smoke-test of every feature, and fixes any bugs found.
+## Priority Order
+1. **Test entire application** — every feature, every role, every form saves to DB correctly
+2. **Fix any bugs found** during testing before moving to live data
+3. **Make Overview / KPI / Reports dynamic** — step by step, one tab at a time
+4. **Goal**: Every user action captured in DB → accurate data flows into all report parameters
 
 ---
 
-## Part 1 — Wire KpiPage to Live Data
+## Phase 1 — Full Application Smoke Test
+
+Work through every feature in the browser. Test as three roles: SUPER_USER, ADMIN, EMPLOYEE.
+
+### Auth & Navigation
+- [ ] Login / logout works for all roles
+- [ ] Sidebar links and RBAC gating correct (EMPLOYEE cannot see admin-only pages)
+- [ ] JWT token refresh works (stay logged in after 15 min)
+
+### Settings & Master Data
+- [ ] Company settings save and reload correctly
+- [ ] Departments: create, edit, deactivate → appear in project/user dropdowns
+- [ ] Clients: create, edit, deactivate → appear in project form
+- [ ] Users: create, assign role, deactivate → appear in member/assignee dropdowns
+- [ ] Holidays: create recurring holiday → appears in capacity grid
+
+### Projects
+- [ ] Create project (DEDICATED / T&M / FIXED) — data saves in DB
+- [ ] Ongoing checkbox (DEDICATED) — saves `endDate = null`, card shows teal "Ongoing" badge
+- [ ] Archive / restore project — hidden from default list, visible via "Show Archived"
+- [ ] Summary cards (Active/Archive/On Hold/Dedicated/T&M/Fixed/Overdue) are clickable filters
+- [ ] Rich-text description renders on project card with correct formatting
+- [ ] Project members: add member, change role, remove
+
+### Milestones
+- [ ] Create milestone with start date, due date, responsible user, status
+- [ ] Edit and delete milestone
+- [ ] Milestone appears in task and work item dropdowns
+
+### Task Lists & Tasks (Project Detail)
+- [ ] Create task list (General / Sprint / QA etc.)
+- [ ] Create task with all fields: title, description, assignee, priority, billing, status, dates
+- [ ] Kanban and list view toggle
+- [ ] Task attachments upload and download
+- [ ] Task comments add and delete
+- [ ] Task allocation calendar shows logged hours
+
+### JIRA Board (Work Items)
+- [ ] Create Sprint, activate, close
+- [ ] Create Epic → User Story → Task → SubTask → Bug
+- [ ] All work item fields save: type, priority, status, assignee, sprint, milestone, story points, labels
+- [ ] Bug-specific fields save: severity, classification, flag, reproducibility, reminder
+- [ ] Drag work item between columns → status updates in DB and in open modal
+- [ ] Milestone fields visible on ALL work item types (not just BUG)
+- [ ] Log time on work item → saves to `timesheet_entries` table
+- [ ] Attachments and comments on work items
+- [ ] Child items (sub-tasks, bugs under a story)
+
+### Timesheet
+- [ ] Employee logs hours → entry saves in DB
+- [ ] Manager approves/rejects timesheet entries
+- [ ] Approved hours visible in Timesheet report later
+
+### KPI Page (currently static — just verify UI works, data accuracy comes in Phase 3)
+- [ ] Page loads without errors
+- [ ] Period selector, department filter, search all work
+- [ ] Admin can open score entry modal
+- [ ] Charts render correctly
+
+### Reports Page (currently static — just verify UI works)
+- [ ] All 7 tabs load without errors
+- [ ] Period and project filters change displayed data (from static source)
+- [ ] CSV export downloads correct data for each tab
+- [ ] Capacity grid renders with colour coding
+
+### Dashboard / Overview
+- [ ] Stat cards show correct live counts (active projects, tasks, users)
+- [ ] My Tasks table shows tasks assigned to logged-in user
+- [ ] Progress donut chart matches task status counts
+
+---
+
+## Phase 2 — Data Capture Audit
+
+Before making reports dynamic, confirm every report parameter has a data source in the DB.
+Check each metric used in reports and trace it back to the feature that creates the data:
+
+| Report Parameter | Source Table | Feature That Creates It |
+|-----------------|-------------|------------------------|
+| Tasks completed | `work_items` (status=QA_DONE/DONE) | JIRA Board — close work item |
+| Hours logged | `timesheet_entries` | Log time on work item / Task |
+| On-time completion | `work_items` (dueDate vs completedAt) | Work item due date + close |
+| Bug severity counts | `work_items` (type=BUG, severity field) | Create bug on board |
+| Sprint story points | `work_items` (storyPoints, sprintId) | Work item in sprint |
+| Hours allocated | `task_allocations` | Task Allocation calendar |
+| Approved timesheet hours | `timesheet_entries` (status=APPROVED) | Timesheet approval |
+| Leave days | `leave_logs` | **No UI yet** — need Self-Log panel |
+| Learning hours | `learning_logs` | **No UI yet** — need Self-Log panel |
+| Innovation entries | `innovation_logs` | **No UI yet** — need Self-Log panel |
+| Manual KPI scores | `kpi_records` | KPI score entry modal (admin) |
+| Capacity: holidays | `holidays` table | Holiday calendar in Settings |
+| Capacity: leave | `leave_logs` | **No UI yet** — need Self-Log panel |
+| Capacity: occupied | `timesheet_entries` | Log time on work item |
+
+**Gaps to fix before going live:**
+- Self-Log Panel (leave / learning / innovation) — backend exists, no frontend UI
+- KPI score entry modal needs to actually POST to `/kpi-records` (currently has no save action)
+
+---
+
+## Phase 3 — Make Overview Dynamic
+
+**File:** `frontend/src/features/dashboard/pages/DashboardPage.tsx`  
+Dashboard already uses `dashboardApi.getStats()` — verify live data is correct:
+- [ ] Stat cards match actual DB counts
+- [ ] My Tasks table shows real assigned tasks
+- [ ] Fix: Team performance score hardcoded as `0` → compute from KPI avg for current period
+- [ ] Fix: Activity Chart uses mock data → wire to productivity data by month
+
+---
+
+## Phase 4 — Make Reports Dynamic (One Tab at a Time)
+
+**File:** `frontend/src/features/reports/pages/ReportsPage.tsx`  
+Replace each static import with `useQuery` keyed on `[tab, period, projectId]`.
+
+Work through tabs in this order (simplest → most complex):
+
+1. **Projects tab** → `analyticsApi.getProjects(period, projectId)` — straightforward count data
+2. **Timesheet tab** → `analyticsApi.getTimesheet(period, projectId)` — approved hours
+3. **Task Allocation tab** → `analyticsApi.getAllocation(period, projectId)` — allocated hours
+4. **Productivity tab** → `analyticsApi.getProductivity(period, projectId)` — needs timesheet + work items
+5. **Bugs tab** → `analyticsApi.getBugs(period, projectId)` — needs bug work items
+6. **Capacity tab** → `analyticsApi.getCapacity(period)` — needs leave_logs + timesheet + holidays
+7. **KPI Appraisal tab** → `analyticsApi.getKpi(period)` — most complex (13 metrics)
+
+For each tab:
+- Replace static import with `useQuery`
+- Pass `period` and `projectId` from the existing UI selectors
+- Add loading spinner (`isLoading`) and empty state (`No data for this period`)
+- Verify CSV export still works with live data array
+
+---
+
+## Phase 5 — Make KPI Page Dynamic
 
 **File:** `frontend/src/features/kpi/pages/KpiPage.tsx`
 
-### What changes
-1. **Remove** `import { STATIC_KPI_DATA, ... } from '../data/kpiStaticData'`
-2. **Add** `useQuery` calling `analyticsApi.getKpi(period, userId?)`:
-   - Admin/SuperUser: no `userId` → receives all employees
-   - Employee: passes own `user.id` → receives only their record
-3. **Map** the `LiveEmployeeKpiRecord` API response to the existing component's internal `EmployeeKpiData` shape (the interface currently used by charts/tables)
-4. **Wire period selector** — pass selected `YYYY-MM` string as `period` query param
-5. **Wire department filter & search** — apply client-side on the live data array (same logic as today)
-6. **Wire KPI score entry panel (admin)** — the modal currently has no save action; call `analyticsApi.upsertKpiRecord({ userId, period, metricId, points })` on submit, then invalidate the `['kpi', period]` query
-7. **Add loading skeleton + error state** for the whole page
-
-**API:** `GET /analytics/kpi?period=2026-05&userId=optional`  
-**Response type:** `LiveEmployeeKpiRecord[]` (already in `analyticsApi.ts`)
+1. Replace `STATIC_KPI_DATA` with `useQuery(() => analyticsApi.getKpi(period, userId?))`
+2. Map `LiveEmployeeKpiRecord[]` → internal `EmployeeKpiData` shape (keep `KPI_METRICS`, `computeGrade`, `computeCategoryScores` helpers — only remove the hardcoded data array)
+3. Wire period selector → passes `YYYY-MM` to query
+4. Department filter + search → client-side filter on live data
+5. Admin score entry modal → call `analyticsApi.upsertKpiRecord(...)` on save, invalidate `['kpi', period]`
+6. Add loading and error states
 
 ---
 
-## Part 2 — Wire ReportsPage Tabs to Live Data
+## Phase 6 — Self-Log Panel (New UI)
 
-**File:** `frontend/src/features/reports/pages/ReportsPage.tsx`
+Needed for KPI metrics: attendance, learning_velocity, automation_innovation.
 
-Replace each static import with a `useQuery` keyed on `[tab, period, projectId]`. One query fires at a time (only the active tab).
+**New file:** `frontend/src/features/kpi/components/SelfLogPanel.tsx`  
+3-tab panel added to KPI page (visible to all roles for own data):
 
-| Tab | Replace import | API call |
-|-----|---------------|----------|
-| Productivity | `STATIC_PRODUCTIVITY_DATA` | `analyticsApi.getProductivity(period, projectId)` |
-| KPI Appraisal | `STATIC_KPI_DATA` | `analyticsApi.getKpi(period)` |
-| Projects | `STATIC_PROJECT_DATA` | `analyticsApi.getProjects(period, projectId)` |
-| Bugs | `BUG_SEVERITY_BY_PROJECT` etc. | `analyticsApi.getBugs(period, projectId)` |
-| Task Allocation | `STATIC_ALLOCATION_DATA` | `analyticsApi.getAllocation(period, projectId)` |
-| Timesheet | `STATIC_TIMESHEET_DATA` | `analyticsApi.getTimesheet(period, projectId)` |
-| Capacity | `capacityStaticData` | `analyticsApi.getCapacity(period)` |
+- **Leave tab**: date picker, type (SICK/CASUAL/OTHER), notes → `POST /leave-logs`
+- **Learning tab**: period, topic, hours, description → `POST /learning-logs`
+- **Innovation tab**: period, title, impact description, type → `POST /innovation-logs`
 
-- Period selector and project filter already exist in UI — pass their values to each query
-- CSV export functions receive the live data array (same logic, different source)
-- Add per-tab loading spinner and `No data for this period` empty state
+Show existing logs for the selected period with delete option.
 
 ---
 
-## Part 3 — Self-Log Entry Forms (New UI)
+## Key Files Reference
 
-The backend already has POST endpoints for leave/learning/innovation logs but there is **no frontend UI** for employees to submit them. Without entries in these tables, KPI metrics for attendance, learning_velocity, and automation_innovation will always show 0.
-
-Create a small **"My Logs"** section (can be on the KPI page sidebar or a modal):
-- **Leave Log form**: date, type (SICK/CASUAL/OTHER), description → `POST /leave-logs`
-- **Learning Log form**: period, topic, hours, description → `POST /learning-logs`
-- **Innovation Log form**: period, title, impact, type → `POST /innovation-logs`
-
-**Files to create:**
-- `frontend/src/features/kpi/components/SelfLogPanel.tsx` (3-tab panel: Leave / Learning / Innovation)
-- Wire to existing `analyticsApi.ts` or add self-log calls to it
-
----
-
-## Part 4 — Dashboard Live Data Fixes
-
-**File:** `frontend/src/features/dashboard/pages/DashboardPage.tsx`
-
-Dashboard already calls live API but has two known gaps:
-1. **Team performance score** is hardcoded as `0` in `dashboard.service.ts` — wire it to `analyticsApi.getKpi(currentPeriod)` → compute avg score
-2. **Activity Chart** uses mock monthly data — wire to `analyticsApi.getProductivity(period)` aggregated by month
+| File | What It Does |
+|------|-------------|
+| `frontend/src/features/kpi/pages/KpiPage.tsx` | KPI dashboard — currently static |
+| `frontend/src/features/reports/pages/ReportsPage.tsx` | 7-tab reports — currently static |
+| `frontend/src/api/analyticsApi.ts` | All API calls ready, not yet used by pages |
+| `backend/src/analytics/analytics.service.ts` | All 7 live DB endpoints implemented |
+| `backend/src/kpi-records/kpi-records.service.ts` | Manual score save/fetch |
+| `backend/src/self-logs/self-logs.service.ts` | Leave/learning/innovation log CRUD |
+| `backend/src/dashboard/dashboard.service.ts` | Live dashboard stats (team score = 0, fix it) |
+| `frontend/src/features/kpi/data/kpiStaticData.ts` | Keep helpers, remove STATIC_KPI_DATA array |
+| `frontend/src/features/reports/data/reportsStaticData.ts` | Delete after all tabs are live |
 
 ---
 
-## Part 5 — Full Feature Smoke-Test Checklist
-
-Work through each feature in the browser after wiring is done:
-
-| Area | Test |
-|------|------|
-| Auth | Login as SUPER_USER, ADMIN, EMPLOYEE — verify RBAC |
-| Projects | Create, edit, archive, restore; Ongoing checkbox saves null endDate |
-| Board | Drag item → status updates in open modal; milestone fields visible on all types |
-| Sprints | Create / activate / close sprint |
-| Work Items | Create Epic → Story → Task → Bug; all fields save correctly |
-| Timesheet | Log hours on a work item; approval flow |
-| KPI page | Period selector loads different data; admin can enter manual scores; scores persist on refresh |
-| Reports tabs | Each tab shows live data; period/project filter narrows results; CSV export downloads correct rows |
-| Capacity tab | Grid shows correct colour for leave/holiday/occupied days |
-| Self-logs | Employee submits leave/learning/innovation log; reflected in KPI score on next load |
-| Rich-text editor | Bold/italic/color/image upload works in project form |
-
----
-
-## Critical Files
-
-| File | Change |
-|------|--------|
-| `frontend/src/features/kpi/pages/KpiPage.tsx` | Replace static with `useQuery(analyticsApi.getKpi)` |
-| `frontend/src/features/reports/pages/ReportsPage.tsx` | Replace 7 static imports with `useQuery` per tab |
-| `frontend/src/features/kpi/components/SelfLogPanel.tsx` | New — leave/learning/innovation log forms |
-| `frontend/src/api/analyticsApi.ts` | Add self-log POST calls if missing |
-| `backend/src/dashboard/dashboard.service.ts` | Wire team performance score to live KPI avg |
-
-## Reusable Utilities (no new code needed)
-- `analyticsApi.ts` — all 9 endpoints already defined
-- `KPI_METRICS`, `computeGrade`, `computeCategoryScores` from `kpiStaticData.ts` — keep these pure helpers, only remove the `STATIC_KPI_DATA` array
-- Existing `useQuery`/`useMutation` patterns from any other page
-
----
-
-## Verification
-
-1. **Seed test data**: Create 2–3 work items, log timesheet hours, close a sprint → KPI and Productivity tabs should show non-zero values
-2. **KPI manual score**: Admin enters scores for a user → refresh KPI page → score updates
-3. **Self-log**: Employee submits a learning log (4+ hours) → KPI `learning_velocity` metric gains points
-4. **Reports CSV**: Download CSV for Productivity tab → rows match what is shown in the table
-5. **Capacity grid**: Add a leave entry for a date → that day's cell turns pink for that employee
+## Definition of Done
+- Every form saves data that appears in DB (verify via test create → check report)
+- Overview stat cards show correct live counts
+- Each Reports tab shows data that changes when DB data changes
+- KPI scores reflect actual work items, timesheets, and manual entries
+- No hardcoded static arrays driving any UI that the user sees as "live" data
