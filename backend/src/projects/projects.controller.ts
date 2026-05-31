@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpCode, Param, Patch, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Param, Patch, Post, Query, Request } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { ProjectStatus, SystemRole } from '@prisma/client';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -13,14 +13,14 @@ export class ProjectsController {
 
   @Get()
   @ApiOperation({ summary: 'List projects with optional filters' })
-  findAll(@Query() query: ProjectsQueryDto) {
-    return this.projectsService.findAll(query);
+  findAll(@Query() query: ProjectsQueryDto, @Request() req: any) {
+    return this.projectsService.findAll(query, req.user.id, req.user.systemRole);
   }
 
   @Get('summary')
   @ApiOperation({ summary: 'Project summary counts' })
-  getSummary() {
-    return this.projectsService.getSummary();
+  getSummary(@Request() req: any) {
+    return this.projectsService.getSummary(req.user.id, req.user.systemRole);
   }
 
   @Get(':id')

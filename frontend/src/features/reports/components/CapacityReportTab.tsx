@@ -1,5 +1,44 @@
 import { useState } from 'react';
-import { STATIC_CAPACITY_DATA, type CapacityCell } from '../data/capacityStaticData';
+import { useQuery } from '@tanstack/react-query';
+import { apiClient } from '../../../api/client';
+
+// ── Types ─────────────────────────────────────────────────────────────────────
+
+interface CapacityDay {
+  day: number;
+  dayOfWeek: string;
+  isHoliday: boolean;
+  holidayName?: string;
+  isWeeklyOff: boolean;
+}
+
+interface CapacityCell {
+  day: number;
+  status: 'holiday' | 'weekly_off' | 'leave' | 'occupied' | 'partial' | 'available';
+  hours: number;
+  hasWorkItem?: boolean;
+  holidayName?: string;
+  dayOfWeek: string;
+}
+
+interface CapacityEmployee {
+  userId: string;
+  name: string;
+  role: string;
+  cells: CapacityCell[];
+  summary: { workingDays: number; occupiedDays: number; leaveDays: number; availableDays: number };
+}
+
+interface CapacityReport {
+  period: string;
+  year: number;
+  month: number;
+  daysInMonth: number;
+  days: CapacityDay[];
+  employees: CapacityEmployee[];
+}
+
+// ── Config ────────────────────────────────────────────────────────────────────
 
 const DAY_ABBR: Record<string, string> = {
   monday: 'Mon', tuesday: 'Tue', wednesday: 'Wed',
@@ -7,21 +46,26 @@ const DAY_ABBR: Record<string, string> = {
 };
 
 const STATUS_STYLE: Record<string, { bg: string; title: string }> = {
-  holiday:    { bg: 'bg-orange-200',     title: 'Holiday' },
-  weekly_off: { bg: 'bg-gray-100',       title: 'Weekly Off' },
-  leave:      { bg: 'bg-pink-200',       title: 'On Leave' },
-  occupied:   { bg: 'bg-blue-700',       title: 'Fully Occupied (≥8h)' },
-  partial:    { bg: 'bg-amber-300',      title: 'Partially Occupied' },
-  available:  { bg: 'bg-green-200',      title: 'Available' },
+  holiday:    { bg: 'bg-orange-200',  title: 'Public Holiday' },
+  weekly_off: { bg: 'bg-gray-100',    title: 'Weekly Off' },
+  leave:      { bg: 'bg-pink-300',    title: 'On Leave' },
+  occupied:   { bg: 'bg-blue-700',    title: 'Fully Occupied (≥8h)' },
+  partial:    { bg: 'bg-amber-300',   title: 'Partially Occupied / Assigned' },
+  available:  { bg: 'bg-green-200',   title: 'Available' },
 };
 
 const LEGEND = [
-  { status: 'holiday',    label: 'Public Holiday',        color: 'bg-orange-200'  },
-  { status: 'weekly_off', label: 'Weekly Off',            color: 'bg-gray-100 border border-gray-200' },
-  { status: 'leave',      label: 'On Leave',              color: 'bg-pink-200'    },
-  { status: 'occupied',   label: 'Fully Occupied (≥8h)',  color: 'bg-blue-700'    },
-  { status: 'partial',    label: 'Partially Occupied',    color: 'bg-amber-300'   },
-  { status: 'available',  label: 'Available',             color: 'bg-green-200'   },
+  { status: 'holiday',    label: 'Public Holiday',                color: 'bg-orange-200' },
+  { status: 'weekly_off', label: 'Weekly Off',                    color: 'bg-gray-100 border border-gray-200' },
+  { status: 'leave',      label: 'On Approved Leave',             color: 'bg-pink-300' },
+  { status: 'occupied',   label: 'Fully Occupied (≥8h logged)',   color: 'bg-blue-700' },
+  { status: 'partial',    label: 'Partial / Work Item Assigned',  color: 'bg-amber-300' },
+  { status: 'available',  label: 'Available',                     color: 'bg-green-200' },
+];
+
+const MONTH_NAMES = [
+  '', 'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
 ];
 
 function toPeriod(year: number, month: number) {
@@ -33,12 +77,7 @@ function parsePeriod(period: string): { year: number; month: number } {
   return { year: y, month: m };
 }
 
-const MONTH_NAMES = [
-  '', 'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December',
-];
-
-interface CellTooltip {
+interface TooltipState {
   employeeName: string;
   day: number;
   month: number;
@@ -46,47 +85,52 @@ interface CellTooltip {
   cell: CapacityCell;
 }
 
+// ── Component ─────────────────────────────────────────────────────────────────
+
 export function CapacityReportTab() {
   const today = new Date();
   const [period, setPeriod] = useState(() =>
     toPeriod(today.getFullYear(), today.getMonth() + 1),
   );
-  const [tooltip, setTooltip] = useState<CellTooltip | null>(null);
+  const [tooltip, setTooltip] = useState<TooltipState | null>(null);
 
   const { year, month } = parsePeriod(period);
 
-  const data = STATIC_CAPACITY_DATA[period] ?? null;
+  const { data, isLoading, isError } = useQuery<CapacityReport>({
+    queryKey: ['capacity-report', period],
+    queryFn: () => apiClient.get('/analytics/reports/capacity', { params: { period } }).then((r) => r.data),
+    staleTime: 60_000,
+  });
 
   function prevMonth() {
     const d = new Date(year, month - 2, 1);
     setPeriod(toPeriod(d.getFullYear(), d.getMonth() + 1));
   }
-
   function nextMonth() {
     const d = new Date(year, month, 1);
     setPeriod(toPeriod(d.getFullYear(), d.getMonth() + 1));
   }
 
-  const todayDay = today.getFullYear() === year && today.getMonth() + 1 === month
-    ? today.getDate()
-    : -1;
+  const todayDay =
+    today.getFullYear() === year && today.getMonth() + 1 === month
+      ? today.getDate()
+      : -1;
 
   return (
     <div className="space-y-4">
-      {/* Month selector */}
       <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
+        {/* Header */}
         <div className="flex items-center justify-between mb-4">
           <div>
             <h3 className="text-sm font-semibold text-gray-800">Monthly Capacity Report</h3>
             <p className="text-xs text-gray-400 mt-0.5">
-              Employee availability matrix — {MONTH_NAMES[month]} {year}
+              Employee availability — {MONTH_NAMES[month]} {year}
             </p>
           </div>
           <div className="flex items-center gap-2">
             <button
               onClick={prevMonth}
               className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition"
-              title="Previous month"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -98,7 +142,6 @@ export function CapacityReportTab() {
             <button
               onClick={nextMonth}
               className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition"
-              title="Next month"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -123,13 +166,25 @@ export function CapacityReportTab() {
           ))}
         </div>
 
-        {!data || data.employees.length === 0 ? (
+        {/* Table */}
+        {isLoading ? (
+          <div className="flex items-center justify-center py-12 text-sm text-gray-400">
+            Loading capacity data…
+          </div>
+        ) : isError ? (
+          <div className="flex items-center justify-center py-12 text-sm text-red-400">
+            Failed to load capacity report.
+          </div>
+        ) : !data || data.employees.length === 0 ? (
           <div className="flex items-center justify-center py-12 text-sm text-gray-400">
             No employee data for this period.
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="text-xs border-collapse" style={{ minWidth: `${180 + data.daysInMonth * 32}px` }}>
+            <table
+              className="text-xs border-collapse"
+              style={{ minWidth: `${180 + data.daysInMonth * 32}px` }}
+            >
               <thead>
                 <tr>
                   <th className="sticky left-0 z-20 bg-white px-3 py-2 text-left font-semibold text-gray-700 w-44 min-w-[11rem] border-r border-gray-100">
@@ -140,7 +195,13 @@ export function CapacityReportTab() {
                       key={d.day}
                       className={`px-1 py-1.5 text-center font-medium w-7 border-l border-gray-50 ${
                         d.day === todayDay ? 'ring-1 ring-blue-400 ring-inset rounded' : ''
-                      } ${d.isWeeklyOff ? 'text-gray-300' : d.isHoliday ? 'text-orange-500' : 'text-gray-500'}`}
+                      } ${
+                        d.isWeeklyOff
+                          ? 'text-gray-300'
+                          : d.isHoliday
+                          ? 'text-orange-500'
+                          : 'text-gray-500'
+                      }`}
                       title={d.holidayName ?? d.dayOfWeek}
                     >
                       <div>{DAY_ABBR[d.dayOfWeek]?.[0] ?? ''}</div>
@@ -157,7 +218,9 @@ export function CapacityReportTab() {
                   <tr key={emp.userId} className="hover:bg-gray-50/30">
                     <td className="sticky left-0 z-10 bg-white px-3 py-2 border-r border-gray-100 border-t border-gray-50">
                       <p className="font-semibold text-gray-800 truncate max-w-[160px]">{emp.name}</p>
-                      <p className="text-[10px] text-gray-400 truncate">{emp.role}</p>
+                      <p className="text-[10px] text-gray-400 truncate capitalize">
+                        {emp.role.replace(/_/g, ' ').toLowerCase()}
+                      </p>
                     </td>
                     {emp.cells.map((cell) => {
                       const style = STATUS_STYLE[cell.status];
@@ -165,7 +228,7 @@ export function CapacityReportTab() {
                       return (
                         <td
                           key={cell.day}
-                          className={`px-0.5 py-1 border-l border-gray-50 border-t border-gray-50 text-center cursor-default`}
+                          className="px-0.5 py-1 border-l border-gray-50 border-t border-gray-50 text-center cursor-default"
                           onMouseEnter={() =>
                             setTooltip({ employeeName: emp.name, day: cell.day, month, year, cell })
                           }
@@ -175,20 +238,13 @@ export function CapacityReportTab() {
                             className={`w-6 h-6 rounded mx-auto ${style.bg} ${
                               isToday ? 'ring-1 ring-blue-500' : ''
                             } ${cell.status === 'occupied' ? 'text-white' : ''} flex items-center justify-center text-[9px] font-medium`}
-                            title={
-                              cell.status === 'holiday'
-                                ? cell.holidayName ?? 'Holiday'
-                                : cell.hours > 0
-                                ? `${cell.hours}h`
-                                : style.title
-                            }
                           >
-                            {cell.hours > 0 && cell.status !== 'holiday' && cell.status !== 'weekly_off'
-                              ? cell.hours >= 8
-                                ? `${cell.hours}h`
-                                : cell.hours >= 1
-                                ? `${cell.hours}h`
-                                : ''
+                            {cell.hours > 0 &&
+                            cell.status !== 'holiday' &&
+                            cell.status !== 'weekly_off'
+                              ? `${cell.hours}h`
+                              : cell.hasWorkItem && cell.status === 'partial'
+                              ? '●'
                               : ''}
                           </div>
                         </td>
@@ -196,9 +252,15 @@ export function CapacityReportTab() {
                     })}
                     <td className="px-3 py-2 border-l border-gray-100 border-t border-gray-50 text-center whitespace-nowrap">
                       <div className="flex flex-col items-center gap-0.5">
-                        <span className="text-[10px] text-blue-600 font-medium">{emp.summary.occupiedDays}d occ</span>
-                        <span className="text-[10px] text-pink-500">{emp.summary.leaveDays}d leave</span>
-                        <span className="text-[10px] text-green-600">{emp.summary.availableDays}d avail</span>
+                        <span className="text-[10px] text-blue-600 font-medium">
+                          {emp.summary.occupiedDays}d occ
+                        </span>
+                        <span className="text-[10px] text-pink-500">
+                          {emp.summary.leaveDays}d leave
+                        </span>
+                        <span className="text-[10px] text-green-600">
+                          {emp.summary.availableDays}d avail
+                        </span>
                       </div>
                     </td>
                   </tr>
@@ -209,7 +271,7 @@ export function CapacityReportTab() {
         )}
       </div>
 
-      {/* Tooltip overlay */}
+      {/* Tooltip */}
       {tooltip && (
         <div
           className="fixed z-50 pointer-events-none bg-white border border-gray-200 rounded-xl shadow-lg px-3 py-2 text-xs"
@@ -220,10 +282,18 @@ export function CapacityReportTab() {
             {MONTH_NAMES[tooltip.month]} {tooltip.day}, {tooltip.year}
           </p>
           <p className="text-gray-600 mt-1">
-            Status: <span className="font-medium capitalize">{tooltip.cell.status.replace('_', ' ')}</span>
+            Status:{' '}
+            <span className="font-medium capitalize">
+              {STATUS_STYLE[tooltip.cell.status].title}
+            </span>
           </p>
           {tooltip.cell.hours > 0 && (
-            <p className="text-gray-600">Hours logged: <span className="font-medium">{tooltip.cell.hours}h</span></p>
+            <p className="text-gray-600">
+              Hours logged: <span className="font-medium">{tooltip.cell.hours}h</span>
+            </p>
+          )}
+          {tooltip.cell.hasWorkItem && (
+            <p className="text-amber-600 text-[10px] mt-0.5">Has assigned work item</p>
           )}
           {tooltip.cell.holidayName && (
             <p className="text-orange-600">{tooltip.cell.holidayName}</p>

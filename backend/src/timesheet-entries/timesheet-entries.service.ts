@@ -29,7 +29,7 @@ export class TimesheetEntriesService {
   async create(workItemId: string, userId: string, systemRole: SystemRole, dto: CreateTimesheetEntryDto) {
     const item = await this.prisma.workItem.findUnique({
       where: { id: workItemId },
-      select: { assigneeId: true, reporterId: true },
+      select: { assigneeId: true, reporterId: true, title: true, parentId: true },
     });
     if (!item) throw new NotFoundException(`Work item ${workItemId} not found`);
 
@@ -39,10 +39,46 @@ export class TimesheetEntriesService {
       throw new ForbiddenException('Only the assignee or reporter can log time on this item');
     }
 
-    return this.prisma.timesheetEntry.create({
-      data: { workItemId, userId, ...dto },
+    const { date, ...restDto } = dto;
+    const entry = await this.prisma.timesheetEntry.create({
+      data: { workItemId, userId, ...restDto, date: new Date(date), approvalStatus: TimesheetApprovalStatus.SUBMITTED },
       include: ENTRY_INCLUDE,
     });
+
+    const logSummary = `${dto.hours}h on ${date}${dto.description ? ` — ${dto.description}` : ''}`;
+
+    const activities = [
+      this.prisma.workItemActivity.create({
+        data: {
+          workItemId,
+          userId,
+          action: 'time_logged',
+          field: 'time',
+          oldValue: null,
+          newValue: logSummary.slice(0, 490),
+        },
+      }),
+    ];
+
+    // Propagate to parent so the parent's activity log shows child time logs
+    if (item.parentId) {
+      activities.push(
+        this.prisma.workItemActivity.create({
+          data: {
+            workItemId: item.parentId,
+            userId,
+            action: 'child_time_logged',
+            field: 'time',
+            oldValue: item.title,
+            newValue: logSummary.slice(0, 490),
+          },
+        }),
+      );
+    }
+
+    await Promise.all(activities);
+
+    return entry;
   }
 
   findByWorkItem(workItemId: string) {
@@ -60,16 +96,39 @@ export class TimesheetEntriesService {
     queryUserId?: string,
     from?: string,
     to?: string,
+    projectId?: string,
   ) {
     const isAdmin = systemRole === SystemRole.SUPER_USER || systemRole === SystemRole.ADMIN;
     const isManager = projectRole === ProjectRole.PROJECT_MANAGER || projectRole === ProjectRole.TEAM_LEAD;
     const canViewAll = isAdmin || isManager;
 
-    const targetUserId = canViewAll && queryUserId ? queryUserId : requestingUserId;
-    const where: Record<string, unknown> = canViewAll && !queryUserId ? {} : { userId: targetUserId };
+    // Build where clause
+    const where: Record<string, unknown> = {};
 
-    if (from) where['date'] = { ...(where['date'] as object ?? {}), gte: new Date(from) };
-    if (to) where['date'] = { ...(where['date'] as object ?? {}), lte: new Date(to) };
+    // User filter: admins/managers can view any user; others only see their own
+    if (canViewAll && queryUserId) {
+      where['userId'] = queryUserId;
+    } else if (!canViewAll) {
+      where['userId'] = requestingUserId;
+    }
+    // If canViewAll && !queryUserId → no userId filter (see everyone)
+
+    // Date range filter
+    if (from || to) {
+      where['date'] = {
+        ...(from ? { gte: new Date(from) } : {}),
+        ...(to ? { lte: new Date(to) } : {}),
+      };
+    }
+
+    // Project filter — resolve via explicit workItemId lookup
+    if (projectId) {
+      const projectWorkItems = await this.prisma.workItem.findMany({
+        where: { projectId },
+        select: { id: true },
+      });
+      where['workItemId'] = { in: projectWorkItems.map((w) => w.id) };
+    }
 
     return this.prisma.timesheetEntry.findMany({
       where,
@@ -86,7 +145,11 @@ export class TimesheetEntriesService {
     if (entry.approvalStatus === TimesheetApprovalStatus.APPROVED) {
       throw new BadRequestException('Cannot edit an approved timesheet entry');
     }
-    return this.prisma.timesheetEntry.update({ where: { id }, data: dto });
+    const { date, ...restDto } = dto;
+    return this.prisma.timesheetEntry.update({
+      where: { id },
+      data: { ...restDto, ...(date !== undefined && { date: new Date(date) }) },
+    });
   }
 
   async remove(id: string, userId: string, systemRole: SystemRole) {

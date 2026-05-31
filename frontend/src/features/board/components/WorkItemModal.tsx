@@ -1,6 +1,8 @@
-import { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { boardApi } from '../api/boardApi';
+import { futureDateStr, pastDateStr, todayStr } from '../../../utils/dateUtils';
 import {
   BOARD_COLUMNS,
   BUG_STATUS_CONFIG,
@@ -24,7 +26,7 @@ import { useAuthStore } from '../../../store/authStore';
 import type { Milestone } from '../../../types/milestones.types';
 import { RichTextEditor } from '../../../components/shared/RichTextEditor';
 
-type ActivityTab = 'comments' | 'logTime' | 'attachments';
+type ActivityTab = 'comments' | 'logTime' | 'attachments' | 'activities';
 
 interface MemberOption { id: string; fullName: string; }
 
@@ -35,6 +37,8 @@ interface Props {
   milestones: Milestone[];
   onClose: () => void;
   onSaved: () => void;
+  onSuccess?: (msg: string) => void;
+  onOpenChild?: (childId: string) => void;
 }
 
 interface CreateProps {
@@ -46,6 +50,7 @@ interface CreateProps {
   parentId?: string;
   onClose: () => void;
   onSaved: () => void;
+  onSuccess?: (msg: string) => void;
 }
 
 function fmtDate(iso: string) {
@@ -64,25 +69,206 @@ function Avatar({ name, size = 'sm' }: { name: string; size?: 'sm' | 'xs' }) {
 // Right sidebar property row
 function SidebarRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="flex items-start gap-2 py-1.5 border-b border-gray-100 last:border-0">
-      <span className="text-[11px] text-gray-500 w-28 shrink-0 pt-1">{label}</span>
+    <div className="flex items-start gap-2 py-2 border-b border-gray-100 last:border-0">
+      <span className="text-[11px] font-medium text-gray-500 w-28 shrink-0 pt-1.5 leading-tight">{label}</span>
       <div className="flex-1 min-w-0">{children}</div>
+    </div>
+  );
+}
+
+// ─── Activity helpers ─────────────────────────────────────────────────────────
+
+function fmtRelTime(iso: string) {
+  const diff = Date.now() - new Date(iso).getTime();
+  const m = Math.floor(diff / 60000);
+  if (m < 1) return 'just now';
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  return fmtDate(iso);
+}
+
+const STATUS_LABEL: Record<string, string> = {
+  TODO: 'To Do', IN_PROGRESS: 'In Progress', BLOCKED: 'Blocked',
+  IN_REVIEW: 'In Review', QA: 'QA', QA_DONE: 'QA Done',
+};
+const PRIORITY_LABEL: Record<string, string> = {
+  LOW: 'Low', MEDIUM: 'Medium', HIGH: 'High', CRITICAL: 'Critical',
+};
+
+function fmt(val: string | null | undefined, map?: Record<string, string>) {
+  if (!val) return '—';
+  return map?.[val] ?? val;
+}
+
+function stripHtml(val: string | null | undefined): string | null {
+  if (!val) return null;
+  return val.replace(/<[^>]*>/g, '').trim() || null;
+}
+
+function activityLabel(action: string, field?: string | null, oldVal?: string | null, newVal?: string | null): React.ReactNode {
+  if (action === 'created') return 'created this item';
+  if (action === 'commented') {
+    const preview = (newVal ?? '').slice(0, 80);
+    return <span>added a comment{preview ? <span className="italic text-gray-400"> — "{preview}{(newVal ?? '').length > 80 ? '…' : ''}"</span> : ''}</span>;
+  }
+  if (action === 'attachment_added') return <span>attached <span className="font-medium text-gray-700">"{newVal ?? 'a file'}"</span></span>;
+  if (action === 'status_changed') return (
+    <span>moved from <span className="font-medium text-gray-700">{fmt(oldVal, STATUS_LABEL)}</span> → <span className="font-medium text-gray-700">{fmt(newVal, STATUS_LABEL)}</span></span>
+  );
+  if (action === 'assignee_changed') return (
+    <span>changed assignee from <span className="font-medium text-gray-700">{oldVal ?? 'Unassigned'}</span> → <span className="font-medium text-gray-700">{newVal ?? 'Unassigned'}</span></span>
+  );
+  if (action === 'priority_changed') return (
+    <span>changed priority from <span className="font-medium text-gray-700">{fmt(oldVal, PRIORITY_LABEL)}</span> → <span className="font-medium text-gray-700">{fmt(newVal, PRIORITY_LABEL)}</span></span>
+  );
+  if (action === 'title_changed') return <span>renamed to <span className="font-medium text-gray-700">"{newVal}"</span></span>;
+  if (action === 'sprint_changed') return (
+    <span>moved sprint from <span className="font-medium text-gray-700">{oldVal ?? 'Backlog'}</span> → <span className="font-medium text-gray-700">{newVal ?? 'Backlog'}</span></span>
+  );
+  if (action === 'due_date_changed') return (
+    <span>changed due date{oldVal ? <span> from <span className="font-medium text-gray-700">{oldVal}</span></span> : ''}{newVal ? <span> to <span className="font-medium text-gray-700">{newVal}</span></span> : ' (cleared)'}</span>
+  );
+  if (action === 'story_points_changed') return (
+    <span>changed story points from <span className="font-medium text-gray-700">{oldVal ?? '—'}</span> → <span className="font-medium text-gray-700">{newVal ?? '—'}</span></span>
+  );
+  if (action === 'description_updated') return 'updated the description';
+  if (action === 'time_logged') return (
+    <span>logged time <span className="font-medium text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded text-[10px]">{newVal}</span></span>
+  );
+  if (action === 'label_added') return (
+    <span>added label <span className="font-medium text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded-full border border-indigo-200 text-[10px]">{newVal}</span></span>
+  );
+  if (action === 'label_removed') return (
+    <span>removed label <span className="font-medium text-gray-500 line-through text-[10px]">{oldVal}</span></span>
+  );
+  if (action === 'child_added') return (
+    <span>added sub task <span className="font-medium text-gray-700">"{newVal}"</span></span>
+  );
+  if (action === 'child_time_logged') return (
+    <span>
+      <span className="font-medium text-gray-700">"{oldVal}"</span>: logged time{' '}
+      <span className="font-medium text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded text-[10px]">{newVal}</span>
+    </span>
+  );
+  if (action.startsWith('child_')) {
+    const verb = action.replace(/^child_/, '').replace(/_/g, ' ');
+    return (
+      <span>
+        <span className="font-medium text-gray-700">"{oldVal}"</span>: {verb}
+        {newVal ? <> — <span className="font-medium text-gray-700">{newVal}</span></> : null}
+      </span>
+    );
+  }
+  if (action === 'estimated_hours_changed') return (
+    <span>changed estimated hours from <span className="font-medium text-gray-700">{oldVal ?? '—'}</span> → <span className="font-medium text-gray-700">{newVal ?? '—'}</span></span>
+  );
+  if (action === 'start_date_changed') return (
+    <span>changed start date{oldVal ? <span> from <span className="font-medium text-gray-700">{oldVal}</span></span> : ''}{newVal ? <span> to <span className="font-medium text-gray-700">{newVal}</span></span> : ' (cleared)'}</span>
+  );
+  if (action === 'severity_changed') return (
+    <span>changed severity from <span className="font-medium text-gray-700">{oldVal ?? '—'}</span> → <span className="font-medium text-gray-700">{newVal ?? '—'}</span></span>
+  );
+  if (action === 'bug_status_changed') return (
+    <span>changed bug status from <span className="font-medium text-gray-700">{oldVal ?? '—'}</span> → <span className="font-medium text-gray-700">{newVal ?? '—'}</span></span>
+  );
+  if (action === 'module_changed') return (
+    <span>changed module{oldVal ? <span> from <span className="font-medium text-gray-700">{oldVal}</span></span> : ''}{newVal ? <span> to <span className="font-medium text-gray-700">{newVal}</span></span> : ' (cleared)'}</span>
+  );
+  if (action === 'fix_version_changed') return (
+    <span>changed fix version{oldVal ? <span> from <span className="font-medium text-gray-700">{oldVal}</span></span> : ''}{newVal ? <span> to <span className="font-medium text-gray-700">{newVal}</span></span> : ' (cleared)'}</span>
+  );
+  if (action === 'classification_changed') return (
+    <span>changed classification from <span className="font-medium text-gray-700">{fmt(oldVal)}</span> → <span className="font-medium text-gray-700">{fmt(newVal)}</span></span>
+  );
+  if (action === 'flag_changed') return (
+    <span>changed flag from <span className="font-medium text-gray-700">{fmt(oldVal)}</span> → <span className="font-medium text-gray-700">{fmt(newVal)}</span></span>
+  );
+  if (action === 'reproducibility_changed') return (
+    <span>changed reproducibility from <span className="font-medium text-gray-700">{fmt(oldVal)}</span> → <span className="font-medium text-gray-700">{fmt(newVal)}</span></span>
+  );
+  if (action === 'billing_changed') return (
+    <span>changed billing from <span className="font-medium text-gray-700">{fmt(oldVal)}</span> → <span className="font-medium text-gray-700">{fmt(newVal)}</span></span>
+  );
+  if (action === 'environment_changed') return (
+    <span>changed environment{oldVal ? <span> from <span className="font-medium text-gray-700">{oldVal}</span></span> : ''}{newVal ? <span> to <span className="font-medium text-gray-700">{newVal}</span></span> : ' (cleared)'}</span>
+  );
+  if (action === 'affected_build_changed') return (
+    <span>changed affected build{oldVal ? <span> from <span className="font-medium text-gray-700">{oldVal}</span></span> : ''}{newVal ? <span> to <span className="font-medium text-gray-700">{newVal}</span></span> : ' (cleared)'}</span>
+  );
+  if (action === 'fixed_build_changed') return (
+    <span>changed fixed build{oldVal ? <span> from <span className="font-medium text-gray-700">{oldVal}</span></span> : ''}{newVal ? <span> to <span className="font-medium text-gray-700">{newVal}</span></span> : ' (cleared)'}</span>
+  );
+  if (action === 'reminder_changed') return (
+    <span>changed reminder from <span className="font-medium text-gray-700">{fmt(oldVal)}</span> → <span className="font-medium text-gray-700">{fmt(newVal)}</span></span>
+  );
+  if (action === 'steps_updated') return 'updated steps to reproduce';
+  if (action === 'responsible_changed') return (
+    <span>changed responsible dev from <span className="font-medium text-gray-700">{oldVal ?? 'None'}</span> → <span className="font-medium text-gray-700">{newVal ?? 'None'}</span></span>
+  );
+  if (action === 'release_milestone_changed') return (
+    <span>changed release milestone from <span className="font-medium text-gray-700">{stripHtml(oldVal) ?? 'None'}</span> → <span className="font-medium text-gray-700">{stripHtml(newVal) ?? 'None'}</span></span>
+  );
+  if (action === 'affected_milestone_changed') return (
+    <span>changed affected milestone from <span className="font-medium text-gray-700">{stripHtml(oldVal) ?? 'None'}</span> → <span className="font-medium text-gray-700">{stripHtml(newVal) ?? 'None'}</span></span>
+  );
+  if (action === 'parent_changed') return (
+    <span>changed parent from <span className="font-medium text-gray-700">{oldVal ?? 'None'}</span> → <span className="font-medium text-gray-700">{newVal ?? 'None'}</span></span>
+  );
+  if (action === 'component_added') return (
+    <span>added component <span className="font-medium text-cyan-700 bg-cyan-50 px-1.5 py-0.5 rounded-full border border-cyan-200 text-[10px]">{newVal}</span></span>
+  );
+  if (action === 'component_removed') return (
+    <span>removed component <span className="font-medium text-gray-500 line-through text-[10px]">{oldVal}</span></span>
+  );
+  if (field) return `updated ${field}`;
+  return action.replace(/_/g, ' ');
+}
+
+function ActivityLog({ workItemId }: { workItemId: string }) {
+  const { data: activities = [], isLoading } = useQuery({
+    queryKey: ['workItem-activities', workItemId],
+    queryFn: () => boardApi.getActivities(workItemId),
+    refetchOnMount: 'always',
+    staleTime: 0,
+  });
+
+  if (isLoading) return <p className="text-xs text-gray-400 text-center py-4">Loading…</p>;
+  if (activities.length === 0) return <p className="text-xs text-gray-400 text-center py-4">No activity yet.</p>;
+
+  return (
+    <div className="space-y-0">
+      {activities.map((a, idx) => (
+        <div key={a.id} className="flex gap-3 items-start py-2 relative">
+          {/* Timeline line */}
+          {idx < activities.length - 1 && (
+            <div className="absolute left-[13px] top-8 bottom-0 w-px bg-gray-100" />
+          )}
+          <Avatar name={a.user.fullName} size="xs" />
+          <div className="flex-1 min-w-0">
+            <span className="text-xs font-semibold text-gray-800">{a.user.fullName}</span>
+            {' '}
+            <span className="text-xs text-gray-500">{activityLabel(a.action, a.field, a.oldValue, a.newValue)}</span>
+            <p className="text-[10px] text-gray-400 mt-0.5">{fmtRelTime(a.createdAt)}</p>
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
 
 // ─── WorkItemModal (edit existing) ───────────────────────────────────────────
 
-export function WorkItemModal({ item, sprints, members, milestones, onClose, onSaved }: Props) {
+export function WorkItemModal({ item, sprints, members, milestones, onClose, onSaved: _onSaved, onSuccess, onOpenChild }: Props) {
   const { user } = useAuthStore();
   const qc = useQueryClient();
 
   const [activityTab, setActivityTab] = useState<ActivityTab>('comments');
   const [editingTitle, setEditingTitle] = useState(false);
   const [titleDraft, setTitleDraft] = useState('');
-  const [editingDesc, setEditingDesc] = useState(false);
   const [descDraft, setDescDraft] = useState('');
   const [newChildTitle, setNewChildTitle] = useState('');
+  const [newChildType, setNewChildType] = useState<WorkItemType>('TASK');
   const [commentText, setCommentText] = useState('');
   const [logDate, setLogDate] = useState(new Date().toISOString().slice(0, 10));
   const [logHours, setLogHours] = useState('');
@@ -91,6 +277,13 @@ export function WorkItemModal({ item, sprints, members, milestones, onClose, onS
   const [addingLabel, setAddingLabel] = useState(false);
   const [expandedLogItems, setExpandedLogItems] = useState<Set<string>>(new Set());
   const [childLogForms, setChildLogForms] = useState<Record<string, { date: string; hours: string; desc: string }>>({});
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  // @mention in comments
+  const [mentionSearch, setMentionSearch] = useState('');
+  const [showMentionMenu, setShowMentionMenu] = useState(false);
+  const [mentionMenuPos, setMentionMenuPos] = useState({ top: 0, left: 0, width: 0 });
+  const [mentionedIds, setMentionedIds] = useState<string[]>([]);
+  const commentInputRef = useRef<HTMLInputElement>(null);
   const titleRef = useRef<HTMLTextAreaElement>(null);
 
   const { data: detail } = useQuery({
@@ -100,20 +293,74 @@ export function WorkItemModal({ item, sprints, members, milestones, onClose, onS
     initialData: item ?? undefined,
   });
 
+  const validParentTypes: WorkItemType[] | null =
+    item?.type === 'USER_STORY' ? ['EPIC'] :
+    item?.type === 'TASK' ? ['EPIC', 'USER_STORY'] :
+    item?.type === 'SUB_TASK' ? ['TASK', 'USER_STORY'] :
+    item?.type === 'BUG' ? ['EPIC', 'USER_STORY', 'TASK'] :
+    null;
+
+  const { data: parentOptions = [] } = useQuery({
+    queryKey: ['workItems-parents', item?.projectId],
+    queryFn: () => boardApi.getWorkItems(item!.projectId),
+    enabled: !!item?.projectId && validParentTypes !== null,
+    select: (items) => items.filter((i) => validParentTypes?.includes(i.type) && i.id !== item?.id),
+  });
+
+  // Sync descDraft when item first loads
+  useEffect(() => {
+    if (detail) setDescDraft(detail.description ?? '');
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [item?.id]);
+
+  const descChanged = descDraft !== (detail?.description ?? '');
+
   const updateMut = useMutation({
     mutationFn: (data: Partial<WorkItem>) => boardApi.updateWorkItem(item!.id, data),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['workItem', item!.id] }); onSaved(); },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['workItem', item!.id] });
+      qc.invalidateQueries({ queryKey: ['workItem-activities', item!.id] });
+      qc.invalidateQueries({ queryKey: ['board', item!.projectId] });
+    },
+  });
+
+  const deleteMut = useMutation({
+    mutationFn: () => boardApi.deleteWorkItem(item!.id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['board', item!.projectId] });
+      onSuccess?.('Work item deleted successfully');
+      onClose();
+    },
   });
 
   const createChildMut = useMutation({
     mutationFn: (data: Partial<WorkItem>) => boardApi.createWorkItem(item!.projectId, data),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['workItem', item!.id] }); setNewChildTitle(''); },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['workItem', item!.id] });
+      qc.invalidateQueries({ queryKey: ['workItem-activities', item!.id] });
+      qc.invalidateQueries({ queryKey: ['board', item!.projectId] });
+      setNewChildTitle('');
+    },
   });
 
   const toggleChildDoneMut = useMutation({
     mutationFn: ({ childId, done, status }: { childId: string; done: boolean; status?: BoardStatus }) =>
       boardApi.updateWorkItem(childId, { status: status ?? (done ? 'QA_DONE' : 'TODO') }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['workItem', item!.id] }),
+    onSuccess: (_data, { childId, done, status }) => {
+      const resolvedStatus = status ?? (done ? 'QA_DONE' : 'TODO');
+      qc.setQueryData(['workItem', item!.id], (old: WorkItem | undefined) => {
+        if (!old) return old;
+        return {
+          ...old,
+          children: (old.children ?? []).map((c) =>
+            c.id === childId ? { ...c, status: resolvedStatus } : c
+          ),
+        };
+      });
+      qc.invalidateQueries({ queryKey: ['workItem', item!.id] });
+      qc.invalidateQueries({ queryKey: ['workItem-activities', item!.id] });
+      qc.invalidateQueries({ queryKey: ['board', item!.projectId] });
+    },
   });
 
   const logChildTimeMut = useMutation({
@@ -121,6 +368,8 @@ export function WorkItemModal({ item, sprints, members, milestones, onClose, onS
       boardApi.logTime(childId, data),
     onSuccess: (_data, vars) => {
       qc.invalidateQueries({ queryKey: ['workItem', item!.id] });
+      qc.invalidateQueries({ queryKey: ['workItem-activities', item!.id] });
+      qc.invalidateQueries({ queryKey: ['workItem-activities', vars.childId] });
       setExpandedLogItems((prev) => { const s = new Set(prev); s.delete(vars.childId); return s; });
       setChildLogForms((prev) => { const n = { ...prev }; delete n[vars.childId]; return n; });
     },
@@ -128,22 +377,37 @@ export function WorkItemModal({ item, sprints, members, milestones, onClose, onS
 
   const logTimeMut = useMutation({
     mutationFn: (d: { date: string; hours: number; description?: string }) => boardApi.logTime(item!.id, d),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['workItem', item!.id] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['workItem', item!.id] });
+      qc.invalidateQueries({ queryKey: ['workItem-activities', item!.id] });
+    },
   });
 
   const deleteEntryMut = useMutation({
     mutationFn: (entryId: string) => boardApi.deleteTimesheetEntry(entryId),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['workItem', item!.id] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['workItem', item!.id] });
+      qc.invalidateQueries({ queryKey: ['workItem-activities', item!.id] });
+    },
   });
 
   const addCommentMut = useMutation({
-    mutationFn: (content: string) => boardApi.addComment(item!.id, content),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['workItem', item!.id] }); setCommentText(''); },
+    mutationFn: ({ content, mentions }: { content: string; mentions: string[] }) =>
+      boardApi.addComment(item!.id, content, mentions),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['workItem', item!.id] });
+      qc.invalidateQueries({ queryKey: ['workItem-activities', item!.id] });
+      setCommentText('');
+      setMentionedIds([]);
+    },
   });
 
   const deleteCommentMut = useMutation({
     mutationFn: ({ wid, cid }: { wid: string; cid: string }) => boardApi.deleteComment(wid, cid),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['workItem', item!.id] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['workItem', item!.id] });
+      qc.invalidateQueries({ queryKey: ['workItem-activities', item!.id] });
+    },
   });
 
   if (!item || !detail) return null;
@@ -159,10 +423,7 @@ export function WorkItemModal({ item, sprints, members, milestones, onClose, onS
   }
 
   function saveDesc() {
-    if (descDraft !== (detail?.description ?? '')) {
-      updateMut.mutate({ description: descDraft || undefined });
-    }
-    setEditingDesc(false);
+    updateMut.mutate({ description: descDraft || undefined });
   }
 
   function addLabel() {
@@ -177,21 +438,38 @@ export function WorkItemModal({ item, sprints, members, milestones, onClose, onS
     updateMut.mutate({ labels: (detail?.labels ?? []).filter((l) => l !== label) });
   }
 
-  const childType: WorkItemType = detail.type === 'USER_STORY' ? 'TASK' : detail.type === 'TASK' ? 'SUB_TASK' : 'SUB_TASK';
+  const defaultChildType: WorkItemType = detail.type === 'EPIC' ? 'USER_STORY' : detail.type === 'USER_STORY' ? 'TASK' : 'SUB_TASK';
+  const childTypeOptions: WorkItemType[] =
+    detail.type === 'EPIC' ? ['USER_STORY', 'BUG'] :
+    detail.type === 'USER_STORY' ? ['TASK', 'BUG'] :
+    ['SUB_TASK'];
+  const childSectionLabel = detail.type === 'EPIC' ? 'Children' : detail.type === 'USER_STORY' ? 'Tasks & Bugs' : 'Sub Tasks';
   const canAddChildren = detail.type === 'EPIC' || detail.type === 'USER_STORY' || detail.type === 'TASK';
+  const activeChildType: WorkItemType = childTypeOptions.includes(newChildType) ? newChildType : defaultChildType;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-[1200px] h-[90vh] flex flex-col overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-[1200px] h-[90vh] flex flex-col overflow-hidden">
 
         {/* ── Top bar ── */}
-        <div className="flex items-center gap-3 px-6 py-3 border-b border-gray-100 shrink-0 bg-white">
+        <div className="flex items-center gap-3 px-6 py-4 border-b border-gray-100 shrink-0 bg-white">
           {/* Breadcrumb */}
           <div className="flex items-center gap-1.5 flex-1 min-w-0">
             {detail.parent && (
               <>
                 <TypeBadge type={detail.parent.type} />
-                <span className="text-xs text-gray-500 truncate max-w-[200px]">{detail.parent.title}</span>
+                <button
+                  onClick={() => onOpenChild?.(detail.parent!.id)}
+                  disabled={!onOpenChild}
+                  className={`text-xs truncate max-w-[200px] transition ${
+                    onOpenChild
+                      ? 'text-primary-600 hover:text-primary-800 hover:underline cursor-pointer'
+                      : 'text-gray-500 cursor-default'
+                  }`}
+                  title={onOpenChild ? `Open ${detail.parent.title}` : detail.parent.title}
+                >
+                  {detail.parent.title}
+                </button>
                 <svg className="w-3 h-3 text-gray-300 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                 </svg>
@@ -200,6 +478,48 @@ export function WorkItemModal({ item, sprints, members, milestones, onClose, onS
             <TypeBadge type={detail.type} />
             <span className="text-xs text-gray-400 font-mono shrink-0">#{detail.id.slice(-6).toUpperCase()}</span>
           </div>
+          {/* Delete button with inline confirm */}
+          {(() => {
+            const childCount = detail._count?.children ?? detail.children?.length ?? 0;
+            const hasChildren = childCount > 0;
+            if (confirmDelete) {
+              return (
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="text-xs text-gray-500">Delete this item?</span>
+                  <button
+                    onClick={() => deleteMut.mutate()}
+                    disabled={deleteMut.isPending}
+                    className="px-3 py-1.5 text-xs font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition disabled:opacity-60"
+                  >
+                    {deleteMut.isPending ? 'Deleting…' : 'Yes, delete'}
+                  </button>
+                  <button
+                    onClick={() => setConfirmDelete(false)}
+                    className="px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              );
+            }
+            return (
+              <button
+                onClick={() => !hasChildren && setConfirmDelete(true)}
+                disabled={hasChildren}
+                className={`shrink-0 p-1.5 rounded-lg transition ${
+                  hasChildren
+                    ? 'text-gray-300 cursor-not-allowed'
+                    : 'text-gray-400 hover:text-red-500 hover:bg-red-50'
+                }`}
+                title={hasChildren ? `Cannot delete — ${childCount} child item${childCount > 1 ? 's' : ''} must be removed first` : 'Delete work item'}
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </button>
+            );
+          })()}
+
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 shrink-0 p-1 rounded-lg hover:bg-gray-100 transition">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -238,242 +558,265 @@ export function WorkItemModal({ item, sprints, members, milestones, onClose, onS
 
               {/* Description */}
               <div>
-                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Description</p>
-                {editingDesc ? (
-                  <div className="space-y-2">
-                    <RichTextEditor
-                      value={descDraft}
-                      onChange={setDescDraft}
-                      placeholder="Add a description…"
-                      minHeight="140px"
-                    />
-                    <div className="flex gap-2">
-                      <button onClick={saveDesc} className="btn-primary text-xs px-3 py-1.5">Save</button>
-                      <button onClick={() => setEditingDesc(false)} className="btn-secondary text-xs px-3 py-1.5">Cancel</button>
-                    </div>
-                  </div>
-                ) : (
-                  <div
-                    onClick={() => { setDescDraft(detail.description ?? ''); setEditingDesc(true); }}
-                    className="cursor-pointer rounded-lg p-3 hover:bg-gray-50 transition min-h-[60px] border border-transparent hover:border-gray-200"
-                  >
-                    {detail.description ? (
-                      <div
-                        className="prose prose-sm max-w-none text-gray-700"
-                        dangerouslySetInnerHTML={{ __html: detail.description }}
-                      />
-                    ) : (
-                      <p className="text-sm text-gray-400 italic">Click to add a description…</p>
-                    )}
+                <label className="block text-xs font-medium text-gray-600 mb-1.5">Description</label>
+                <div className="rounded-lg border border-gray-200 focus-within:ring-2 focus-within:ring-primary-500 overflow-hidden">
+                  <RichTextEditor
+                    value={descDraft}
+                    onChange={setDescDraft}
+                    placeholder="Add a description…"
+                    minHeight="120px"
+                  />
+                </div>
+                {descChanged && (
+                  <div className="flex gap-2 mt-2">
+                    <button
+                      onClick={saveDesc}
+                      disabled={updateMut.isPending}
+                      className="btn-primary text-xs px-3 py-1.5"
+                    >
+                      {updateMut.isPending ? 'Saving…' : 'Save'}
+                    </button>
+                    <button
+                      onClick={() => setDescDraft(detail.description ?? '')}
+                      className="btn-secondary text-xs px-3 py-1.5"
+                    >
+                      Cancel
+                    </button>
                   </div>
                 )}
               </div>
 
               {/* Child Items — JIRA style with checkbox, strikethrough, inline log time */}
-              {canAddChildren && (
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                      Child Items ({detail.children?.length ?? 0})
-                    </p>
-                    {(detail.children ?? []).length > 0 && (
-                      <span className="text-[11px] text-gray-400">
-                        {(detail.children ?? []).filter((c) => c.status === 'QA_DONE').length} / {detail.children?.length} done
-                      </span>
+              {canAddChildren && (() => {
+                const visibleChildren = (detail.children ?? []).filter((c) => c.type === activeChildType);
+                const doneCount = visibleChildren.filter((c) => c.status === 'QA_DONE').length;
+                return (
+                  <div>
+                    {/* Tab bar — only when multiple child types are possible */}
+                    {childTypeOptions.length > 1 ? (
+                      <div className="flex items-center gap-0 border-b border-gray-200 mb-3">
+                        {childTypeOptions.map((t) => {
+                          const count = (detail.children ?? []).filter((c) => c.type === t).length;
+                          const isActive = activeChildType === t;
+                          return (
+                            <button
+                              key={t}
+                              onClick={() => { setNewChildType(t); setNewChildTitle(''); }}
+                              className={`text-xs font-semibold px-4 py-2 border-b-2 transition -mb-px ${
+                                isActive
+                                  ? t === 'BUG'
+                                    ? 'border-red-500 text-red-700'
+                                    : 'border-primary-500 text-primary-700'
+                                  : 'border-transparent text-gray-400 hover:text-gray-600'
+                              }`}
+                            >
+                              {TYPE_CONFIG[t].label}s
+                              <span className={`ml-1.5 text-[10px] px-1.5 py-0.5 rounded-full font-bold ${
+                                isActive
+                                  ? t === 'BUG' ? 'bg-red-100 text-red-600' : 'bg-primary-100 text-primary-600'
+                                  : 'bg-gray-100 text-gray-400'
+                              }`}>
+                                {count}
+                              </span>
+                            </button>
+                          );
+                        })}
+                        {visibleChildren.length > 0 && (
+                          <span className="ml-auto text-[11px] text-gray-400 pb-2">
+                            {doneCount} / {visibleChildren.length} done
+                          </span>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-between mb-2">
+                        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest">
+                          {childSectionLabel} ({visibleChildren.length})
+                        </p>
+                        {visibleChildren.length > 0 && (
+                          <span className="text-[11px] text-gray-400">{doneCount} / {visibleChildren.length} done</span>
+                        )}
+                      </div>
                     )}
-                  </div>
 
-                  {/* Progress bar */}
-                  {(detail.children ?? []).length > 0 && (
-                    <div className="h-1.5 bg-gray-100 rounded-full mb-3 overflow-hidden">
-                      <div
-                        className="h-full bg-emerald-500 rounded-full transition-all"
-                        style={{ width: `${((detail.children ?? []).filter((c) => c.status === 'QA_DONE').length / (detail.children?.length ?? 1)) * 100}%` }}
-                      />
-                    </div>
-                  )}
+                    {/* Progress bar */}
+                    {visibleChildren.length > 0 && (
+                      <div className="h-1.5 bg-gray-100 rounded-full mb-3 overflow-hidden">
+                        <div
+                          className="h-full bg-emerald-500 rounded-full transition-all"
+                          style={{ width: `${(doneCount / visibleChildren.length) * 100}%` }}
+                        />
+                      </div>
+                    )}
 
-                  <div className="space-y-0.5">
-                    {(detail.children ?? []).map((child) => {
-                      const isDone = child.status === 'QA_DONE';
-                      const logOpen = expandedLogItems.has(child.id);
-                      const logForm = childLogForms[child.id] ?? { date: new Date().toISOString().slice(0, 10), hours: '', desc: '' };
+                    <div className="space-y-0.5">
+                      {visibleChildren.map((child) => {
+                        const isDone = child.status === 'QA_DONE';
+                        const logOpen = expandedLogItems.has(child.id);
+                        const logForm = childLogForms[child.id] ?? { date: new Date().toISOString().slice(0, 10), hours: '', desc: '' };
 
-                      return (
-                        <div key={child.id}>
-                          {/* Main row */}
-                          <div className="flex items-center gap-2.5 px-2 py-2 rounded-lg hover:bg-gray-50 group transition">
-                            {/* Circle checkbox */}
-                            <button
-                              onClick={() => toggleChildDoneMut.mutate({ childId: child.id, done: !isDone, status: !isDone ? 'QA_DONE' : 'TODO' })}
-                              className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-all ${
-                                isDone
-                                  ? 'bg-emerald-500 border-emerald-500 text-white'
-                                  : 'border-gray-300 hover:border-emerald-400 hover:bg-emerald-50'
-                              }`}
-                              title={isDone ? 'Mark as not done' : 'Mark as done'}
-                            >
-                              {isDone && (
-                                <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                                </svg>
-                              )}
-                            </button>
+                        return (
+                          <div key={child.id}>
+                            {/* Main row */}
+                            <div className="flex items-center gap-2 px-2 py-2 rounded-lg hover:bg-gray-50 group transition">
+                              {/* Status select — colored pill */}
+                              <select
+                                value={child.status}
+                                onChange={(e) => toggleChildDoneMut.mutate({ childId: child.id, done: false, status: e.target.value as BoardStatus })}
+                                onClick={(e) => e.stopPropagation()}
+                                className={`text-[10px] font-semibold rounded-full px-2 py-0.5 border-0 cursor-pointer shrink-0 focus:ring-1 focus:ring-primary-400 ${
+                                  isDone                          ? 'bg-emerald-100 text-emerald-700' :
+                                  child.status === 'IN_PROGRESS' ? 'bg-blue-100 text-blue-700' :
+                                  child.status === 'BLOCKED'     ? 'bg-red-100 text-red-700' :
+                                  child.status === 'IN_REVIEW'   ? 'bg-amber-100 text-amber-700' :
+                                  child.status === 'QA'          ? 'bg-purple-100 text-purple-700' :
+                                                                   'bg-gray-100 text-gray-600'
+                                }`}
+                                title="Change status"
+                              >
+                                {BOARD_COLUMNS.map((c) => (
+                                  <option key={c.status} value={c.status}>{c.label}</option>
+                                ))}
+                              </select>
 
-                            {/* Type badge */}
-                            <TypeBadge type={child.type} />
+                              {/* Title — clickable to open child, strikethrough when done */}
+                              <button
+                                onClick={() => onOpenChild?.(child.id)}
+                                className={`text-xs flex-1 min-w-0 truncate text-left transition-all ${
+                                  isDone ? 'line-through text-gray-400' : 'text-gray-700 hover:text-primary-600 hover:underline'
+                                } ${onOpenChild ? 'cursor-pointer' : 'cursor-default'}`}
+                                disabled={!onOpenChild}
+                                title={onOpenChild ? 'Click to open' : undefined}
+                              >
+                                {child.title}
+                              </button>
 
-                            {/* Title — strikethrough when done */}
-                            <span className={`text-sm flex-1 min-w-0 truncate transition-all ${
-                              isDone ? 'line-through text-gray-400' : 'text-gray-700'
-                            }`}>
-                              {child.title}
-                            </span>
+                              {/* Priority badge */}
+                              <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium shrink-0 ${PRIORITY_CONFIG[child.priority].bg} ${PRIORITY_CONFIG[child.priority].text}`}>
+                                {child.priority.charAt(0) + child.priority.slice(1).toLowerCase()}
+                              </span>
 
-                            {/* Priority badge */}
-                            <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium shrink-0 ${PRIORITY_CONFIG[child.priority].bg} ${PRIORITY_CONFIG[child.priority].text}`}>
-                              {child.priority.charAt(0) + child.priority.slice(1).toLowerCase()}
-                            </span>
-
-
-                            {/* Log time button — visible on hover */}
-                            <button
-                              onClick={() => {
-                                setExpandedLogItems((prev) => {
-                                  const s = new Set(prev);
-                                  if (s.has(child.id)) s.delete(child.id); else s.add(child.id);
-                                  return s;
-                                });
-                                if (!childLogForms[child.id]) {
-                                  setChildLogForms((prev) => ({
-                                    ...prev,
-                                    [child.id]: { date: new Date().toISOString().slice(0, 10), hours: '', desc: '' },
-                                  }));
-                                }
-                              }}
-                              className={`text-[11px] font-medium px-2 py-0.5 rounded transition shrink-0 ${
-                                logOpen
-                                  ? 'bg-primary-100 text-primary-700'
-                                  : 'text-gray-400 hover:text-primary-600 hover:bg-primary-50 opacity-0 group-hover:opacity-100'
-                              }`}
-                              title="Log time against this item"
-                            >
-                              Log
-                            </button>
-
-                            {/* Status dropdown */}
-                            <select
-                              value={child.status}
-                              onChange={(e) => toggleChildDoneMut.mutate({ childId: child.id, done: false, status: e.target.value as BoardStatus })}
-                              onClick={(e) => e.stopPropagation()}
-                              className={`text-[11px] font-semibold rounded-lg px-2 py-1 border-0 cursor-pointer shrink-0 focus:ring-1 focus:ring-primary-400 ${
-                                isDone ? 'bg-emerald-100 text-emerald-700' :
-                                child.status === 'IN_PROGRESS' ? 'bg-blue-100 text-blue-700' :
-                                child.status === 'BLOCKED' ? 'bg-red-100 text-red-700' :
-                                child.status === 'IN_REVIEW' ? 'bg-amber-100 text-amber-700' :
-                                child.status === 'QA' ? 'bg-purple-100 text-purple-700' :
-                                'bg-gray-100 text-gray-600'
-                              }`}
-                            >
-                              {BOARD_COLUMNS.map((c) => (
-                                <option key={c.status} value={c.status}>{c.label}</option>
-                              ))}
-                            </select>
-                          </div>
-
-                          {/* Inline log time form */}
-                          {logOpen && (
-                            <div className="ml-8 mb-2 bg-blue-50/60 border border-blue-100 rounded-lg p-3 space-y-2">
-                              <p className="text-[11px] font-semibold text-blue-700 mb-1.5">Log time — {child.title}</p>
-                              <div className="grid grid-cols-3 gap-2">
-                                <div>
-                                  <label className="text-[10px] text-gray-500 mb-0.5 block">Date</label>
-                                  <input
-                                    type="date"
-                                    value={logForm.date}
-                                    onChange={(e) => setChildLogForms((prev) => ({ ...prev, [child.id]: { ...logForm, date: e.target.value } }))}
-                                    className="input-sm w-full text-xs"
-                                  />
-                                </div>
-                                <div>
-                                  <label className="text-[10px] text-gray-500 mb-0.5 block">Hours</label>
-                                  <input
-                                    type="number"
-                                    min={0.25} max={24} step={0.25}
-                                    value={logForm.hours}
-                                    placeholder="e.g. 2.5"
-                                    onChange={(e) => setChildLogForms((prev) => ({ ...prev, [child.id]: { ...logForm, hours: e.target.value } }))}
-                                    className="input-sm w-full text-xs"
-                                  />
-                                </div>
-                                <div>
-                                  <label className="text-[10px] text-gray-500 mb-0.5 block">Description</label>
-                                  <input
-                                    type="text"
-                                    value={logForm.desc}
-                                    placeholder="What did you work on?"
-                                    onChange={(e) => setChildLogForms((prev) => ({ ...prev, [child.id]: { ...logForm, desc: e.target.value } }))}
-                                    className="input-sm w-full text-xs"
-                                  />
-                                </div>
-                              </div>
-                              <div className="flex gap-2">
-                                <button
-                                  onClick={() => {
-                                    if (!logForm.date || !logForm.hours) return;
-                                    logChildTimeMut.mutate({
-                                      childId: child.id,
-                                      data: { date: logForm.date, hours: Number(logForm.hours), description: logForm.desc || undefined },
-                                    });
-                                  }}
-                                  disabled={!logForm.date || !logForm.hours || logChildTimeMut.isPending}
-                                  className="btn-primary text-xs px-3 py-1.5"
-                                >
-                                  {logChildTimeMut.isPending ? 'Logging…' : 'Log Time'}
-                                </button>
-                                <button
-                                  onClick={() => setExpandedLogItems((prev) => { const s = new Set(prev); s.delete(child.id); return s; })}
-                                  className="btn-secondary text-xs px-3 py-1.5"
-                                >
-                                  Cancel
-                                </button>
-                              </div>
+                              {/* Log time button — visible on hover */}
+                              <button
+                                onClick={() => {
+                                  setExpandedLogItems((prev) => {
+                                    const s = new Set(prev);
+                                    if (s.has(child.id)) s.delete(child.id); else s.add(child.id);
+                                    return s;
+                                  });
+                                  if (!childLogForms[child.id]) {
+                                    setChildLogForms((prev) => ({
+                                      ...prev,
+                                      [child.id]: { date: new Date().toISOString().slice(0, 10), hours: '', desc: '' },
+                                    }));
+                                  }
+                                }}
+                                className={`text-[11px] font-medium px-2 py-0.5 rounded transition shrink-0 ${
+                                  logOpen
+                                    ? 'bg-primary-100 text-primary-700'
+                                    : 'text-gray-400 hover:text-primary-600 hover:bg-primary-50 opacity-0 group-hover:opacity-100'
+                                }`}
+                                title="Log time against this item"
+                              >
+                                Log
+                              </button>
                             </div>
-                          )}
-                        </div>
-                      );
-                    })}
 
-                    {/* Quick add child */}
-                    <div className="flex items-center gap-2 mt-2 pl-2">
-                      <div className="w-5 h-5 rounded-full border-2 border-dashed border-gray-200 shrink-0" />
-                      <input
-                        type="text"
-                        value={newChildTitle}
-                        onChange={(e) => setNewChildTitle(e.target.value)}
-                        placeholder={`Add ${childType.replace(/_/g, ' ').toLowerCase()}…`}
-                        className="input-sm flex-1 text-sm"
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter' && newChildTitle.trim()) {
-                            createChildMut.mutate({ type: childType, title: newChildTitle.trim(), parentId: detail.id } as Partial<WorkItem>);
-                          }
-                        }}
-                      />
-                      <button
-                        disabled={!newChildTitle.trim() || createChildMut.isPending}
-                        onClick={() => {
-                          if (newChildTitle.trim()) {
-                            createChildMut.mutate({ type: childType, title: newChildTitle.trim(), parentId: detail.id } as Partial<WorkItem>);
-                          }
-                        }}
-                        className="btn-primary text-xs px-3 py-1.5 shrink-0"
-                      >
-                        + Add
-                      </button>
+                            {/* Inline log time form */}
+                            {logOpen && (
+                              <div className="ml-4 mb-2 bg-blue-50/60 border border-blue-100 rounded-lg p-3 space-y-2">
+                                <p className="text-[11px] font-semibold text-blue-700 mb-1.5">Log time — {child.title}</p>
+                                <div className="grid grid-cols-3 gap-2">
+                                  <div>
+                                    <label className="text-[10px] text-gray-500 mb-0.5 block">Date</label>
+                                    <input
+                                      type="date"
+                                      value={logForm.date}
+                                      min={pastDateStr(1)}
+                                      max={todayStr()}
+                                      onChange={(e) => setChildLogForms((prev) => ({ ...prev, [child.id]: { ...logForm, date: e.target.value } }))}
+                                      className="input-sm w-full text-xs"
+                                    />
+                                  </div>
+                                  <div>
+                                    <label className="text-[10px] text-gray-500 mb-0.5 block">Hours</label>
+                                    <input
+                                      type="number"
+                                      min={0.25} max={24} step={0.25}
+                                      value={logForm.hours}
+                                      placeholder="e.g. 2.5"
+                                      onChange={(e) => setChildLogForms((prev) => ({ ...prev, [child.id]: { ...logForm, hours: e.target.value } }))}
+                                      className="input-sm w-full text-xs"
+                                    />
+                                  </div>
+                                  <div>
+                                    <label className="text-[10px] text-gray-500 mb-0.5 block">Description</label>
+                                    <input
+                                      type="text"
+                                      value={logForm.desc}
+                                      placeholder="What did you work on?"
+                                      onChange={(e) => setChildLogForms((prev) => ({ ...prev, [child.id]: { ...logForm, desc: e.target.value } }))}
+                                      className="input-sm w-full text-xs"
+                                    />
+                                  </div>
+                                </div>
+                                <div className="flex gap-2">
+                                  <button
+                                    onClick={() => {
+                                      if (!logForm.date || !logForm.hours) return;
+                                      logChildTimeMut.mutate({
+                                        childId: child.id,
+                                        data: { date: logForm.date, hours: Number(logForm.hours), description: logForm.desc || undefined },
+                                      });
+                                    }}
+                                    disabled={!logForm.date || !logForm.hours || logChildTimeMut.isPending}
+                                    className="btn-primary text-xs px-3 py-1.5"
+                                  >
+                                    {logChildTimeMut.isPending ? 'Logging…' : 'Log Time'}
+                                  </button>
+                                  <button
+                                    onClick={() => setExpandedLogItems((prev) => { const s = new Set(prev); s.delete(child.id); return s; })}
+                                    className="btn-secondary text-xs px-3 py-1.5"
+                                  >
+                                    Cancel
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+
+                      {/* Quick-add input — type comes from active tab */}
+                      <div className="flex items-center gap-2 mt-1.5 pl-2">
+                        <div className="w-4 h-4 rounded-full border-2 border-dashed border-gray-200 shrink-0" />
+                        <input
+                          type="text"
+                          value={newChildTitle}
+                          onChange={(e) => setNewChildTitle(e.target.value)}
+                          placeholder={`Add ${activeChildType.replace(/_/g, ' ').toLowerCase()}…`}
+                          className="input-sm flex-1 text-sm"
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' && newChildTitle.trim()) {
+                              createChildMut.mutate({ type: activeChildType, title: newChildTitle.trim(), parentId: detail.id } as Partial<WorkItem>);
+                            }
+                          }}
+                        />
+                        <button
+                          disabled={!newChildTitle.trim() || createChildMut.isPending}
+                          onClick={() => {
+                            if (newChildTitle.trim()) {
+                              createChildMut.mutate({ type: activeChildType, title: newChildTitle.trim(), parentId: detail.id } as Partial<WorkItem>);
+                            }
+                          }}
+                          className="btn-primary text-xs px-3 py-1.5 shrink-0"
+                        >
+                          {createChildMut.isPending ? '…' : '+ Add'}
+                        </button>
+                      </div>
                     </div>
                   </div>
-                </div>
-              )}
+                );
+              })()}
 
               {/* Reopens info */}
               {detail.reopenCount > 0 && (
@@ -490,6 +833,7 @@ export function WorkItemModal({ item, sprints, members, milestones, onClose, onS
                   { id: 'comments' as ActivityTab, label: `Comments (${detail.comments?.length ?? 0})` },
                   { id: 'logTime' as ActivityTab, label: `Log Time${totalLogged > 0 ? ` (${totalLogged}h)` : ''}` },
                   { id: 'attachments' as ActivityTab, label: `Attachments (${detail.attachments?.length ?? 0})` },
+                  { id: 'activities' as ActivityTab, label: 'Activity' },
                 ] as { id: ActivityTab; label: string }[]).map((t) => (
                   <button
                     key={t.id}
@@ -509,21 +853,97 @@ export function WorkItemModal({ item, sprints, members, milestones, onClose, onS
                 {/* Comments */}
                 {activityTab === 'comments' && (
                   <div className="space-y-3">
-                    <div className="flex gap-2">
-                      <input
-                        type="text"
-                        value={commentText}
-                        onChange={(e) => setCommentText(e.target.value)}
-                        placeholder="Add a comment…"
-                        className="input-sm flex-1"
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter' && commentText.trim()) {
-                            addCommentMut.mutate(commentText.trim());
-                          }
-                        }}
-                      />
+                    <div className="space-y-2">
+                      <div className="relative">
+                        <input
+                          ref={commentInputRef}
+                          type="text"
+                          value={commentText}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setCommentText(val);
+                            const atIdx = val.lastIndexOf('@');
+                            if (atIdx !== -1) {
+                              const afterAt = val.slice(atIdx + 1);
+                              if (!afterAt.includes(' ')) {
+                                setMentionSearch(afterAt.toLowerCase());
+                                if (commentInputRef.current) {
+                                  const rect = commentInputRef.current.getBoundingClientRect();
+                                  setMentionMenuPos({ top: rect.top, left: rect.left, width: rect.width });
+                                }
+                                setShowMentionMenu(true);
+                              } else {
+                                setShowMentionMenu(false);
+                              }
+                            } else {
+                              setShowMentionMenu(false);
+                            }
+                          }}
+                          placeholder="Add a comment… type @ to mention someone"
+                          className="input-sm w-full"
+                          onKeyDown={(e) => {
+                            if (e.key === 'Escape') setShowMentionMenu(false);
+                            if (e.key === 'Enter' && !showMentionMenu && commentText.trim()) {
+                              addCommentMut.mutate({ content: commentText.trim(), mentions: mentionedIds });
+                            }
+                          }}
+                        />
+                      </div>
+                      {showMentionMenu && createPortal(
+                        <div
+                          style={{
+                            position: 'fixed',
+                            top: mentionMenuPos.top,
+                            left: mentionMenuPos.left,
+                            width: mentionMenuPos.width,
+                            zIndex: 9999,
+                            transform: 'translateY(-100%)',
+                          }}
+                          className="max-h-64 overflow-y-auto bg-white border border-gray-200 rounded-xl shadow-xl"
+                        >
+                          <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-1.5 border-b border-gray-100">Mention</p>
+                          {members
+                            .filter((m) => m.fullName.toLowerCase().includes(mentionSearch))
+                            .map((m) => (
+                              <button
+                                key={m.id}
+                                type="button"
+                                onMouseDown={(e) => {
+                                  e.preventDefault();
+                                  const atIdx = commentText.lastIndexOf('@');
+                                  const before = commentText.slice(0, atIdx);
+                                  setCommentText(`${before}@${m.fullName} `);
+                                  setMentionedIds((prev) => prev.includes(m.id) ? prev : [...prev, m.id]);
+                                  setShowMentionMenu(false);
+                                  commentInputRef.current?.focus();
+                                }}
+                                className="flex items-center gap-2 w-full text-left px-3 py-2 hover:bg-gray-50 text-xs text-gray-700"
+                              >
+                                <Avatar name={m.fullName} size="xs" />
+                                {m.fullName}
+                              </button>
+                            ))}
+                          {members.filter((m) => m.fullName.toLowerCase().includes(mentionSearch)).length === 0 && (
+                            <p className="px-3 py-2 text-xs text-gray-400">No members found</p>
+                          )}
+                        </div>,
+                        document.body,
+                      )}
+                      {mentionedIds.length > 0 && (
+                        <div className="flex flex-wrap gap-1">
+                          {mentionedIds.map((id) => {
+                            const m = members.find((x) => x.id === id);
+                            return m ? (
+                              <span key={id} className="inline-flex items-center gap-1 text-[10px] bg-primary-50 text-primary-700 px-2 py-0.5 rounded-full border border-primary-200">
+                                @{m.fullName}
+                                <button onClick={() => setMentionedIds((p) => p.filter((x) => x !== id))} className="hover:text-red-500">×</button>
+                              </span>
+                            ) : null;
+                          })}
+                        </div>
+                      )}
                       <button
-                        onClick={() => { if (commentText.trim()) addCommentMut.mutate(commentText.trim()); }}
+                        onClick={() => { if (commentText.trim()) addCommentMut.mutate({ content: commentText.trim(), mentions: mentionedIds }); }}
                         disabled={!commentText.trim() || addCommentMut.isPending}
                         className="btn-primary text-xs px-3 py-1.5"
                       >Post</button>
@@ -533,7 +953,7 @@ export function WorkItemModal({ item, sprints, members, milestones, onClose, onS
                         <Avatar name={c.author.fullName} size="sm" />
                         <div className="flex-1 min-w-0">
                           <p className="text-xs font-semibold text-gray-800">{c.author.fullName}</p>
-                          <p className="text-xs text-gray-600 mt-0.5">{c.content}</p>
+                          <p className="text-xs text-gray-600 mt-0.5 whitespace-pre-wrap">{c.content}</p>
                           <p className="text-[10px] text-gray-400 mt-1">{fmtDate(c.createdAt)}</p>
                         </div>
                         {(c.authorId === user?.id || user?.systemRole !== 'EMPLOYEE') && (
@@ -571,7 +991,7 @@ export function WorkItemModal({ item, sprints, members, milestones, onClose, onS
                       </div>
                     </div>
                     <div className="grid grid-cols-3 gap-2">
-                      <input type="date" value={logDate} onChange={(e) => setLogDate(e.target.value)} className="input-sm" />
+                      <input type="date" value={logDate} min={pastDateStr(1)} max={todayStr()} onChange={(e) => setLogDate(e.target.value)} className="input-sm" />
                       <input type="number" min={0.25} max={24} step={0.25} placeholder="Hours" value={logHours} onChange={(e) => setLogHours(e.target.value)} className="input-sm" />
                       <input type="text" placeholder="Description" value={logDesc} onChange={(e) => setLogDesc(e.target.value)} className="input-sm" />
                     </div>
@@ -611,11 +1031,39 @@ export function WorkItemModal({ item, sprints, members, milestones, onClose, onS
                   </div>
                 )}
 
+                {/* Activities */}
+                {activityTab === 'activities' && (
+                  <ActivityLog workItemId={detail.id} />
+                )}
+
                 {/* Attachments */}
                 {activityTab === 'attachments' && (
                   <div className="space-y-2">
+                    {/* Upload button */}
+                    <label className="flex items-center gap-2 px-3 py-2 border border-dashed border-gray-300 rounded-lg hover:border-primary-400 hover:bg-primary-50/60 cursor-pointer transition text-xs text-gray-500 hover:text-primary-600">
+                      <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                      </svg>
+                      Attach file
+                      <input
+                        type="file"
+                        className="hidden"
+                        accept=".pdf,.docx,.xlsx,.png,.jpg,.jpeg,.txt,.mp4"
+                        onChange={async (e) => {
+                          const f = e.target.files?.[0];
+                          if (!f || !item) return;
+                          e.target.value = '';
+                          try {
+                            await boardApi.uploadAttachment(item.id, f);
+                            qc.invalidateQueries({ queryKey: ['workItem', item.id] });
+                          } catch { /* ignore */ }
+                        }}
+                      />
+                    </label>
+                    <p className="text-[10px] text-gray-400">PDF, DOCX, XLSX, PNG, JPG, TXT, MP4 · max 10 MB</p>
+
                     {(detail.attachments ?? []).length === 0 ? (
-                      <p className="text-xs text-gray-400 text-center py-4">No attachments yet.</p>
+                      <p className="text-xs text-gray-400 text-center py-2">No attachments yet.</p>
                     ) : (
                       (detail.attachments ?? []).map((a) => (
                         <div key={a.id} className="flex items-center gap-3 bg-gray-50 rounded-lg px-3 py-2">
@@ -623,9 +1071,28 @@ export function WorkItemModal({ item, sprints, members, milestones, onClose, onS
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
                           </svg>
                           <div className="flex-1 min-w-0">
-                            <p className="text-xs font-medium text-gray-700 truncate">{a.originalName}</p>
+                            <a
+                              href={boardApi.attachmentDownloadUrl(a.id)}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-xs font-medium text-primary-600 hover:underline truncate block"
+                            >
+                              {a.originalName}
+                            </a>
                             <p className="text-[10px] text-gray-400">{(a.size / 1024).toFixed(1)} KB · {a.uploadedBy.fullName}</p>
                           </div>
+                          <button
+                            onClick={async () => {
+                              await boardApi.deleteAttachment(a.id);
+                              qc.invalidateQueries({ queryKey: ['workItem', item!.id] });
+                            }}
+                            className="text-gray-400 hover:text-red-500 transition shrink-0"
+                            title="Remove attachment"
+                          >
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </button>
                         </div>
                       ))
                     )}
@@ -636,21 +1103,22 @@ export function WorkItemModal({ item, sprints, members, milestones, onClose, onS
           </div>
 
           {/* ── RIGHT PANEL (Properties Sidebar) ── */}
-          <div className="flex-[2] overflow-y-auto bg-gray-50 border-l border-gray-100">
+          <div className="flex-[2] overflow-y-auto bg-gray-50/60 border-l border-gray-100">
             <div className="px-5 py-5 space-y-1">
 
               {/* Status */}
               <div className="mb-4">
+                <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-2">Status</p>
                 <select
                   value={detail.status}
                   onChange={(e) => updateMut.mutate({ status: e.target.value as BoardStatus })}
-                  className={`w-full font-semibold text-sm rounded-lg px-3 py-2 border-0 focus:ring-2 focus:ring-primary-400 cursor-pointer ${
-                    detail.status === 'TODO' ? 'bg-gray-100 text-gray-700' :
-                    detail.status === 'IN_PROGRESS' ? 'bg-blue-100 text-blue-700' :
-                    detail.status === 'BLOCKED' ? 'bg-red-100 text-red-700' :
-                    detail.status === 'IN_REVIEW' ? 'bg-amber-100 text-amber-700' :
-                    detail.status === 'QA' ? 'bg-purple-100 text-purple-700' :
-                    'bg-emerald-100 text-emerald-700'
+                  className={`w-full font-semibold text-sm rounded-lg px-3 py-2 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500 cursor-pointer bg-white ${
+                    detail.status === 'TODO' ? 'text-gray-700' :
+                    detail.status === 'IN_PROGRESS' ? 'text-blue-700' :
+                    detail.status === 'BLOCKED' ? 'text-red-700' :
+                    detail.status === 'IN_REVIEW' ? 'text-amber-700' :
+                    detail.status === 'QA' ? 'text-purple-700' :
+                    'text-emerald-700'
                   }`}
                 >
                   {BOARD_COLUMNS.map((c) => (
@@ -659,7 +1127,7 @@ export function WorkItemModal({ item, sprints, members, milestones, onClose, onS
                 </select>
               </div>
 
-              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest pb-1">Details</p>
+              <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest pb-1">Details</p>
 
               {/* Assignee */}
               <SidebarRow label="Assignee">
@@ -710,7 +1178,7 @@ export function WorkItemModal({ item, sprints, members, milestones, onClose, onS
                   onChange={(e) => updateMut.mutate({ sprintId: e.target.value || undefined })}
                   className="input-sm w-full text-xs"
                 >
-                  <option value="">Backlog</option>
+                  <option value="">— none —</option>
                   {sprints.map((s) => (
                     <option key={s.id} value={s.id}>{s.name}</option>
                   ))}
@@ -755,6 +1223,8 @@ export function WorkItemModal({ item, sprints, members, milestones, onClose, onS
                 <input
                   type="date"
                   defaultValue={detail.startDate?.slice(0, 10) ?? ''}
+                  min={pastDateStr(5)}
+                  max={futureDateStr(10)}
                   onBlur={(e) => updateMut.mutate({ startDate: e.target.value || undefined })}
                   className="input-sm w-full text-xs"
                 />
@@ -765,6 +1235,8 @@ export function WorkItemModal({ item, sprints, members, milestones, onClose, onS
                 <input
                   type="date"
                   defaultValue={detail.dueDate?.slice(0, 10) ?? ''}
+                  min={pastDateStr(5)}
+                  max={futureDateStr(10)}
                   onBlur={(e) => updateMut.mutate({ dueDate: e.target.value || undefined })}
                   className="input-sm w-full text-xs"
                 />
@@ -802,12 +1274,28 @@ export function WorkItemModal({ item, sprints, members, milestones, onClose, onS
                 </div>
               </SidebarRow>
 
-              {/* Parent */}
-              {detail.parent && (
+              {/* Parent — editable */}
+              {validParentTypes && (
                 <SidebarRow label="Parent">
-                  <div className="flex items-center gap-1.5">
-                    <TypeBadge type={detail.parent.type} />
-                    <span className="text-xs text-gray-600 truncate">{detail.parent.title}</span>
+                  <div className="space-y-1">
+                    {detail.parent && (
+                      <div className="flex items-center gap-1.5 mb-1">
+                        <TypeBadge type={detail.parent.type} />
+                        <span className="text-xs text-gray-600 truncate">{detail.parent.title}</span>
+                      </div>
+                    )}
+                    <select
+                      value={detail.parentId ?? ''}
+                      onChange={(e) => updateMut.mutate({ parentId: e.target.value || undefined })}
+                      className="input-sm w-full text-xs"
+                    >
+                      <option value="">— none —</option>
+                      {parentOptions.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          [{TYPE_CONFIG[p.type].label}] {p.title}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                 </SidebarRow>
               )}
@@ -833,7 +1321,7 @@ export function WorkItemModal({ item, sprints, members, milestones, onClose, onS
                   >
                     <option value="">— none —</option>
                     {milestones.map((m) => (
-                      <option key={m.id} value={m.id}>{m.description}</option>
+                      <option key={m.id} value={m.id}>{m.name ?? m.description}</option>
                     ))}
                   </select>
                 </SidebarRow>
@@ -849,7 +1337,7 @@ export function WorkItemModal({ item, sprints, members, milestones, onClose, onS
                   >
                     <option value="">— none —</option>
                     {milestones.map((m) => (
-                      <option key={m.id} value={m.id}>{m.description}</option>
+                      <option key={m.id} value={m.id}>{m.name ?? m.description}</option>
                     ))}
                   </select>
                 </SidebarRow>
@@ -870,7 +1358,7 @@ export function WorkItemModal({ item, sprints, members, milestones, onClose, onS
               {/* ── Bug Details ── */}
               {detail.type === 'BUG' && (
                 <div className="pt-3">
-                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest pb-2 border-t border-gray-200 pt-2">Bug Details</p>
+                  <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest pb-2 border-t border-gray-200 pt-3">Bug Details</p>
 
                   {/* Bug Status */}
                   <SidebarRow label="Bug Status">
@@ -1065,12 +1553,44 @@ export function WorkItemModal({ item, sprints, members, milestones, onClose, onS
 
 // ─── CreateWorkItemModal ──────────────────────────────────────────────────────
 
+function TypeIcon({ type }: { type: WorkItemType }) {
+  if (type === 'EPIC') return (
+    <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
+      <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
+    </svg>
+  );
+  if (type === 'USER_STORY') return (
+    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+    </svg>
+  );
+  if (type === 'BUG') return (
+    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+    </svg>
+  );
+  if (type === 'SUB_TASK') return (
+    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+    </svg>
+  );
+  return (
+    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+    </svg>
+  );
+}
+
 export function CreateWorkItemModal({
   projectId, sprints, members = [], milestones = [],
-  defaultType = 'TASK', parentId, onClose, onSaved,
+  defaultType = 'TASK', parentId, onClose, onSaved, onSuccess,
 }: CreateProps) {
   const qc = useQueryClient();
   const [type, setType] = useState<WorkItemType>(defaultType);
+  const [showTypeMenu, setShowTypeMenu] = useState(false);
+  const typeMenuRef = useRef<HTMLDivElement>(null);
+  const [showParentMenu, setShowParentMenu] = useState(false);
+  const parentMenuRef = useRef<HTMLDivElement>(null);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [priority, setPriority] = useState<TaskPriority>('MEDIUM');
@@ -1094,16 +1614,40 @@ export function CreateWorkItemModal({
   const [affectedBuildVersion, setAffectedBuildVersion] = useState('');
   const [fixedBuildVersion, setFixedBuildVersion] = useState('');
   const [reminderType, setReminderType] = useState<BugReminderType>('NONE');
-  const [releaseMilestoneId, setReleaseMilestoneId] = useState('');
+  const [milestoneLinkId, setMilestoneLinkId] = useState('');
   const [affectedMilestoneId, setAffectedMilestoneId] = useState('');
+  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
 
-  // Fetch potential parent items (EPIC + USER_STORY + TASK) for parent selector
+  useEffect(() => {
+    if (!showTypeMenu) return;
+    function handleOutside(e: MouseEvent) {
+      if (!typeMenuRef.current?.contains(e.target as Node)) setShowTypeMenu(false);
+    }
+    document.addEventListener('mousedown', handleOutside);
+    return () => document.removeEventListener('mousedown', handleOutside);
+  }, [showTypeMenu]);
+
+  useEffect(() => {
+    if (!showParentMenu) return;
+    function handleOutside(e: MouseEvent) {
+      if (!parentMenuRef.current?.contains(e.target as Node)) setShowParentMenu(false);
+    }
+    document.addEventListener('mousedown', handleOutside);
+    return () => document.removeEventListener('mousedown', handleOutside);
+  }, [showParentMenu]);
+
+  const filteredSprints = milestoneLinkId
+    ? sprints.filter((s) => s.milestoneId === milestoneLinkId)
+    : sprints;
+
   const { data: parentOptions = [] } = useQuery({
     queryKey: ['workItems-parents', projectId],
     queryFn: () => boardApi.getWorkItems(projectId),
-    enabled: ['TASK', 'SUB_TASK', 'BUG'].includes(type),
+    enabled: ['USER_STORY', 'TASK', 'SUB_TASK', 'BUG'].includes(type),
     select: (items) => items.filter((i) => {
-      if (type === 'TASK' || type === 'BUG') return i.type === 'EPIC' || i.type === 'USER_STORY';
+      if (type === 'USER_STORY') return i.type === 'EPIC';
+      if (type === 'TASK') return i.type === 'EPIC' || i.type === 'USER_STORY';
+      if (type === 'BUG') return i.type === 'EPIC' || i.type === 'USER_STORY' || i.type === 'TASK' || i.type === 'SUB_TASK';
       if (type === 'SUB_TASK') return i.type === 'TASK' || i.type === 'USER_STORY';
       return false;
     }),
@@ -1111,7 +1655,14 @@ export function CreateWorkItemModal({
 
   const createMut = useMutation({
     mutationFn: (data: Partial<WorkItem>) => boardApi.createWorkItem(projectId, data),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['board', projectId] }); onSaved(); },
+    onSuccess: async (created) => {
+      for (const file of pendingFiles) {
+        try { await boardApi.uploadAttachment(created.id, file); } catch { /* non-fatal */ }
+      }
+      qc.invalidateQueries({ queryKey: ['board', projectId] });
+      onSuccess?.(`${TYPE_CONFIG[type].label} created successfully`);
+      onSaved();
+    },
   });
 
   function handleSubmit() {
@@ -1127,7 +1678,6 @@ export function CreateWorkItemModal({
       storyPoints: storyPoints ? Number(storyPoints) : undefined,
       estimatedHours: estimatedHours ? Number(estimatedHours) : undefined,
       dueDate: dueDate || undefined,
-      // Bug fields
       severity: (severity || undefined) as BugSeverity | undefined,
       bugClassification: (bugClassification || undefined) as BugClassification | undefined,
       environment: environment || undefined,
@@ -1141,141 +1691,288 @@ export function CreateWorkItemModal({
       affectedBuildVersion: affectedBuildVersion || undefined,
       fixedBuildVersion: fixedBuildVersion || undefined,
       reminderType: reminderType || undefined,
-      releaseMilestoneId: releaseMilestoneId || undefined,
+      releaseMilestoneId: milestoneLinkId || undefined,
       affectedMilestoneId: affectedMilestoneId || undefined,
     } as Partial<WorkItem>);
   }
 
   const CREATABLE_TYPES: WorkItemType[] = ['EPIC', 'USER_STORY', 'TASK', 'SUB_TASK', 'BUG'];
-  const needsParent = ['TASK', 'SUB_TASK', 'BUG'].includes(type) && !parentId;
+  const needsParent = ['USER_STORY', 'TASK', 'SUB_TASK', 'BUG'].includes(type) && !parentId;
+  const cfg = TYPE_CONFIG[type];
+  const labelCls = 'block text-xs font-medium text-gray-600 mb-1';
+  const inputCls = 'w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white';
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
-        <div className="flex items-center justify-between px-6 pt-5 pb-3 border-b border-gray-100 shrink-0">
-          <h2 className="text-base font-semibold text-gray-900">Create Work Item</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-1 rounded-lg hover:bg-gray-100 transition">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+
+        {/* Sticky header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 shrink-0">
+          {/* JIRA-style type selector */}
+          <div ref={typeMenuRef} className="relative">
+            <button
+              onClick={() => setShowTypeMenu((v) => !v)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition ${cfg.bg} ${cfg.text}`}
+            >
+              <TypeIcon type={type} />
+              {cfg.label}
+              <svg className="w-3 h-3 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+
+            {showTypeMenu && (
+              <div className="absolute top-full left-0 mt-1.5 bg-white rounded-xl shadow-lg border border-gray-100 py-1 min-w-[160px] z-10">
+                {CREATABLE_TYPES.map((t) => {
+                  const tcfg = TYPE_CONFIG[t];
+                  return (
+                    <button
+                      key={t}
+                      onClick={() => { setType(t); setShowTypeMenu(false); }}
+                      className={`flex items-center gap-2.5 w-full px-3 py-2.5 text-sm hover:bg-gray-50 transition ${type === t ? 'font-semibold text-gray-900' : 'text-gray-700'}`}
+                    >
+                      <span className={`inline-flex items-center justify-center w-5 h-5 rounded ${tcfg.bg} ${tcfg.text}`}>
+                        <TypeIcon type={t} />
+                      </span>
+                      {tcfg.label}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          <span className="text-sm font-semibold text-gray-800">Create Work Item</span>
+
+          <button onClick={onClose} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
-          {/* Type */}
-          <div>
-            <label className="text-xs text-gray-500 mb-1.5 block">Type *</label>
-            <div className="flex flex-wrap gap-2">
-              {CREATABLE_TYPES.map((t) => {
-                const cfg = TYPE_CONFIG[t];
-                return (
-                  <button
-                    key={t}
-                    onClick={() => setType(t)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${
-                      type === t ? `${cfg.bg} ${cfg.text} border-transparent` : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'
-                    }`}
-                  >
-                    {cfg.label}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+        {/* Scrollable body */}
+        <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
 
           {/* Title */}
           <div>
-            <label className="text-xs text-gray-500 mb-1 block">Title *</label>
+            <label className={labelCls}>Title <span className="text-red-500">*</span></label>
             <input
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Work item title…"
-              className="input-sm w-full"
               autoFocus
+              className={inputCls}
             />
           </div>
 
           {/* Parent selector */}
-          {needsParent && parentOptions.length > 0 && (
+          {needsParent && (
             <div>
-              <label className="text-xs text-gray-500 mb-1 block">Parent</label>
-              <select value={selectedParentId} onChange={(e) => setSelectedParentId(e.target.value)} className="input-sm w-full">
-                <option value="">— no parent —</option>
-                {parentOptions.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    [{TYPE_CONFIG[p.type].label}] {p.title}
-                  </option>
-                ))}
-              </select>
+              <label className={labelCls}>
+                Parent
+                <span className="text-gray-400 font-normal ml-1">
+                  {type === 'USER_STORY' && '(Epic)'}
+                  {type === 'TASK' && '(Epic / Story)'}
+                  {type === 'SUB_TASK' && '(Story / Task)'}
+                  {type === 'BUG' && '(Epic / Story / Task / Sub Task)'}
+                </span>
+              </label>
+              {parentOptions.length > 0 ? (
+                <div ref={parentMenuRef} className="relative">
+                  {/* Trigger */}
+                  <button
+                    type="button"
+                    onClick={() => setShowParentMenu((v) => !v)}
+                    className={`${inputCls} flex items-center gap-2 text-left`}
+                  >
+                    {selectedParentId ? (() => {
+                      const p = parentOptions.find((x) => x.id === selectedParentId);
+                      if (!p) return <span className="text-gray-400 flex-1">— no parent —</span>;
+                      const pcfg = TYPE_CONFIG[p.type];
+                      return (
+                        <>
+                          <span className={`inline-flex items-center justify-center w-4 h-4 rounded shrink-0 ${pcfg.bg} ${pcfg.text}`}>
+                            <TypeIcon type={p.type} />
+                          </span>
+                          <span className="flex-1 truncate text-gray-800">{p.title}</span>
+                        </>
+                      );
+                    })() : <span className="text-gray-400 flex-1">— no parent —</span>}
+                    <svg className="w-3.5 h-3.5 text-gray-400 shrink-0 ml-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+
+                  {/* Dropdown list */}
+                  {showParentMenu && (
+                    <div className="absolute top-full left-0 right-0 mt-1 bg-white rounded-xl shadow-lg border border-gray-100 py-1 z-20 max-h-52 overflow-y-auto">
+                      <button
+                        type="button"
+                        onClick={() => { setSelectedParentId(''); setShowParentMenu(false); }}
+                        className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-400 hover:bg-gray-50 transition"
+                      >
+                        — no parent —
+                      </button>
+                      {parentOptions.map((p) => {
+                        const pcfg = TYPE_CONFIG[p.type];
+                        return (
+                          <button
+                            key={p.id}
+                            type="button"
+                            onClick={() => { setSelectedParentId(p.id); setShowParentMenu(false); }}
+                            className={`flex items-center gap-2.5 w-full px-3 py-2.5 text-sm hover:bg-gray-50 transition ${
+                              selectedParentId === p.id ? 'bg-primary-50 text-primary-700' : 'text-gray-700'
+                            }`}
+                          >
+                            <span className={`inline-flex items-center justify-center w-5 h-5 rounded shrink-0 ${pcfg.bg} ${pcfg.text}`}>
+                              <TypeIcon type={p.type} />
+                            </span>
+                            <span className="flex-1 text-left truncate">{p.title}</span>
+                            {selectedParentId === p.id && (
+                              <svg className="w-3.5 h-3.5 shrink-0 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                              </svg>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <p className="text-xs text-gray-400 italic px-3 py-2 border border-gray-200 rounded-lg bg-gray-50">
+                  No eligible parent items found in this project.
+                </p>
+              )}
             </div>
           )}
 
-          {/* Description */}
+          {/* Description with RichTextEditor */}
           <div>
-            <label className="text-xs text-gray-500 mb-1 block">Description</label>
-            <textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              rows={3}
-              placeholder="Add a description…"
-              className="input-sm w-full resize-none"
-            />
+            <label className={labelCls}>Description</label>
+            <div className="rounded-lg border border-gray-200 focus-within:ring-2 focus-within:ring-primary-500 overflow-hidden">
+              <RichTextEditor
+                value={description}
+                onChange={setDescription}
+                placeholder="Add a description…"
+                minHeight="120px"
+              />
+            </div>
           </div>
 
+          {/* Attachments */}
+          <div>
+            <label className={labelCls}>Attachments</label>
+            <div className="space-y-1.5">
+              {pendingFiles.map((file, i) => (
+                <div key={i} className="flex items-center gap-2 px-3 py-2 bg-gray-50 rounded-lg border border-gray-200">
+                  <svg className="w-4 h-4 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                  </svg>
+                  <span className="text-xs text-gray-700 flex-1 truncate">{file.name}</span>
+                  <span className="text-[11px] text-gray-400 shrink-0">{(file.size / 1024).toFixed(0)} KB</span>
+                  <button onClick={() => setPendingFiles((p) => p.filter((_, j) => j !== i))} className="text-gray-400 hover:text-red-500 transition shrink-0">
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              ))}
+              <label className="flex items-center gap-2 px-3 py-2 border border-dashed border-gray-300 rounded-lg hover:border-primary-400 hover:bg-primary-50/60 cursor-pointer transition text-xs text-gray-500 hover:text-primary-600">
+                <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                </svg>
+                Attach file
+                <input
+                  type="file"
+                  className="hidden"
+                  accept=".pdf,.docx,.xlsx,.png,.jpg,.jpeg,.txt,.mp4"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) setPendingFiles((p) => [...p, f]);
+                    e.target.value = '';
+                  }}
+                />
+              </label>
+              <p className="text-[10px] text-gray-400">PDF, DOCX, XLSX, PNG, JPG, TXT, MP4 · max 10 MB each</p>
+            </div>
+          </div>
+
+          {/* Core fields grid */}
           <div className="grid grid-cols-2 gap-3">
-            {/* Priority */}
             <div>
-              <label className="text-xs text-gray-500 mb-1 block">Priority</label>
-              <select value={priority} onChange={(e) => setPriority(e.target.value as TaskPriority)} className="input-sm w-full">
+              <label className={labelCls}>Priority</label>
+              <select value={priority} onChange={(e) => setPriority(e.target.value as TaskPriority)} className={inputCls}>
                 {(Object.keys(PRIORITY_CONFIG) as TaskPriority[]).map((p) => (
                   <option key={p} value={p}>{PRIORITY_CONFIG[p].label}</option>
                 ))}
               </select>
             </div>
-            {/* Sprint */}
+            {milestones.length > 0 && (
+              <div>
+                <label className={labelCls}>Milestone</label>
+                <select
+                  value={milestoneLinkId}
+                  onChange={(e) => {
+                    const newMid = e.target.value;
+                    setMilestoneLinkId(newMid);
+                    if (newMid && sprintId) {
+                      const sprintStillValid = sprints.some((s) => s.id === sprintId && s.milestoneId === newMid);
+                      if (!sprintStillValid) setSprintId('');
+                    }
+                  }}
+                  className={inputCls}
+                >
+                  <option value="">— none —</option>
+                  {milestones.map((m) => <option key={m.id} value={m.id}>{m.name ?? m.description}</option>)}
+                </select>
+              </div>
+            )}
             <div>
-              <label className="text-xs text-gray-500 mb-1 block">Sprint</label>
-              <select value={sprintId} onChange={(e) => setSprintId(e.target.value)} className="input-sm w-full">
-                <option value="">Backlog</option>
-                {sprints.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+              <label className={labelCls}>
+                Sprint
+                {milestoneLinkId && filteredSprints.length === 0 && (
+                  <span className="text-amber-500 font-normal ml-1">(no sprints linked to this milestone)</span>
+                )}
+              </label>
+              <select value={sprintId} onChange={(e) => setSprintId(e.target.value)} className={inputCls}>
+                <option value="">— none —</option>
+                {filteredSprints.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
               </select>
             </div>
-            {/* Story Points */}
-            <div>
-              <label className="text-xs text-gray-500 mb-1 block">Story Points</label>
-              <input type="number" min={0} value={storyPoints} onChange={(e) => setStoryPoints(e.target.value)} className="input-sm w-full" />
-            </div>
-            {/* Estimated Hours */}
-            <div>
-              <label className="text-xs text-gray-500 mb-1 block">Est. Hours</label>
-              <input type="number" min={0} step={0.5} value={estimatedHours} onChange={(e) => setEstimatedHours(e.target.value)} className="input-sm w-full" />
-            </div>
-            {/* Due Date */}
-            <div>
-              <label className="text-xs text-gray-500 mb-1 block">Due Date</label>
-              <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className="input-sm w-full" />
-            </div>
-            {/* Assignee */}
             {members.length > 0 && (
               <div>
-                <label className="text-xs text-gray-500 mb-1 block">Assignee</label>
-                <select value={assigneeId} onChange={(e) => setAssigneeId(e.target.value)} className="input-sm w-full">
+                <label className={labelCls}>Assignee</label>
+                <select value={assigneeId} onChange={(e) => setAssigneeId(e.target.value)} className={inputCls}>
                   <option value="">Unassigned</option>
                   {members.map((m) => <option key={m.id} value={m.id}>{m.fullName}</option>)}
                 </select>
               </div>
             )}
+            <div>
+              <label className={labelCls}>Due Date</label>
+              <input type="date" value={dueDate} min={pastDateStr(5)} max={futureDateStr(10)} onChange={(e) => setDueDate(e.target.value)} className={inputCls} />
+            </div>
+            <div>
+              <label className={labelCls}>Story Points</label>
+              <input type="number" min={0} value={storyPoints} onChange={(e) => setStoryPoints(e.target.value)} className={inputCls} />
+            </div>
+            <div>
+              <label className={labelCls}>Est. Hours</label>
+              <input type="number" min={0} step={0.5} value={estimatedHours} onChange={(e) => setEstimatedHours(e.target.value)} className={inputCls} />
+            </div>
           </div>
 
           {/* Bug-specific fields */}
           {type === 'BUG' && (
             <div className="border-t border-gray-100 pt-4 space-y-3">
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Bug Details</p>
+              <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest">Bug Details</p>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs text-gray-500 mb-1 block">Bug Status</label>
-                  <select value={bugStatus} onChange={(e) => setBugStatus(e.target.value as BugStatus)} className="input-sm w-full">
+                  <label className={labelCls}>Bug Status</label>
+                  <select value={bugStatus} onChange={(e) => setBugStatus(e.target.value as BugStatus)} className={inputCls}>
                     <option value="">— select —</option>
                     {(Object.keys(BUG_STATUS_CONFIG) as BugStatus[]).map((s) => (
                       <option key={s} value={s}>{BUG_STATUS_CONFIG[s].label}</option>
@@ -1283,17 +1980,17 @@ export function CreateWorkItemModal({
                   </select>
                 </div>
                 <div>
-                  <label className="text-xs text-gray-500 mb-1 block">Severity</label>
-                  <select value={severity} onChange={(e) => setSeverity(e.target.value as BugSeverity)} className="input-sm w-full">
+                  <label className={labelCls}>Severity</label>
+                  <select value={severity} onChange={(e) => setSeverity(e.target.value as BugSeverity)} className={inputCls}>
                     <option value="">— select —</option>
                     {(['SHOW_STOPPER', 'BLOCKER', 'CRITICAL', 'MAJOR', 'MINOR', 'TRIVIAL'] as BugSeverity[]).map((s) => (
-                      <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>
+                      <option key={s} value={s}>{s.replace(/_/g, ' ').charAt(0) + s.replace(/_/g, ' ').slice(1).toLowerCase()}</option>
                     ))}
                   </select>
                 </div>
                 <div>
-                  <label className="text-xs text-gray-500 mb-1 block">Classification</label>
-                  <select value={bugClassification} onChange={(e) => setBugClassification(e.target.value as BugClassification)} className="input-sm w-full">
+                  <label className={labelCls}>Classification</label>
+                  <select value={bugClassification} onChange={(e) => setBugClassification(e.target.value as BugClassification)} className={inputCls}>
                     <option value="">— select —</option>
                     <option value="UI_USABILITY">UI / Usability</option>
                     <option value="NEW_BUG">New Bug</option>
@@ -1314,16 +2011,16 @@ export function CreateWorkItemModal({
                   </select>
                 </div>
                 <div>
-                  <label className="text-xs text-gray-500 mb-1 block">Flag</label>
-                  <select value={bugFlag} onChange={(e) => setBugFlag(e.target.value as BugFlag)} className="input-sm w-full">
+                  <label className={labelCls}>Flag</label>
+                  <select value={bugFlag} onChange={(e) => setBugFlag(e.target.value as BugFlag)} className={inputCls}>
                     <option value="">— select —</option>
                     <option value="INTERNAL">Internal</option>
                     <option value="EXTERNAL">External</option>
                   </select>
                 </div>
                 <div>
-                  <label className="text-xs text-gray-500 mb-1 block">Reproducibility</label>
-                  <select value={bugReproducibility} onChange={(e) => setBugReproducibility(e.target.value as BugReproducibility)} className="input-sm w-full">
+                  <label className={labelCls}>Reproducibility</label>
+                  <select value={bugReproducibility} onChange={(e) => setBugReproducibility(e.target.value as BugReproducibility)} className={inputCls}>
                     <option value="">— select —</option>
                     <option value="ALWAYS">Always</option>
                     <option value="SOMETIMES">Sometimes</option>
@@ -1334,16 +2031,16 @@ export function CreateWorkItemModal({
                   </select>
                 </div>
                 <div>
-                  <label className="text-xs text-gray-500 mb-1 block">Billing</label>
-                  <select value={billingStatus} onChange={(e) => setBillingStatus(e.target.value as BillingStatus)} className="input-sm w-full">
+                  <label className={labelCls}>Billing</label>
+                  <select value={billingStatus} onChange={(e) => setBillingStatus(e.target.value as BillingStatus)} className={inputCls}>
                     <option value="">— select —</option>
                     <option value="BILLABLE">Billable</option>
                     <option value="NON_BILLABLE">Non-Billable</option>
                   </select>
                 </div>
                 <div>
-                  <label className="text-xs text-gray-500 mb-1 block">Reminder</label>
-                  <select value={reminderType} onChange={(e) => setReminderType(e.target.value as BugReminderType)} className="input-sm w-full">
+                  <label className={labelCls}>Reminder</label>
+                  <select value={reminderType} onChange={(e) => setReminderType(e.target.value as BugReminderType)} className={inputCls}>
                     <option value="NONE">None</option>
                     <option value="DAILY">Daily</option>
                     <option value="ONE_DAY">1 Day before</option>
@@ -1353,63 +2050,63 @@ export function CreateWorkItemModal({
                 </div>
                 {members.length > 0 && (
                   <div>
-                    <label className="text-xs text-gray-500 mb-1 block">Responsible Dev</label>
-                    <select value={responsibleUserId} onChange={(e) => setResponsibleUserId(e.target.value)} className="input-sm w-full">
+                    <label className={labelCls}>Responsible Dev</label>
+                    <select value={responsibleUserId} onChange={(e) => setResponsibleUserId(e.target.value)} className={inputCls}>
                       <option value="">— select —</option>
                       {members.map((m) => <option key={m.id} value={m.id}>{m.fullName}</option>)}
                     </select>
                   </div>
                 )}
                 <div>
-                  <label className="text-xs text-gray-500 mb-1 block">Affected Build</label>
-                  <input type="text" value={affectedBuildVersion} onChange={(e) => setAffectedBuildVersion(e.target.value)} placeholder="e.g. 1.0.5" className="input-sm w-full" />
+                  <label className={labelCls}>Affected Build</label>
+                  <input type="text" value={affectedBuildVersion} onChange={(e) => setAffectedBuildVersion(e.target.value)} placeholder="e.g. 1.0.5" className={inputCls} />
                 </div>
                 <div>
-                  <label className="text-xs text-gray-500 mb-1 block">Fixed Build</label>
-                  <input type="text" value={fixedBuildVersion} onChange={(e) => setFixedBuildVersion(e.target.value)} placeholder="e.g. 1.0.6" className="input-sm w-full" />
+                  <label className={labelCls}>Fixed Build</label>
+                  <input type="text" value={fixedBuildVersion} onChange={(e) => setFixedBuildVersion(e.target.value)} placeholder="e.g. 1.0.6" className={inputCls} />
                 </div>
                 {milestones.length > 0 && (
-                  <>
-                    <div>
-                      <label className="text-xs text-gray-500 mb-1 block">Release Milestone</label>
-                      <select value={releaseMilestoneId} onChange={(e) => setReleaseMilestoneId(e.target.value)} className="input-sm w-full">
-                        <option value="">— none —</option>
-                        {milestones.map((m) => <option key={m.id} value={m.id}>{m.description}</option>)}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="text-xs text-gray-500 mb-1 block">Affected Milestone</label>
-                      <select value={affectedMilestoneId} onChange={(e) => setAffectedMilestoneId(e.target.value)} className="input-sm w-full">
-                        <option value="">— none —</option>
-                        {milestones.map((m) => <option key={m.id} value={m.id}>{m.description}</option>)}
-                      </select>
-                    </div>
-                  </>
+                  <div>
+                    <label className={labelCls}>Affected Milestone</label>
+                    <select value={affectedMilestoneId} onChange={(e) => setAffectedMilestoneId(e.target.value)} className={inputCls}>
+                      <option value="">— none —</option>
+                      {milestones.map((m) => <option key={m.id} value={m.id}>{m.name ?? m.description}</option>)}
+                    </select>
+                  </div>
                 )}
               </div>
               <div>
-                <label className="text-xs text-gray-500 mb-1 block">Module</label>
-                <input type="text" value={module} onChange={(e) => setModule(e.target.value)} placeholder="e.g. Auth, Dashboard" className="input-sm w-full" />
+                <label className={labelCls}>Module</label>
+                <input type="text" value={module} onChange={(e) => setModule(e.target.value)} placeholder="e.g. Auth, Dashboard" className={inputCls} />
               </div>
               <div>
-                <label className="text-xs text-gray-500 mb-1 block">Environment</label>
-                <input type="text" value={environment} onChange={(e) => setEnvironment(e.target.value)} placeholder="e.g. Production, Chrome 124" className="input-sm w-full" />
+                <label className={labelCls}>Environment</label>
+                <input type="text" value={environment} onChange={(e) => setEnvironment(e.target.value)} placeholder="e.g. Production, Chrome 124" className={inputCls} />
               </div>
               <div>
-                <label className="text-xs text-gray-500 mb-1 block">Steps to Reproduce</label>
-                <textarea value={stepsToRepro} onChange={(e) => setStepsToRepro(e.target.value)} rows={3} className="input-sm w-full resize-none" placeholder="1. Go to…&#10;2. Click…&#10;3. Observe…" />
+                <label className={labelCls}>Steps to Reproduce</label>
+                <textarea
+                  value={stepsToRepro}
+                  onChange={(e) => setStepsToRepro(e.target.value)}
+                  rows={3}
+                  placeholder={'1. Go to…\n2. Click…\n3. Observe…'}
+                  className={`${inputCls} resize-none`}
+                />
               </div>
             </div>
           )}
         </div>
 
-        <div className="px-6 py-4 border-t border-gray-100 flex justify-end gap-3 shrink-0">
-          <button onClick={onClose} className="btn-secondary text-sm px-4 py-2">Cancel</button>
+        {/* Sticky footer */}
+        <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-100 shrink-0">
+          <button type="button" onClick={onClose}
+            className="px-4 py-2 text-sm text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition">
+            Cancel
+          </button>
           <button
             onClick={handleSubmit}
             disabled={!title.trim() || createMut.isPending}
-            className="btn-primary text-sm px-4 py-2"
-          >
+            className="px-4 py-2 text-sm text-white bg-primary-600 hover:bg-primary-700 disabled:opacity-60 rounded-lg transition">
             {createMut.isPending ? 'Creating…' : 'Create Item'}
           </button>
         </div>
