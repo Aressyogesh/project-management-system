@@ -4,6 +4,7 @@ import { taskAllocationsApi } from '../../../api/taskAllocations.api';
 import type { TaskAllocation } from '../../../types/taskAllocation.types';
 import type { Task } from '../../../types/task.types';
 import type { ProjectMember } from '../../../types/projects.types';
+import { futureDateStr, pastDateStr } from '../../../utils/dateUtils';
 
 interface Props {
   projectId: string;
@@ -134,6 +135,8 @@ export function AllocationFormModal({ projectId, tasks, members, allocation, onC
               <input
                 type="date"
                 value={date}
+                min={pastDateStr(5)}
+                max={futureDateStr(5)}
                 onChange={(e) => setDate(e.target.value)}
                 className={inputCls}
               />

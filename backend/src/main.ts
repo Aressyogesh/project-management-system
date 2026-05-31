@@ -1,10 +1,14 @@
 import { ValidationPipe } from '@nestjs/common';
 import { NestFactory, Reflector } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import * as express from 'express';
 import { AppModule } from './app.module';
 
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule);
+
+  app.use(express.json({ limit: '20mb' }));
+  app.use(express.urlencoded({ limit: '20mb', extended: true }));
 
   app.setGlobalPrefix('api/v1');
 

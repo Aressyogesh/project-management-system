@@ -46,6 +46,7 @@ export class TimesheetEntriesController {
     @Query('userId') userId?: string,
     @Query('from') from?: string,
     @Query('to') to?: string,
+    @Query('projectId') projectId?: string,
   ) {
     return this.timesheetEntriesService.findMyEntries(
       req.user.id,
@@ -54,6 +55,7 @@ export class TimesheetEntriesController {
       userId,
       from,
       to,
+      projectId,
     );
   }
 

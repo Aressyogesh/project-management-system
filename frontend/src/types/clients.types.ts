@@ -7,4 +7,5 @@ export interface Client {
   address: string | null;
   isActive: boolean;
   createdAt: string;
+  businessUnit?: { id: string; name: string } | null;
 }

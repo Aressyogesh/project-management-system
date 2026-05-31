@@ -1,6 +1,8 @@
 import { useState, useMemo } from 'react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { EmployeeKpiRecord } from '../../../types/kpi.types';
 import { useAuthStore } from '../../../store/authStore';
+import { analyticsApi } from '../../../api/analyticsApi';
 import {
   GRADE_CONFIG,
   buildTeamSummary,
@@ -38,11 +40,15 @@ function KpiScoreEntryPanel({
   employees,
   period,
   onClose,
+  onSaved,
 }: {
   employees: EmployeeKpiRecord[];
   period: string;
   onClose: () => void;
+  onSaved?: () => void;
 }) {
+  const qc = useQueryClient();
+
   const initialScores = () => {
     const map: Record<string, Record<string, number>> = {};
     for (const emp of employees) {
@@ -55,6 +61,25 @@ function KpiScoreEntryPanel({
   };
 
   const [scores, setScores] = useState<Record<string, Record<string, number>>>(initialScores);
+  const [saveError, setSaveError] = useState('');
+
+  const saveMutation = useMutation({
+    mutationFn: async () => {
+      const calls: Promise<unknown>[] = [];
+      for (const [userId, metrics] of Object.entries(scores)) {
+        for (const [metricId, points] of Object.entries(metrics)) {
+          calls.push(analyticsApi.upsertKpiRecord({ userId, period, metricId, points }));
+        }
+      }
+      await Promise.all(calls);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['kpi-records'] });
+      onSaved?.();
+      onClose();
+    },
+    onError: () => setSaveError('Failed to save scores. Please try again.'),
+  });
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
@@ -125,19 +150,23 @@ function KpiScoreEntryPanel({
           </table>
         </div>
 
-        <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-end gap-3">
-          <button
-            onClick={onClose}
-            className="text-sm text-gray-500 hover:text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-100 transition"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={onClose}
-            className="text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 px-5 py-2 rounded-lg transition"
-          >
-            Save All Scores
-          </button>
+        <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-between gap-3">
+          {saveError && <p className="text-xs text-red-500">{saveError}</p>}
+          <div className="flex items-center gap-3 ml-auto">
+            <button
+              onClick={onClose}
+              className="text-sm text-gray-500 hover:text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-100 transition"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={() => { setSaveError(''); saveMutation.mutate(); }}
+              disabled={saveMutation.isPending}
+              className="text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 disabled:opacity-60 px-5 py-2 rounded-lg transition"
+            >
+              {saveMutation.isPending ? 'Saving…' : 'Save All Scores'}
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -360,6 +389,7 @@ export function KpiPage() {
           employees={filteredEmployees}
           period={selectedPeriod}
           onClose={() => setShowScoreEntry(false)}
+          onSaved={() => setShowScoreEntry(false)}
         />
       )}
     </div>

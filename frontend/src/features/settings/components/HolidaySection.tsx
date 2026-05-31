@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Holiday, settingsApi } from '../../../api/settings.api';
+import { futureDateStr, pastDateStr } from '../../../utils/dateUtils';
 
 const CURRENT_YEAR = new Date().getFullYear();
 const YEAR_OPTIONS = [CURRENT_YEAR - 1, CURRENT_YEAR, CURRENT_YEAR + 1, CURRENT_YEAR + 2];
@@ -117,6 +118,8 @@ export function HolidaySection() {
           <input
             type="date"
             value={date}
+            min={pastDateStr(1)}
+            max={futureDateStr(3)}
             onChange={(e) => setDate(e.target.value)}
             className="px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white"
           />

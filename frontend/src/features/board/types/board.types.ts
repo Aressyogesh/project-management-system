@@ -22,12 +22,14 @@ export interface WorkItemUser {
 export interface Sprint {
   id: string;
   projectId: string;
+  milestoneId?: string | null;
   name: string;
   goal?: string | null;
   startDate?: string | null;
   endDate?: string | null;
   isActive: boolean;
   createdAt: string;
+  milestone?: { id: string; description: string } | null;
 }
 
 export interface TimesheetEntry {
@@ -63,6 +65,18 @@ export interface WorkItemAttachment {
   uploadedBy: WorkItemUser;
 }
 
+export interface WorkItemActivity {
+  id: string;
+  workItemId: string;
+  userId: string;
+  action: string;
+  field?: string | null;
+  oldValue?: string | null;
+  newValue?: string | null;
+  createdAt: string;
+  user: WorkItemUser;
+}
+
 export interface WorkItemChild {
   id: string;
   title: string;
@@ -74,6 +88,7 @@ export interface WorkItemChild {
 
 export interface WorkItemMilestone {
   id: string;
+  name: string | null;
   description: string;
 }
 
@@ -131,6 +146,7 @@ export interface WorkItem {
   affectedMilestone?: WorkItemMilestone | null;
   // computed
   _count?: { children: number; comments: number; timesheetEntries: number };
+  activities?: WorkItemActivity[];
 }
 
 export interface BoardFilters {

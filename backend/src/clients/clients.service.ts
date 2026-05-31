@@ -12,6 +12,7 @@ const CLIENT_SELECT = {
   address: true,
   isActive: true,
   createdAt: true,
+  businessUnit: { select: { id: true, name: true } },
 };
 
 @Injectable()

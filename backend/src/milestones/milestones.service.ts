@@ -20,6 +20,17 @@ const MILESTONE_SELECT = {
   },
 } as const;
 
+// Fetch name via raw SQL since Prisma binary client may be stale after schema migration
+async function fetchNames(
+  prisma: PrismaService,
+  ids: string[],
+): Promise<Map<string, string | null>> {
+  if (!ids.length) return new Map();
+  const rows: { id: string; name: string | null }[] =
+    await prisma.$queryRaw`SELECT id, name FROM milestones WHERE id = ANY(${ids}::text[])`;
+  return new Map(rows.map((r) => [r.id, r.name]));
+}
+
 @Injectable()
 export class MilestonesService {
   constructor(private readonly prisma: PrismaService) {}
@@ -30,37 +41,72 @@ export class MilestonesService {
       where: { projectId },
       select: {
         ...MILESTONE_SELECT,
-        _count: { select: { tasks: true } },
-        tasks: { where: { status: 'COMPLETED' }, select: { id: true } },
+        sprints: { select: { id: true } },
       },
       orderBy: [{ dueDate: 'asc' }, { createdAt: 'asc' }],
     });
 
-    return rows.map(({ _count, tasks: doneTasks, ...ms }) => ({
-      ...ms,
-      totalTasks: _count.tasks,
-      completedTasks: doneTasks.length,
-      progressPercent:
-        _count.tasks > 0 ? Math.round((doneTasks.length / _count.tasks) * 100) : 0,
-    }));
+    const nameMap = await fetchNames(this.prisma, rows.map((r) => r.id));
+
+    // For each milestone, count work items (user stories / tasks / sub-tasks / bugs)
+    // that live in sprints linked to that milestone
+    const milestoneIds = rows.map((r) => r.id);
+
+    // Count work items (user stories / tasks / sub-tasks / bugs) in sprints per milestone
+    const perMilestone = await this.prisma.$queryRaw<
+      { milestoneId: string; total: bigint; completed: bigint }[]
+    >`
+      SELECT s."milestoneId",
+             COUNT(wi.id)                                                   AS total,
+             COUNT(CASE WHEN wi.status = 'QA_DONE' THEN 1 END)             AS completed
+      FROM   work_items wi
+      JOIN   sprints s ON s.id = wi."sprintId"
+      WHERE  s."milestoneId" = ANY(${milestoneIds}::text[])
+        AND  wi.type = 'USER_STORY'
+      GROUP  BY s."milestoneId"
+    `;
+
+    const statsMap = new Map(
+      perMilestone.map((r) => [
+        r.milestoneId,
+        { total: Number(r.total), completed: Number(r.completed) },
+      ]),
+    );
+
+    return rows.map(({ sprints: _sprints, ...ms }) => {
+      const s = statsMap.get(ms.id) ?? { total: 0, completed: 0 };
+      return {
+        ...ms,
+        name: nameMap.get(ms.id) ?? null,
+        totalTasks: s.total,
+        completedTasks: s.completed,
+        progressPercent: s.total > 0 ? Math.round((s.completed / s.total) * 100) : 0,
+      };
+    });
   }
 
   async create(projectId: string, dto: CreateMilestoneDto) {
     await this.requireProject(projectId);
     this.validateDates(dto.startDate, dto.dueDate);
 
-    return this.prisma.milestone.create({
+    const ms = await this.prisma.milestone.create({
       data: {
         projectId,
         description: dto.description.trim(),
         deliveryNote: dto.deliveryNote?.trim() || undefined,
-        startDate: dto.startDate || undefined,
-        dueDate: dto.dueDate || undefined,
+        startDate: dto.startDate ? new Date(dto.startDate) : undefined,
+        dueDate: dto.dueDate ? new Date(dto.dueDate) : undefined,
         responsibleUserId: dto.responsibleUserId || undefined,
         status: dto.status ?? 'NOT_STARTED',
       },
       select: MILESTONE_SELECT,
     });
+
+    const name = dto.name?.trim() || null;
+    if (name !== null) {
+      await this.prisma.$executeRaw`UPDATE milestones SET name = ${name} WHERE id = ${ms.id}`;
+    }
+    return { ...ms, name };
   }
 
   async update(id: string, dto: UpdateMilestoneDto) {
@@ -71,23 +117,43 @@ export class MilestonesService {
     const dueDate = dto.dueDate ?? milestone.dueDate?.toISOString().split('T')[0];
     this.validateDates(startDate, dueDate);
 
-    return this.prisma.milestone.update({
+    const ms = await this.prisma.milestone.update({
       where: { id },
       data: {
         ...(dto.description !== undefined && { description: dto.description.trim() }),
         ...(dto.deliveryNote !== undefined && { deliveryNote: dto.deliveryNote.trim() || null }),
-        ...(dto.startDate !== undefined && { startDate: dto.startDate || null }),
-        ...(dto.dueDate !== undefined && { dueDate: dto.dueDate || null }),
+        ...(dto.startDate !== undefined && { startDate: dto.startDate ? new Date(dto.startDate) : null }),
+        ...(dto.dueDate !== undefined && { dueDate: dto.dueDate ? new Date(dto.dueDate) : null }),
         ...(dto.responsibleUserId !== undefined && { responsibleUserId: dto.responsibleUserId || null }),
         ...(dto.status !== undefined && { status: dto.status }),
       },
       select: MILESTONE_SELECT,
     });
+
+    let name: string | null = null;
+    if (dto.name !== undefined) {
+      name = dto.name?.trim() || null;
+      await this.prisma.$executeRaw`UPDATE milestones SET name = ${name} WHERE id = ${id}`;
+    } else {
+      const nameMap = await fetchNames(this.prisma, [id]);
+      name = nameMap.get(id) ?? null;
+    }
+    return { ...ms, name };
   }
 
   async remove(id: string) {
     const milestone = await this.prisma.milestone.findUnique({ where: { id } });
     if (!milestone) throw new NotFoundException('Milestone not found');
+
+    const linked = await this.prisma.$queryRaw<[{ count: bigint }]>`
+      SELECT COUNT(*) AS count FROM sprints WHERE "milestoneId" = ${id}
+    `;
+    if (Number(linked[0].count) > 0) {
+      throw new BadRequestException(
+        'This milestone has associated sprints. Reassign or remove those sprints before deleting.',
+      );
+    }
+
     await this.prisma.milestone.delete({ where: { id } });
   }
 

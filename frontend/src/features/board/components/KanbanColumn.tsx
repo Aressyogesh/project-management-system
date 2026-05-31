@@ -2,15 +2,19 @@ import { Droppable } from '@hello-pangea/dnd';
 import type { WorkItem } from '../types/board.types';
 import { WorkItemCard } from './WorkItemCard';
 
+interface MemberOption { id: string; fullName: string; }
+
 interface Props {
   status: string;
   label: string;
   headerClass: string;
   items: WorkItem[];
+  members?: MemberOption[];
   onCardClick: (item: WorkItem) => void;
+  onAssigneeChange?: (itemId: string, assigneeId: string | null) => void;
 }
 
-export function KanbanColumn({ status, label, headerClass, items, onCardClick }: Props) {
+export function KanbanColumn({ status, label, headerClass, items, members, onCardClick, onAssigneeChange }: Props) {
   return (
     <div className="flex flex-col min-w-[240px] w-[240px] shrink-0">
       {/* Column header */}
@@ -37,7 +41,14 @@ export function KanbanColumn({ status, label, headerClass, items, onCardClick }:
               </div>
             ) : (
               items.map((item, index) => (
-                <WorkItemCard key={item.id} item={item} index={index} onClick={onCardClick} />
+                <WorkItemCard
+                  key={item.id}
+                  item={item}
+                  index={index}
+                  members={members}
+                  onClick={onCardClick}
+                  onAssigneeChange={onAssigneeChange}
+                />
               ))
             )}
             {provided.placeholder}

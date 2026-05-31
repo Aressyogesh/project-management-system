@@ -59,7 +59,7 @@ describe('WorkItemsService', () => {
       mockPrisma.workItem.findUnique.mockResolvedValue({ ...baseItem, status: BoardStatus.QA });
       mockPrisma.workItem.update.mockResolvedValue({});
 
-      await service.move('wi-1', { status: BoardStatus.QA_DONE, position: 0 });
+      await service.move('wi-1', 'user-1', { status: BoardStatus.QA_DONE, position: 0 });
 
       expect(mockPrisma.workItem.update).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -72,7 +72,7 @@ describe('WorkItemsService', () => {
       mockPrisma.workItem.findUnique.mockResolvedValue({ ...baseItem, status: BoardStatus.QA_DONE, completedAt: new Date() });
       mockPrisma.workItem.update.mockResolvedValue({});
 
-      await service.move('wi-1', { status: BoardStatus.QA, position: 0 });
+      await service.move('wi-1', 'user-1', { status: BoardStatus.QA, position: 0 });
 
       expect(mockPrisma.workItem.update).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -85,7 +85,7 @@ describe('WorkItemsService', () => {
       mockPrisma.workItem.findUnique.mockResolvedValue({ ...baseItem, status: BoardStatus.IN_REVIEW });
       mockPrisma.workItem.update.mockResolvedValue({});
 
-      await service.move('wi-1', { status: BoardStatus.IN_PROGRESS, position: 0 });
+      await service.move('wi-1', 'user-1', { status: BoardStatus.IN_PROGRESS, position: 0 });
 
       expect(mockPrisma.workItem.update).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -98,7 +98,7 @@ describe('WorkItemsService', () => {
       mockPrisma.workItem.findUnique.mockResolvedValue({ ...baseItem, status: BoardStatus.TODO });
       mockPrisma.workItem.update.mockResolvedValue({});
 
-      await service.move('wi-1', { status: BoardStatus.IN_PROGRESS, position: 0 });
+      await service.move('wi-1', 'user-1', { status: BoardStatus.IN_PROGRESS, position: 0 });
 
       const updateCall = mockPrisma.workItem.update.mock.calls[0][0];
       expect(updateCall.data.reopenCount).toBeUndefined();
@@ -106,7 +106,7 @@ describe('WorkItemsService', () => {
 
     it('throws NotFoundException when item not found', async () => {
       mockPrisma.workItem.findUnique.mockResolvedValue(null);
-      await expect(service.move('wi-999', { status: BoardStatus.TODO, position: 0 }))
+      await expect(service.move('wi-999', 'user-1', { status: BoardStatus.TODO, position: 0 }))
         .rejects.toThrow(NotFoundException);
     });
   });

@@ -58,7 +58,9 @@ export class CreateWorkItemDto {
   @ApiPropertyOptional() @IsOptional() @IsUUID() affectedMilestoneId?: string;
 }
 
-export class UpdateWorkItemDto extends PartialType(CreateWorkItemDto) {}
+export class UpdateWorkItemDto extends PartialType(CreateWorkItemDto) {
+  @ApiPropertyOptional({ enum: BoardStatus }) @IsOptional() @IsEnum(BoardStatus) status?: BoardStatus;
+}
 
 export class MoveWorkItemDto {
   @ApiProperty({ enum: BoardStatus }) @IsEnum(BoardStatus) status: BoardStatus;

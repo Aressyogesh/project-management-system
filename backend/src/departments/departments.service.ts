@@ -2,7 +2,10 @@ import { ConflictException, Injectable, NotFoundException } from '@nestjs/common
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateDepartmentDto, UpdateDepartmentDto } from './dto/department.dto';
 
-const DEPT_SELECT = { id: true, name: true, isActive: true, createdAt: true };
+const DEPT_SELECT = {
+  id: true, name: true, isActive: true, createdAt: true,
+  businessUnit: { select: { id: true, name: true } },
+};
 
 @Injectable()
 export class DepartmentsService {
@@ -29,7 +32,10 @@ export class DepartmentsService {
     });
     if (existing) throw new ConflictException('Department name already in use');
 
-    return this.prisma.department.create({ data: { name }, select: DEPT_SELECT });
+    return this.prisma.department.create({
+      data: { name, businessUnitId: dto.businessUnitId ?? null },
+      select: DEPT_SELECT,
+    });
   }
 
   async update(id: string, dto: UpdateDepartmentDto) {

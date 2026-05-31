@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsBoolean, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
+import { IsBoolean, IsOptional, IsString, IsUUID, MaxLength, MinLength } from 'class-validator';
 
 export class CreateDepartmentDto {
   @ApiProperty()
@@ -7,6 +7,11 @@ export class CreateDepartmentDto {
   @MinLength(1)
   @MaxLength(100)
   name: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsUUID()
+  businessUnitId?: string;
 }
 
 export class UpdateDepartmentDto {
@@ -16,6 +21,11 @@ export class UpdateDepartmentDto {
   @MinLength(1)
   @MaxLength(100)
   name?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsUUID()
+  businessUnitId?: string | null;
 }
 
 export class SetDepartmentStatusDto {

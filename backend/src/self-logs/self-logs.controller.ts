@@ -12,7 +12,7 @@ import { SelfLogsService } from './self-logs.service';
 import { SystemRole } from '@prisma/client';
 
 interface AuthRequest {
-  user: { userId: string; systemRole: SystemRole };
+  user: { id: string; systemRole: SystemRole };
 }
 
 @Controller()
@@ -26,7 +26,7 @@ export class SelfLogsController {
     @Body() dto: { date: string; type: string; description?: string },
     @Request() req: AuthRequest,
   ) {
-    return this.selfLogsService.createLeaveLog(req.user.userId, dto);
+    return this.selfLogsService.createLeaveLog(req.user.id, dto);
   }
 
   @Get('leave-logs')
@@ -34,14 +34,14 @@ export class SelfLogsController {
     @Query('period') period: string | undefined,
     @Request() req: AuthRequest,
   ) {
-    return this.selfLogsService.findLeaveLogs(req.user.userId, period);
+    return this.selfLogsService.findLeaveLogs(req.user.id, period);
   }
 
   @Delete('leave-logs/:id')
   deleteLeave(@Param('id') id: string, @Request() req: AuthRequest) {
     return this.selfLogsService.deleteLeaveLog(
       id,
-      req.user.userId,
+      req.user.id,
       req.user.systemRole,
     );
   }
@@ -53,7 +53,7 @@ export class SelfLogsController {
     @Body() dto: { period: string; topic: string; hours: number; description?: string },
     @Request() req: AuthRequest,
   ) {
-    return this.selfLogsService.createLearningLog(req.user.userId, dto);
+    return this.selfLogsService.createLearningLog(req.user.id, dto);
   }
 
   @Get('learning-logs')
@@ -61,14 +61,14 @@ export class SelfLogsController {
     @Query('period') period: string | undefined,
     @Request() req: AuthRequest,
   ) {
-    return this.selfLogsService.findLearningLogs(req.user.userId, period);
+    return this.selfLogsService.findLearningLogs(req.user.id, period);
   }
 
   @Delete('learning-logs/:id')
   deleteLearning(@Param('id') id: string, @Request() req: AuthRequest) {
     return this.selfLogsService.deleteLearningLog(
       id,
-      req.user.userId,
+      req.user.id,
       req.user.systemRole,
     );
   }
@@ -80,7 +80,7 @@ export class SelfLogsController {
     @Body() dto: { period: string; title: string; impact: string; type: string },
     @Request() req: AuthRequest,
   ) {
-    return this.selfLogsService.createInnovationLog(req.user.userId, dto);
+    return this.selfLogsService.createInnovationLog(req.user.id, dto);
   }
 
   @Get('innovation-logs')
@@ -88,14 +88,14 @@ export class SelfLogsController {
     @Query('period') period: string | undefined,
     @Request() req: AuthRequest,
   ) {
-    return this.selfLogsService.findInnovationLogs(req.user.userId, period);
+    return this.selfLogsService.findInnovationLogs(req.user.id, period);
   }
 
   @Delete('innovation-logs/:id')
   deleteInnovation(@Param('id') id: string, @Request() req: AuthRequest) {
     return this.selfLogsService.deleteInnovationLog(
       id,
-      req.user.userId,
+      req.user.id,
       req.user.systemRole,
     );
   }

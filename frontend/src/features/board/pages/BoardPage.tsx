@@ -1,10 +1,12 @@
 import { DragDropContext, type DropResult } from '@hello-pangea/dnd';
-import { useQuery } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useState, useEffect } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { milestonesApi } from '../../../api/milestones.api';
 import { projectsApi } from '../../../api/projects.api';
 import { useAuthStore } from '../../../store/authStore';
+import { MilestoneFormModal } from '../../projects/components/MilestoneFormModal';
+import { boardApi } from '../api/boardApi';
 import type { BoardFiltersQuery } from '../api/boardApi';
 import { BoardToolbar } from '../components/BoardToolbar';
 import { KanbanColumn } from '../components/KanbanColumn';
@@ -22,9 +24,18 @@ export function BoardPage() {
   const [selectedItem, setSelectedItem] = useState<WorkItem | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [showSprintManager, setShowSprintManager] = useState(false);
+  const [showMilestoneModal, setShowMilestoneModal] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
 
+  const qc = useQueryClient();
   const { columns, move } = useBoard(projectId!, filters);
   const { sprints, activeSprint } = useSprints(projectId!);
+
+  const assignMut = useMutation({
+    mutationFn: ({ itemId, assigneeId }: { itemId: string; assigneeId: string | null }) =>
+      boardApi.updateWorkItem(itemId, { assigneeId: assigneeId ?? undefined }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['board', projectId] }),
+  });
 
   const { data: project } = useQuery({
     queryKey: ['project', projectId],
@@ -51,6 +62,17 @@ export function BoardPage() {
     systemRole === 'SUPER_USER' ||
     systemRole === 'ADMIN' ||
     myProjectRole === 'PROJECT_MANAGER';
+
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(null), 4000);
+    return () => clearTimeout(t);
+  }, [toast]);
+
+  async function handleOpenChild(childId: string) {
+    const child = await boardApi.getWorkItem(childId);
+    setSelectedItem(child);
+  }
 
   function handleDragEnd(result: DropResult) {
     const { destination, source, draggableId } = result;
@@ -110,6 +132,7 @@ export function BoardPage() {
             members={memberOptions}
             onCreateItem={() => setShowCreate(true)}
             onManageSprints={() => setShowSprintManager(true)}
+            onAddMilestone={() => setShowMilestoneModal(true)}
             canManageSprints={canManageSprints}
           />
         </div>
@@ -126,7 +149,9 @@ export function BoardPage() {
                 label={col.label}
                 headerClass={col.headerClass}
                 items={col.items}
+                members={memberOptions}
                 onCardClick={setSelectedItem}
+                onAssigneeChange={(itemId, assigneeId) => assignMut.mutate({ itemId, assigneeId })}
               />
             ))}
           </div>
@@ -142,6 +167,8 @@ export function BoardPage() {
           milestones={milestones}
           onClose={() => setSelectedItem(null)}
           onSaved={() => setSelectedItem(null)}
+          onSuccess={setToast}
+          onOpenChild={handleOpenChild}
         />
       )}
 
@@ -153,14 +180,39 @@ export function BoardPage() {
           milestones={milestones}
           onClose={() => setShowCreate(false)}
           onSaved={() => setShowCreate(false)}
+          onSuccess={setToast}
         />
       )}
 
       {showSprintManager && (
         <SprintManager
           projectId={projectId!}
+          milestones={milestones.map((m) => ({ id: m.id, name: m.name, description: m.description }))}
           onClose={() => setShowSprintManager(false)}
+          onToast={setToast}
         />
+      )}
+
+      {showMilestoneModal && (
+        <MilestoneFormModal
+          projectId={projectId!}
+          onClose={() => setShowMilestoneModal(false)}
+          onSuccess={setToast}
+        />
+      )}
+
+      {toast && (
+        <div className="fixed bottom-6 right-6 z-[100] flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg text-sm font-medium text-white bg-gray-900 min-w-[240px] max-w-xs">
+          <svg className="w-4 h-4 shrink-0 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+          </svg>
+          <span className="flex-1">{toast}</span>
+          <button onClick={() => setToast(null)} className="text-gray-400 hover:text-white transition">
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
       )}
     </div>
   );

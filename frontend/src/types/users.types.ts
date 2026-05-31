@@ -4,6 +4,7 @@ export interface Department {
   id: string;
   name: string;
   isActive: boolean;
+  businessUnit?: { id: string; name: string } | null;
 }
 
 export interface ShiftSummary {

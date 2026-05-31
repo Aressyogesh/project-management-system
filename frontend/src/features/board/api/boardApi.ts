@@ -1,5 +1,5 @@
 import { apiClient } from '../../../api/client';
-import type { BoardStatus, Sprint, TimesheetEntry, WorkItem, WorkItemType } from '../types/board.types';
+import type { BoardStatus, Sprint, TimesheetEntry, WorkItem, WorkItemActivity, WorkItemAttachment, WorkItemType } from '../types/board.types';
 
 // ─── Work Items ───────────────────────────────────────────────────────────────
 
@@ -32,11 +32,15 @@ export const boardApi = {
     apiClient.delete(`/work-items/${id}`).then(() => undefined),
 
   // Comments
-  addComment: (workItemId: string, content: string) =>
-    apiClient.post(`/work-items/${workItemId}/comments`, { content }).then((r) => r.data),
+  addComment: (workItemId: string, content: string, mentions: string[] = []) =>
+    apiClient.post(`/work-items/${workItemId}/comments`, { content, mentions }).then((r) => r.data),
 
   deleteComment: (workItemId: string, commentId: string): Promise<void> =>
     apiClient.delete(`/work-items/${workItemId}/comments/${commentId}`).then(() => undefined),
+
+  // Activities
+  getActivities: (workItemId: string): Promise<WorkItemActivity[]> =>
+    apiClient.get(`/work-items/${workItemId}/activities`).then((r) => r.data),
 
   // Timesheet entries
   getTimesheetEntries: (workItemId: string): Promise<TimesheetEntry[]> =>
@@ -47,6 +51,21 @@ export const boardApi = {
 
   deleteTimesheetEntry: (entryId: string): Promise<void> =>
     apiClient.delete(`/timesheet-entries/${entryId}`).then(() => undefined),
+
+  // Attachments
+  uploadAttachment: (workItemId: string, file: File): Promise<WorkItemAttachment> => {
+    const form = new FormData();
+    form.append('file', file);
+    return apiClient.post(`/work-items/${workItemId}/attachments`, form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }).then((r) => r.data);
+  },
+
+  deleteAttachment: (attachmentId: string): Promise<void> =>
+    apiClient.delete(`/work-items/attachments/${attachmentId}`).then(() => undefined),
+
+  attachmentDownloadUrl: (attachmentId: string): string =>
+    `${(apiClient.defaults.baseURL ?? '').replace(/\/$/, '')}/work-items/attachments/${attachmentId}/download`,
 };
 
 // ─── Sprints ──────────────────────────────────────────────────────────────────

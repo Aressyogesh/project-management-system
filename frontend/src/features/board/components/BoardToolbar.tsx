@@ -28,6 +28,7 @@ interface Props {
   members: Member[];
   onCreateItem: () => void;
   onManageSprints: () => void;
+  onAddMilestone: () => void;
   canManageSprints: boolean;
 }
 
@@ -38,6 +39,7 @@ export function BoardToolbar({
   members,
   onCreateItem,
   onManageSprints,
+  onAddMilestone,
   canManageSprints,
 }: Props) {
   const hasFilters = !!(filters.type || filters.assigneeId || filters.priority || filters.search || filters.sprintId);
@@ -54,7 +56,6 @@ export function BoardToolbar({
         className={selectClass}
       >
         <option value="">All Sprints</option>
-        <option value="backlog">Backlog</option>
         {sprints.map((s) => (
           <option key={s.id} value={s.id}>
             {s.name}{s.isActive ? ' ★' : ''}
@@ -123,6 +124,19 @@ export function BoardToolbar({
       )}
 
       <div className="flex-1" />
+
+      {/* Add Milestone */}
+      {canManageSprints && (
+        <button
+          onClick={onAddMilestone}
+          className="flex items-center gap-1.5 text-xs font-medium text-violet-700 hover:text-violet-900 px-3 py-1.5 border border-violet-200 rounded-lg hover:bg-violet-50 transition"
+        >
+          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 21l9-18 9 18M6.5 15h11" />
+          </svg>
+          Milestone
+        </button>
+      )}
 
       {/* Manage Sprints */}
       {canManageSprints && (

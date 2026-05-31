@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { tasksApi } from '../../../api/tasks.api';
 import type { BillingStatus, CreateTaskPayload, MilestoneRef, Task, TaskListRef, TaskPriority, TaskStatus, TaskUser } from '../../../types/task.types';
+import { futureDateStr, pastDateStr } from '../../../utils/dateUtils';
 
 interface Props {
   projectId: string;
@@ -231,6 +232,8 @@ export function TaskFormModal({ projectId, taskLists, milestones, members, editT
                 type="date"
                 className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 value={startDate}
+                min={pastDateStr(5)}
+                max={futureDateStr(10)}
                 onChange={(e) => setStartDate(e.target.value)}
               />
             </div>
@@ -238,7 +241,8 @@ export function TaskFormModal({ projectId, taskLists, milestones, members, editT
               <label className="block text-xs font-semibold text-slate-600 mb-1">Due Date</label>
               <input
                 type="date"
-                min={startDate || undefined}
+                min={startDate || pastDateStr(5)}
+                max={futureDateStr(10)}
                 className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 value={dueDate}
                 onChange={(e) => setDueDate(e.target.value)}

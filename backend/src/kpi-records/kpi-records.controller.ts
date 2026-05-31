@@ -11,9 +11,9 @@ export class KpiRecordsController {
   @Roles(SystemRole.ADMIN, SystemRole.SUPER_USER)
   upsert(
     @Body() dto: UpsertKpiRecordDto,
-    @Request() req: { user: { userId: string } },
+    @Request() req: { user: { id: string } },
   ) {
-    return this.kpiRecordsService.upsert(dto, req.user.userId);
+    return this.kpiRecordsService.upsert(dto, req.user.id);
   }
 
   @Get()

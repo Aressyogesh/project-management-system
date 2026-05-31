@@ -11,14 +11,17 @@ import {
 } from 'class-validator';
 
 export class CreateMilestoneDto {
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  name?: string;
+
   @IsString()
   @IsNotEmpty()
-  @MaxLength(500)
   description: string;
 
   @IsOptional()
   @IsString()
-  @MaxLength(1000)
   deliveryNote?: string;
 
   @IsOptional()

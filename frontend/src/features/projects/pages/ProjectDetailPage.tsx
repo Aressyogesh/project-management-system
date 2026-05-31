@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { milestonesApi } from '../../../api/milestones.api';
 import { projectsApi } from '../../../api/projects.api';
@@ -74,6 +74,28 @@ const ROLE_OPTIONS: { value: ProjectRole; label: string }[] = [
   { value: 'DEVOPS', label: 'DevOps' },
 ];
 
+function Toast({ message, variant = 'success', onClose }: { message: string; variant?: 'success' | 'error'; onClose: () => void }) {
+  return (
+    <div className={`fixed bottom-6 right-6 z-[100] flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg text-sm font-medium text-white min-w-[240px] max-w-sm ${variant === 'error' ? 'bg-red-600' : 'bg-gray-900'}`}>
+      {variant === 'error' ? (
+        <svg className="w-4 h-4 shrink-0 text-red-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+        </svg>
+      ) : (
+        <svg className="w-4 h-4 shrink-0 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+        </svg>
+      )}
+      <span className="flex-1">{message}</span>
+      <button onClick={onClose} className="text-white/60 hover:text-white transition">
+        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+    </div>
+  );
+}
+
 function Avatar({ name, photo }: { name: string; photo: string | null }) {
   if (photo) {
     return <img src={photo} alt={name} className="w-8 h-8 rounded-full object-cover" />;
@@ -96,6 +118,15 @@ export function ProjectDetailPage() {
   const [editingRole, setEditingRole] = useState<{ userId: string; role: ProjectRole } | null>(null);
   const [showMilestoneForm, setShowMilestoneForm] = useState(false);
   const [editMilestone, setEditMilestone] = useState<Milestone | null>(null);
+  const [membersPage, setMembersPage] = useState(1);
+  const [toast, setToast] = useState<{ message: string; variant?: 'success' | 'error' } | null>(null);
+
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(null), 4000);
+    return () => clearTimeout(t);
+  }, [toast]);
+  const MEMBERS_PAGE_SIZE = 10;
 
   const { data: project, isLoading: projLoading, error: projError } = useQuery({
     queryKey: ['project', projectId],
@@ -115,9 +146,19 @@ export function ProjectDetailPage() {
     enabled: !!projectId,
   });
 
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+
   const removeMilestoneMutation = useMutation({
     mutationFn: (id: string) => milestonesApi.remove(id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['milestones', projectId] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['milestones', projectId] });
+      setDeleteConfirmId(null);
+      setToast({ message: 'Milestone deleted' });
+    },
+    onError: (err: any) => {
+      setDeleteConfirmId(null);
+      setToast({ message: err?.response?.data?.message ?? 'Failed to delete milestone', variant: 'error' });
+    },
   });
 
   const updateRoleMutation = useMutation({
@@ -143,6 +184,13 @@ export function ProjectDetailPage() {
   }
 
   const isOverdue = project.status === 'ACTIVE' && project.endDate !== null && new Date(project.endDate) < new Date();
+
+  const membersTotalPages = Math.max(1, Math.ceil(members.length / MEMBERS_PAGE_SIZE));
+  const safeMembersPage = Math.min(membersPage, membersTotalPages);
+  const pagedMembers = useMemo(
+    () => members.slice((safeMembersPage - 1) * MEMBERS_PAGE_SIZE, safeMembersPage * MEMBERS_PAGE_SIZE),
+    [members, safeMembersPage],
+  );
 
   return (
     <div className="space-y-5">
@@ -188,7 +236,7 @@ export function ProjectDetailPage() {
         </div>
 
         {/* Meta grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-5 pt-5 border-t border-gray-50">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mt-5 pt-5 border-t border-gray-50">
           <div>
             <p className="text-xs text-gray-400 mb-0.5">Client</p>
             <p className="text-sm font-medium text-gray-700">{project.client?.name ?? '—'}</p>
@@ -203,12 +251,6 @@ export function ProjectDetailPage() {
               {project.startDate ? new Date(project.startDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}
               {' → '}
               {project.endDate ? new Date(project.endDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}
-            </p>
-          </div>
-          <div>
-            <p className="text-xs text-gray-400 mb-0.5">Budget</p>
-            <p className="text-sm font-medium text-gray-700">
-              {project.budget ? `₹${Number(project.budget).toLocaleString('en-IN')}` : '—'}
             </p>
           </div>
         </div>
@@ -257,7 +299,7 @@ export function ProjectDetailPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
-                {members.map((member: ProjectMember) => (
+                {pagedMembers.map((member: ProjectMember) => (
                   <tr key={member.id} className="hover:bg-gray-50 transition-colors">
                     <td className="px-6 py-3">
                       <div className="flex items-center gap-3">
@@ -334,6 +376,46 @@ export function ProjectDetailPage() {
                 ))}
               </tbody>
             </table>
+
+            {membersTotalPages > 1 && (
+              <div className="flex items-center justify-between px-6 py-3 border-t border-gray-100 text-sm">
+                <span className="text-xs text-gray-400">
+                  Showing <span className="font-medium text-gray-600">{(safeMembersPage - 1) * MEMBERS_PAGE_SIZE + 1}–{Math.min(safeMembersPage * MEMBERS_PAGE_SIZE, members.length)}</span> of{' '}
+                  <span className="font-medium text-gray-600">{members.length}</span> members
+                </span>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => setMembersPage((p) => Math.max(1, p - 1))}
+                    disabled={safeMembersPage === 1}
+                    className="p-1.5 rounded-lg text-gray-500 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed transition"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                    </svg>
+                  </button>
+                  {Array.from({ length: membersTotalPages }, (_, i) => i + 1).map((p) => (
+                    <button
+                      key={p}
+                      onClick={() => setMembersPage(p)}
+                      className={`min-w-[32px] h-8 px-2 rounded-lg text-xs font-medium transition ${
+                        safeMembersPage === p ? 'bg-primary-600 text-white' : 'text-gray-600 hover:bg-gray-100'
+                      }`}
+                    >
+                      {p}
+                    </button>
+                  ))}
+                  <button
+                    onClick={() => setMembersPage((p) => Math.min(membersTotalPages, p + 1))}
+                    disabled={safeMembersPage === membersTotalPages}
+                    className="p-1.5 rounded-lg text-gray-500 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed transition"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -385,9 +467,11 @@ export function ProjectDetailPage() {
                 {milestones.map((ms: Milestone) => (
                   <tr key={ms.id} className="hover:bg-gray-50 transition-colors">
                     <td className="px-6 py-3">
-                      <p className="text-sm font-medium text-gray-800">{ms.description}</p>
-                      {ms.deliveryNote && (
-                        <p className="text-xs text-gray-400 mt-0.5 line-clamp-1">{ms.deliveryNote}</p>
+                      <p className="text-sm font-medium text-gray-800">{ms.name ?? ms.description}</p>
+                      {ms.description && ms.name && (
+                        <p className="text-xs text-gray-400 mt-0.5 line-clamp-1">
+                          {ms.description.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()}
+                        </p>
                       )}
                     </td>
                     <td className="px-6 py-3 text-xs text-gray-500 whitespace-nowrap">
@@ -424,27 +508,47 @@ export function ProjectDetailPage() {
                     {canEdit && (
                       <td className="px-6 py-3">
                         <div className="flex items-center gap-1 justify-end">
-                          <button
-                            title="Edit"
-                            onClick={() => { setEditMilestone(ms); setShowMilestoneForm(true); }}
-                            className="p-1.5 rounded-lg text-gray-400 hover:text-primary-600 hover:bg-primary-50 transition"
-                          >
-                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                                d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                            </svg>
-                          </button>
-                          <button
-                            title="Delete"
-                            onClick={() => removeMilestoneMutation.mutate(ms.id)}
-                            disabled={removeMilestoneMutation.isPending}
-                            className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition"
-                          >
-                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                            </svg>
-                          </button>
+                          {deleteConfirmId === ms.id ? (
+                            <>
+                              <span className="text-[10px] text-gray-500 mr-1">Delete?</span>
+                              <button
+                                onClick={() => removeMilestoneMutation.mutate(ms.id)}
+                                disabled={removeMilestoneMutation.isPending}
+                                className="text-[10px] font-medium text-white bg-red-600 hover:bg-red-700 px-2 py-1 rounded transition"
+                              >
+                                Confirm
+                              </button>
+                              <button
+                                onClick={() => setDeleteConfirmId(null)}
+                                className="text-[10px] text-gray-500 hover:text-gray-700 px-2 py-1 rounded hover:bg-gray-100 transition"
+                              >
+                                Cancel
+                              </button>
+                            </>
+                          ) : (
+                            <>
+                              <button
+                                title="Edit"
+                                onClick={() => { setEditMilestone(ms); setShowMilestoneForm(true); }}
+                                className="p-1.5 rounded-lg text-gray-400 hover:text-primary-600 hover:bg-primary-50 transition"
+                              >
+                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                </svg>
+                              </button>
+                              <button
+                                title="Delete"
+                                onClick={() => setDeleteConfirmId(ms.id)}
+                                className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition"
+                              >
+                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                              </button>
+                            </>
+                          )}
                         </div>
                       </td>
                     )}
@@ -469,8 +573,11 @@ export function ProjectDetailPage() {
           projectId={projectId!}
           milestone={editMilestone ?? undefined}
           onClose={() => { setShowMilestoneForm(false); setEditMilestone(null); }}
+          onSuccess={(msg) => setToast({ message: msg })}
         />
       )}
+
+      {toast && <Toast message={toast.message} variant={toast.variant} onClose={() => setToast(null)} />}
     </div>
   );
 }

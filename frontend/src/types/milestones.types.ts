@@ -8,6 +8,7 @@ export interface MilestoneUser {
 
 export interface Milestone {
   id: string;
+  name: string | null;
   description: string;
   deliveryNote: string | null;
   startDate: string | null;
@@ -21,6 +22,7 @@ export interface Milestone {
 }
 
 export interface CreateMilestonePayload {
+  name?: string;
   description: string;
   deliveryNote?: string;
   startDate?: string;

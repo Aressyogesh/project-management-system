@@ -63,8 +63,8 @@ export class TasksService {
         priority: dto.priority ?? 'MEDIUM',
         billingStatus: dto.billingStatus ?? 'BILLABLE',
         status: dto.status ?? 'NOT_STARTED',
-        startDate: dto.startDate ?? null,
-        dueDate: dto.dueDate ?? null,
+        startDate: dto.startDate ? new Date(dto.startDate) : null,
+        dueDate: dto.dueDate ? new Date(dto.dueDate) : null,
       },
       select: TASK_SELECT,
     });
@@ -93,8 +93,8 @@ export class TasksService {
         ...(dto.priority !== undefined && { priority: dto.priority }),
         ...(dto.billingStatus !== undefined && { billingStatus: dto.billingStatus }),
         ...(dto.status !== undefined && { status: dto.status }),
-        ...(dto.startDate !== undefined && { startDate: dto.startDate || null }),
-        ...(dto.dueDate !== undefined && { dueDate: dto.dueDate || null }),
+        ...(dto.startDate !== undefined && { startDate: dto.startDate ? new Date(dto.startDate) : null }),
+        ...(dto.dueDate !== undefined && { dueDate: dto.dueDate ? new Date(dto.dueDate) : null }),
       },
       select: TASK_SELECT,
     });

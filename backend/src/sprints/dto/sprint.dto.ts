@@ -1,4 +1,4 @@
-import { IsBoolean, IsDateString, IsOptional, IsString, MaxLength } from 'class-validator';
+import { IsBoolean, IsDateString, IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
 
 export class CreateSprintDto {
@@ -7,6 +7,7 @@ export class CreateSprintDto {
   @ApiPropertyOptional() @IsOptional() @IsDateString() startDate?: string;
   @ApiPropertyOptional() @IsOptional() @IsDateString() endDate?: string;
   @ApiPropertyOptional() @IsOptional() @IsBoolean() isActive?: boolean;
+  @ApiPropertyOptional() @IsOptional() @IsUUID() milestoneId?: string;
 }
 
 export class UpdateSprintDto extends PartialType(CreateSprintDto) {}

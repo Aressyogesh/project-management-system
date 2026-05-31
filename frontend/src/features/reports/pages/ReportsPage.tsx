@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { usePageSize } from '../../../hooks/usePageSize';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell,
@@ -43,14 +44,14 @@ function downloadCsv(filename: string, rows: string[][]): void {
 
 const PAGE_SIZE_OPTIONS = [5, 10, 25];
 
-function usePagination<T>(data: T[], defaultPageSize = 10) {
+function usePagination<T>(data: T[], storageKey: string, defaultPageSize = 10) {
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(defaultPageSize);
+  const [pageSize, setPageSizeRaw] = usePageSize(`reports_${storageKey}`, defaultPageSize);
   const totalPages = Math.max(1, Math.ceil(data.length / pageSize));
   const safePage = Math.min(page, totalPages);
   const start = (safePage - 1) * pageSize;
   const paginatedData = data.slice(start, start + pageSize);
-  function handlePageSizeChange(size: number) { setPageSize(size); setPage(1); }
+  function handlePageSizeChange(size: number) { setPageSizeRaw(size); setPage(1); }
   return {
     paginatedData, page: safePage, setPage, pageSize,
     setPageSize: handlePageSizeChange, totalPages, totalItems: data.length,
@@ -138,7 +139,7 @@ function TeamProductivityTab({ currentUserId, period, project }: { currentUserId
     : STATIC_PRODUCTIVITY_DATA.filter((r) => USER_PROJECT_MAP[r.userId] === project);
 
   const chartData = data.slice(0, 10).map((r) => ({ name: r.name.split(' ')[0], tasks: r.tasksDone }));
-  const { paginatedData, page, setPage, pageSize, setPageSize, totalPages, totalItems, startIndex, endIndex } = usePagination(data);
+  const { paginatedData, page, setPage, pageSize, setPageSize, totalPages, totalItems, startIndex, endIndex } = usePagination(data, 'productivity');
 
   function exportCsv() {
     downloadCsv(`team-productivity-report-${period}.csv`, [
@@ -247,7 +248,7 @@ function KpiAppraisalTab({ currentUserId, period }: { currentUserId?: string; pe
 
   const topPerformers = [...kpiData].sort((a, b) => b.totalScore - a.totalScore).slice(0, 3);
   const sortedKpi = [...kpiData].sort((a, b) => b.totalScore - a.totalScore);
-  const { paginatedData, page, setPage, pageSize, setPageSize, totalPages, totalItems, startIndex, endIndex } = usePagination(sortedKpi);
+  const { paginatedData, page, setPage, pageSize, setPageSize, totalPages, totalItems, startIndex, endIndex } = usePagination(sortedKpi, 'kpi');
 
   function exportCsv() {
     downloadCsv(`kpi-appraisal-report-${period}.csv`, [
@@ -554,7 +555,7 @@ function TaskAllocationTab({ currentUserId, period, project }: { currentUserId?:
   const avgUtilisation = data.length > 0 ? Math.round(data.reduce((s, r) => s + r.utilisationPct, 0) / data.length) : 0;
   const overAllocated = data.filter((r) => r.utilisationPct > 100).length;
 
-  const { paginatedData, page, setPage, pageSize, setPageSize, totalPages, totalItems, startIndex, endIndex } = usePagination(data);
+  const { paginatedData, page, setPage, pageSize, setPageSize, totalPages, totalItems, startIndex, endIndex } = usePagination(data, 'allocation');
 
   function exportCsv() {
     downloadCsv(`task-allocation-report-${period}.csv`, [
@@ -690,7 +691,7 @@ function TimesheetTab({ currentUserId, period, project }: { currentUserId?: stri
   const submittedCount = data.filter((r) => r.status === 'Submitted').length;
   const draftCount = data.filter((r) => r.status === 'Draft').length;
 
-  const { paginatedData, page, setPage, pageSize, setPageSize, totalPages, totalItems, startIndex, endIndex } = usePagination(data);
+  const { paginatedData, page, setPage, pageSize, setPageSize, totalPages, totalItems, startIndex, endIndex } = usePagination(data, 'timesheet');
 
   function exportCsv() {
     downloadCsv(`timesheet-report-${period}.csv`, [

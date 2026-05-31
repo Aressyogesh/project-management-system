@@ -40,6 +40,7 @@ export function useBoard(projectId: string, filters: BoardFiltersQuery) {
     onSettled: (_data, _err, vars) => {
       qc.invalidateQueries({ queryKey: key });
       qc.invalidateQueries({ queryKey: ['workItem', vars.id] });
+      qc.invalidateQueries({ queryKey: ['workItem-activities', vars.id] });
     },
   });
 

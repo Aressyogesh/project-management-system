@@ -7,11 +7,11 @@ export const departmentsApi = {
       .get<Department[]>('/departments', { params: includeInactive ? { includeInactive: true } : {} })
       .then((r) => r.data),
 
-  create: (name: string) =>
-    apiClient.post<Department>('/departments', { name }).then((r) => r.data),
+  create: (payload: { name: string; businessUnitId?: string }) =>
+    apiClient.post<Department>('/departments', payload).then((r) => r.data),
 
-  update: (id: string, name: string) =>
-    apiClient.patch<Department>(`/departments/${id}`, { name }).then((r) => r.data),
+  update: (id: string, payload: { name?: string; businessUnitId?: string | null }) =>
+    apiClient.patch<Department>(`/departments/${id}`, payload).then((r) => r.data),
 
   setStatus: (id: string, isActive: boolean) =>
     apiClient.patch<Department>(`/departments/${id}/status`, { isActive }).then((r) => r.data),

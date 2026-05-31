@@ -1,16 +1,19 @@
-        Command         │  Folder   │
-  ├────────────────────────┼───────────┤
-  │ npm install            │ backend\  │
-  ├────────────────────────┼───────────┤
-  │ npx prisma migrate dev │ backend\  │
-  ├────────────────────────┼───────────┤
-  │ npx prisma db seed     │ backend\  │
-  ├────────────────────────┼───────────┤
-  │ npm run start:dev      │ backend\  │
-  ├────────────────────────┼───────────┤
-  │ npm install            │ frontend\ │
-  ├────────────────────────┼───────────┤
-  │ npm run dev            │ frontend\ │
-  ├────────────────────────┼───────────┤
-  │ npm test               │ frontend\ │
-  └────────────────────────┴───────────┘
+
+  ┌──────────────────┬────────────────────┬───────────┐
+  │       What       │      Command       │   Where   │
+  ├──────────────────┼────────────────────┼───────────┤
+  │ Backend dev      │ npm run start:dev  │ backend/  │
+  ├──────────────────┼────────────────────┼───────────┤
+  │ Frontend dev     │ npm run dev        │ frontend/ │
+  ├──────────────────┼────────────────────┼───────────┤
+  │ DB push (schema) │ npx prisma db push │ backend/  │
+  ├──────────────────┼────────────────────┼───────────┤
+  │ DB seed          │ npx prisma db seed │ backend/  │
+  ├──────────────────┼────────────────────┼───────────┤
+  │ Backend tests    │ npm test           │ backend/  │
+  ├──────────────────┼────────────────────┼───────────┤
+  │ Frontend tests   │ npm test           │ frontend/ │
+  └──────────────────┴────────────────────┴───────────┘
+
+  ▎ Tip: Open two terminals — one for backend, one for frontend — and run both simultaneously.
+project details 

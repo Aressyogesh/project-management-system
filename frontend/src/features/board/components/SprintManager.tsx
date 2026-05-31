@@ -1,10 +1,19 @@
 import { useState } from 'react';
 import { useSprints } from '../hooks/useSprints';
 import type { Sprint } from '../types/board.types';
+import { futureDateStr, pastDateStr } from '../../../utils/dateUtils';
+
+interface MilestoneRef {
+  id: string;
+  name: string | null;
+  description: string;
+}
 
 interface Props {
   projectId: string;
+  milestones: MilestoneRef[];
   onClose: () => void;
+  onToast?: (msg: string) => void;
 }
 
 interface SprintFormState {
@@ -12,11 +21,12 @@ interface SprintFormState {
   goal: string;
   startDate: string;
   endDate: string;
+  milestoneId: string;
 }
 
-const emptyForm = (): SprintFormState => ({ name: '', goal: '', startDate: '', endDate: '' });
+const emptyForm = (): SprintFormState => ({ name: '', goal: '', startDate: '', endDate: '', milestoneId: '' });
 
-export function SprintManager({ projectId, onClose }: Props) {
+export function SprintManager({ projectId, milestones, onClose, onToast }: Props) {
   const { sprints, isLoading, create, update, activate, remove } = useSprints(projectId);
   const [form, setForm] = useState<SprintFormState>(emptyForm());
   const [editId, setEditId] = useState<string | null>(null);
@@ -36,6 +46,7 @@ export function SprintManager({ projectId, onClose }: Props) {
       goal: s.goal ?? '',
       startDate: s.startDate ? s.startDate.slice(0, 10) : '',
       endDate: s.endDate ? s.endDate.slice(0, 10) : '',
+      milestoneId: s.milestoneId ?? '',
     });
     setShowForm(true);
   }
@@ -53,22 +64,27 @@ export function SprintManager({ projectId, onClose }: Props) {
       goal: form.goal.trim() || undefined,
       startDate: form.startDate || undefined,
       endDate: form.endDate || undefined,
+      milestoneId: form.milestoneId || undefined,
     };
     if (editId) {
       await update.mutateAsync({ id: editId, data });
+      onToast?.('Sprint updated successfully');
     } else {
       await create.mutateAsync(data);
+      onToast?.('Sprint created successfully');
     }
     cancelForm();
   }
 
   async function handleActivate(id: string) {
     await activate.mutateAsync(id);
+    onToast?.('Sprint set as active');
   }
 
   async function handleDelete(id: string) {
     await remove.mutateAsync(id);
     setDeleteConfirm(null);
+    onToast?.('Sprint deleted');
   }
 
   const isPending = create.isPending || update.isPending || activate.isPending || remove.isPending;
@@ -119,6 +135,19 @@ export function SprintManager({ projectId, onClose }: Props) {
                 />
               </div>
               <div className="col-span-2">
+                <label className="text-xs font-medium text-gray-600 block mb-1">Milestone</label>
+                <select
+                  value={form.milestoneId}
+                  onChange={(e) => setForm((f) => ({ ...f, milestoneId: e.target.value }))}
+                  className={`w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white ${!form.milestoneId ? 'text-gray-400' : 'text-gray-900'}`}
+                >
+                  <option value="">— No Milestone —</option>
+                  {milestones.map((m) => (
+                    <option key={m.id} value={m.id}>{m.name ?? m.description}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="col-span-2">
                 <label className="text-xs font-medium text-gray-600 block mb-1">Sprint Goal</label>
                 <input
                   type="text"
@@ -133,6 +162,8 @@ export function SprintManager({ projectId, onClose }: Props) {
                 <input
                   type="date"
                   value={form.startDate}
+                  min={pastDateStr(5)}
+                  max={futureDateStr(5)}
                   onChange={(e) => setForm((f) => ({ ...f, startDate: e.target.value }))}
                   className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
                 />
@@ -142,6 +173,8 @@ export function SprintManager({ projectId, onClose }: Props) {
                 <input
                   type="date"
                   value={form.endDate}
+                  min={form.startDate || pastDateStr(5)}
+                  max={futureDateStr(5)}
                   onChange={(e) => setForm((f) => ({ ...f, endDate: e.target.value }))}
                   className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
                 />
@@ -189,6 +222,17 @@ export function SprintManager({ projectId, onClose }: Props) {
                         </span>
                       )}
                     </div>
+                    {s.milestoneId && (() => {
+                      const ms = milestones.find((m) => m.id === s.milestoneId);
+                      return ms ? (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-medium text-violet-700 bg-violet-50 border border-violet-100 rounded-full px-2 py-0.5 mt-0.5">
+                          <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 21l9-18 9 18M6.5 15h11" />
+                          </svg>
+                          {ms.name ?? ms.description}
+                        </span>
+                      ) : null;
+                    })()}
                     {s.goal && <p className="text-xs text-gray-500 mt-0.5 line-clamp-1">{s.goal}</p>}
                     {(s.startDate || s.endDate) && (
                       <p className="text-xs text-gray-400 mt-0.5">

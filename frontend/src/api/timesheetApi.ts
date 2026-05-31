@@ -29,7 +29,7 @@ export interface TimesheetEntryFull {
 }
 
 export const timesheetApi = {
-  getMyEntries: (params?: { userId?: string; from?: string; to?: string }): Promise<TimesheetEntryFull[]> =>
+  getMyEntries: (params?: { userId?: string; from?: string; to?: string; projectId?: string }): Promise<TimesheetEntryFull[]> =>
     apiClient.get('/timesheet', { params }).then((r) => r.data),
 
   submit: (id: string): Promise<TimesheetEntryFull> =>

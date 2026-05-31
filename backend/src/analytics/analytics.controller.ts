@@ -10,13 +10,13 @@ export class AnalyticsController {
   getKpi(
     @Query('period') period = '2026-05',
     @Query('userId') userId: string | undefined,
-    @Request() req: { user: { userId: string; systemRole: SystemRole } },
+    @Request() req: { user: { id: string; systemRole: SystemRole } },
   ) {
     const isAdmin =
       req.user.systemRole === SystemRole.ADMIN ||
       req.user.systemRole === SystemRole.SUPER_USER;
-    const targetUserId = isAdmin ? (userId ?? undefined) : req.user.userId;
-    return this.analyticsService.getKpi(period, targetUserId ?? req.user.userId, isAdmin && !userId);
+    const targetUserId = isAdmin ? (userId ?? undefined) : req.user.id;
+    return this.analyticsService.getKpi(period, targetUserId ?? req.user.id, isAdmin && !userId);
   }
 
   @Get('reports/productivity')
