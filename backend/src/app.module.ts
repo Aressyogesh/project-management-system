@@ -26,6 +26,9 @@ import { AnalyticsModule } from './analytics/analytics.module';
 import { KpiRecordsModule } from './kpi-records/kpi-records.module';
 import { SelfLogsModule } from './self-logs/self-logs.module';
 import { UploadsModule } from './uploads/uploads.module';
+import { BusinessUnitsModule } from './business-units/business-units.module';
+import { NotificationsModule } from './notifications/notifications.module';
+import { LeaveRequestsModule } from './leave-requests/leave-requests.module';
 
 @Module({
   imports: [
@@ -52,6 +55,9 @@ import { UploadsModule } from './uploads/uploads.module';
     KpiRecordsModule,
     SelfLogsModule,
     UploadsModule,
+    BusinessUnitsModule,
+    NotificationsModule,
+    LeaveRequestsModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: GlobalExceptionFilter },

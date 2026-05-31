@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { BoardStatus, BugSeverity, WorkItemType } from '@prisma/client';
+import { BoardStatus, BugSeverity, LeaveStatus, WorkItemType } from '@prisma/client';
 
 // ─── KPI Computation Helpers ──────────────────────────────────────────────────
 
@@ -590,59 +590,76 @@ export class AnalyticsService {
     const daysInMonth = new Date(year, month, 0).getDate();
     const days = Array.from({ length: daysInMonth }, (_, i) => i + 1);
 
-    // Load config data in parallel
-    const [portalConfig, holidays, users] = await Promise.all([
-      this.prisma.portalConfig.findUnique({ where: { id: 'singleton' } }),
-      this.prisma.holiday.findMany({
-        where: { date: { gte: start, lt: end } },
-        select: { date: true, name: true },
-      }),
-      this.prisma.user.findMany({
-        where: { isActive: true },
-        select: {
-          id: true,
-          fullName: true,
-          systemRole: true,
-          projectMembers: { select: { projectRole: true } },
-        },
-        orderBy: { fullName: 'asc' },
-      }),
-    ]);
+    const [portalConfig, holidays, users, leaveRequests, timesheetEntries, workItems] =
+      await Promise.all([
+        this.prisma.portalConfig.findUnique({ where: { id: 'singleton' } }),
+        this.prisma.holiday.findMany({
+          where: { date: { gte: start, lt: end } },
+          select: { date: true, name: true },
+        }),
+        this.prisma.user.findMany({
+          where: { isActive: true },
+          select: {
+            id: true,
+            fullName: true,
+            systemRole: true,
+            projectMembers: { select: { projectRole: true } },
+          },
+          orderBy: { fullName: 'asc' },
+        }),
+        // Approved leave requests overlapping this month
+        this.prisma.leaveRequest.findMany({
+          where: {
+            status: LeaveStatus.APPROVED,
+            startDate: { lte: end },
+            endDate: { gte: start },
+          },
+          select: { userId: true, startDate: true, endDate: true },
+        }),
+        this.prisma.timesheetEntry.findMany({
+          where: { date: { gte: start, lt: end } },
+          select: { userId: true, date: true, hours: true },
+        }),
+        // Active work items (user stories, tasks, bugs) assigned within this month
+        this.prisma.workItem.findMany({
+          where: {
+            assigneeId: { not: null },
+            status: { not: BoardStatus.QA_DONE },
+            OR: [
+              { startDate: { lte: end, gte: start } },
+              { dueDate: { lte: end, gte: start } },
+              { startDate: { lte: start }, dueDate: { gte: end } },
+            ],
+          },
+          select: { assigneeId: true, startDate: true, dueDate: true, title: true, type: true },
+        }),
+      ]);
 
-    const workingDays = (portalConfig?.workingDays as Record<string, boolean>) ?? {
+    const workingDaysCfg = (portalConfig?.workingDays as Record<string, boolean>) ?? {
       monday: true, tuesday: true, wednesday: true,
       thursday: true, friday: true, saturday: false, sunday: false,
     };
 
     const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
 
-    const holidayDates = new Set(
-      holidays.map((h) => new Date(h.date).getDate()),
-    );
-    const holidayNames = new Map(
-      holidays.map((h) => [new Date(h.date).getDate(), h.name]),
-    );
+    const holidayDates = new Set(holidays.map((h) => new Date(h.date).getDate()));
+    const holidayNames = new Map(holidays.map((h) => [new Date(h.date).getDate(), h.name]));
 
-    // Load leave logs and timesheet entries for the period
-    const [leaveLogs, timesheetEntries] = await Promise.all([
-      this.prisma.leaveLog.findMany({
-        where: { date: { gte: start, lt: end } },
-        select: { userId: true, date: true },
-      }),
-      this.prisma.timesheetEntry.findMany({
-        where: { date: { gte: start, lt: end } },
-        select: { userId: true, date: true, hours: true },
-      }),
-    ]);
-
-    // Build lookup maps for performance
+    // Build per-user leave-day sets from approved LeaveRequests
     const leaveMap = new Map<string, Set<number>>();
-    for (const leave of leaveLogs) {
-      const day = new Date(leave.date).getDate();
-      if (!leaveMap.has(leave.userId)) leaveMap.set(leave.userId, new Set());
-      leaveMap.get(leave.userId)!.add(day);
+    for (const leave of leaveRequests) {
+      const leaveStart = new Date(leave.startDate);
+      const leaveEnd = new Date(leave.endDate);
+      for (let d = new Date(leaveStart); d <= leaveEnd; d.setDate(d.getDate() + 1)) {
+        if (d.getFullYear() === year && d.getMonth() + 1 === month) {
+          const day = d.getDate();
+          if (!leaveMap.has(leave.userId)) leaveMap.set(leave.userId, new Set());
+          leaveMap.get(leave.userId)!.add(day);
+        }
+      }
     }
 
+    // Build per-user timesheet hours map
     const hoursMap = new Map<string, Map<number, number>>();
     for (const entry of timesheetEntries) {
       const day = new Date(entry.date).getDate();
@@ -651,17 +668,34 @@ export class AnalyticsService {
       hoursMap.get(entry.userId)!.set(day, existing + Number(entry.hours));
     }
 
+    // Build per-user assigned-work-item day sets
+    const workItemDayMap = new Map<string, Set<number>>();
+    for (const wi of workItems) {
+      if (!wi.assigneeId) continue;
+      const wiStart = wi.startDate ? new Date(wi.startDate) : start;
+      const wiEnd = wi.dueDate ? new Date(wi.dueDate) : end;
+      for (let d = new Date(wiStart); d <= wiEnd; d.setDate(d.getDate() + 1)) {
+        if (d.getFullYear() === year && d.getMonth() + 1 === month) {
+          const day = d.getDate();
+          if (!workItemDayMap.has(wi.assigneeId)) workItemDayMap.set(wi.assigneeId, new Set());
+          workItemDayMap.get(wi.assigneeId)!.add(day);
+        }
+      }
+    }
+
     const employeeRows = users.map((user) => {
       const userLeaves = leaveMap.get(user.id) ?? new Set<number>();
       const userHours = hoursMap.get(user.id) ?? new Map<number, number>();
+      const userWorkDays = workItemDayMap.get(user.id) ?? new Set<number>();
 
       const cells = days.map((day) => {
         const date = new Date(year, month - 1, day);
         const dayName = dayNames[date.getDay()];
-        const isWeeklyOff = !workingDays[dayName];
+        const isWeeklyOff = !workingDaysCfg[dayName];
         const isHoliday = holidayDates.has(day);
         const isOnLeave = userLeaves.has(day);
         const hours = userHours.get(day) ?? 0;
+        const hasWorkItem = userWorkDays.has(day);
 
         let status: string;
         if (isHoliday) status = 'holiday';
@@ -669,12 +703,14 @@ export class AnalyticsService {
         else if (isOnLeave) status = 'leave';
         else if (hours >= 8) status = 'occupied';
         else if (hours >= 1) status = 'partial';
+        else if (hasWorkItem) status = 'partial'; // assigned but no hours logged yet
         else status = 'available';
 
         return {
           day,
           status,
           hours,
+          hasWorkItem: !isHoliday && !isWeeklyOff && !isOnLeave && hasWorkItem,
           holidayName: holidayNames.get(day),
           dayOfWeek: dayName,
         };
@@ -712,7 +748,7 @@ export class AnalyticsService {
           dayOfWeek: dayNames[date.getDay()],
           isHoliday: holidayDates.has(day),
           holidayName: holidayNames.get(day),
-          isWeeklyOff: !workingDays[dayNames[date.getDay()]],
+          isWeeklyOff: !workingDaysCfg[dayNames[date.getDay()]],
         };
       }),
       employees: employeeRows,

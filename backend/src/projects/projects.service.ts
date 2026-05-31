@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { ProjectStatus } from '@prisma/client';
+import { ProjectStatus, SystemRole } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateProjectDto, ProjectsQueryDto, UpdateProjectDto } from './dto/project.dto';
 
@@ -21,11 +21,13 @@ const PROJECT_SELECT = {
 export class ProjectsService {
   constructor(private prisma: PrismaService) {}
 
-  findAll(query: ProjectsQueryDto = {}) {
+  findAll(query: ProjectsQueryDto = {}, userId?: string, systemRole?: SystemRole) {
+    const isAdmin = systemRole === SystemRole.SUPER_USER || systemRole === SystemRole.ADMIN;
     return this.prisma.project.findMany({
       where: {
         ...(query.status ? { status: query.status } : {}),
         ...(query.type ? { projectType: query.type } : {}),
+        ...(!isAdmin && userId ? { members: { some: { userId } } } : {}),
       },
       select: PROJECT_SELECT,
       orderBy: { createdAt: 'desc' },
@@ -38,8 +40,10 @@ export class ProjectsService {
     return project;
   }
 
-  async getSummary() {
+  async getSummary(userId?: string, systemRole?: SystemRole) {
+    const isAdmin = systemRole === SystemRole.SUPER_USER || systemRole === SystemRole.ADMIN;
     const projects = await this.prisma.project.findMany({
+      where: !isAdmin && userId ? { members: { some: { userId } } } : undefined,
       select: { status: true, projectType: true, endDate: true },
     });
     const today = new Date();

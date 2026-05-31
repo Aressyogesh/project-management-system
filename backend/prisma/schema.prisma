@@ -84,6 +84,23 @@ enum TimesheetApprovalStatus {
   REJECTED
 }
 
+enum LeaveType {
+  SICK
+  CASUAL
+  EARNED
+  MATERNITY
+  PATERNITY
+  UNPAID
+  OTHER
+}
+
+enum LeaveStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
 enum WorkItemType {
   EPIC
   USER_STORY
@@ -162,17 +179,35 @@ enum BugStatus {
   ON_HOLD
 }
 
+// ─── Business Unit ────────────────────────────────────────────────────────────
+
+model BusinessUnit {
+  id          String   @id @default(uuid())
+  name        String   @unique @db.VarChar(100)
+  description String?  @db.VarChar(2000)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  departments Department[]
+  clients     Client[]
+
+  @@map("business_units")
+}
+
 // ─── Department ───────────────────────────────────────────────────────────────
 
 model Department {
-  id        String   @id @default(uuid())
-  name      String   @unique @db.VarChar(100)
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id             String   @id @default(uuid())
+  name           String   @unique @db.VarChar(100)
+  businessUnitId String?
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
-  users    User[]
-  projects Project[]
+  businessUnit BusinessUnit? @relation(fields: [businessUnitId], references: [id], onDelete: SetNull)
+  users        User[]
+  projects     Project[]
 
   @@map("departments")
 }
@@ -209,10 +244,14 @@ model User {
   responsibleWorkItems  WorkItem[]           @relation("ResponsibleWorkItems")
   workItemComments      WorkItemComment[]    @relation("WorkItemComments")
   workItemAttachments   WorkItemAttachment[] @relation("WorkItemAttachments")
+  workItemActivities    WorkItemActivity[]   @relation("WorkItemActivities")
+  notifications         Notification[]       @relation("Notifications")
   timesheetEntries      TimesheetEntry[]     @relation("TimesheetEntries")
   timesheetApprovals    TimesheetEntry[]     @relation("TimesheetApprovals")
   kpiRecords            KpiRecord[]          @relation("KpiRecords")
   enteredKpiRecords     KpiRecord[]          @relation("EnteredKpiRecords")
+  leaveRequests         LeaveRequest[]       @relation("UserLeaveRequests")
+  leaveRequestApprovals LeaveRequest[]       @relation("LeaveRequestApprovals")
   leaveLogs             LeaveLog[]           @relation("LeaveLogs")
   learningLogs          LearningLog[]        @relation("LearningLogs")
   innovationLogs        InnovationLog[]      @relation("InnovationLogs")
@@ -317,7 +356,8 @@ model Project {
 model Milestone {
   id                String          @id @default(uuid())
   projectId         String
-  description       String          @db.VarChar(500)
+  name              String?         @db.VarChar(200)
+  description       String?         @db.Text
   deliveryNote      String?         @db.VarChar(1000)
   startDate         DateTime?       @db.Date
   dueDate           DateTime?       @db.Date
@@ -328,7 +368,8 @@ model Milestone {
 
   project         Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
   responsibleUser User?      @relation(fields: [responsibleUserId], references: [id], onDelete: SetNull)
-  tasks           Task[]
+  tasks             Task[]
+  sprints           Sprint[]
   releaseWorkItems  WorkItem[] @relation("ReleaseMilestoneItems")
   affectedWorkItems WorkItem[] @relation("AffectedMilestoneItems")
 
@@ -463,17 +504,19 @@ model ProjectMember {
 // ─── Client ───────────────────────────────────────────────────────────────────
 
 model Client {
-  id            String   @id @default(uuid())
-  name          String   @unique @db.VarChar(150)
-  contactPerson String   @db.VarChar(100)
-  email         String   @db.VarChar(255)
-  phone         String?  @db.VarChar(20)
-  address       String?  @db.VarChar(300)
-  isActive      Boolean  @default(true)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id             String   @id @default(uuid())
+  name           String   @unique @db.VarChar(150)
+  contactPerson  String   @db.VarChar(100)
+  email          String   @db.VarChar(255)
+  phone          String?  @db.VarChar(20)
+  address        String?  @db.VarChar(300)
+  businessUnitId String?
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
-  projects Project[]
+  businessUnit BusinessUnit? @relation(fields: [businessUnitId], references: [id], onDelete: SetNull)
+  projects     Project[]
 
   @@map("clients")
 }
@@ -496,20 +539,23 @@ model RefreshToken {
 // ─── Sprint ───────────────────────────────────────────────────────────────────
 
 model Sprint {
-  id        String    @id @default(uuid())
-  projectId String
-  name      String    @db.VarChar(100)
-  goal      String?   @db.VarChar(500)
-  startDate DateTime? @db.Date
-  endDate   DateTime? @db.Date
-  isActive  Boolean   @default(false)
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  id          String    @id @default(uuid())
+  projectId   String
+  milestoneId String?
+  name        String    @db.VarChar(100)
+  goal        String?   @db.VarChar(500)
+  startDate   DateTime? @db.Date
+  endDate     DateTime? @db.Date
+  isActive    Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   project   Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  milestone Milestone? @relation(fields: [milestoneId], references: [id], onDelete: SetNull)
   workItems WorkItem[]
 
   @@index([projectId])
+  @@index([milestoneId])
   @@map("sprints")
 }
 
@@ -568,6 +614,8 @@ model WorkItem {
   comments          WorkItemComment[]
   attachments       WorkItemAttachment[]
   timesheetEntries  TimesheetEntry[]
+  activities        WorkItemActivity[]
+  notifications     Notification[]       @relation("WorkItemNotifications")
 
   @@index([projectId])
   @@index([sprintId])
@@ -608,6 +656,7 @@ model WorkItemComment {
   workItemId String
   content    String   @db.VarChar(3000)
   authorId   String
+  mentions   String[]
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
@@ -616,6 +665,44 @@ model WorkItemComment {
 
   @@index([workItemId])
   @@map("work_item_comments")
+}
+
+// ─── Work Item Activity ───────────────────────────────────────────────────────
+
+model WorkItemActivity {
+  id         String   @id @default(uuid())
+  workItemId String
+  userId     String
+  action     String   @db.VarChar(100)
+  field      String?  @db.VarChar(100)
+  oldValue   String?  @db.VarChar(500)
+  newValue   String?  @db.VarChar(500)
+  createdAt  DateTime @default(now())
+
+  workItem WorkItem @relation(fields: [workItemId], references: [id], onDelete: Cascade)
+  user     User     @relation("WorkItemActivities", fields: [userId], references: [id])
+
+  @@index([workItemId])
+  @@map("work_item_activities")
+}
+
+// ─── Notification ─────────────────────────────────────────────────────────────
+
+model Notification {
+  id         String   @id @default(uuid())
+  userId     String
+  type       String   @db.VarChar(50)
+  title      String   @db.VarChar(200)
+  body       String   @db.VarChar(500)
+  workItemId String?
+  isRead     Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  user     User      @relation("Notifications", fields: [userId], references: [id], onDelete: Cascade)
+  workItem WorkItem? @relation("WorkItemNotifications", fields: [workItemId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@map("notifications")
 }
 
 // ─── Work Item Attachment ─────────────────────────────────────────────────────
@@ -656,6 +743,32 @@ model KpiRecord {
   @@unique([userId, period, metricId])
   @@index([userId, period])
   @@map("kpi_records")
+}
+
+// ─── Leave Request ────────────────────────────────────────────────────────────
+
+model LeaveRequest {
+  id           String      @id @default(uuid())
+  userId       String
+  type         LeaveType
+  startDate    DateTime    @db.Date
+  endDate      DateTime    @db.Date
+  totalDays    Int
+  reason       String?     @db.VarChar(500)
+  status       LeaveStatus @default(PENDING)
+  approvedById String?
+  approvalNote String?     @db.VarChar(500)
+  approvedAt   DateTime?
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  user       User  @relation("UserLeaveRequests", fields: [userId], references: [id], onDelete: Cascade)
+  approvedBy User? @relation("LeaveRequestApprovals", fields: [approvedById], references: [id])
+
+  @@index([userId])
+  @@index([status])
+  @@index([startDate, endDate])
+  @@map("leave_requests")
 }
 
 // ─── Leave Log ────────────────────────────────────────────────────────────────

@@ -1,7 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { AppLayout } from './components/layout/AppLayout';
-import { ComingSoon } from './components/shared/ComingSoon';
 import { ProtectedRoute } from './components/shared/ProtectedRoute';
 import { LoginPage } from './features/auth/pages/LoginPage';
 import { DashboardPage } from './features/dashboard/pages/DashboardPage';
@@ -12,6 +11,7 @@ import { ShiftConfigPage } from './features/settings/pages/ShiftConfigPage';
 import { UserSettingsPage } from './features/settings/pages/UserSettingsPage';
 import { ClientsPage } from './features/clients/pages/ClientsPage';
 import { DepartmentsPage } from './features/departments/pages/DepartmentsPage';
+import { BusinessUnitsPage } from './features/business-units/pages/BusinessUnitsPage';
 import { ProjectDetailPage } from './features/projects/pages/ProjectDetailPage';
 import { ProjectsPage } from './features/projects/pages/ProjectsPage';
 import { BoardPage } from './features/board/pages/BoardPage';
@@ -19,6 +19,7 @@ import { UsersPage } from './features/users/pages/UsersPage';
 import { KpiPage } from './features/kpi/pages/KpiPage';
 import { ReportsPage } from './features/reports/pages/ReportsPage';
 import { MyTimesheetPage } from './features/timesheet/pages/MyTimesheetPage';
+import { LeavePage } from './features/leave/pages/LeavePage';
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 30_000 } },
@@ -39,6 +40,9 @@ export default function App() {
 
               {/* User Management */}
               <Route path="/users" element={<UsersPage />} />
+
+              {/* Business Unit Management */}
+              <Route path="/business-units" element={<BusinessUnitsPage />} />
 
               {/* Department Management */}
               <Route path="/departments" element={<DepartmentsPage />} />
@@ -69,8 +73,8 @@ export default function App() {
                 <Route path="shifts"  element={<ShiftConfigPage />} />
               </Route>
 
-              {/* Leave logs (kept as coming soon for now) */}
-              <Route path="/leave-logs" element={<ComingSoon />} />
+              {/* Leave Management */}
+              <Route path="/leave-logs" element={<LeavePage />} />
             </Route>
           </Route>
 
