@@ -41,3 +41,15 @@ export interface DashboardStats {
   todayTask: { name: string; progress: number } | null;
   teamPerformance: { score: number; change: number };
 }
+
+export interface ProjectProgress {
+  id: string;
+  name: string;
+  clientName: string;
+  projectManager: string;
+  teamSize: number;
+  totalTasks: number;
+  completedTasks: number;
+  openBugs: number;
+  progress: number;
+}

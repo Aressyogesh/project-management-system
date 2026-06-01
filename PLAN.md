@@ -807,12 +807,14 @@ project-management-system/
 - [ ] Configurable metric weightages (Super User)
 
 ### Phase 10 — Dashboard & Reports
-- [ ] Role-based stats dashboard (Taskee design):
-  - Stat cards: Active Projects, Total Tasks, Assigned Tasks, Completed Tasks
-  - Team Activity Summary bar chart (monthly)
-  - My Task table (Project Details, Assign, Priority, Stage)
-  - Today Task + Team Performance score widget
-  - Tasks Progress donut chart
+- [x] Role-based stats dashboard — fully live (F-026):
+  - Stat cards: Active Projects, Total Tasks, Assigned Tasks, Completed Tasks (live DB)
+  - Team Activity Summary bar chart (real 12-month WorkItem data)
+  - My Task table (Project Details, Assign, Priority, Stage) — live DB
+  - Today Task widget — real WorkItem due today for logged-in user
+  - Team Performance score — real avg completion ratio
+  - Projects Progress panel (Super User / Admin only) — per-project: team size, tasks, bugs, progress %
+  - Tasks Progress donut chart (live task counts)
 - [ ] Project summary report
 - [ ] Team productivity report
 - [ ] Task allocation report
