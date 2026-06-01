@@ -113,6 +113,7 @@ export interface WorkItem {
   bugClassification?: BugClassification | null;
   environment?: string | null;
   stepsToRepro?: string | null;
+  definitionOfDone?: string | null;
   completedAt?: string | null;
   reopenCount: number;
   position: number;

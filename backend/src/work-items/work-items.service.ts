@@ -138,6 +138,7 @@ export class WorkItemsService implements OnModuleInit {
         components: dto.components ?? [], fixVersion: dto.fixVersion,
         severity: dto.severity, bugClassification: dto.bugClassification,
         environment: dto.environment, stepsToRepro: dto.stepsToRepro,
+        definitionOfDone: dto.definitionOfDone,
         startDate: dto.startDate ? new Date(dto.startDate) : undefined,
         dueDate: dto.dueDate ? new Date(dto.dueDate) : undefined,
         bugFlag: dto.bugFlag, bugReproducibility: dto.bugReproducibility,

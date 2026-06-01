@@ -170,6 +170,13 @@ enum BugReminderType {
   THREE_DAYS
 }
 
+enum TestCaseStatus {
+  NOT_RUN
+  PASSED
+  FAILED
+  BLOCKED
+}
+
 enum BugStatus {
   OPEN
   REOPEN
@@ -257,6 +264,7 @@ model User {
   leaveLogs             LeaveLog[]           @relation("LeaveLogs")
   learningLogs          LearningLog[]        @relation("LearningLogs")
   innovationLogs        InnovationLog[]      @relation("InnovationLogs")
+  createdTestCases      TestCase[]           @relation("CreatedTestCases")
 
   @@index([email])
   @@map("users")
@@ -585,6 +593,7 @@ model WorkItem {
   bugClassification    BugClassification?
   environment          String?            @db.VarChar(200)
   stepsToRepro         String?            @db.VarChar(3000)
+  definitionOfDone     String?            @db.VarChar(3000)
   completedAt          DateTime?
   reopenCount          Int                @default(0)
   position             Int                @default(0)
@@ -619,6 +628,7 @@ model WorkItem {
   timesheetEntries  TimesheetEntry[]
   activities        WorkItemActivity[]
   notifications     Notification[]       @relation("WorkItemNotifications")
+  testCases         TestCase[]
 
   @@index([projectId])
   @@index([sprintId])
@@ -823,6 +833,28 @@ model InnovationLog {
 
   @@index([userId, period])
   @@map("innovation_logs")
+}
+
+// ─── Test Case ────────────────────────────────────────────────────────────────
+
+model TestCase {
+  id             String         @id @default(uuid())
+  workItemId     String
+  title          String         @db.VarChar(300)
+  preconditions  String?        @db.VarChar(1000)
+  steps          String         @db.VarChar(3000)
+  expectedResult String         @db.VarChar(1000)
+  actualResult   String?        @db.VarChar(1000)
+  status         TestCaseStatus @default(NOT_RUN)
+  createdById    String
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  workItem  WorkItem @relation(fields: [workItemId], references: [id], onDelete: Cascade)
+  createdBy User     @relation("CreatedTestCases", fields: [createdById], references: [id])
+
+  @@index([workItemId])
+  @@map("test_cases")
 }
 
 // ─── Board Column Config ──────────────────────────────────────────────────────

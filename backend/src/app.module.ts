@@ -30,6 +30,7 @@ import { BusinessUnitsModule } from './business-units/business-units.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { LeaveRequestsModule } from './leave-requests/leave-requests.module';
 import { BoardColumnConfigsModule } from './board-column-configs/board-column-configs.module';
+import { TestCasesModule } from './test-cases/test-cases.module';
 
 @Module({
   imports: [
@@ -60,6 +61,7 @@ import { BoardColumnConfigsModule } from './board-column-configs/board-column-co
     NotificationsModule,
     LeaveRequestsModule,
     BoardColumnConfigsModule,
+    TestCasesModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: GlobalExceptionFilter },
