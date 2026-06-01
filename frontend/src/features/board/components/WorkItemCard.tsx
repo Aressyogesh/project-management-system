@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Draggable } from '@hello-pangea/dnd';
 import { PRIORITY_CONFIG, TYPE_CONFIG, type WorkItem } from '../types/board.types';
-import { TypeBadge } from './TypeBadge';
 
 interface MemberOption { id: string; fullName: string; }
 
@@ -76,9 +75,11 @@ export function WorkItemCard({ item, index, members = [], onClick, onAssigneeCha
             {...provided.draggableProps}
             {...provided.dragHandleProps}
             onClick={() => onClick(item)}
-            className={`bg-white border rounded-lg p-3 cursor-pointer transition-all select-none ${
+            title={TYPE_CONFIG[item.type].label}
+            style={{ borderLeftColor: TYPE_CONFIG[item.type].color }}
+            className={`bg-white border border-l-4 rounded-lg p-3 cursor-pointer transition-all select-none ${
               snapshot.isDragging
-                ? 'shadow-lg border-primary-400 rotate-1'
+                ? 'shadow-lg rotate-1'
                 : 'border-gray-200 hover:border-primary-300 hover:shadow-sm'
             }`}
           >
@@ -92,9 +93,14 @@ export function WorkItemCard({ item, index, members = [], onClick, onAssigneeCha
               </div>
             )}
 
-            {/* Type badge + priority */}
+            {/* Type label (from edge color) + priority */}
             <div className="flex items-center justify-between gap-2 mb-1.5">
-              <TypeBadge type={item.type} />
+              <span
+                className="text-[9px] font-semibold uppercase tracking-wide"
+                style={{ color: TYPE_CONFIG[item.type].color }}
+              >
+                {TYPE_CONFIG[item.type].label}
+              </span>
               <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${priority.bg} ${priority.text}`}>
                 {priority.label}
               </span>

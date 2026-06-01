@@ -162,7 +162,7 @@ export function AddMemberModal({ projectId, existingMembers, onClose }: Props) {
               <div>
                 <label className={labelCls}>Department</label>
                 <select value={deptId} onChange={(e) => { setDeptId(e.target.value); setSelectedUserIds(new Set()); }} className={inputCls}>
-                  <option value="">— Select department —</option>
+                  <option value="">e.g. Development, Design, QA…</option>
                   {departments.map((d) => (
                     <option key={d.id} value={d.id}>{d.name}</option>
                   ))}

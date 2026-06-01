@@ -634,7 +634,7 @@ export function WorkItemModal({ item, sprints, members, milestones, onClose, onS
               </>
             )}
             <TypeBadge type={detail.type} />
-            <span className="text-xs text-gray-400 font-mono shrink-0">#{detail.id.slice(-6).toUpperCase()}</span>
+            <span className="text-xs text-gray-400 font-mono shrink-0">#{detail.id.replace(/-/g, '').slice(-6).toUpperCase()}</span>
           </div>
           {/* Delete button with inline confirm */}
           {(() => {
@@ -1870,6 +1870,10 @@ export function CreateWorkItemModal({
         try { await boardApi.uploadAttachment(created.id, file); } catch { /* non-fatal */ }
       }
       qc.invalidateQueries({ queryKey: ['board', projectId] });
+      const effectiveParent = selectedParentId || parentId;
+      if (effectiveParent) {
+        qc.invalidateQueries({ queryKey: ['workItem', effectiveParent] });
+      }
       onSuccess?.(`${TYPE_CONFIG[type].label} created successfully`);
       onSaved();
     },
