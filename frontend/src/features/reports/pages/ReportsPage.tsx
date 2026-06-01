@@ -5,6 +5,7 @@ import {
   BarChart,
   CartesianGrid,
   Cell,
+  Legend,
   Pie,
   PieChart,
   ResponsiveContainer,
@@ -19,16 +20,17 @@ import { useAuthStore } from '../../../store/authStore';
 import { GRADE_CONFIG, buildTeamSummary, transformLiveKpi } from '../../kpi/data/kpiStaticData';
 import { CapacityReportTab } from '../components/CapacityReportTab';
 
-type Tab = 'productivity' | 'kpi' | 'projects' | 'bugs' | 'allocation' | 'timesheet' | 'capacity';
+type Tab = 'productivity' | 'kpi' | 'projects' | 'bugs' | 'allocation' | 'timesheet' | 'planned-actual' | 'capacity';
 
 const TABS: { id: Tab; label: string }[] = [
-  { id: 'productivity', label: 'Team Productivity' },
-  { id: 'kpi',          label: 'KPI Appraisal'     },
-  { id: 'projects',     label: 'Project Summary'   },
-  { id: 'bugs',         label: 'Bug Summary'        },
-  { id: 'allocation',   label: 'Task Allocation'   },
-  { id: 'timesheet',    label: 'Timesheet'         },
-  { id: 'capacity',     label: 'Capacity'           },
+  { id: 'productivity',   label: 'Team Productivity'  },
+  { id: 'kpi',            label: 'KPI Appraisal'      },
+  { id: 'projects',       label: 'Project Summary'    },
+  { id: 'bugs',           label: 'Bug Summary'         },
+  { id: 'allocation',     label: 'Task Allocation'    },
+  { id: 'timesheet',      label: 'Timesheet'          },
+  { id: 'planned-actual', label: 'Planned vs Actual'  },
+  { id: 'capacity',       label: 'Capacity'            },
 ];
 
 // ─── Period helpers ────────────────────────────────────────────────────────────
@@ -819,6 +821,201 @@ function TimesheetTab({ currentUserId, period, project }: { currentUserId?: stri
   );
 }
 
+// ─── Planned vs Actual Tab ────────────────────────────────────────────────────
+
+function PlannedVsActualTab({ currentUserId, period, project }: { currentUserId?: string; period: string; project: string }) {
+  const { data = [], isLoading } = useQuery({
+    queryKey: ['reports-planned-actual', period, project],
+    queryFn: () => analyticsApi.getPlannedVsActual(period, project),
+    staleTime: 60_000,
+  });
+
+  const totalPlanned  = data.reduce((s, r) => s + r.plannedHours, 0);
+  const totalActual   = data.reduce((s, r) => s + r.actualHours, 0);
+  const totalVariance = Math.round((totalActual - totalPlanned) * 10) / 10;
+  const overCount     = data.filter((r) => r.status === 'over').length;
+  const underCount    = data.filter((r) => r.status === 'under').length;
+  const onTrackCount  = data.filter((r) => r.status === 'ontrack').length;
+
+  const chartData = data.slice(0, 10).map((r) => ({
+    name:    r.name.split(' ')[0],
+    Planned: r.plannedHours,
+    Actual:  r.actualHours,
+  }));
+
+  const periodLabel = PERIOD_OPTIONS.find((p) => p.value === period)?.label ?? period;
+  const { paginatedData, page, setPage, pageSize, setPageSize, totalPages, totalItems, startIndex, endIndex } = usePagination(data, 'planned-actual');
+
+  if (isLoading) return <TabSpinner />;
+
+  return (
+    <div className="space-y-6">
+      <div className="flex justify-end">
+        <CsvButton onClick={() => downloadCsv(`planned-vs-actual-${period}.csv`, [
+          ['Name', 'Role', 'Tasks', 'Planned (h)', 'Actual (h)', 'Variance (h)', 'Variance %', 'Status'],
+          ...data.map((r) => [r.name, r.role, String(r.taskCount), String(r.plannedHours), String(r.actualHours), String(r.variance), `${r.variancePct}%`, r.status]),
+        ])} />
+      </div>
+
+      {/* Summary cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
+        <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm text-center">
+          <p className="text-2xl font-bold text-gray-800">{totalPlanned}h</p>
+          <p className="text-xs text-gray-400 mt-1">Total Planned</p>
+        </div>
+        <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm text-center">
+          <p className="text-2xl font-bold text-gray-800">{totalActual}h</p>
+          <p className="text-xs text-gray-400 mt-1">Total Actual</p>
+        </div>
+        <div className={`bg-white rounded-2xl border p-4 shadow-sm text-center ${totalVariance > 0 ? 'border-red-100' : totalVariance < 0 ? 'border-emerald-100' : 'border-gray-100'}`}>
+          <p className={`text-2xl font-bold ${totalVariance > 0 ? 'text-red-600' : totalVariance < 0 ? 'text-emerald-600' : 'text-gray-800'}`}>
+            {totalVariance > 0 ? '+' : ''}{totalVariance}h
+          </p>
+          <p className="text-xs text-gray-400 mt-1">Total Variance</p>
+        </div>
+        <div className="bg-white rounded-2xl border border-red-100 p-4 shadow-sm text-center">
+          <p className="text-2xl font-bold text-red-600">{overCount}</p>
+          <p className="text-xs text-gray-400 mt-1">Over Budget</p>
+        </div>
+        <div className="bg-white rounded-2xl border border-emerald-100 p-4 shadow-sm text-center">
+          <p className="text-2xl font-bold text-emerald-600">{onTrackCount}</p>
+          <p className="text-xs text-gray-400 mt-1">On Track</p>
+        </div>
+      </div>
+
+      {/* Side-by-side bar chart */}
+      {chartData.length > 0 && (
+        <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
+          <h3 className="text-sm font-semibold text-gray-800 mb-1">Planned vs Actual Hours — {periodLabel}</h3>
+          <p className="text-xs text-gray-400 mb-4">
+            {data.length > 10 ? 'Top 10 members' : `${data.length} members`} sorted by variance
+          </p>
+          <ResponsiveContainer width="100%" height={240}>
+            <BarChart data={chartData} barGap={2} barCategoryGap="30%" margin={{ top: 4, right: 8, bottom: 4, left: -20 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" vertical={false} />
+              <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#9CA3AF' }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fontSize: 11, fill: '#9CA3AF' }} axisLine={false} tickLine={false} />
+              <Tooltip
+                contentStyle={{ borderRadius: 10, fontSize: 12, border: '1px solid #E5E7EB' }}
+                formatter={(v: number, name: string) => [`${v}h`, name]}
+              />
+              <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: '12px', color: '#64748b', paddingTop: '10px' }} />
+              <Bar dataKey="Planned" fill="#94a3b8" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="Actual"  fill="#3b82f6" radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+
+      {/* Detail table */}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+        <div className="px-5 py-4 border-b border-gray-50 flex items-center justify-between">
+          <div>
+            <h3 className="text-sm font-semibold text-gray-800">Planned vs Actual Details</h3>
+            <p className="text-xs text-gray-400 mt-0.5">{data.length} members · sorted by highest variance</p>
+          </div>
+          <div className="flex items-center gap-2 text-xs">
+            <span className="px-2 py-0.5 rounded-full bg-red-100 text-red-700 font-medium">{overCount} Over</span>
+            <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 font-medium">{underCount} Under</span>
+            <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-medium">{onTrackCount} On Track</span>
+          </div>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-gray-50 text-xs text-gray-500 uppercase tracking-wide">
+                <th className="px-5 py-3 text-left">#</th>
+                <th className="px-5 py-3 text-left">Employee</th>
+                <th className="px-5 py-3 text-right">Tasks</th>
+                <th className="px-5 py-3 text-right">Planned</th>
+                <th className="px-5 py-3 text-right">Actual</th>
+                <th className="px-5 py-3 text-right">Variance</th>
+                <th className="px-5 py-3 text-left min-w-[160px]">Progress</th>
+                <th className="px-5 py-3 text-center">Status</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-50">
+              {data.length === 0 && (
+                <tr><td colSpan={8} className="text-center py-8 text-sm text-gray-400">No data for this period.</td></tr>
+              )}
+              {paginatedData.map((r, i) => {
+                const isMe = r.userId === currentUserId;
+                const isOver  = r.status === 'over';
+                const isUnder = r.status === 'under';
+                const statusCfg = isOver
+                  ? { bg: 'bg-red-100',     text: 'text-red-700',     label: 'Over'     }
+                  : isUnder
+                  ? { bg: 'bg-amber-100',   text: 'text-amber-700',   label: 'Under'    }
+                  : { bg: 'bg-emerald-100', text: 'text-emerald-700', label: 'On Track' };
+
+                const maxBar = Math.max(r.plannedHours, r.actualHours, 1);
+                const plannedPct = Math.round((r.plannedHours / maxBar) * 100);
+                const actualPct  = Math.round((r.actualHours  / maxBar) * 100);
+
+                return (
+                  <tr key={r.userId} className={isMe ? 'bg-blue-50' : 'hover:bg-gray-50/50'}>
+                    <td className="px-5 py-3 text-gray-400 text-xs">{startIndex + i}</td>
+                    <td className="px-5 py-3">
+                      <div className="flex items-center gap-2">
+                        <div className="w-7 h-7 rounded-full bg-indigo-100 flex items-center justify-center shrink-0">
+                          <span className="text-xs font-semibold text-indigo-700">
+                            {r.name.split(' ').map((n) => n[0]).join('').slice(0, 2)}
+                          </span>
+                        </div>
+                        <div>
+                          <p className="font-medium text-gray-800 text-xs">{r.name}</p>
+                          <p className="text-xs text-gray-400">{r.role}</p>
+                        </div>
+                        {isMe && <span className="ml-1 text-xs bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-full font-medium">You</span>}
+                      </div>
+                    </td>
+                    <td className="px-5 py-3 text-right text-gray-600 text-xs">{r.taskCount}</td>
+                    <td className="px-5 py-3 text-right font-semibold text-gray-700">{r.plannedHours}h</td>
+                    <td className="px-5 py-3 text-right font-semibold text-gray-700">{r.actualHours}h</td>
+                    <td className={`px-5 py-3 text-right font-semibold text-xs ${isOver ? 'text-red-600' : isUnder ? 'text-amber-600' : 'text-emerald-600'}`}>
+                      {r.variance > 0 ? '+' : ''}{r.variance}h ({r.variancePct > 0 ? '+' : ''}{r.variancePct}%)
+                    </td>
+                    <td className="px-5 py-3">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[10px] text-gray-400 w-10 shrink-0">Plan</span>
+                          <div className="flex-1 bg-gray-100 rounded-full h-1.5">
+                            <div className="h-1.5 rounded-full bg-slate-400" style={{ width: `${plannedPct}%` }} />
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[10px] text-gray-400 w-10 shrink-0">Act</span>
+                          <div className="flex-1 bg-gray-100 rounded-full h-1.5">
+                            <div className="h-1.5 rounded-full" style={{
+                              width: `${actualPct}%`,
+                              backgroundColor: isOver ? '#EF4444' : isUnder ? '#F59E0B' : '#10B981',
+                            }} />
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-5 py-3 text-center">
+                      <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${statusCfg.bg} ${statusCfg.text}`}>
+                        {statusCfg.label}
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+        {totalItems > 0 && (
+          <PaginationBar page={page} totalPages={totalPages} totalItems={totalItems}
+            startIndex={startIndex} endIndex={endIndex} pageSize={pageSize}
+            onPageChange={setPage} onPageSizeChange={setPageSize} />
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ─── Employee Personal Summary (live) ────────────────────────────────────────
 
 function MyPerformanceSummary({ userId, userName, period }: { userId: string; userName: string; period: string }) {
@@ -989,8 +1186,9 @@ export function ReportsPage() {
           {activeTab === 'projects'     && <ProjectSummaryTab  key={`proj-${period}-${project}`}   period={period} project={project} />}
           {activeTab === 'bugs'         && <BugSummaryTab      key={`bug-${period}-${project}`}    period={period} project={project} />}
           {activeTab === 'allocation'   && <TaskAllocationTab  key={`alloc-${period}-${project}`}  currentUserId={user?.id} period={period} project={project} />}
-          {activeTab === 'timesheet'    && <TimesheetTab       key={`ts-${period}-${project}`}     currentUserId={user?.id} period={period} project={project} />}
-          {activeTab === 'capacity'     && <CapacityReportTab />}
+          {activeTab === 'timesheet'      && <TimesheetTab         key={`ts-${period}-${project}`}      currentUserId={user?.id} period={period} project={project} />}
+          {activeTab === 'planned-actual' && <PlannedVsActualTab  key={`pva-${period}-${project}`}     currentUserId={user?.id} period={period} project={project} />}
+          {activeTab === 'capacity'       && <CapacityReportTab />}
         </>
       )}
     </div>

@@ -94,6 +94,18 @@ export interface CapacityReport {
   employees: CapacityEmployee[];
 }
 
+export interface PlannedVsActualRecord {
+  userId: string;
+  name: string;
+  role: string;
+  taskCount: number;
+  plannedHours: number;
+  actualHours: number;
+  variance: number;
+  variancePct: number;
+  status: 'over' | 'under' | 'ontrack';
+}
+
 export interface KpiRecord {
   id: string;
   userId: string;
@@ -147,6 +159,13 @@ export const analyticsApi = {
   getCapacity: (period: string) =>
     apiClient
       .get<CapacityReport>('/analytics/reports/capacity', { params: { period } })
+      .then((r) => r.data),
+
+  getPlannedVsActual: (period: string, projectId?: string) =>
+    apiClient
+      .get<PlannedVsActualRecord[]>('/analytics/reports/planned-vs-actual', {
+        params: { period, ...(projectId && projectId !== 'all' ? { projectId } : {}) },
+      })
       .then((r) => r.data),
 
   upsertKpiRecord: (dto: {
