@@ -22,7 +22,8 @@ const STATUS_ORDER: BoardStatus[] = [
   BoardStatus.IN_PROGRESS,
   BoardStatus.BLOCKED,
   BoardStatus.IN_REVIEW,
-  BoardStatus.QA,
+  BoardStatus.READY_FOR_QA,
+  BoardStatus.IN_QA,
   BoardStatus.QA_DONE,
 ];
 

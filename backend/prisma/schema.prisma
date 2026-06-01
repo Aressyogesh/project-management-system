@@ -114,8 +114,10 @@ enum BoardStatus {
   IN_PROGRESS
   BLOCKED
   IN_REVIEW
-  QA
+  READY_FOR_QA
+  IN_QA
   QA_DONE
+  QA
 }
 
 enum BugSeverity {
@@ -345,6 +347,7 @@ model Project {
   tasks      Task[]
   sprints    Sprint[]
   workItems  WorkItem[]
+  boardColumnConfigs BoardColumnConfig[]
 
   @@index([status])
   @@index([projectType])
@@ -820,4 +823,20 @@ model InnovationLog {
 
   @@index([userId, period])
   @@map("innovation_logs")
+}
+
+// ─── Board Column Config ──────────────────────────────────────────────────────
+
+model BoardColumnConfig {
+  id        String      @id @default(uuid())
+  projectId String
+  status    BoardStatus
+  label     String      @db.VarChar(100)
+  updatedAt DateTime    @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, status])
+  @@index([projectId])
+  @@map("board_column_configs")
 }

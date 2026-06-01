@@ -171,7 +171,7 @@ export class DashboardService {
       tasksProgress: { notStarted: notStartedCount, inProgress: inProgressCount, onReview: onReviewCount, completed: completedCount },
       myTasks,
       todayTask: todayWorkItem
-        ? { name: todayWorkItem.title, progress: todayWorkItem.status === BoardStatus.IN_REVIEW || todayWorkItem.status === BoardStatus.QA ? 75 : 50 }
+        ? { name: todayWorkItem.title, progress: todayWorkItem.status === BoardStatus.IN_REVIEW || todayWorkItem.status === BoardStatus.READY_FOR_QA || todayWorkItem.status === BoardStatus.IN_QA ? 75 : 50 }
         : null,
       teamPerformance: { score: this.calcTeamPerformance(activeProjects), change: 0 },
     };
@@ -208,7 +208,7 @@ export class DashboardService {
       }),
       this.prisma.workItem.count({ where: { projectId, status: BoardStatus.TODO } }),
       this.prisma.workItem.count({ where: { projectId, status: { in: [BoardStatus.IN_PROGRESS, BoardStatus.BLOCKED] } } }),
-      this.prisma.workItem.count({ where: { projectId, status: { in: [BoardStatus.IN_REVIEW, BoardStatus.QA] } } }),
+      this.prisma.workItem.count({ where: { projectId, status: { in: [BoardStatus.IN_REVIEW, BoardStatus.READY_FOR_QA, BoardStatus.IN_QA] } } }),
       this.prisma.workItem.count({ where: { projectId, status: BoardStatus.QA_DONE } }),
       this.prisma.workItem.findFirst({
         where: { projectId, assigneeId: userId, dueDate: { gte: today, lt: tomorrow }, status: { not: BoardStatus.QA_DONE } },
@@ -251,7 +251,7 @@ export class DashboardService {
       tasksProgress: { notStarted: todoCount, inProgress: inProgressCount, onReview: inReviewCount, completed: doneCount },
       myTasks,
       todayTask: todayWorkItem
-        ? { name: todayWorkItem.title, progress: todayWorkItem.status === BoardStatus.IN_REVIEW || todayWorkItem.status === BoardStatus.QA ? 75 : 50 }
+        ? { name: todayWorkItem.title, progress: todayWorkItem.status === BoardStatus.IN_REVIEW || todayWorkItem.status === BoardStatus.READY_FOR_QA || todayWorkItem.status === BoardStatus.IN_QA ? 75 : 50 }
         : null,
       teamPerformance: { score: progress, change: 0 },
     };
@@ -404,7 +404,7 @@ export class DashboardService {
     const [notStarted, inProgress, onReview, completed] = await Promise.all([
       this.prisma.workItem.count({ where: { ...base, status: BoardStatus.TODO } }),
       this.prisma.workItem.count({ where: { ...base, status: { in: [BoardStatus.IN_PROGRESS, BoardStatus.BLOCKED] } } }),
-      this.prisma.workItem.count({ where: { ...base, status: { in: [BoardStatus.IN_REVIEW, BoardStatus.QA] } } }),
+      this.prisma.workItem.count({ where: { ...base, status: { in: [BoardStatus.IN_REVIEW, BoardStatus.READY_FOR_QA, BoardStatus.IN_QA] } } }),
       this.prisma.workItem.count({ where: { ...base, status: BoardStatus.QA_DONE } }),
     ]);
 

@@ -56,7 +56,7 @@ describe('WorkItemsService', () => {
 
   describe('move()', () => {
     it('sets completedAt when moving to QA_DONE', async () => {
-      mockPrisma.workItem.findUnique.mockResolvedValue({ ...baseItem, status: BoardStatus.QA });
+      mockPrisma.workItem.findUnique.mockResolvedValue({ ...baseItem, status: BoardStatus.READY_FOR_QA });
       mockPrisma.workItem.update.mockResolvedValue({});
 
       await service.move('wi-1', 'user-1', { status: BoardStatus.QA_DONE, position: 0 });
@@ -72,7 +72,7 @@ describe('WorkItemsService', () => {
       mockPrisma.workItem.findUnique.mockResolvedValue({ ...baseItem, status: BoardStatus.QA_DONE, completedAt: new Date() });
       mockPrisma.workItem.update.mockResolvedValue({});
 
-      await service.move('wi-1', 'user-1', { status: BoardStatus.QA, position: 0 });
+      await service.move('wi-1', 'user-1', { status: BoardStatus.READY_FOR_QA, position: 0 });
 
       expect(mockPrisma.workItem.update).toHaveBeenCalledWith(
         expect.objectContaining({

@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { boardApi } from '../api/boardApi';
 import { futureDateStr, pastDateStr, todayStr } from '../../../utils/dateUtils';
 import {
-  BOARD_COLUMNS,
+  DEFAULT_BOARD_COLUMNS,
   BUG_STATUS_CONFIG,
   PRIORITY_CONFIG,
   TYPE_CONFIG,
@@ -664,16 +664,17 @@ export function WorkItemModal({ item, sprints, members, milestones, onClose, onS
                                 onChange={(e) => toggleChildDoneMut.mutate({ childId: child.id, done: false, status: e.target.value as BoardStatus })}
                                 onClick={(e) => e.stopPropagation()}
                                 className={`text-[10px] font-semibold rounded-full px-2 py-0.5 border-0 cursor-pointer shrink-0 focus:ring-1 focus:ring-primary-400 ${
-                                  isDone                          ? 'bg-emerald-100 text-emerald-700' :
-                                  child.status === 'IN_PROGRESS' ? 'bg-blue-100 text-blue-700' :
-                                  child.status === 'BLOCKED'     ? 'bg-red-100 text-red-700' :
-                                  child.status === 'IN_REVIEW'   ? 'bg-amber-100 text-amber-700' :
-                                  child.status === 'QA'          ? 'bg-purple-100 text-purple-700' :
-                                                                   'bg-gray-100 text-gray-600'
+                                  isDone                                  ? 'bg-emerald-100 text-emerald-700' :
+                                  child.status === 'IN_PROGRESS'        ? 'bg-blue-100 text-blue-700' :
+                                  child.status === 'BLOCKED'            ? 'bg-red-100 text-red-700' :
+                                  child.status === 'IN_REVIEW'          ? 'bg-amber-100 text-amber-700' :
+                                  child.status === 'READY_FOR_QA'       ? 'bg-purple-100 text-purple-700' :
+                                  child.status === 'IN_QA'              ? 'bg-indigo-100 text-indigo-700' :
+                                                                          'bg-gray-100 text-gray-600'
                                 }`}
                                 title="Change status"
                               >
-                                {BOARD_COLUMNS.map((c) => (
+                                {DEFAULT_BOARD_COLUMNS.map((c) => (
                                   <option key={c.status} value={c.status}>{c.label}</option>
                                 ))}
                               </select>
@@ -1117,11 +1118,12 @@ export function WorkItemModal({ item, sprints, members, milestones, onClose, onS
                     detail.status === 'IN_PROGRESS' ? 'text-blue-700' :
                     detail.status === 'BLOCKED' ? 'text-red-700' :
                     detail.status === 'IN_REVIEW' ? 'text-amber-700' :
-                    detail.status === 'QA' ? 'text-purple-700' :
+                    detail.status === 'READY_FOR_QA' ? 'text-purple-700' :
+                    detail.status === 'IN_QA' ? 'text-indigo-700' :
                     'text-emerald-700'
                   }`}
                 >
-                  {BOARD_COLUMNS.map((c) => (
+                  {DEFAULT_BOARD_COLUMNS.map((c) => (
                     <option key={c.status} value={c.status}>{c.label}</option>
                   ))}
                 </select>

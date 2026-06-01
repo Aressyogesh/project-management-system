@@ -29,6 +29,7 @@ import { UploadsModule } from './uploads/uploads.module';
 import { BusinessUnitsModule } from './business-units/business-units.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { LeaveRequestsModule } from './leave-requests/leave-requests.module';
+import { BoardColumnConfigsModule } from './board-column-configs/board-column-configs.module';
 
 @Module({
   imports: [
@@ -58,6 +59,7 @@ import { LeaveRequestsModule } from './leave-requests/leave-requests.module';
     BusinessUnitsModule,
     NotificationsModule,
     LeaveRequestsModule,
+    BoardColumnConfigsModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: GlobalExceptionFilter },

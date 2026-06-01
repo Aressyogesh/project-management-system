@@ -1,5 +1,5 @@
 export type WorkItemType = 'EPIC' | 'USER_STORY' | 'TASK' | 'SUB_TASK' | 'BUG';
-export type BoardStatus = 'TODO' | 'IN_PROGRESS' | 'BLOCKED' | 'IN_REVIEW' | 'QA' | 'QA_DONE';
+export type BoardStatus = 'TODO' | 'IN_PROGRESS' | 'BLOCKED' | 'IN_REVIEW' | 'READY_FOR_QA' | 'IN_QA' | 'QA_DONE' | 'QA';
 export type BugSeverity = 'SHOW_STOPPER' | 'BLOCKER' | 'CRITICAL' | 'MAJOR' | 'MINOR' | 'TRIVIAL';
 export type BugClassification =
   | 'SECURITY' | 'CRASH_HANG' | 'DATA_LOSS' | 'PERFORMANCE' | 'UI_USABILITY'
@@ -157,14 +157,23 @@ export interface BoardFilters {
   search: string;
 }
 
-export const BOARD_COLUMNS: { status: BoardStatus; label: string; color: string; headerClass: string }[] = [
-  { status: 'TODO',        label: 'To Do',       color: '#6b7280', headerClass: 'bg-gray-100 text-gray-700' },
-  { status: 'IN_PROGRESS', label: 'In Progress',  color: '#3b82f6', headerClass: 'bg-blue-100 text-blue-700' },
-  { status: 'BLOCKED',     label: 'Blocked',      color: '#ef4444', headerClass: 'bg-red-100 text-red-700' },
-  { status: 'IN_REVIEW',   label: 'In Review',    color: '#f59e0b', headerClass: 'bg-amber-100 text-amber-700' },
-  { status: 'QA',          label: 'QA',           color: '#8b5cf6', headerClass: 'bg-purple-100 text-purple-700' },
-  { status: 'QA_DONE',     label: 'QA Done',      color: '#10b981', headerClass: 'bg-emerald-100 text-emerald-700' },
+export interface BoardColumnConfig {
+  status: BoardStatus;
+  label: string;
+}
+
+export const DEFAULT_BOARD_COLUMNS: { status: BoardStatus; label: string; color: string; headerClass: string }[] = [
+  { status: 'TODO',         label: 'To Do',         color: '#6b7280', headerClass: 'bg-gray-100 text-gray-700' },
+  { status: 'IN_PROGRESS',  label: 'In Progress',   color: '#3b82f6', headerClass: 'bg-blue-100 text-blue-700' },
+  { status: 'BLOCKED',      label: 'Blocked',        color: '#ef4444', headerClass: 'bg-red-100 text-red-700' },
+  { status: 'IN_REVIEW',    label: 'In Review',      color: '#f59e0b', headerClass: 'bg-amber-100 text-amber-700' },
+  { status: 'READY_FOR_QA', label: 'Ready for QA',  color: '#8b5cf6', headerClass: 'bg-purple-100 text-purple-700' },
+  { status: 'IN_QA',        label: 'In QA',          color: '#6366f1', headerClass: 'bg-indigo-100 text-indigo-700' },
+  { status: 'QA_DONE',      label: 'QA Done',        color: '#10b981', headerClass: 'bg-emerald-100 text-emerald-700' },
 ];
+
+/** @deprecated Use DEFAULT_BOARD_COLUMNS */
+export const BOARD_COLUMNS = DEFAULT_BOARD_COLUMNS;
 
 export const TYPE_CONFIG: Record<WorkItemType, { label: string; color: string; bg: string; text: string }> = {
   EPIC:       { label: 'Epic',      color: '#8b5cf6', bg: 'bg-purple-100', text: 'text-purple-700' },
