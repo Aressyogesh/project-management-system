@@ -43,7 +43,7 @@ export function MyTaskTable({ tasks }: MyTaskTableProps) {
   return (
     <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="font-semibold text-gray-800 text-base">My Task</h2>
+        <h2 className="font-semibold text-gray-800 text-base">Current Tasks</h2>
         {tasks.length > 0 && (
           <span className="text-xs text-gray-400">{tasks.length} task{tasks.length !== 1 ? 's' : ''}</span>
         )}

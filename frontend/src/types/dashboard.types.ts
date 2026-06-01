@@ -53,3 +53,23 @@ export interface ProjectProgress {
   openBugs: number;
   progress: number;
 }
+
+export interface MemberActivity {
+  userId: string;
+  name: string;
+  projectRole: string;
+  profilePhoto: string | null;
+  tasksAssigned: number;
+  tasksCompleted: number;
+  hoursLogged: number;
+  bugsReported: number;
+  leaveDays: number;
+}
+
+export interface Announcement {
+  id: string;
+  type: 'info' | 'success' | 'warning';
+  title: string;
+  body: string;
+  date: string;
+}
