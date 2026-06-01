@@ -1870,6 +1870,10 @@ export function CreateWorkItemModal({
         try { await boardApi.uploadAttachment(created.id, file); } catch { /* non-fatal */ }
       }
       qc.invalidateQueries({ queryKey: ['board', projectId] });
+      const effectiveParent = selectedParentId || parentId;
+      if (effectiveParent) {
+        qc.invalidateQueries({ queryKey: ['workItem', effectiveParent] });
+      }
       onSuccess?.(`${TYPE_CONFIG[type].label} created successfully`);
       onSaved();
     },
