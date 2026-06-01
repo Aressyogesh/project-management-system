@@ -583,6 +583,68 @@ export class AnalyticsService {
     });
   }
 
+  async getPlannedVsActualReport(period: string, projectId?: string) {
+    const { start, end } = periodToRange(period);
+
+    const users = await this.prisma.user.findMany({
+      where: {
+        isActive: true,
+        ...(projectId ? { projectMembers: { some: { projectId } } } : {}),
+      },
+      select: {
+        id: true,
+        fullName: true,
+        systemRole: true,
+        projectMembers: { select: { projectRole: true } },
+      },
+    });
+
+    const results = await Promise.all(
+      users.map(async (user) => {
+        const [estimatedAgg, actualAgg] = await Promise.all([
+          this.prisma.workItem.aggregate({
+            where: {
+              assigneeId: user.id,
+              createdAt: { gte: start, lt: end },
+              ...(projectId ? { projectId } : {}),
+            },
+            _sum: { estimatedHours: true },
+            _count: { id: true },
+          }),
+          this.prisma.timesheetEntry.aggregate({
+            where: {
+              userId: user.id,
+              date: { gte: start, lt: end },
+              ...(projectId ? { workItem: { projectId } } : {}),
+            },
+            _sum: { hours: true },
+          }),
+        ]);
+
+        const planned = Math.round(Number(estimatedAgg._sum.estimatedHours ?? 0) * 10) / 10;
+        const actual  = Math.round(Number(actualAgg._sum.hours ?? 0) * 10) / 10;
+        const variance = Math.round((actual - planned) * 10) / 10;
+        const variancePct = planned > 0 ? Math.round(((actual - planned) / planned) * 100) : 0;
+
+        return {
+          userId: user.id,
+          name: user.fullName,
+          role: user.projectMembers[0]?.projectRole?.replace('_', ' ') ?? user.systemRole,
+          taskCount: estimatedAgg._count.id,
+          plannedHours: planned,
+          actualHours: actual,
+          variance,
+          variancePct,
+          status: variancePct > 20 ? 'over' : variancePct < -20 ? 'under' : 'ontrack',
+        };
+      }),
+    );
+
+    return results
+      .filter((r) => r.plannedHours > 0 || r.actualHours > 0)
+      .sort((a, b) => Math.abs(b.variancePct) - Math.abs(a.variancePct));
+  }
+
   async getCapacityReport(period: string) {
     const { start, end } = periodToRange(period);
     const [year, month] = period.split('-').map(Number);

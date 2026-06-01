@@ -63,4 +63,12 @@ export class AnalyticsController {
   getCapacity(@Query('period') period = '2026-05') {
     return this.analyticsService.getCapacityReport(period);
   }
+
+  @Get('reports/planned-vs-actual')
+  getPlannedVsActual(
+    @Query('period') period = '2026-05',
+    @Query('projectId') projectId?: string,
+  ) {
+    return this.analyticsService.getPlannedVsActualReport(period, projectId);
+  }
 }
