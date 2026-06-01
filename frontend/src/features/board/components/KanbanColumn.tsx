@@ -16,22 +16,22 @@ interface Props {
 
 export function KanbanColumn({ status, label, headerClass, items, members, onCardClick, onAssigneeChange }: Props) {
   return (
-    <div className="flex flex-col min-w-[240px] w-[240px] shrink-0 h-full">
-      {/* Column header — fixed, does not scroll with cards */}
-      <div className={`flex items-center justify-between px-3 py-2 rounded-lg mb-3 shrink-0 ${headerClass}`}>
+    <div className="flex flex-col min-w-[240px] w-[240px] shrink-0">
+      {/* Column header — sticky: stays visible while the board scrolls */}
+      <div className={`sticky top-0 z-10 flex items-center justify-between px-3 py-2 rounded-lg mb-3 ${headerClass}`}>
         <span className="text-xs font-semibold">{label}</span>
         <span className="text-xs font-medium opacity-70 bg-white/40 px-1.5 py-0.5 rounded-full">
           {items.length}
         </span>
       </div>
 
-      {/* Droppable zone — scrolls vertically */}
+      {/* Droppable zone — grows naturally, no per-column scroll */}
       <Droppable droppableId={status}>
         {(provided, snapshot) => (
           <div
             ref={provided.innerRef}
             {...provided.droppableProps}
-            className={`flex flex-col gap-2 flex-1 overflow-y-auto rounded-lg p-1 transition-colors ${
+            className={`flex flex-col gap-2 rounded-lg p-1 transition-colors ${
               snapshot.isDraggingOver ? 'bg-primary-50' : ''
             }`}
           >
