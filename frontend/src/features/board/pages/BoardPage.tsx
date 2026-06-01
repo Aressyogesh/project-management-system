@@ -254,7 +254,7 @@ export function BoardPage() {
       {/* Kanban board */}
       <div className="flex-1 overflow-auto min-h-0 pb-4">
         <DragDropContext onDragEnd={handleDragEnd}>
-          <div className="flex gap-3 items-start min-h-[500px] px-1">
+          <div className="flex gap-3 items-stretch min-h-[500px] px-1">
             {columns.map((col) => (
               <KanbanColumn
                 key={col.status}
