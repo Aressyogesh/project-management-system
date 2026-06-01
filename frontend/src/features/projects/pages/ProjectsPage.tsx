@@ -1,7 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { projectsApi } from '../../../api/projects.api';
+import { clientsApi } from '../../../api/clients.api';
 import { useAuthStore } from '../../../store/authStore';
 import type { Project, ProjectStatus, ProjectType } from '../../../types/projects.types';
 import { ProjectFormModal } from '../components/ProjectFormModal';
@@ -47,12 +48,14 @@ function Toast({ message, onClose }: { message: string; onClose: () => void }) {
 export function ProjectsPage() {
   const qc = useQueryClient();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const user = useAuthStore((s) => s.user);
   const canEdit = user?.systemRole === 'SUPER_USER' || user?.systemRole === 'ADMIN';
 
   const [showForm, setShowForm] = useState(false);
   const [editTarget, setEditTarget] = useState<Project | null>(null);
   const [quickFilter, setQuickFilter] = useState<QuickFilter>('');
+  const [clientFilter, setClientFilter] = useState(searchParams.get('clientId') ?? '');
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = usePageSize('projects');
   const [toast, setToast] = useState<string | null>(null);
@@ -73,10 +76,16 @@ export function ProjectsPage() {
     queryFn: () => projectsApi.summary(),
   });
 
+  const { data: clients = [] } = useQuery({
+    queryKey: ['clients-all'],
+    queryFn: () => clientsApi.list(true),
+  });
+
   const isOverdue = (p: Project) =>
     p.status === 'ACTIVE' && p.endDate !== null && new Date(p.endDate) < new Date();
 
   const filtered = allProjects.filter((p) => {
+    if (clientFilter && p.client?.id !== clientFilter) return false;
     if (!quickFilter) return p.status !== 'ARCHIVE';
     if (quickFilter === 'ACTIVE') return p.status === 'ACTIVE';
     if (quickFilter === 'ARCHIVE') return p.status === 'ARCHIVE';
@@ -96,6 +105,12 @@ export function ProjectsPage() {
 
   function handleFilterChange(f: QuickFilter) { setQuickFilter(quickFilter === f ? '' : f); setPage(1); }
   function handlePageSizeChange(newSize: number) { setPageSize(newSize); setPage(1); }
+  function handleClientFilter(id: string) {
+    setClientFilter(id);
+    setPage(1);
+    if (id) setSearchParams({ clientId: id });
+    else setSearchParams({});
+  }
 
   const pageNumbers: (number | '…')[] = [];
   if (totalPages <= 7) {
@@ -127,14 +142,25 @@ export function ProjectsPage() {
             <h1 className="text-base font-semibold text-gray-900">Projects</h1>
             <p className="text-xs text-gray-400 mt-0.5">
               {filtered.length} project{filtered.length !== 1 ? 's' : ''}
-              {quickFilter && (
-                <button onClick={() => { setQuickFilter(''); setPage(1); }} className="ml-2 text-primary-600 hover:underline">
-                  Clear filter
+              {(quickFilter || clientFilter) && (
+                <button onClick={() => { setQuickFilter(''); handleClientFilter(''); }} className="ml-2 text-primary-600 hover:underline">
+                  Clear filters
                 </button>
               )}
             </p>
           </div>
           <div className="flex items-center gap-3">
+            {/* Client filter */}
+            <select
+              value={clientFilter}
+              onChange={(e) => handleClientFilter(e.target.value)}
+              className="text-xs border border-gray-200 rounded-lg px-2.5 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 text-gray-700"
+            >
+              <option value="">All Clients</option>
+              {clients.map((c) => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
             {!quickFilter && archivedCount > 0 && (
               <button onClick={() => handleFilterChange('ARCHIVE')}
                 className="flex items-center gap-1.5 text-xs font-medium px-3 py-2 rounded-lg border border-gray-200 text-gray-500 hover:border-gray-400 transition">
