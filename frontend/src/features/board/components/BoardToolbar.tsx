@@ -16,6 +16,12 @@ const PRIORITY_OPTIONS: { value: TaskPriority; label: string }[] = [
   { value: 'CRITICAL', label: 'Critical' },
 ];
 
+interface Milestone {
+  id: string;
+  name: string | null;
+  description: string;
+}
+
 interface Member {
   id: string;
   fullName: string;
@@ -23,6 +29,7 @@ interface Member {
 
 interface Props {
   sprints: Sprint[];
+  milestones: Milestone[];
   filters: BoardFiltersQuery;
   onFiltersChange: (f: BoardFiltersQuery) => void;
   members: Member[];
@@ -34,6 +41,7 @@ interface Props {
 
 export function BoardToolbar({
   sprints,
+  milestones,
   filters,
   onFiltersChange,
   members,
@@ -42,21 +50,83 @@ export function BoardToolbar({
   onAddMilestone,
   canManageSprints,
 }: Props) {
-  const hasFilters = !!(filters.type || filters.assigneeId || filters.priority || filters.search || filters.sprintId);
+  const hasFilters = !!(
+    filters.type || filters.assigneeId || filters.priority ||
+    filters.search || filters.sprintId || filters.milestoneId || filters.backlog
+  );
 
   const selectClass =
     'text-xs border border-gray-200 rounded-lg px-2.5 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 text-gray-700';
 
+  // Filter sprints by selected milestone (if any)
+  const visibleSprints = filters.milestoneId
+    ? sprints.filter((s) => s.milestoneId === filters.milestoneId)
+    : sprints;
+
+  function handleMilestoneChange(milestoneId: string) {
+    onFiltersChange({
+      ...filters,
+      milestoneId: milestoneId || undefined,
+      // Clear sprint if it doesn't belong to the new milestone
+      sprintId: milestoneId
+        ? (sprints.find((s) => s.id === filters.sprintId && s.milestoneId === milestoneId) ? filters.sprintId : undefined)
+        : filters.sprintId,
+    });
+  }
+
   return (
     <div className="flex items-center gap-2 flex-wrap">
+      {/* Backlog toggle */}
+      <div className="flex rounded-lg border border-gray-200 overflow-hidden text-xs">
+        <button
+          onClick={() => onFiltersChange({ ...filters, backlog: undefined })}
+          className={`px-3 py-1.5 font-medium transition ${
+            !filters.backlog ? 'bg-primary-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'
+          }`}
+        >
+          All
+        </button>
+        <button
+          onClick={() => onFiltersChange({ ...filters, backlog: 'sprint', sprintId: undefined })}
+          className={`px-3 py-1.5 font-medium border-l border-gray-200 transition ${
+            filters.backlog === 'sprint' ? 'bg-primary-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'
+          }`}
+        >
+          Sprint Backlog
+        </button>
+        <button
+          onClick={() => onFiltersChange({ ...filters, backlog: 'product', sprintId: undefined })}
+          className={`px-3 py-1.5 font-medium border-l border-gray-200 transition ${
+            filters.backlog === 'product' ? 'bg-primary-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'
+          }`}
+        >
+          Product Backlog
+        </button>
+      </div>
+
+      {/* Milestone filter */}
+      <select
+        value={filters.milestoneId ?? ''}
+        onChange={(e) => handleMilestoneChange(e.target.value)}
+        className={selectClass}
+      >
+        <option value="">All Milestones</option>
+        {milestones.map((m) => (
+          <option key={m.id} value={m.id}>
+            {m.name ?? m.description.slice(0, 30)}
+          </option>
+        ))}
+      </select>
+
       {/* Sprint selector */}
       <select
         value={filters.sprintId ?? ''}
-        onChange={(e) => onFiltersChange({ ...filters, sprintId: e.target.value || undefined })}
+        onChange={(e) => onFiltersChange({ ...filters, sprintId: e.target.value || undefined, backlog: undefined })}
         className={selectClass}
+        disabled={filters.backlog === 'product'}
       >
         <option value="">All Sprints</option>
-        {sprints.map((s) => (
+        {visibleSprints.map((s) => (
           <option key={s.id} value={s.id}>
             {s.name}{s.isActive ? ' ★' : ''}
           </option>

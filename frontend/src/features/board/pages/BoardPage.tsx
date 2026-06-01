@@ -1,9 +1,10 @@
 import { DragDropContext, type DropResult } from '@hello-pangea/dnd';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { milestonesApi } from '../../../api/milestones.api';
 import { projectsApi } from '../../../api/projects.api';
+import { boardColumnConfigsApi, type BoardColumnConfigDto } from '../../../api/boardColumnConfigs.api';
 import { useAuthStore } from '../../../store/authStore';
 import { MilestoneFormModal } from '../../projects/components/MilestoneFormModal';
 import { boardApi } from '../api/boardApi';
@@ -15,6 +16,79 @@ import { CreateWorkItemModal, WorkItemModal } from '../components/WorkItemModal'
 import { useBoard } from '../hooks/useBoard';
 import { useSprints } from '../hooks/useSprints';
 import type { BoardStatus, WorkItem } from '../types/board.types';
+import { DEFAULT_BOARD_COLUMNS } from '../types/board.types';
+
+function EditColumnLabelsModal({
+  projectId,
+  currentLabels,
+  onClose,
+  onSaved,
+}: {
+  projectId: string;
+  currentLabels: BoardColumnConfigDto[];
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const qc = useQueryClient();
+  const [labels, setLabels] = useState<BoardColumnConfigDto[]>(currentLabels);
+
+  const saveMut = useMutation({
+    mutationFn: () => boardColumnConfigsApi.upsertMany(projectId, labels),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['board-column-configs', projectId] });
+      onSaved();
+    },
+  });
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-sm font-semibold text-gray-900">Edit Column Labels</h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <div className="flex flex-col gap-3">
+          {labels.map((col, i) => (
+            <div key={col.status} className="flex items-center gap-3">
+              <span className="text-xs text-gray-500 w-28 shrink-0">{DEFAULT_BOARD_COLUMNS.find((c) => c.status === col.status)?.label ?? col.status}</span>
+              <input
+                type="text"
+                value={col.label}
+                onChange={(e) => {
+                  const next = [...labels];
+                  next[i] = { ...next[i], label: e.target.value };
+                  setLabels(next);
+                }}
+                className="flex-1 border border-gray-200 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:border-primary-400"
+              />
+            </div>
+          ))}
+        </div>
+
+        <div className="flex gap-2 mt-5">
+          <button
+            onClick={onClose}
+            className="flex-1 px-3 py-2 text-xs font-medium rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={() => saveMut.mutate()}
+            disabled={saveMut.isPending}
+            className="flex-1 px-3 py-2 text-xs font-medium rounded-lg bg-primary-600 text-white hover:bg-primary-700 disabled:opacity-50 transition"
+          >
+            {saveMut.isPending ? 'Saving…' : 'Save'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export function BoardPage() {
   const { id: projectId } = useParams<{ id: string }>();
@@ -25,10 +99,11 @@ export function BoardPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [showSprintManager, setShowSprintManager] = useState(false);
   const [showMilestoneModal, setShowMilestoneModal] = useState(false);
+  const [showEditLabels, setShowEditLabels] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
 
   const qc = useQueryClient();
-  const { columns, move } = useBoard(projectId!, filters);
+  const { columns: rawColumns, move } = useBoard(projectId!, filters);
   const { sprints, activeSprint } = useSprints(projectId!);
 
   const assignMut = useMutation({
@@ -54,6 +129,30 @@ export function BoardPage() {
     queryFn: () => milestonesApi.list(projectId!),
     enabled: !!projectId,
   });
+
+  const { data: savedConfigs = [] } = useQuery({
+    queryKey: ['board-column-configs', projectId],
+    queryFn: () => boardColumnConfigsApi.getByProject(projectId!),
+    enabled: !!projectId,
+  });
+
+  // Merge saved custom labels into the default columns
+  const columns = useMemo(() => {
+    const customMap = new Map(savedConfigs.map((c) => [c.status, c.label]));
+    return rawColumns.map((col) => ({
+      ...col,
+      label: customMap.get(col.status as BoardStatus) ?? col.label,
+    }));
+  }, [rawColumns, savedConfigs]);
+
+  // Build the label list for the edit modal (default label → current custom or default)
+  const editableLabels: BoardColumnConfigDto[] = useMemo(() => {
+    const customMap = new Map(savedConfigs.map((c) => [c.status, c.label]));
+    return DEFAULT_BOARD_COLUMNS.map((col) => ({
+      status: col.status as BoardStatus,
+      label: customMap.get(col.status as BoardStatus) ?? col.label,
+    }));
+  }, [savedConfigs]);
 
   const systemRole = user?.systemRole;
   const myProjectRole = members.find((m) => m.user.id === user?.id)?.projectRole;
@@ -112,21 +211,35 @@ export function BoardPage() {
               </span>
             )}
           </div>
-          <Link
-            to={`/projects/${projectId}`}
-            className="text-xs text-gray-500 hover:text-primary-600 transition flex items-center gap-1"
-          >
-            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            Project Details
-          </Link>
+          <div className="flex items-center gap-2">
+            {/* Edit column labels button */}
+            <button
+              onClick={() => setShowEditLabels(true)}
+              title="Edit column labels"
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              </svg>
+              Columns
+            </button>
+            <Link
+              to={`/projects/${projectId}`}
+              className="text-xs text-gray-500 hover:text-primary-600 transition flex items-center gap-1"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              Project Details
+            </Link>
+          </div>
         </div>
 
         {/* Toolbar */}
         <div className="mt-3">
           <BoardToolbar
             sprints={sprints}
+            milestones={milestones}
             filters={filters}
             onFiltersChange={setFilters}
             members={memberOptions}
@@ -198,6 +311,18 @@ export function BoardPage() {
           projectId={projectId!}
           onClose={() => setShowMilestoneModal(false)}
           onSuccess={setToast}
+        />
+      )}
+
+      {showEditLabels && (
+        <EditColumnLabelsModal
+          projectId={projectId!}
+          currentLabels={editableLabels}
+          onClose={() => setShowEditLabels(false)}
+          onSaved={() => {
+            setShowEditLabels(false);
+            setToast('Column labels updated');
+          }}
         />
       )}
 

@@ -22,7 +22,8 @@ const STATUS_ORDER: BoardStatus[] = [
   BoardStatus.IN_PROGRESS,
   BoardStatus.BLOCKED,
   BoardStatus.IN_REVIEW,
-  BoardStatus.QA,
+  BoardStatus.READY_FOR_QA,
+  BoardStatus.IN_QA,
   BoardStatus.QA_DONE,
 ];
 
@@ -79,6 +80,7 @@ export class WorkItemsService implements OnModuleInit {
     filters: {
       type?: WorkItemType;
       sprintId?: string;
+      milestoneId?: string;
       assigneeId?: string;
       status?: BoardStatus;
       priority?: TaskPriority;
@@ -91,6 +93,9 @@ export class WorkItemsService implements OnModuleInit {
         ...(filters.type && { type: filters.type }),
         ...(filters.sprintId !== undefined && {
           sprintId: filters.sprintId === 'backlog' ? null : filters.sprintId,
+        }),
+        ...(filters.milestoneId && {
+          sprint: { milestoneId: filters.milestoneId },
         }),
         ...(filters.assigneeId && { assigneeId: filters.assigneeId }),
         ...(filters.status && { status: filters.status }),
@@ -133,6 +138,7 @@ export class WorkItemsService implements OnModuleInit {
         components: dto.components ?? [], fixVersion: dto.fixVersion,
         severity: dto.severity, bugClassification: dto.bugClassification,
         environment: dto.environment, stepsToRepro: dto.stepsToRepro,
+        definitionOfDone: dto.definitionOfDone,
         startDate: dto.startDate ? new Date(dto.startDate) : undefined,
         dueDate: dto.dueDate ? new Date(dto.dueDate) : undefined,
         bugFlag: dto.bugFlag, bugReproducibility: dto.bugReproducibility,

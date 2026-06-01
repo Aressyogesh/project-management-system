@@ -5,11 +5,13 @@ import type { BoardStatus, Sprint, TimesheetEntry, WorkItem, WorkItemActivity, W
 
 export interface BoardFiltersQuery {
   type?: WorkItemType;
+  milestoneId?: string;
   sprintId?: string;
   assigneeId?: string;
   status?: BoardStatus;
   priority?: string;
   search?: string;
+  backlog?: 'sprint' | 'product';
 }
 
 export const boardApi = {

@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { boardApi } from '../api/boardApi';
 import { futureDateStr, pastDateStr, todayStr } from '../../../utils/dateUtils';
 import {
-  BOARD_COLUMNS,
+  DEFAULT_BOARD_COLUMNS,
   BUG_STATUS_CONFIG,
   PRIORITY_CONFIG,
   TYPE_CONFIG,
@@ -25,8 +25,9 @@ import { TypeBadge } from './TypeBadge';
 import { useAuthStore } from '../../../store/authStore';
 import type { Milestone } from '../../../types/milestones.types';
 import { RichTextEditor } from '../../../components/shared/RichTextEditor';
+import { testCasesApi, type TestCase, type TestCaseStatus } from '../../../api/testCasesApi';
 
-type ActivityTab = 'comments' | 'logTime' | 'attachments' | 'activities';
+type ActivityTab = 'comments' | 'logTime' | 'attachments' | 'activities' | 'testCases';
 
 interface MemberOption { id: string; fullName: string; }
 
@@ -48,6 +49,7 @@ interface CreateProps {
   milestones?: Milestone[];
   defaultType?: WorkItemType;
   parentId?: string;
+  prefill?: { title?: string; stepsToRepro?: string };
   onClose: () => void;
   onSaved: () => void;
   onSuccess?: (msg: string) => void;
@@ -257,6 +259,152 @@ function ActivityLog({ workItemId }: { workItemId: string }) {
   );
 }
 
+// ─── Test Cases Panel ─────────────────────────────────────────────────────────
+
+const TC_STATUS_CONFIG: Record<TestCaseStatus, { label: string; color: string }> = {
+  NOT_RUN: { label: 'Not Run', color: 'bg-gray-100 text-gray-600' },
+  PASSED:  { label: 'Passed',  color: 'bg-green-100 text-green-700' },
+  FAILED:  { label: 'Failed',  color: 'bg-red-100 text-red-700' },
+  BLOCKED: { label: 'Blocked', color: 'bg-orange-100 text-orange-700' },
+};
+
+interface TestCasesPanelProps {
+  workItemId: string;
+  projectId: string;
+  onCreateBug: (tc: TestCase) => void;
+}
+
+function TestCasesPanel({ workItemId, projectId: _projectId, onCreateBug }: TestCasesPanelProps) {
+  const qc = useQueryClient();
+  const key = ['test-cases', workItemId];
+  const { data: testCases = [] } = useQuery({ queryKey: key, queryFn: () => testCasesApi.list(workItemId) });
+
+  const [showAdd, setShowAdd] = useState(false);
+  const [newTitle, setNewTitle] = useState('');
+  const [newSteps, setNewSteps] = useState('');
+  const [newExpected, setNewExpected] = useState('');
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  const createMut = useMutation({
+    mutationFn: () => testCasesApi.create(workItemId, { title: newTitle, steps: newSteps, expectedResult: newExpected }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: key }); setShowAdd(false); setNewTitle(''); setNewSteps(''); setNewExpected(''); },
+  });
+
+  const updateMut = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: Parameters<typeof testCasesApi.update>[1] }) => testCasesApi.update(id, data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: key }),
+  });
+
+  const deleteMut = useMutation({
+    mutationFn: (id: string) => testCasesApi.remove(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: key }),
+  });
+
+  return (
+    <div className="space-y-3">
+      {testCases.length === 0 && !showAdd && (
+        <div className="flex items-center justify-center h-16 border border-dashed border-gray-200 rounded-lg">
+          <span className="text-xs text-gray-400">No test cases yet</span>
+        </div>
+      )}
+
+      {testCases.map((tc) => (
+        <div key={tc.id} className="border border-gray-200 rounded-lg overflow-hidden">
+          <div className="flex items-center gap-2 px-3 py-2 bg-gray-50">
+            <select
+              value={tc.status}
+              onChange={(e) => updateMut.mutate({ id: tc.id, data: { status: e.target.value as TestCaseStatus } })}
+              className={`text-[10px] font-semibold rounded-full px-2 py-0.5 border-0 cursor-pointer ${TC_STATUS_CONFIG[tc.status].color}`}
+            >
+              {Object.entries(TC_STATUS_CONFIG).map(([val, cfg]) => (
+                <option key={val} value={val}>{cfg.label}</option>
+              ))}
+            </select>
+            <span
+              className="flex-1 text-xs font-medium text-gray-800 cursor-pointer hover:text-primary-600"
+              onClick={() => setExpandedId(expandedId === tc.id ? null : tc.id)}
+            >
+              {tc.title}
+            </span>
+            {tc.status === 'FAILED' && (
+              <button
+                onClick={() => onCreateBug(tc)}
+                className="text-[10px] font-medium text-red-600 hover:text-red-800 border border-red-200 rounded px-2 py-0.5 transition"
+              >
+                + Bug
+              </button>
+            )}
+            <button
+              onClick={() => deleteMut.mutate(tc.id)}
+              className="text-gray-400 hover:text-red-500 transition p-0.5"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          {expandedId === tc.id && (
+            <div className="px-3 pb-3 pt-2 space-y-2 text-xs text-gray-700">
+              {tc.preconditions && <div><span className="font-semibold text-gray-500">Preconditions: </span>{tc.preconditions}</div>}
+              <div><span className="font-semibold text-gray-500">Steps: </span><span className="whitespace-pre-wrap">{tc.steps}</span></div>
+              <div><span className="font-semibold text-gray-500">Expected: </span>{tc.expectedResult}</div>
+              {tc.actualResult && <div><span className="font-semibold text-gray-500">Actual: </span>{tc.actualResult}</div>}
+              <textarea
+                placeholder="Actual result…"
+                defaultValue={tc.actualResult ?? ''}
+                onBlur={(e) => { if (e.target.value !== (tc.actualResult ?? '')) updateMut.mutate({ id: tc.id, data: { actualResult: e.target.value } }); }}
+                className="w-full border border-gray-200 rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-primary-400 resize-none"
+                rows={2}
+              />
+            </div>
+          )}
+        </div>
+      ))}
+
+      {showAdd ? (
+        <div className="border border-primary-200 rounded-lg p-3 space-y-2 bg-primary-50/30">
+          <input
+            type="text" placeholder="Test case title *" value={newTitle}
+            onChange={(e) => setNewTitle(e.target.value)}
+            className="w-full border border-gray-200 rounded px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-primary-400"
+          />
+          <textarea
+            placeholder="Steps to reproduce *" value={newSteps}
+            onChange={(e) => setNewSteps(e.target.value)}
+            className="w-full border border-gray-200 rounded px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-primary-400 resize-none"
+            rows={3}
+          />
+          <input
+            type="text" placeholder="Expected result *" value={newExpected}
+            onChange={(e) => setNewExpected(e.target.value)}
+            className="w-full border border-gray-200 rounded px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-primary-400"
+          />
+          <div className="flex gap-2">
+            <button
+              onClick={() => createMut.mutate()}
+              disabled={!newTitle.trim() || !newSteps.trim() || !newExpected.trim() || createMut.isPending}
+              className="text-xs font-medium px-3 py-1.5 rounded-lg bg-primary-600 text-white hover:bg-primary-700 disabled:opacity-50 transition"
+            >
+              {createMut.isPending ? 'Saving…' : 'Add'}
+            </button>
+            <button onClick={() => setShowAdd(false)} className="text-xs text-gray-500 hover:text-gray-700 px-2 py-1.5 transition">Cancel</button>
+          </div>
+        </div>
+      ) : (
+        <button
+          onClick={() => setShowAdd(true)}
+          className="flex items-center gap-1 text-xs text-primary-600 hover:text-primary-800 font-medium transition"
+        >
+          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+          </svg>
+          Add Test Case
+        </button>
+      )}
+    </div>
+  );
+}
+
 // ─── WorkItemModal (edit existing) ───────────────────────────────────────────
 
 export function WorkItemModal({ item, sprints, members, milestones, onClose, onSaved: _onSaved, onSuccess, onOpenChild }: Props) {
@@ -267,6 +415,8 @@ export function WorkItemModal({ item, sprints, members, milestones, onClose, onS
   const [editingTitle, setEditingTitle] = useState(false);
   const [titleDraft, setTitleDraft] = useState('');
   const [descDraft, setDescDraft] = useState('');
+  const [dodDraft, setDodDraft] = useState('');
+  const [bugFromTc, setBugFromTc] = useState<TestCase | null>(null);
   const [newChildTitle, setNewChildTitle] = useState('');
   const [newChildType, setNewChildType] = useState<WorkItemType>('TASK');
   const [commentText, setCommentText] = useState('');
@@ -307,13 +457,17 @@ export function WorkItemModal({ item, sprints, members, milestones, onClose, onS
     select: (items) => items.filter((i) => validParentTypes?.includes(i.type) && i.id !== item?.id),
   });
 
-  // Sync descDraft when item first loads
+  // Sync drafts when item first loads
   useEffect(() => {
-    if (detail) setDescDraft(detail.description ?? '');
+    if (detail) {
+      setDescDraft(detail.description ?? '');
+      setDodDraft(detail.definitionOfDone ?? '');
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [item?.id]);
 
   const descChanged = descDraft !== (detail?.description ?? '');
+  const dodChanged = dodDraft !== (detail?.definitionOfDone ?? '');
 
   const updateMut = useMutation({
     mutationFn: (data: Partial<WorkItem>) => boardApi.updateWorkItem(item!.id, data),
@@ -424,6 +578,10 @@ export function WorkItemModal({ item, sprints, members, milestones, onClose, onS
 
   function saveDesc() {
     updateMut.mutate({ description: descDraft || undefined });
+  }
+
+  function saveDod() {
+    updateMut.mutate({ definitionOfDone: dodDraft || undefined });
   }
 
   function addLabel() {
@@ -586,6 +744,30 @@ export function WorkItemModal({ item, sprints, members, milestones, onClose, onS
                 )}
               </div>
 
+              {/* Definition of Done — USER_STORY only */}
+              {detail.type === 'USER_STORY' && (
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1.5">Definition of Done</label>
+                  <textarea
+                    value={dodDraft}
+                    onChange={(e) => setDodDraft(e.target.value)}
+                    placeholder="e.g. Unit tests pass, code reviewed, deployed to staging…"
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none"
+                    rows={3}
+                  />
+                  {dodChanged && (
+                    <div className="flex gap-2 mt-2">
+                      <button onClick={saveDod} disabled={updateMut.isPending} className="btn-primary text-xs px-3 py-1.5">
+                        {updateMut.isPending ? 'Saving…' : 'Save'}
+                      </button>
+                      <button onClick={() => setDodDraft(detail.definitionOfDone ?? '')} className="btn-secondary text-xs px-3 py-1.5">
+                        Cancel
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Child Items — JIRA style with checkbox, strikethrough, inline log time */}
               {canAddChildren && (() => {
                 const visibleChildren = (detail.children ?? []).filter((c) => c.type === activeChildType);
@@ -664,16 +846,17 @@ export function WorkItemModal({ item, sprints, members, milestones, onClose, onS
                                 onChange={(e) => toggleChildDoneMut.mutate({ childId: child.id, done: false, status: e.target.value as BoardStatus })}
                                 onClick={(e) => e.stopPropagation()}
                                 className={`text-[10px] font-semibold rounded-full px-2 py-0.5 border-0 cursor-pointer shrink-0 focus:ring-1 focus:ring-primary-400 ${
-                                  isDone                          ? 'bg-emerald-100 text-emerald-700' :
-                                  child.status === 'IN_PROGRESS' ? 'bg-blue-100 text-blue-700' :
-                                  child.status === 'BLOCKED'     ? 'bg-red-100 text-red-700' :
-                                  child.status === 'IN_REVIEW'   ? 'bg-amber-100 text-amber-700' :
-                                  child.status === 'QA'          ? 'bg-purple-100 text-purple-700' :
-                                                                   'bg-gray-100 text-gray-600'
+                                  isDone                                  ? 'bg-emerald-100 text-emerald-700' :
+                                  child.status === 'IN_PROGRESS'        ? 'bg-blue-100 text-blue-700' :
+                                  child.status === 'BLOCKED'            ? 'bg-red-100 text-red-700' :
+                                  child.status === 'IN_REVIEW'          ? 'bg-amber-100 text-amber-700' :
+                                  child.status === 'READY_FOR_QA'       ? 'bg-purple-100 text-purple-700' :
+                                  child.status === 'IN_QA'              ? 'bg-indigo-100 text-indigo-700' :
+                                                                          'bg-gray-100 text-gray-600'
                                 }`}
                                 title="Change status"
                               >
-                                {BOARD_COLUMNS.map((c) => (
+                                {DEFAULT_BOARD_COLUMNS.map((c) => (
                                   <option key={c.status} value={c.status}>{c.label}</option>
                                 ))}
                               </select>
@@ -834,6 +1017,7 @@ export function WorkItemModal({ item, sprints, members, milestones, onClose, onS
                   { id: 'logTime' as ActivityTab, label: `Log Time${totalLogged > 0 ? ` (${totalLogged}h)` : ''}` },
                   { id: 'attachments' as ActivityTab, label: `Attachments (${detail.attachments?.length ?? 0})` },
                   { id: 'activities' as ActivityTab, label: 'Activity' },
+                  ...(detail.type === 'USER_STORY' ? [{ id: 'testCases' as ActivityTab, label: 'Test Cases' }] : []),
                 ] as { id: ActivityTab; label: string }[]).map((t) => (
                   <button
                     key={t.id}
@@ -1036,6 +1220,15 @@ export function WorkItemModal({ item, sprints, members, milestones, onClose, onS
                   <ActivityLog workItemId={detail.id} />
                 )}
 
+                {/* Test Cases */}
+                {activityTab === 'testCases' && (
+                  <TestCasesPanel
+                    workItemId={detail.id}
+                    projectId={detail.projectId}
+                    onCreateBug={(tc) => setBugFromTc(tc)}
+                  />
+                )}
+
                 {/* Attachments */}
                 {activityTab === 'attachments' && (
                   <div className="space-y-2">
@@ -1117,11 +1310,12 @@ export function WorkItemModal({ item, sprints, members, milestones, onClose, onS
                     detail.status === 'IN_PROGRESS' ? 'text-blue-700' :
                     detail.status === 'BLOCKED' ? 'text-red-700' :
                     detail.status === 'IN_REVIEW' ? 'text-amber-700' :
-                    detail.status === 'QA' ? 'text-purple-700' :
+                    detail.status === 'READY_FOR_QA' ? 'text-purple-700' :
+                    detail.status === 'IN_QA' ? 'text-indigo-700' :
                     'text-emerald-700'
                   }`}
                 >
-                  {BOARD_COLUMNS.map((c) => (
+                  {DEFAULT_BOARD_COLUMNS.map((c) => (
                     <option key={c.status} value={c.status}>{c.label}</option>
                   ))}
                 </select>
@@ -1547,6 +1741,22 @@ export function WorkItemModal({ item, sprints, members, milestones, onClose, onS
           </div>
         </div>
       </div>
+
+      {/* Bug from Test Case */}
+      {bugFromTc && (
+        <CreateWorkItemModal
+          projectId={detail.projectId}
+          sprints={sprints}
+          members={members}
+          milestones={milestones}
+          defaultType="BUG"
+          parentId={detail.id}
+          prefill={{ title: `Bug from TC: ${bugFromTc.title}`, stepsToRepro: bugFromTc.steps }}
+          onClose={() => setBugFromTc(null)}
+          onSaved={() => { setBugFromTc(null); onSuccess?.('Bug created'); }}
+          onSuccess={onSuccess}
+        />
+      )}
     </div>
   );
 }
@@ -1583,7 +1793,7 @@ function TypeIcon({ type }: { type: WorkItemType }) {
 
 export function CreateWorkItemModal({
   projectId, sprints, members = [], milestones = [],
-  defaultType = 'TASK', parentId, onClose, onSaved, onSuccess,
+  defaultType = 'TASK', parentId, prefill, onClose, onSaved, onSuccess,
 }: CreateProps) {
   const qc = useQueryClient();
   const [type, setType] = useState<WorkItemType>(defaultType);
@@ -1591,7 +1801,7 @@ export function CreateWorkItemModal({
   const typeMenuRef = useRef<HTMLDivElement>(null);
   const [showParentMenu, setShowParentMenu] = useState(false);
   const parentMenuRef = useRef<HTMLDivElement>(null);
-  const [title, setTitle] = useState('');
+  const [title, setTitle] = useState(prefill?.title ?? '');
   const [description, setDescription] = useState('');
   const [priority, setPriority] = useState<TaskPriority>('MEDIUM');
   const [sprintId, setSprintId] = useState('');
@@ -1604,7 +1814,7 @@ export function CreateWorkItemModal({
   const [severity, setSeverity] = useState<BugSeverity | ''>('');
   const [bugClassification, setBugClassification] = useState<BugClassification | ''>('');
   const [environment, setEnvironment] = useState('');
-  const [stepsToRepro, setStepsToRepro] = useState('');
+  const [stepsToRepro, setStepsToRepro] = useState(prefill?.stepsToRepro ?? '');
   const [bugFlag, setBugFlag] = useState<BugFlag | ''>('');
   const [bugReproducibility, setBugReproducibility] = useState<BugReproducibility | ''>('');
   const [bugStatus, setBugStatus] = useState<BugStatus | ''>('');

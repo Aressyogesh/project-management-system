@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { businessUnitsApi } from '../../../api/businessUnits.api';
 import { clientsApi } from '../../../api/clients.api';
 import type { Client } from '../../../types/clients.types';
@@ -268,7 +269,12 @@ export function ClientsPage() {
                           </svg>
                         </div>
                         <div>
-                          <div className="text-sm font-medium text-gray-800">{client.name}</div>
+                          <Link
+                            to={`/projects?clientId=${client.id}`}
+                            className="text-sm font-medium text-gray-800 hover:text-primary-600 hover:underline transition"
+                          >
+                            {client.name}
+                          </Link>
                           {client.address && <div className="text-xs text-gray-400">{client.address}</div>}
                         </div>
                       </div>

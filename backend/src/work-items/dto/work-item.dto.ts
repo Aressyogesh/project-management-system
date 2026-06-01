@@ -42,6 +42,7 @@ export class CreateWorkItemDto {
   @ApiPropertyOptional({ enum: BugClassification }) @IsOptional() @IsEnum(BugClassification) bugClassification?: BugClassification;
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(200) environment?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(3000) stepsToRepro?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(3000) definitionOfDone?: string;
   @ApiPropertyOptional() @IsOptional() @IsDateString() startDate?: string;
   @ApiPropertyOptional() @IsOptional() @IsDateString() dueDate?: string;
   // Phase 9 Bug Management fields

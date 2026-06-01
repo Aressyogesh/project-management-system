@@ -1,22 +1,29 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { boardApi, type BoardFiltersQuery } from '../api/boardApi';
 import type { BoardStatus, WorkItem } from '../types/board.types';
-import { BOARD_COLUMNS } from '../types/board.types';
+import { DEFAULT_BOARD_COLUMNS } from '../types/board.types';
 
 export function useBoard(projectId: string, filters: BoardFiltersQuery) {
   const qc = useQueryClient();
   const key = ['board', projectId, filters];
 
+  // Translate the backlog UI toggle into the sprintId param the backend understands
+  const apiFilters: BoardFiltersQuery = {
+    ...filters,
+    sprintId: filters.backlog === 'product' ? 'backlog' : filters.sprintId,
+    backlog: undefined,
+  };
+
   const query = useQuery({
     queryKey: key,
-    queryFn: () => boardApi.getWorkItems(projectId, filters),
+    queryFn: () => boardApi.getWorkItems(projectId, apiFilters),
     enabled: !!projectId,
   });
 
   const items = query.data ?? [];
 
   // Group items by status for the Kanban columns
-  const columns = BOARD_COLUMNS.map((col) => ({
+  const columns = DEFAULT_BOARD_COLUMNS.map((col) => ({
     ...col,
     items: items.filter((item) => item.status === col.status).sort((a, b) => a.position - b.position),
   }));
