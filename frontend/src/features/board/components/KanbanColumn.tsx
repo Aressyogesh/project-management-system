@@ -31,7 +31,7 @@ export function KanbanColumn({ status, label, headerClass, items, members, onCar
           <div
             ref={provided.innerRef}
             {...provided.droppableProps}
-            className={`flex flex-col gap-2 rounded-lg p-1 transition-colors ${
+            className={`flex flex-col gap-2 flex-1 rounded-lg p-1 transition-colors ${
               snapshot.isDraggingOver ? 'bg-primary-50' : ''
             }`}
           >
