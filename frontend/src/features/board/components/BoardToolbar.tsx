@@ -87,7 +87,10 @@ export function BoardToolbar({
           All
         </button>
         <button
-          onClick={() => onFiltersChange({ ...filters, backlog: 'sprint', sprintId: undefined })}
+          onClick={() => {
+            const active = sprints.find((s) => s.isActive);
+            onFiltersChange({ ...filters, backlog: 'sprint', sprintId: active?.id });
+          }}
           className={`px-3 py-1.5 font-medium border-l border-gray-200 transition ${
             filters.backlog === 'sprint' ? 'bg-primary-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'
           }`}
@@ -96,6 +99,7 @@ export function BoardToolbar({
         </button>
         <button
           onClick={() => onFiltersChange({ ...filters, backlog: 'product', sprintId: undefined })}
+          title="Work items not yet assigned to any sprint"
           className={`px-3 py-1.5 font-medium border-l border-gray-200 transition ${
             filters.backlog === 'product' ? 'bg-primary-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'
           }`}
@@ -121,7 +125,11 @@ export function BoardToolbar({
       {/* Sprint selector */}
       <select
         value={filters.sprintId ?? ''}
-        onChange={(e) => onFiltersChange({ ...filters, sprintId: e.target.value || undefined, backlog: undefined })}
+        onChange={(e) => onFiltersChange({
+          ...filters,
+          sprintId: e.target.value || undefined,
+          backlog: filters.backlog === 'sprint' ? 'sprint' : undefined,
+        })}
         className={selectClass}
         disabled={filters.backlog === 'product'}
       >
