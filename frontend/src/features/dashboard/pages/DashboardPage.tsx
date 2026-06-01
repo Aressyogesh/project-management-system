@@ -4,6 +4,7 @@ import { useAuthStore } from '../../../store/authStore';
 import { ActivityChart } from '../components/ActivityChart';
 import { AnnouncementsWidget } from '../components/AnnouncementsWidget';
 import { MyTaskTable } from '../components/MyTaskTable';
+import { ProjectProgressPanel } from '../components/ProjectProgressPanel';
 import { StatCard } from '../components/StatCard';
 import { TasksProgressChart } from '../components/TasksProgressChart';
 import { TodayTaskWidget } from '../components/TodayTaskWidget';
@@ -36,10 +37,18 @@ function LoadingSkeleton() {
 
 export function DashboardPage() {
   const user = useAuthStore((s) => s.user);
+  const isAdminOrSuper = user?.systemRole === 'SUPER_USER' || user?.systemRole === 'ADMIN';
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['dashboard-stats'],
     queryFn: dashboardApi.getStats,
+    staleTime: 60_000,
+  });
+
+  const { data: projectsProgress, isLoading: projectsLoading } = useQuery({
+    queryKey: ['dashboard-projects-progress'],
+    queryFn: dashboardApi.getProjectsProgress,
+    enabled: isAdminOrSuper,
     staleTime: 60_000,
   });
 
@@ -86,6 +95,24 @@ export function DashboardPage() {
           />
         </div>
       </div>
+
+      {/* Projects Progress Panel — Super User and Admin only */}
+      {isAdminOrSuper && (
+        <div>
+          {projectsLoading ? (
+            <div className="animate-pulse">
+              <div className="h-6 w-40 bg-gray-100 rounded mb-4" />
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <div key={i} className="bg-white rounded-2xl h-40 border border-gray-100" />
+                ))}
+              </div>
+            </div>
+          ) : (
+            <ProjectProgressPanel projects={projectsProgress ?? []} />
+          )}
+        </div>
+      )}
 
       {/* Bottom row: Task Table + Progress Chart */}
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
