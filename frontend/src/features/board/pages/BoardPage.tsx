@@ -239,6 +239,7 @@ export function BoardPage() {
         <div className="mt-3">
           <BoardToolbar
             sprints={sprints}
+            milestones={milestones}
             filters={filters}
             onFiltersChange={setFilters}
             members={memberOptions}

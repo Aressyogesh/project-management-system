@@ -47,12 +47,13 @@ export class WorkItemsController {
     @Param('projectId') projectId: string,
     @Query('type') type?: WorkItemType,
     @Query('sprintId') sprintId?: string,
+    @Query('milestoneId') milestoneId?: string,
     @Query('assigneeId') assigneeId?: string,
     @Query('status') status?: BoardStatus,
     @Query('priority') priority?: TaskPriority,
     @Query('search') search?: string,
   ) {
-    return this.workItemsService.findByProject(projectId, { type, sprintId, assigneeId, status, priority, search });
+    return this.workItemsService.findByProject(projectId, { type, sprintId, milestoneId, assigneeId, status, priority, search });
   }
 
   @Get('work-items/:id')

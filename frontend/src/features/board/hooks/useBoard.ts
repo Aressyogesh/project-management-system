@@ -7,9 +7,16 @@ export function useBoard(projectId: string, filters: BoardFiltersQuery) {
   const qc = useQueryClient();
   const key = ['board', projectId, filters];
 
+  // Translate the backlog UI toggle into the sprintId param the backend understands
+  const apiFilters: BoardFiltersQuery = {
+    ...filters,
+    sprintId: filters.backlog === 'product' ? 'backlog' : filters.sprintId,
+    backlog: undefined,
+  };
+
   const query = useQuery({
     queryKey: key,
-    queryFn: () => boardApi.getWorkItems(projectId, filters),
+    queryFn: () => boardApi.getWorkItems(projectId, apiFilters),
     enabled: !!projectId,
   });
 

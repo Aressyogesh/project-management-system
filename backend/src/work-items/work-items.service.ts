@@ -80,6 +80,7 @@ export class WorkItemsService implements OnModuleInit {
     filters: {
       type?: WorkItemType;
       sprintId?: string;
+      milestoneId?: string;
       assigneeId?: string;
       status?: BoardStatus;
       priority?: TaskPriority;
@@ -92,6 +93,9 @@ export class WorkItemsService implements OnModuleInit {
         ...(filters.type && { type: filters.type }),
         ...(filters.sprintId !== undefined && {
           sprintId: filters.sprintId === 'backlog' ? null : filters.sprintId,
+        }),
+        ...(filters.milestoneId && {
+          sprint: { milestoneId: filters.milestoneId },
         }),
         ...(filters.assigneeId && { assigneeId: filters.assigneeId }),
         ...(filters.status && { status: filters.status }),
