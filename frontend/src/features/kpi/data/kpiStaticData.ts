@@ -6,6 +6,16 @@ import type {
   EmployeeKpiRecord,
   KpiTeamSummary,
 } from '../../../types/kpi.types';
+import type { LiveEmployeeKpiRecord } from '../../../api/analyticsApi';
+
+export function transformLiveKpi(live: LiveEmployeeKpiRecord): EmployeeKpiRecord {
+  const categoryScores = computeCategoryScores(live.metrics);
+  return {
+    ...live,
+    categoryScores,
+    grade: computeGrade(live.totalScore),
+  };
+}
 
 // ─── Metric Definitions (from Digital Appraisal System.xlsx) ─────────────────
 
