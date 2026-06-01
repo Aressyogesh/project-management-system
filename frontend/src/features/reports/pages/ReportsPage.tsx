@@ -1,21 +1,25 @@
-import { useState } from 'react';
-import { usePageSize } from '../../../hooks/usePageSize';
+import { useQuery } from '@tanstack/react-query';
+import { useMemo, useState } from 'react';
 import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell,
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
 } from 'recharts';
+import { analyticsApi } from '../../../api/analyticsApi';
+import { projectsApi } from '../../../api/projects.api';
+import { usePageSize } from '../../../hooks/usePageSize';
 import { useAuthStore } from '../../../store/authStore';
-import { GRADE_CONFIG, buildTeamSummary, STATIC_KPI_DATA } from '../../kpi/data/kpiStaticData';
-import {
-  STATIC_PRODUCTIVITY_DATA, STATIC_PROJECT_DATA, USER_PROJECT_MAP, PROJECT_OPTIONS,
-  BUG_SEVERITY_BY_PROJECT, BUG_CLASSIFICATION_BY_PROJECT,
-  STATIC_ALLOCATION_DATA, STATIC_TIMESHEET_DATA,
-  REPORT_PERIODS,
-} from '../data/reportsStaticData';
+import { GRADE_CONFIG, buildTeamSummary, transformLiveKpi } from '../../kpi/data/kpiStaticData';
 import { CapacityReportTab } from '../components/CapacityReportTab';
 
 type Tab = 'productivity' | 'kpi' | 'projects' | 'bugs' | 'allocation' | 'timesheet' | 'capacity';
-type TimesheetStatus = 'Approved' | 'Submitted' | 'Draft';
 
 const TABS: { id: Tab; label: string }[] = [
   { id: 'productivity', label: 'Team Productivity' },
@@ -26,6 +30,21 @@ const TABS: { id: Tab; label: string }[] = [
   { id: 'timesheet',    label: 'Timesheet'         },
   { id: 'capacity',     label: 'Capacity'           },
 ];
+
+// ─── Period helpers ────────────────────────────────────────────────────────────
+
+function buildPeriodOptions() {
+  const now = new Date();
+  return Array.from({ length: 12 }, (_, i) => {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    const label = d.toLocaleString('default', { month: 'long', year: 'numeric' });
+    return { value, label };
+  });
+}
+
+const PERIOD_OPTIONS = buildPeriodOptions();
+const DEFAULT_PERIOD = PERIOD_OPTIONS[0].value;
 
 // ─── CSV utility ──────────────────────────────────────────────────────────────
 
@@ -131,31 +150,40 @@ function CsvButton({ onClick }: { onClick: () => void }) {
   );
 }
 
-// ─── Team Productivity Tab ────────────────────────────────────────────────────
+function TabSpinner() {
+  return (
+    <div className="flex items-center justify-center h-48">
+      <div className="w-6 h-6 border-2 border-primary-300 border-t-primary-600 rounded-full animate-spin" />
+    </div>
+  );
+}
+
+// ─── Team Productivity Tab ─────────────────────────────────────────────────────
 
 function TeamProductivityTab({ currentUserId, period, project }: { currentUserId?: string; period: string; project: string }) {
-  const data = project === 'all'
-    ? STATIC_PRODUCTIVITY_DATA
-    : STATIC_PRODUCTIVITY_DATA.filter((r) => USER_PROJECT_MAP[r.userId] === project);
+  const { data = [], isLoading } = useQuery({
+    queryKey: ['reports-productivity', period, project],
+    queryFn: () => analyticsApi.getProductivity(period, project),
+    staleTime: 60_000,
+  });
 
   const chartData = data.slice(0, 10).map((r) => ({ name: r.name.split(' ')[0], tasks: r.tasksDone }));
   const { paginatedData, page, setPage, pageSize, setPageSize, totalPages, totalItems, startIndex, endIndex } = usePagination(data, 'productivity');
+  const periodLabel = PERIOD_OPTIONS.find((p) => p.value === period)?.label ?? period;
 
-  function exportCsv() {
-    downloadCsv(`team-productivity-report-${period}.csv`, [
-      ['Name', 'Role', 'Tasks Done', 'Hours Logged', 'On-Time %', 'Score'],
-      ...data.map((r: typeof data[number]) => [r.name, r.role, String(r.tasksDone), String(r.hoursLogged), `${r.onTimePct}%`, String(r.score)]),
-    ]);
-  }
+  if (isLoading) return <TabSpinner />;
 
   return (
     <div className="space-y-6">
       <div className="flex justify-end">
-        <CsvButton onClick={exportCsv} />
+        <CsvButton onClick={() => downloadCsv(`team-productivity-report-${period}.csv`, [
+          ['Name', 'Role', 'Tasks Done', 'Hours Logged', 'On-Time %', 'Score'],
+          ...data.map((r) => [r.name, r.role, String(r.tasksDone), String(r.hoursLogged), `${r.onTimePct}%`, String(r.score)]),
+        ])} />
       </div>
 
       <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
-        <h3 className="text-sm font-semibold text-gray-800 mb-1">Tasks Completed — {REPORT_PERIODS.find((p) => p.value === period)?.label ?? period}</h3>
+        <h3 className="text-sm font-semibold text-gray-800 mb-1">Tasks Completed — {periodLabel}</h3>
         <p className="text-xs text-gray-400 mb-4">
           {data.length > 10 ? 'Top 10 team members' : `${data.length} team members`} by tasks completed
         </p>
@@ -188,7 +216,7 @@ function TeamProductivityTab({ currentUserId, period, project }: { currentUserId
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              {paginatedData.length === 0 && (
+              {data.length === 0 && (
                 <tr><td colSpan={6} className="text-center py-8 text-sm text-gray-400">No data for this period.</td></tr>
               )}
               {paginatedData.map((r, i) => {
@@ -235,9 +263,14 @@ function TeamProductivityTab({ currentUserId, period, project }: { currentUserId
 // ─── KPI Appraisal Tab ────────────────────────────────────────────────────────
 
 function KpiAppraisalTab({ currentUserId, period }: { currentUserId?: string; period: string }) {
-  const kpiData = STATIC_KPI_DATA;
+  const { data: liveData = [], isLoading } = useQuery({
+    queryKey: ['kpi-live', period],
+    queryFn: () => analyticsApi.getKpi(period),
+    staleTime: 60_000,
+  });
 
-  const summary = kpiData.length > 0 ? buildTeamSummary(kpiData as Parameters<typeof buildTeamSummary>[0], period) : null;
+  const kpiData = useMemo(() => liveData.map(transformLiveKpi), [liveData]);
+  const summary = kpiData.length > 0 ? buildTeamSummary(kpiData, period) : null;
 
   const pieData = summary ? [
     { name: 'Grade A', value: summary.gradeACcount, color: '#10B981' },
@@ -249,20 +282,18 @@ function KpiAppraisalTab({ currentUserId, period }: { currentUserId?: string; pe
   const topPerformers = [...kpiData].sort((a, b) => b.totalScore - a.totalScore).slice(0, 3);
   const sortedKpi = [...kpiData].sort((a, b) => b.totalScore - a.totalScore);
   const { paginatedData, page, setPage, pageSize, setPageSize, totalPages, totalItems, startIndex, endIndex } = usePagination(sortedKpi, 'kpi');
-
-  function exportCsv() {
-    downloadCsv(`kpi-appraisal-report-${period}.csv`, [
-      ['Name', 'Role', 'Department', 'Total Score', 'Grade'],
-      ...sortedKpi.map((e) => [e.name, e.role, e.department, String(e.totalScore), e.grade]),
-    ]);
-  }
-
+  const periodLabel = PERIOD_OPTIONS.find((p) => p.value === period)?.label ?? period;
   const gradeConfig = summary ? GRADE_CONFIG[summary.teamGrade] : GRADE_CONFIG['C'];
+
+  if (isLoading) return <TabSpinner />;
 
   return (
     <div className="space-y-6">
       <div className="flex justify-end">
-        <CsvButton onClick={exportCsv} />
+        <CsvButton onClick={() => downloadCsv(`kpi-appraisal-report-${period}.csv`, [
+          ['Name', 'Role', 'Department', 'Total Score', 'Grade'],
+          ...sortedKpi.map((e) => [e.name, e.role, e.department, String(e.totalScore), e.grade]),
+        ])} />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -302,6 +333,7 @@ function KpiAppraisalTab({ currentUserId, period }: { currentUserId?: string; pe
         <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
           <h3 className="text-sm font-semibold text-gray-800 mb-3">Top Performers</h3>
           <div className="space-y-3">
+            {topPerformers.length === 0 && <p className="text-xs text-gray-400">No data for this period.</p>}
             {topPerformers.map((e, i) => {
               const gc = GRADE_CONFIG[e.grade];
               return (
@@ -321,7 +353,7 @@ function KpiAppraisalTab({ currentUserId, period }: { currentUserId?: string; pe
 
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
         <div className="px-5 py-4 border-b border-gray-50">
-          <h3 className="text-sm font-semibold text-gray-800">Employee KPI Details — {REPORT_PERIODS.find((p) => p.value === period)?.label ?? period}</h3>
+          <h3 className="text-sm font-semibold text-gray-800">Employee KPI Details — {periodLabel}</h3>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -379,17 +411,13 @@ function KpiAppraisalTab({ currentUserId, period }: { currentUserId?: string; pe
 // ─── Project Summary Tab ──────────────────────────────────────────────────────
 
 function ProjectSummaryTab({ period, project }: { period: string; project: string }) {
-  const projects = project === 'all'
-    ? STATIC_PROJECT_DATA
-    : STATIC_PROJECT_DATA.filter((p) => p.id === project);
+  const { data: projects = [], isLoading } = useQuery({
+    queryKey: ['reports-projects', period, project],
+    queryFn: () => analyticsApi.getProjects(period, project),
+    staleTime: 60_000,
+  });
 
-  function exportCsv() {
-    downloadCsv(`project-summary-report-${period}.csv`, [
-      ['Project', 'Total Tasks', 'Done', 'Team Size', 'Completion %', 'Status'],
-      ...projects.map((p) => [p.name, String(p.tasks), String(p.done), String(p.teamSize),
-        `${p.tasks > 0 ? Math.round((p.done / p.tasks) * 100) : 0}%`, p.status]),
-    ]);
-  }
+  if (isLoading) return <TabSpinner />;
 
   const statusColors: Record<string, { bg: string; text: string }> = {
     Active:    { bg: 'bg-blue-100',    text: 'text-blue-700'    },
@@ -400,7 +428,11 @@ function ProjectSummaryTab({ period, project }: { period: string; project: strin
   return (
     <div className="space-y-4">
       <div className="flex justify-end">
-        <CsvButton onClick={exportCsv} />
+        <CsvButton onClick={() => downloadCsv(`project-summary-report-${period}.csv`, [
+          ['Project', 'Total Tasks', 'Done', 'Team Size', 'Completion %', 'Status'],
+          ...projects.map((p) => [p.name, String(p.tasks), String(p.done), String(p.teamSize),
+            `${p.tasks > 0 ? Math.round((p.done / p.tasks) * 100) : 0}%`, p.status]),
+        ])} />
       </div>
 
       {projects.length === 0 && (
@@ -442,9 +474,7 @@ function ProjectSummaryTab({ period, project }: { period: string; project: strin
               </div>
             </div>
             <div>
-              <div className="flex justify-between text-xs text-gray-400 mb-1">
-                <span>Progress</span><span>{pct}%</span>
-              </div>
+              <div className="flex justify-between text-xs text-gray-400 mb-1"><span>Progress</span><span>{pct}%</span></div>
               <div className="w-full bg-gray-100 rounded-full h-2">
                 <div className="h-2 rounded-full transition-all" style={{ width: `${pct}%`, backgroundColor: proj.color }} />
               </div>
@@ -459,29 +489,32 @@ function ProjectSummaryTab({ period, project }: { period: string; project: strin
 // ─── Bug Summary Tab ──────────────────────────────────────────────────────────
 
 function BugSummaryTab({ period, project }: { period: string; project: string }) {
-  const allSeverity = BUG_SEVERITY_BY_PROJECT[project] ?? BUG_SEVERITY_BY_PROJECT['all'];
-  const severityData = allSeverity.filter((d) => d.count > 0);
-  const classificationData = (BUG_CLASSIFICATION_BY_PROJECT[project] ?? BUG_CLASSIFICATION_BY_PROJECT['all']).filter((d) => d.count > 0);
-  const total = severityData.reduce((s, d) => s + d.count, 0);
+  const { data, isLoading } = useQuery({
+    queryKey: ['reports-bugs', period, project],
+    queryFn: () => analyticsApi.getBugs(period, project),
+    staleTime: 60_000,
+  });
 
-  function exportCsv() {
-    downloadCsv(`bug-summary-report-${period}.csv`, [
-      ['Severity', 'Count'],
-      ...allSeverity.map((d) => [d.severity, String(d.count)]),
-    ]);
-  }
+  if (isLoading) return <TabSpinner />;
+
+  const severityData = (data?.severity ?? []).filter((d) => d.count > 0);
+  const classificationData = (data?.classification ?? []).filter((d) => d.count > 0);
+  const total = severityData.reduce((s, d) => s + d.count, 0);
 
   return (
     <div className="space-y-6">
       <div className="flex justify-end">
-        <CsvButton onClick={exportCsv} />
+        <CsvButton onClick={() => downloadCsv(`bug-summary-report-${period}.csv`, [
+          ['Severity', 'Count'],
+          ...(data?.severity ?? []).map((d) => [d.severity, String(d.count)]),
+        ])} />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
           <h3 className="text-sm font-semibold text-gray-800 mb-1">Bug Severity Distribution</h3>
           <p className="text-xs text-gray-400 mb-3">
-            Total: {total} bug{total !== 1 ? 's' : ''} — {REPORT_PERIODS.find((p) => p.value === period)?.label ?? period}
+            Total: {total} bug{total !== 1 ? 's' : ''} — {PERIOD_OPTIONS.find((p) => p.value === period)?.label ?? period}
           </p>
           {severityData.length === 0 ? (
             <div className="flex items-center justify-center h-32 text-sm text-gray-400">No bugs this period.</div>
@@ -531,7 +564,7 @@ function BugSummaryTab({ period, project }: { period: string; project: string })
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
-        {allSeverity.map((d) => (
+        {(data?.severity ?? []).map((d) => (
           <div key={d.severity} className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm text-center">
             <p className="text-2xl font-bold text-gray-800">{d.count}</p>
             <p className="text-xs text-gray-400 mt-1">{d.severity}</p>
@@ -546,34 +579,34 @@ function BugSummaryTab({ period, project }: { period: string; project: string })
 // ─── Task Allocation Tab ──────────────────────────────────────────────────────
 
 function TaskAllocationTab({ currentUserId, period, project }: { currentUserId?: string; period: string; project: string }) {
-  const data = project === 'all'
-    ? STATIC_ALLOCATION_DATA
-    : STATIC_ALLOCATION_DATA.filter((r) => USER_PROJECT_MAP[r.userId] === project);
+  const { data = [], isLoading } = useQuery({
+    queryKey: ['reports-allocation', period, project],
+    queryFn: () => analyticsApi.getAllocation(period, project),
+    staleTime: 60_000,
+  });
 
   const chartData = data.slice(0, 10).map((r) => ({ name: r.name.split(' ')[0], hours: r.hoursAllocated }));
   const totalHours = data.reduce((s, r) => s + r.hoursAllocated, 0);
   const avgUtilisation = data.length > 0 ? Math.round(data.reduce((s, r) => s + r.utilisationPct, 0) / data.length) : 0;
   const overAllocated = data.filter((r) => r.utilisationPct > 100).length;
-
   const { paginatedData, page, setPage, pageSize, setPageSize, totalPages, totalItems, startIndex, endIndex } = usePagination(data, 'allocation');
+  const periodLabel = PERIOD_OPTIONS.find((p) => p.value === period)?.label ?? period;
 
-  function exportCsv() {
-    downloadCsv(`task-allocation-report-${period}.csv`, [
-      ['Name', 'Role', 'Tasks Allocated', 'Hours Allocated', 'Utilisation %'],
-      ...data.map((r) => [r.name, r.role, String(r.tasksAllocated), String(r.hoursAllocated), `${r.utilisationPct}%`]),
-    ]);
-  }
+  if (isLoading) return <TabSpinner />;
 
   return (
     <div className="space-y-6">
       <div className="flex justify-end">
-        <CsvButton onClick={exportCsv} />
+        <CsvButton onClick={() => downloadCsv(`task-allocation-report-${period}.csv`, [
+          ['Name', 'Role', 'Tasks Allocated', 'Hours Allocated', 'Utilisation %'],
+          ...data.map((r) => [r.name, r.role, String(r.tasksAllocated), String(r.hoursAllocated), `${r.utilisationPct}%`]),
+        ])} />
       </div>
 
       <div className="grid grid-cols-3 gap-4">
         <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm text-center">
           <p className="text-2xl font-bold text-gray-800">{totalHours}h</p>
-          <p className="text-xs text-gray-400 mt-1">Total Hours Allocated</p>
+          <p className="text-xs text-gray-400 mt-1">Total Hours Logged</p>
         </div>
         <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm text-center">
           <p className="text-2xl font-bold text-gray-800">{avgUtilisation}%</p>
@@ -586,7 +619,7 @@ function TaskAllocationTab({ currentUserId, period, project }: { currentUserId?:
       </div>
 
       <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
-        <h3 className="text-sm font-semibold text-gray-800 mb-1">Hours Allocated — {REPORT_PERIODS.find((p) => p.value === period)?.label ?? period}</h3>
+        <h3 className="text-sm font-semibold text-gray-800 mb-1">Hours Allocated — {periodLabel}</h3>
         <p className="text-xs text-gray-400 mb-4">
           {data.length > 10 ? 'Top 10 team members' : `${data.length} team members`} by allocated hours
         </p>
@@ -596,7 +629,7 @@ function TaskAllocationTab({ currentUserId, period, project }: { currentUserId?:
             <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#9CA3AF' }} />
             <YAxis tick={{ fontSize: 11, fill: '#9CA3AF' }} />
             <Tooltip contentStyle={{ borderRadius: 10, fontSize: 12, border: '1px solid #E5E7EB' }}
-              formatter={(v: number) => [`${v}h`, 'Allocated']} />
+              formatter={(v: number) => [`${v}h`, 'Logged']} />
             <Bar dataKey="hours" fill="#8B5CF6" radius={[4, 4, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
@@ -618,7 +651,7 @@ function TaskAllocationTab({ currentUserId, period, project }: { currentUserId?:
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              {paginatedData.length === 0 && (
+              {data.length === 0 && (
                 <tr><td colSpan={5} className="text-center py-8 text-sm text-gray-400">No allocation data for this period.</td></tr>
               )}
               {paginatedData.map((r, i) => {
@@ -674,36 +707,35 @@ function TaskAllocationTab({ currentUserId, period, project }: { currentUserId?:
 
 // ─── Timesheet Tab ────────────────────────────────────────────────────────────
 
-const TIMESHEET_STATUS_STYLE: Record<TimesheetStatus, { bg: string; text: string }> = {
+const TIMESHEET_STATUS_STYLE: Record<string, { bg: string; text: string }> = {
   Approved:  { bg: 'bg-emerald-100', text: 'text-emerald-700' },
   Submitted: { bg: 'bg-blue-100',    text: 'text-blue-700'    },
   Draft:     { bg: 'bg-gray-100',    text: 'text-gray-600'    },
 };
 
 function TimesheetTab({ currentUserId, period, project }: { currentUserId?: string; period: string; project: string }) {
-  const projectName = PROJECT_OPTIONS.find((o) => o.value === project)?.label ?? '';
-  const data = project === 'all'
-    ? STATIC_TIMESHEET_DATA
-    : STATIC_TIMESHEET_DATA.filter((r) => r.project === projectName);
+  const { data = [], isLoading } = useQuery({
+    queryKey: ['reports-timesheet', period, project],
+    queryFn: () => analyticsApi.getTimesheet(period, project),
+    staleTime: 60_000,
+  });
 
   const totalHours = data.reduce((s, r) => s + r.hoursLogged, 0);
   const approvedCount = data.filter((r) => r.status === 'Approved').length;
   const submittedCount = data.filter((r) => r.status === 'Submitted').length;
   const draftCount = data.filter((r) => r.status === 'Draft').length;
-
   const { paginatedData, page, setPage, pageSize, setPageSize, totalPages, totalItems, startIndex, endIndex } = usePagination(data, 'timesheet');
+  const periodLabel = PERIOD_OPTIONS.find((p) => p.value === period)?.label ?? period;
 
-  function exportCsv() {
-    downloadCsv(`timesheet-report-${period}.csv`, [
-      ['Name', 'Role', 'Project', 'Hours Logged', 'Status'],
-      ...data.map((r) => [r.name, r.role, r.project, String(r.hoursLogged), r.status]),
-    ]);
-  }
+  if (isLoading) return <TabSpinner />;
 
   return (
     <div className="space-y-6">
       <div className="flex justify-end">
-        <CsvButton onClick={exportCsv} />
+        <CsvButton onClick={() => downloadCsv(`timesheet-report-${period}.csv`, [
+          ['Name', 'Role', 'Project', 'Hours Logged', 'Status'],
+          ...data.map((r) => [r.name, r.role, r.project, String(r.hoursLogged), r.status]),
+        ])} />
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
@@ -727,9 +759,7 @@ function TimesheetTab({ currentUserId, period, project }: { currentUserId?: stri
 
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
         <div className="px-5 py-4 border-b border-gray-50">
-          <h3 className="text-sm font-semibold text-gray-800">
-            Timesheet Summary — {REPORT_PERIODS.find((p) => p.value === period)?.label ?? period}
-          </h3>
+          <h3 className="text-sm font-semibold text-gray-800">Timesheet Summary — {periodLabel}</h3>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -743,12 +773,12 @@ function TimesheetTab({ currentUserId, period, project }: { currentUserId?: stri
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              {paginatedData.length === 0 && (
+              {data.length === 0 && (
                 <tr><td colSpan={5} className="text-center py-8 text-sm text-gray-400">No timesheet data for this period.</td></tr>
               )}
               {paginatedData.map((r, i) => {
                 const isMe = r.userId === currentUserId;
-                const sc = TIMESHEET_STATUS_STYLE[r.status as TimesheetStatus] ?? TIMESHEET_STATUS_STYLE['Approved'];
+                const sc = TIMESHEET_STATUS_STYLE[r.status] ?? TIMESHEET_STATUS_STYLE['Approved'];
                 return (
                   <tr key={r.userId} className={isMe ? 'bg-blue-50' : 'hover:bg-gray-50/50'}>
                     <td className="px-5 py-3 text-gray-400 text-xs">{startIndex + i}</td>
@@ -789,22 +819,44 @@ function TimesheetTab({ currentUserId, period, project }: { currentUserId?: stri
   );
 }
 
-// ─── Employee Personal Summary ────────────────────────────────────────────────
+// ─── Employee Personal Summary (live) ────────────────────────────────────────
 
 function MyPerformanceSummary({ userId, userName, period }: { userId: string; userName: string; period: string }) {
-  const myKpi = STATIC_KPI_DATA.find((r) => r.userId === userId);
-  const myProd = STATIC_PRODUCTIVITY_DATA.find((r) => r.userId === userId);
-  const myAlloc = STATIC_ALLOCATION_DATA.find((r) => r.userId === userId);
-  const myTs = STATIC_TIMESHEET_DATA.find((r) => r.userId === userId);
+  const { data: kpiRaw = [] } = useQuery({
+    queryKey: ['kpi-live', period],
+    queryFn: () => analyticsApi.getKpi(period),
+    staleTime: 60_000,
+  });
+  const { data: prodData = [] } = useQuery({
+    queryKey: ['reports-productivity', period, 'all'],
+    queryFn: () => analyticsApi.getProductivity(period),
+    staleTime: 60_000,
+  });
+  const { data: allocData = [] } = useQuery({
+    queryKey: ['reports-allocation', period, 'all'],
+    queryFn: () => analyticsApi.getAllocation(period),
+    staleTime: 60_000,
+  });
+  const { data: tsData = [] } = useQuery({
+    queryKey: ['reports-timesheet', period, 'all'],
+    queryFn: () => analyticsApi.getTimesheet(period),
+    staleTime: 60_000,
+  });
+
+  const periodLabel = PERIOD_OPTIONS.find((p) => p.value === period)?.label ?? period;
+
+  const myKpiRaw = kpiRaw.find((r) => r.userId === userId);
+  const myKpi = myKpiRaw ? transformLiveKpi(myKpiRaw) : null;
+  const myProd = prodData.find((r) => r.userId === userId);
+  const myAlloc = allocData.find((r) => r.userId === userId);
+  const myTs = tsData.find((r) => r.userId === userId);
 
   const grade = myKpi?.grade ?? null;
 
   return (
     <div className="space-y-6">
       <div className="bg-blue-50 border border-blue-100 rounded-2xl p-5">
-        <h3 className="text-sm font-semibold text-blue-800 mb-1">
-          My Performance — {REPORT_PERIODS.find((p) => p.value === period)?.label ?? period}
-        </h3>
+        <h3 className="text-sm font-semibold text-blue-800 mb-1">My Performance — {periodLabel}</h3>
         <p className="text-xs text-blue-600">{userName}</p>
       </div>
 
@@ -838,8 +890,8 @@ function MyPerformanceSummary({ userId, userName, period }: { userId: string; us
             <div className="text-right">
               <p className="text-xs text-gray-400">Timesheet Status</p>
               <span className={`text-xs font-semibold px-2 py-0.5 rounded-full mt-0.5 inline-block
-                ${TIMESHEET_STATUS_STYLE[myTs.status as TimesheetStatus]?.bg ?? 'bg-gray-100'}
-                ${TIMESHEET_STATUS_STYLE[myTs.status as TimesheetStatus]?.text ?? 'text-gray-600'}`}>
+                ${TIMESHEET_STATUS_STYLE[myTs.status]?.bg ?? 'bg-gray-100'}
+                ${TIMESHEET_STATUS_STYLE[myTs.status]?.text ?? 'text-gray-600'}`}>
                 {myTs.status}
               </span>
             </div>
@@ -859,10 +911,22 @@ function MyPerformanceSummary({ userId, userName, period }: { userId: string; us
 export function ReportsPage() {
   const user = useAuthStore((s) => s.user);
   const [activeTab, setActiveTab] = useState<Tab>('productivity');
-  const [period, setPeriod] = useState('2026-05');
+  const [period, setPeriod] = useState(DEFAULT_PERIOD);
   const [project, setProject] = useState('all');
 
   const isAdminView = user?.systemRole === 'ADMIN' || user?.systemRole === 'SUPER_USER';
+
+  const { data: projectsList = [] } = useQuery({
+    queryKey: ['projects-list'],
+    queryFn: () => projectsApi.list(),
+    enabled: isAdminView,
+    staleTime: 120_000,
+  });
+
+  const projectOptions = useMemo(() => [
+    { value: 'all', label: 'All Projects' },
+    ...(projectsList as { id: string; name: string }[]).map((p) => ({ value: p.id, label: p.name })),
+  ], [projectsList]);
 
   return (
     <div className="space-y-6">
@@ -879,7 +943,7 @@ export function ReportsPage() {
               onChange={(e) => setProject(e.target.value)}
               className="text-sm border border-gray-200 rounded-xl px-3 py-2 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary-300"
             >
-              {PROJECT_OPTIONS.map((o) => (
+              {projectOptions.map((o) => (
                 <option key={o.value} value={o.value}>{o.label}</option>
               ))}
             </select>
@@ -889,19 +953,19 @@ export function ReportsPage() {
             onChange={(e) => setPeriod(e.target.value)}
             className="text-sm border border-gray-200 rounded-xl px-3 py-2 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary-300"
           >
-            {REPORT_PERIODS.map((p) => (
+            {PERIOD_OPTIONS.map((p) => (
               <option key={p.value} value={p.value}>{p.label}</option>
             ))}
           </select>
         </div>
       </div>
 
-      {/* Employee personal view */}
+      {/* Employee personal view (RBAC: Employee only sees own data) */}
       {!isAdminView && user && (
         <MyPerformanceSummary userId={user.id} userName={user.fullName} period={period} />
       )}
 
-      {/* Admin tabs */}
+      {/* Admin / Super User tabs */}
       {isAdminView && (
         <>
           <div className="flex flex-wrap gap-1 bg-gray-100/70 p-1 rounded-2xl w-fit">

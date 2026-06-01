@@ -1,37 +1,40 @@
-import { useState, useMemo } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import type { EmployeeKpiRecord } from '../../../types/kpi.types';
-import { useAuthStore } from '../../../store/authStore';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMemo, useState } from 'react';
 import { analyticsApi } from '../../../api/analyticsApi';
-import {
-  GRADE_CONFIG,
-  buildTeamSummary,
-  STATIC_KPI_DATA,
-  KPI_METRICS,
-} from '../data/kpiStaticData';
-import { KpiSummaryCards } from '../components/KpiSummaryCards';
+import { useAuthStore } from '../../../store/authStore';
+import type { EmployeeKpiRecord } from '../../../types/kpi.types';
 import { KpiCategoryBarChart } from '../components/KpiCategoryBarChart';
+import { KpiEmployeeDetailPanel } from '../components/KpiEmployeeDetailPanel';
 import { KpiGradePieChart } from '../components/KpiGradePieChart';
 import { KpiLeaderboard } from '../components/KpiLeaderboard';
-import { KpiEmployeeDetailPanel } from '../components/KpiEmployeeDetailPanel';
 import { KpiRadarChart } from '../components/KpiRadarChart';
+import { KpiSummaryCards } from '../components/KpiSummaryCards';
+import {
+  GRADE_CONFIG,
+  KPI_METRICS,
+  buildTeamSummary,
+  transformLiveKpi,
+} from '../data/kpiStaticData';
 
-const DEPT_FILTERS = ['All Departments', 'Digital', 'SalesForce', 'Mobile'];
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
-const PERIOD_LABELS: Record<string, string> = {
-  '2026-05': 'May 2026',
-  '2026-04': 'April 2026',
-  '2026-03': 'March 2026',
-  '2026-02': 'February 2026',
-  '2026-01': 'January 2026',
-};
+function buildPeriodOptions() {
+  const now = new Date();
+  return Array.from({ length: 12 }, (_, i) => {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    const label = d.toLocaleString('default', { month: 'long', year: 'numeric' });
+    return { value, label };
+  });
+}
 
-const AVAILABLE_PERIODS = Object.keys(PERIOD_LABELS);
+const PERIOD_OPTIONS = buildPeriodOptions();
+const DEFAULT_PERIOD = PERIOD_OPTIONS[0].value;
 
 const MANUAL_METRICS = [
-  { id: 'engineering_hygiene', label: 'Engineering Hygiene', max: 5 },
-  { id: 'reporting_documentation', label: 'Reporting & Docs', max: 5 },
-  { id: 'positive_behaviour', label: 'Positive Behaviour', max: 5 },
+  { id: 'engineering_hygiene',    label: 'Engineering Hygiene',  max: 5 },
+  { id: 'reporting_documentation', label: 'Reporting & Docs',     max: 5 },
+  { id: 'positive_behaviour',     label: 'Positive Behaviour',   max: 5 },
 ];
 
 // ─── KPI Score Entry Panel ────────────────────────────────────────────────────
@@ -40,12 +43,10 @@ function KpiScoreEntryPanel({
   employees,
   period,
   onClose,
-  onSaved,
 }: {
   employees: EmployeeKpiRecord[];
   period: string;
   onClose: () => void;
-  onSaved?: () => void;
 }) {
   const qc = useQueryClient();
 
@@ -54,7 +55,8 @@ function KpiScoreEntryPanel({
     for (const emp of employees) {
       map[emp.userId] = {};
       for (const m of MANUAL_METRICS) {
-        map[emp.userId][m.id] = 5;
+        const existing = emp.metrics.find((x) => x.metricId === m.id)?.points ?? 5;
+        map[emp.userId][m.id] = existing;
       }
     }
     return map;
@@ -74,8 +76,7 @@ function KpiScoreEntryPanel({
       await Promise.all(calls);
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['kpi-records'] });
-      onSaved?.();
+      qc.invalidateQueries({ queryKey: ['kpi-live'] });
       onClose();
     },
     onError: () => setSaveError('Failed to save scores. Please try again.'),
@@ -88,13 +89,10 @@ function KpiScoreEntryPanel({
           <div>
             <h2 className="text-sm font-semibold text-gray-900">Enter Monthly KPI Scores</h2>
             <p className="text-xs text-gray-400 mt-0.5">
-              3 manual metrics · {PERIOD_LABELS[period] ?? period} · {employees.length} employees
+              3 manual metrics · {PERIOD_OPTIONS.find((p) => p.value === period)?.label ?? period} · {employees.length} employees
             </p>
           </div>
-          <button
-            onClick={onClose}
-            className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition"
-          >
+          <button onClick={onClose} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
@@ -105,9 +103,7 @@ function KpiScoreEntryPanel({
           <table className="w-full text-sm">
             <thead className="sticky top-0 bg-white z-10">
               <tr className="bg-gray-50 border-b border-gray-100">
-                <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide w-48">
-                  Employee
-                </th>
+                <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide w-48">Employee</th>
                 {MANUAL_METRICS.map((m) => (
                   <th key={m.id} className="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wide">
                     {m.label}
@@ -130,10 +126,7 @@ function KpiScoreEntryPanel({
                         onChange={(e) =>
                           setScores((prev) => ({
                             ...prev,
-                            [emp.userId]: {
-                              ...prev[emp.userId],
-                              [m.id]: Number(e.target.value),
-                            },
+                            [emp.userId]: { ...prev[emp.userId], [m.id]: Number(e.target.value) },
                           }))
                         }
                         className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 w-16"
@@ -153,10 +146,7 @@ function KpiScoreEntryPanel({
         <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-between gap-3">
           {saveError && <p className="text-xs text-red-500">{saveError}</p>}
           <div className="flex items-center gap-3 ml-auto">
-            <button
-              onClick={onClose}
-              className="text-sm text-gray-500 hover:text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-100 transition"
-            >
+            <button onClick={onClose} className="text-sm text-gray-500 hover:text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-100 transition">
               Cancel
             </button>
             <button
@@ -179,13 +169,24 @@ export function KpiPage() {
   const user = useAuthStore((s) => s.user);
   const isAdminOrSuper = user?.systemRole === 'SUPER_USER' || user?.systemRole === 'ADMIN';
 
-  const [selectedPeriod, setSelectedPeriod] = useState('2026-05');
+  const [selectedPeriod, setSelectedPeriod] = useState(DEFAULT_PERIOD);
   const [deptFilter, setDeptFilter] = useState('All Departments');
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedUserId, setExpandedUserId] = useState<string | null>(null);
   const [showScoreEntry, setShowScoreEntry] = useState(false);
 
-  const employees = useMemo(() => STATIC_KPI_DATA as EmployeeKpiRecord[], []);
+  const { data: liveData = [], isLoading } = useQuery({
+    queryKey: ['kpi-live', selectedPeriod],
+    queryFn: () => analyticsApi.getKpi(selectedPeriod),
+    staleTime: 60_000,
+  });
+
+  const employees = useMemo(() => liveData.map(transformLiveKpi), [liveData]);
+
+  const departments = useMemo(() => {
+    const depts = [...new Set(employees.map((e) => e.department))].filter(Boolean).sort();
+    return ['All Departments', ...depts];
+  }, [employees]);
 
   const filteredEmployees = useMemo(() => {
     return employees.filter((emp) => {
@@ -203,13 +204,17 @@ export function KpiPage() {
     [filteredEmployees, selectedPeriod],
   );
 
-  function toggleRow(userId: string) {
-    setExpandedUserId((prev) => (prev === userId ? null : userId));
-  }
-
-  // Employee view — show own KPI
+  // ── Employee view — own KPI only ─────────────────────────────────────────────
   if (!isAdminOrSuper) {
     const ownRecord = employees.find((e) => e.userId === user?.id);
+
+    if (isLoading) {
+      return (
+        <div className="flex items-center justify-center h-64">
+          <div className="w-6 h-6 border-2 border-primary-300 border-t-primary-600 rounded-full animate-spin" />
+        </div>
+      );
+    }
 
     if (!ownRecord) {
       return (
@@ -225,11 +230,24 @@ export function KpiPage() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-xl font-bold text-gray-900">My KPI Appraisal</h1>
-            <p className="text-sm text-gray-400 mt-0.5">Period: {PERIOD_LABELS[selectedPeriod]}</p>
+            <p className="text-sm text-gray-400 mt-0.5">
+              Period: {PERIOD_OPTIONS.find((p) => p.value === selectedPeriod)?.label ?? selectedPeriod}
+            </p>
           </div>
-          <span className={`text-sm font-bold px-3 py-1.5 rounded-full ${grade.bg} ${grade.text}`}>
-            Grade {ownRecord.grade} — {ownRecord.totalScore} / 100
-          </span>
+          <div className="flex items-center gap-3">
+            <span className={`text-sm font-bold px-3 py-1.5 rounded-full ${grade.bg} ${grade.text}`}>
+              Grade {ownRecord.grade} — {ownRecord.totalScore} / 100
+            </span>
+            <select
+              value={selectedPeriod}
+              onChange={(e) => setSelectedPeriod(e.target.value)}
+              className="text-sm border border-gray-200 rounded-lg px-3 py-1.5 bg-white text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              {PERIOD_OPTIONS.map((p) => (
+                <option key={p.value} value={p.value}>{p.label}</option>
+              ))}
+            </select>
+          </div>
         </div>
         <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
           <KpiRadarChart employee={ownRecord} />
@@ -239,14 +257,14 @@ export function KpiPage() {
     );
   }
 
+  // ── Admin / Super User view ────────────────────────────────────────────────
   return (
     <div className="space-y-6">
-      {/* ── Header ── */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <h1 className="text-xl font-bold text-gray-900">KPI Appraisal</h1>
           <p className="text-sm text-gray-400 mt-0.5">
-            Digital Appraisal System · {PERIOD_LABELS[selectedPeriod]}
+            Digital Appraisal System · {PERIOD_OPTIONS.find((p) => p.value === selectedPeriod)?.label ?? selectedPeriod}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -255,30 +273,33 @@ export function KpiPage() {
             className="flex items-center gap-1.5 text-xs font-medium text-white bg-primary-600 hover:bg-primary-700 px-3 py-1.5 rounded-lg transition"
           >
             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
             </svg>
             Enter Monthly Scores
           </button>
           <label className="text-xs text-gray-500 font-medium shrink-0">Period:</label>
           <select
             value={selectedPeriod}
-            onChange={(e) => setSelectedPeriod(e.target.value)}
+            onChange={(e) => { setSelectedPeriod(e.target.value); setExpandedUserId(null); }}
             className="text-sm border border-gray-200 rounded-lg px-3 py-1.5 bg-white text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
-            {AVAILABLE_PERIODS.map((p) => (
-              <option key={p} value={p}>
-                {PERIOD_LABELS[p] ?? p}
-              </option>
+            {PERIOD_OPTIONS.map((p) => (
+              <option key={p.value} value={p.value}>{p.label}</option>
             ))}
           </select>
         </div>
       </div>
 
-      <>
+      {isLoading ? (
+        <div className="flex items-center justify-center h-48">
+          <div className="w-6 h-6 border-2 border-primary-300 border-t-primary-600 rounded-full animate-spin" />
+        </div>
+      ) : (
+        <>
           {summary && (
             <>
               <KpiSummaryCards summary={summary} />
-
               <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
                 <div className="xl:col-span-2">
                   <KpiCategoryBarChart categoryAverages={summary.categoryAverages} />
@@ -287,7 +308,6 @@ export function KpiPage() {
                   <KpiGradePieChart summary={summary} />
                 </div>
               </div>
-
               <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
                 <div className="xl:col-span-1">
                   <KpiLeaderboard employees={filteredEmployees} />
@@ -299,7 +319,7 @@ export function KpiPage() {
             </>
           )}
 
-          {/* ── Employee KPI Table ── */}
+          {/* Employee KPI Table */}
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
             <div className="px-5 py-4 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center gap-3">
               <div>
@@ -326,9 +346,7 @@ export function KpiPage() {
                   onChange={(e) => setDeptFilter(e.target.value)}
                   className="text-sm border border-gray-200 rounded-lg px-2.5 py-1.5 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
-                  {DEPT_FILTERS.map((d) => (
-                    <option key={d}>{d}</option>
-                  ))}
+                  {departments.map((d) => <option key={d}>{d}</option>)}
                 </select>
               </div>
             </div>
@@ -375,21 +393,21 @@ export function KpiPage() {
                         key={emp.userId}
                         employee={emp}
                         isExpanded={expandedUserId === emp.userId}
-                        onToggle={() => toggleRow(emp.userId)}
+                        onToggle={() => setExpandedUserId((prev) => (prev === emp.userId ? null : emp.userId))}
                       />
                     ))}
                 </tbody>
               </table>
             </div>
           </div>
-      </>
+        </>
+      )}
 
       {showScoreEntry && (
         <KpiScoreEntryPanel
           employees={filteredEmployees}
           period={selectedPeriod}
           onClose={() => setShowScoreEntry(false)}
-          onSaved={() => setShowScoreEntry(false)}
         />
       )}
     </div>
@@ -398,15 +416,16 @@ export function KpiPage() {
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
-interface RowProps {
+function EmployeeRow({
+  employee,
+  isExpanded,
+  onToggle,
+}: {
   employee: EmployeeKpiRecord;
   isExpanded: boolean;
   onToggle: () => void;
-}
-
-function EmployeeRow({ employee, isExpanded, onToggle }: RowProps) {
+}) {
   const grade = GRADE_CONFIG[employee.grade];
-
   const getCatScore = (catName: string) =>
     employee.categoryScores.find((c) => c.category === catName);
 
@@ -488,7 +507,7 @@ function EmployeeRow({ employee, isExpanded, onToggle }: RowProps) {
   );
 }
 
-function ScoreCell({ score, max: _max, pct }: { score: number; max: number; pct: number }) {
+function ScoreCell({ score, pct }: { score: number; max: number; pct: number }) {
   const color = pct >= 80 ? '#10B981' : pct >= 60 ? '#3B82F6' : pct >= 40 ? '#F59E0B' : '#EF4444';
   return (
     <div className="flex flex-col items-center gap-0.5">
@@ -502,18 +521,18 @@ function ScoreCell({ score, max: _max, pct }: { score: number; max: number; pct:
 
 function ScoreGuideCard() {
   const categories = [
-    { name: 'Delivery & Execution (D & E)',         max: 50, color: '#3B82F6', metrics: 'Sprint · Delivery · Estimation · Throughput' },
-    { name: 'Quality & Engineering (Q & E)',         max: 20, color: '#10B981', metrics: 'Rework Ratio · Defect Leakage · Engineering Hygiene' },
-    { name: 'Ownership & Collaboration (O & C)',     max: 10, color: '#8B5CF6', metrics: 'Dependency & Agile · Reporting & Docs' },
-    { name: 'Growth & Innovation (G & I)',           max: 10, color: '#F59E0B', metrics: 'Learning Velocity · Automation & Innovation' },
-    { name: 'Behaviour & Reliability (B & R)',       max: 10, color: '#EC4899', metrics: 'Attendance · Positive Behaviour' },
+    { name: 'Delivery & Execution (D & E)',       max: 50, color: '#3B82F6', metrics: 'Sprint · Delivery · Estimation · Throughput' },
+    { name: 'Quality & Engineering (Q & E)',       max: 20, color: '#10B981', metrics: 'Rework Ratio · Defect Leakage · Engineering Hygiene' },
+    { name: 'Ownership & Collaboration (O & C)',   max: 10, color: '#8B5CF6', metrics: 'Dependency & Agile · Reporting & Docs' },
+    { name: 'Growth & Innovation (G & I)',         max: 10, color: '#F59E0B', metrics: 'Learning Velocity · Automation & Innovation' },
+    { name: 'Behaviour & Reliability (B & R)',     max: 10, color: '#EC4899', metrics: 'Attendance · Positive Behaviour' },
   ];
 
   const grades = [
-    { grade: 'A', range: '90 – 100', label: 'Excellent', color: '#10B981', bg: 'bg-emerald-100', text: 'text-emerald-700' },
-    { grade: 'B', range: '75 – 89',  label: 'Good',      color: '#3B82F6', bg: 'bg-blue-100',    text: 'text-blue-700'    },
-    { grade: 'C', range: '60 – 74',  label: 'Average',   color: '#F59E0B', bg: 'bg-amber-100',   text: 'text-amber-700'   },
-    { grade: 'D', range: '< 60',     label: 'Poor',      color: '#EF4444', bg: 'bg-red-100',     text: 'text-red-700'     },
+    { grade: 'A', range: '90 – 100', label: 'Excellent', bg: 'bg-emerald-100', text: 'text-emerald-700' },
+    { grade: 'B', range: '75 – 89',  label: 'Good',      bg: 'bg-blue-100',    text: 'text-blue-700'    },
+    { grade: 'C', range: '60 – 74',  label: 'Average',   bg: 'bg-amber-100',   text: 'text-amber-700'   },
+    { grade: 'D', range: '< 60',     label: 'Poor',      bg: 'bg-red-100',     text: 'text-red-700'     },
   ];
 
   return (
@@ -557,3 +576,4 @@ function ScoreGuideCard() {
     </div>
   );
 }
+
