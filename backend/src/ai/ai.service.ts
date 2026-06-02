@@ -2,6 +2,7 @@ import { Injectable, HttpException, HttpStatus, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { SystemRole } from '@prisma/client';
 import { Ollama } from 'ollama';
+import { PrismaService } from '../prisma/prisma.service';
 import { ChatMessageDto } from './dto/chat-message.dto';
 import { ChatResponseDto, HealthResponseDto } from './dto/chat-response.dto';
 import { GetOverdueWorkItemsTool, OVERDUE_TOOL_DEFINITION } from './tools/get-overdue-work-items.tool';
@@ -28,11 +29,18 @@ const TOOL_DEFINITIONS = [
   SEARCH_WORK_ITEMS_TOOL_DEFINITION,
 ];
 
-const SYSTEM_PROMPT = `You are an AI assistant embedded in a Project Management System (PMS).
+const ADMIN_ROLES = new Set<SystemRole>([SystemRole.SUPER_USER, SystemRole.ADMIN]);
+
+const BASE_SYSTEM_PROMPT = `You are an AI assistant embedded in a Project Management System (PMS).
 You help users understand their project data — tasks, work items, sprints, milestones, bugs, and team workload.
 You have access to tools that query the live database. Use the appropriate tool(s) to answer the user's question accurately.
 Always base your answers on the tool results — do not make up data.
 Be concise, factual, and helpful. Format lists clearly. If no data is found, say so honestly.`;
+
+function buildSystemPrompt(projectName?: string): string {
+  if (!projectName) return BASE_SYSTEM_PROMPT;
+  return `${BASE_SYSTEM_PROMPT}\n\nContext: the user is asking about project "${projectName}". Scope all tool calls to this project.`;
+}
 
 @Injectable()
 export class AiService {
@@ -42,6 +50,7 @@ export class AiService {
 
   constructor(
     private readonly config: ConfigService,
+    private readonly prisma: PrismaService,
     private readonly overdueWorkItemsTool: GetOverdueWorkItemsTool,
     private readonly sprintSummaryTool: GetSprintSummaryTool,
     private readonly blockedItemsTool: GetBlockedItemsTool,
@@ -64,8 +73,13 @@ export class AiService {
     userId: string,
     systemRole: SystemRole,
   ): Promise<ChatResponseDto> {
-    const ctx = { userId, systemRole, projectId: dto.projectId };
     const conversationId = dto.conversationId ?? crypto.randomUUID();
+
+    // Resolve project scope before calling the model
+    const { projectId, projectName, clarify } = await this.resolveProjectContext(dto, userId, systemRole);
+    if (clarify) return { ...clarify, conversationId };
+
+    const ctx = { userId, systemRole, projectId };
 
     const history = (dto.history ?? []).slice(-10).map((h) => ({
       role: h.role as 'user' | 'assistant',
@@ -73,7 +87,7 @@ export class AiService {
     }));
 
     const messages: any[] = [
-      { role: 'system', content: SYSTEM_PROMPT },
+      { role: 'system', content: buildSystemPrompt(projectName) },
       ...history,
       { role: 'user', content: dto.message },
     ];
@@ -83,11 +97,11 @@ export class AiService {
 
     try {
       // First call — let the model decide which tools to call
-      const firstResponse = await this.ollama.chat({
-        model: this.model,
-        messages,
-        tools: TOOL_DEFINITIONS,
-      });
+      const firstResponse = await this.withTimeout(
+        this.ollama.chat({ model: this.model, messages, tools: TOOL_DEFINITIONS }),
+        55_000,
+        'Model did not respond in time. Try a simpler question.',
+      );
 
       let finalAnswer = firstResponse.message.content;
 
@@ -101,7 +115,6 @@ export class AiService {
           toolsUsed.push(name);
 
           let result: { data: any; sources: any[] } = { data: null, sources: [] };
-
           try {
             result = await this.executeTool(name, args, ctx);
           } catch (err) {
@@ -110,35 +123,109 @@ export class AiService {
           }
 
           allSources.push(...result.sources);
-
-          toolResultMessages.push({
-            role: 'tool',
-            content: JSON.stringify(result.data),
-          });
+          toolResultMessages.push({ role: 'tool', content: JSON.stringify(result.data) });
         }
 
         // Second call — model summarises tool results into a final answer
-        const secondResponse = await this.ollama.chat({
-          model: this.model,
-          messages: [...messages, ...toolResultMessages],
-        });
+        const secondResponse = await this.withTimeout(
+          this.ollama.chat({ model: this.model, messages: [...messages, ...toolResultMessages] }),
+          55_000,
+          'Model took too long to summarise results.',
+        );
 
         finalAnswer = secondResponse.message.content;
       }
 
-      return {
-        answer: finalAnswer,
-        sources: allSources,
-        toolsUsed,
-        conversationId,
-      };
+      return { answer: finalAnswer, sources: allSources, toolsUsed, conversationId };
     } catch (err) {
       if (err?.cause?.code === 'ECONNREFUSED' || err?.message?.includes('ECONNREFUSED')) {
-        throw new HttpException('Ollama service is not reachable. Please ensure Ollama is running.', HttpStatus.SERVICE_UNAVAILABLE);
+        throw new HttpException(
+          'Ollama is not running. Start it with: ollama serve',
+          HttpStatus.SERVICE_UNAVAILABLE,
+        );
       }
-      this.logger.error('AI chat error', err);
-      throw new HttpException('AI service error', HttpStatus.INTERNAL_SERVER_ERROR);
+      if (err instanceof HttpException) throw err;
+      this.logger.error('AI chat error', err?.message ?? err);
+      throw new HttpException(
+        err?.message ?? 'AI service error — please try again.',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
     }
+  }
+
+  private async resolveProjectContext(
+    dto: ChatMessageDto,
+    userId: string,
+    systemRole: SystemRole,
+  ): Promise<{
+    projectId?: string;
+    projectName?: string;
+    clarify?: Omit<ChatResponseDto, 'conversationId'>;
+  }> {
+    // Admins see everything — no project scoping
+    if (ADMIN_ROLES.has(systemRole)) {
+      return { projectId: dto.projectId };
+    }
+
+    // User already specified a project in this request
+    if (dto.projectId) {
+      const project = await this.prisma.project.findUnique({
+        where: { id: dto.projectId },
+        select: { name: true },
+      });
+      return { projectId: dto.projectId, projectName: project?.name };
+    }
+
+    // Fetch all projects this user is a member of
+    const memberships = await this.prisma.projectMember.findMany({
+      where: { userId },
+      select: { project: { select: { id: true, name: true } } },
+    });
+    const projects = memberships.map((m) => m.project);
+
+    if (projects.length === 0) {
+      return {
+        clarify: {
+          answer: "You are not assigned to any projects yet. Please ask your administrator to add you to a project first.",
+          sources: [],
+          toolsUsed: [],
+        },
+      };
+    }
+
+    if (projects.length === 1) {
+      return { projectId: projects[0].id, projectName: projects[0].name };
+    }
+
+    // Multiple projects — try to match the project name mentioned in the message
+    const msgLower = dto.message.toLowerCase();
+    const matched = projects.find((p) => msgLower.includes(p.name.toLowerCase()));
+    if (matched) {
+      return { projectId: matched.id, projectName: matched.name };
+    }
+
+    // Ask the user to clarify which project they mean
+    const list = projects.map((p) => `• ${p.name}`).join('\n');
+    return {
+      clarify: {
+        answer: `You are a member of ${projects.length} projects. Which project would you like me to check?\n\n${list}\n\nMention the project name in your message and I'll answer right away.`,
+        sources: projects.map((p) => ({ type: 'project' as const, id: p.id, title: p.name })),
+        toolsUsed: [],
+      },
+    };
+  }
+
+  private withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
+    return new Promise<T>((resolve, reject) => {
+      const timer = setTimeout(
+        () => reject(new HttpException(message, HttpStatus.GATEWAY_TIMEOUT)),
+        ms,
+      );
+      promise.then(
+        (val) => { clearTimeout(timer); resolve(val); },
+        (err) => { clearTimeout(timer); reject(err); },
+      );
+    });
   }
 
   async getHealth(): Promise<HealthResponseDto> {
