@@ -1,0 +1,69 @@
+name: Deploy to Local Server
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Build & Deploy (self-hosted)
+    runs-on: self-hosted
+
+    steps:
+      # ── 1. Checkout ────────────────────────────────────────────────────────
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      # ── 2. Backend ─────────────────────────────────────────────────────────
+      - name: Install backend dependencies
+        working-directory: backend
+        run: npm ci
+
+      - name: Run Prisma migrations
+        working-directory: backend
+        run: npx prisma migrate deploy
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DIRECT_URL: ${{ secrets.DIRECT_URL }}
+
+      - name: Build backend
+        working-directory: backend
+        run: npm run build
+
+      - name: Restart backend via PM2
+        working-directory: backend
+        run: |
+          pm2 describe pms-backend > /dev/null 2>&1 && pm2 restart pms-backend || pm2 start npm --name pms-backend -- run start:prod
+          pm2 save
+
+      # ── 3. Frontend ────────────────────────────────────────────────────────
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Build frontend
+        working-directory: frontend
+        run: npm run build
+        env:
+          VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}
+
+      - name: Restart frontend via PM2
+        working-directory: frontend
+        run: |
+          pm2 describe pms-frontend > /dev/null 2>&1 && pm2 restart pms-frontend || pm2 serve dist 5173 --name pms-frontend --spa
+          pm2 save
+
+      # ── 4. Health check ────────────────────────────────────────────────────
+      - name: Health check — backend
+        run: |
+          sleep 5
+          curl -f http://localhost:3000/api/v1/ai/health || echo "Backend health check failed"
+
+      # ── 5. Summary ─────────────────────────────────────────────────────────
+      - name: Deployment summary
+        run: |
+          echo "✅ Deployment complete"
+          pm2 list
