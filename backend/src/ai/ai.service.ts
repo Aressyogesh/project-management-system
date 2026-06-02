@@ -107,7 +107,11 @@ export class AiService {
 
       // Execute any tool calls the model requested
       if (firstResponse.message.tool_calls?.length) {
-        const toolResultMessages: any[] = [{ role: 'assistant', content: firstResponse.message }];
+        const toolResultMessages: any[] = [{
+          role: 'assistant',
+          content: firstResponse.message.content ?? '',
+          tool_calls: firstResponse.message.tool_calls,
+        }];
 
         for (const toolCall of firstResponse.message.tool_calls) {
           const name = toolCall.function.name;
