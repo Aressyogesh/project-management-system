@@ -2,8 +2,20 @@ import { useRef, useEffect } from 'react';
 import { useAIChat } from '../hooks/useAIChat';
 import { ChatMessageBubble, TypingIndicator } from '../components/ChatMessage';
 import { ChatInput } from '../components/ChatInput';
+import { useAuthStore } from '../../../store/authStore';
 
-const SUGGESTED_PROMPTS = [
+const EMPLOYEE_PROMPTS = [
+  'Show my blocked items',
+  'What are my overdue tasks?',
+  'What did I complete this week?',
+  "What's assigned to me in the current sprint?",
+  'Show my open bugs',
+  'Show project milestones',
+  'What is the current sprint velocity?',
+  'Show my project progress',
+];
+
+const ADMIN_PROMPTS = [
   'What tasks are overdue?',
   'Show project progress',
   'Who has the highest workload?',
@@ -17,6 +29,8 @@ const SUGGESTED_PROMPTS = [
 export function AIAssistantPage() {
   const { messages, isLoading, error, sendMessage, clearMessages } = useAIChat();
   const bottomRef = useRef<HTMLDivElement>(null);
+  const systemRole = useAuthStore((s) => s.user?.systemRole);
+  const prompts = systemRole === 'EMPLOYEE' ? EMPLOYEE_PROMPTS : ADMIN_PROMPTS;
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -60,7 +74,7 @@ export function AIAssistantPage() {
                 <p className="text-sm text-gray-500 mt-1">I can query your live project data — tasks, sprints, milestones, workload and more.</p>
               </div>
               <div className="grid grid-cols-2 gap-2 w-full max-w-lg">
-                {SUGGESTED_PROMPTS.map((p) => (
+                {prompts.map((p) => (
                   <button
                     key={p}
                     onClick={() => sendMessage(p)}

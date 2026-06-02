@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { SystemRole } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AiSourceDto } from '../dto/chat-response.dto';
 import { ToolContext } from './get-overdue-work-items.tool';
@@ -43,8 +44,11 @@ export class GetSprintSummaryTool {
       return { data: { message: 'No sprint found.' }, sources: [] };
     }
 
+    const itemWhere: any = { sprintId: sprint.id };
+    if (ctx.systemRole === SystemRole.EMPLOYEE) itemWhere.assigneeId = ctx.userId;
+
     const items = await this.prisma.workItem.findMany({
-      where: { sprintId: sprint.id },
+      where: itemWhere,
       select: {
         id: true, title: true, status: true, priority: true,
         type: true, storyPoints: true,

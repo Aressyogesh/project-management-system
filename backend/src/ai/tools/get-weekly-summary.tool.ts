@@ -8,7 +8,7 @@ export const WEEKLY_SUMMARY_TOOL_DEFINITION = {
   type: 'function' as const,
   function: {
     name: 'get_weekly_summary',
-    description: 'Returns work items completed this week (since Monday). CALL THIS for: "this week", "weekly summary", "done this week", "completed this week", "weekly output".',
+    description: 'Returns work items completed this week (status QA_DONE since Monday). CALL THIS for: "this week", "done this week", "completed this week", "weekly summary", "weekly output".',
     parameters: {
       type: 'object',
       properties: {

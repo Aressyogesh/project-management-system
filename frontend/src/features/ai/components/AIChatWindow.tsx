@@ -2,13 +2,21 @@ import { useEffect, useRef } from 'react';
 import { useAIChat } from '../hooks/useAIChat';
 import { ChatMessageBubble, TypingIndicator } from './ChatMessage';
 import { ChatInput } from './ChatInput';
+import { useAuthStore } from '../../../store/authStore';
 
 interface Props {
   onClose: () => void;
   projectId?: string;
 }
 
-const SUGGESTED_PROMPTS = [
+const EMPLOYEE_PROMPTS = [
+  'Show my blocked items',
+  'What are my overdue tasks?',
+  'What did I complete this week?',
+  "What's in my current sprint?",
+];
+
+const ADMIN_PROMPTS = [
   'What tasks are overdue?',
   'Show project progress',
   'Who has the highest workload?',
@@ -18,6 +26,8 @@ const SUGGESTED_PROMPTS = [
 export function AIChatWindow({ onClose, projectId }: Props) {
   const { messages, isLoading, error, sendMessage, clearMessages } = useAIChat(projectId);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const systemRole = useAuthStore((s) => s.user?.systemRole);
+  const prompts = systemRole === 'EMPLOYEE' ? EMPLOYEE_PROMPTS : ADMIN_PROMPTS;
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -79,7 +89,7 @@ export function AIChatWindow({ onClose, projectId }: Props) {
               <p className="text-xs text-gray-400 mt-1">Ask about tasks, sprints, milestones, or team workload.</p>
             </div>
             <div className="flex flex-col gap-2 w-full max-w-[220px]">
-              {SUGGESTED_PROMPTS.map((prompt) => (
+              {prompts.map((prompt) => (
                 <button
                   key={prompt}
                   onClick={() => sendMessage(prompt)}

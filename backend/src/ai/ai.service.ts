@@ -31,6 +31,26 @@ const TOOL_DEFINITIONS = [
 
 const ADMIN_ROLES = new Set<SystemRole>([SystemRole.SUPER_USER, SystemRole.ADMIN]);
 
+// Pre-route known query patterns directly to a tool — skips the slow first Ollama call
+const KEYWORD_ROUTES: [RegExp, string][] = [
+  [/blocked/i,                                         'get_blocked_items'],
+  [/overdue|missed deadline|past due|late task/i,      'get_overdue_work_items'],
+  [/this week|done this week|completed this week|weekly/i, 'get_weekly_summary'],
+  [/my sprint|in.*sprint|sprint.*item|current sprint|sprint summary/i, 'get_sprint_summary'],
+  [/workload|who.*busy|highest workload|capacity/i,    'get_team_workload'],
+  [/bug|defect/i,                                      'get_bug_summary'],
+  [/milestone/i,                                       'get_milestone_status'],
+  [/velocity|story point|burndown/i,                   'get_sprint_velocity'],
+  [/progress/i,                                        'get_project_progress'],
+];
+
+function preRoute(message: string): string | null {
+  for (const [pattern, tool] of KEYWORD_ROUTES) {
+    if (pattern.test(message)) return tool;
+  }
+  return null;
+}
+
 const BASE_SYSTEM_PROMPT = `You are an AI assistant embedded in a Project Management System (PMS).
 You help users understand their project data — tasks, work items, sprints, milestones, bugs, and team workload.
 You MUST call one or more tools to answer any question about project data. Never invent data.
@@ -111,18 +131,38 @@ export class AiService {
     const toolsUsed: string[] = [];
 
     try {
-      // First call — let the model decide which tools to call
-      const firstResponse = await this.withTimeout(
-        this.ollama.chat({ model: this.model, messages, tools: TOOL_DEFINITIONS }),
-        55_000,
-        'Model did not respond in time. Try a simpler question.',
-      );
+      const preRoutedTool = preRoute(dto.message);
+      let toolResultMessages: any[] = [];
 
-      let finalAnswer = firstResponse.message.content;
+      if (preRoutedTool) {
+        // Fast path — skip the first Ollama call entirely
+        this.logger.log(`Pre-routed "${dto.message}" → ${preRoutedTool}`);
+        toolsUsed.push(preRoutedTool);
+        let result: { data: any; sources: any[] } = { data: null, sources: [] };
+        try {
+          result = await this.executeTool(preRoutedTool, {}, ctx);
+        } catch (err) {
+          this.logger.warn(`Tool ${preRoutedTool} failed: ${err.message}`);
+          result = { data: { error: `Tool ${preRoutedTool} returned no data.` }, sources: [] };
+        }
+        allSources.push(...result.sources);
+        toolResultMessages = [
+          { role: 'assistant', content: '', tool_calls: [{ function: { name: preRoutedTool, arguments: {} } }] },
+          { role: 'tool', content: JSON.stringify(result.data) },
+        ];
+      } else {
+        // Slow path — ask the model to select a tool
+        const firstResponse = await this.withTimeout(
+          this.ollama.chat({ model: this.model, messages, tools: TOOL_DEFINITIONS }),
+          55_000,
+          'Model did not respond in time. Try a simpler question.',
+        );
 
-      // Execute any tool calls the model requested
-      if (firstResponse.message.tool_calls?.length) {
-        const toolResultMessages: any[] = [{
+        if (!firstResponse.message.tool_calls?.length) {
+          return { answer: firstResponse.message.content, sources: [], toolsUsed, conversationId };
+        }
+
+        toolResultMessages = [{
           role: 'assistant',
           content: firstResponse.message.content ?? '',
           tool_calls: firstResponse.message.tool_calls,
@@ -144,18 +184,16 @@ export class AiService {
           allSources.push(...result.sources);
           toolResultMessages.push({ role: 'tool', content: JSON.stringify(result.data) });
         }
-
-        // Second call — model summarises tool results into a final answer
-        const secondResponse = await this.withTimeout(
-          this.ollama.chat({ model: this.model, messages: [...messages, ...toolResultMessages] }),
-          55_000,
-          'Model took too long to summarise results.',
-        );
-
-        finalAnswer = secondResponse.message.content;
       }
 
-      return { answer: finalAnswer, sources: allSources, toolsUsed, conversationId };
+      // Final call — model summarises tool results into a natural language answer
+      const summaryResponse = await this.withTimeout(
+        this.ollama.chat({ model: this.model, messages: [...messages, ...toolResultMessages] }),
+        55_000,
+        'Model took too long to summarise results.',
+      );
+
+      return { answer: summaryResponse.message.content, sources: allSources, toolsUsed, conversationId };
     } catch (err) {
       if (err?.cause?.code === 'ECONNREFUSED' || err?.message?.includes('ECONNREFUSED')) {
         throw new HttpException(
