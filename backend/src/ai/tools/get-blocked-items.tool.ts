@@ -8,7 +8,7 @@ export const BLOCKED_ITEMS_TOOL_DEFINITION = {
   type: 'function' as const,
   function: {
     name: 'get_blocked_items',
-    description: 'Returns work items with BLOCKED status. Use when user asks about blockers, blocked tasks, or impediments.',
+    description: 'Returns work items with BLOCKED status. CALL THIS for: "blocked items", "blockers", "impediments", "stuck tasks", "Any blocked items?".',
     parameters: {
       type: 'object',
       properties: {
@@ -31,9 +31,13 @@ export class GetBlockedItemsTool {
 
     if (ctx.systemRole === SystemRole.EMPLOYEE) {
       where.assigneeId = ctx.userId;
+      where.project = { status: 'ACTIVE' };
+    } else if (projectId) {
+      where.projectId = projectId;
+    } else {
+      where.project = { status: 'ACTIVE' };
     }
     if (args.sprintId) where.sprintId = args.sprintId;
-    if (projectId) where.projectId = projectId;
 
     const items = await this.prisma.workItem.findMany({
       where,
@@ -47,12 +51,26 @@ export class GetBlockedItemsTool {
       },
     });
 
-    const sources: AiSourceDto[] = items.map((i) => ({
+    const workItemSources: AiSourceDto[] = items.map((i) => ({
       type: 'work_item',
       id: i.id,
       title: i.title,
     }));
 
-    return { data: items, sources };
+    // Board links — one per unique project with blocked items
+    const projectsSeen = new Map<string, string>();
+    items.forEach((i) => {
+      if (i.project && !projectsSeen.has(i.project.id)) {
+        projectsSeen.set(i.project.id, i.project.name);
+      }
+    });
+    const boardSources: AiSourceDto[] = Array.from(projectsSeen.entries()).map(([id, name]) => ({
+      type: 'board',
+      id,
+      title: `${name} Board`,
+      url: `/projects/${id}/board`,
+    }));
+
+    return { data: items, sources: [...boardSources, ...workItemSources] };
   }
 }

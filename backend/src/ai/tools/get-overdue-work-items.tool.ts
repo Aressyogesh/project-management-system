@@ -13,7 +13,7 @@ export const OVERDUE_TOOL_DEFINITION = {
   type: 'function' as const,
   function: {
     name: 'get_overdue_work_items',
-    description: 'Returns work items and tasks that are past their due date and not yet completed (QA_DONE). Use when user asks about overdue tasks, missed deadlines, or late items.',
+    description: 'Returns work items past their due date that are not yet completed. CALL THIS for: "overdue tasks", "missed deadlines", "late items", "past due", "What tasks are overdue?".',
     parameters: {
       type: 'object',
       properties: {
@@ -40,8 +40,11 @@ export class GetOverdueWorkItemsTool {
 
     if (ctx.systemRole === SystemRole.EMPLOYEE) {
       where.assigneeId = ctx.userId;
+      where.project = { status: 'ACTIVE' };
     } else if (projectId) {
       where.projectId = projectId;
+    } else {
+      where.project = { status: 'ACTIVE' };
     }
 
     const items = await this.prisma.workItem.findMany({

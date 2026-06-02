@@ -8,7 +8,7 @@ export const SEARCH_WORK_ITEMS_TOOL_DEFINITION = {
   type: 'function' as const,
   function: {
     name: 'search_work_items',
-    description: 'Free-text search across work item titles and descriptions. Use when user asks to find or search for specific work items by keyword.',
+    description: 'Free-text search across work item titles and descriptions. CALL THIS for: "find", "search for", "look for", or any specific task/feature name lookup.',
     parameters: {
       type: 'object',
       properties: {
@@ -36,8 +36,14 @@ export class SearchWorkItemsTool {
       ],
     };
 
-    if (ctx.systemRole === SystemRole.EMPLOYEE) where.assigneeId = ctx.userId;
-    if (projectId) where.projectId = projectId;
+    if (ctx.systemRole === SystemRole.EMPLOYEE) {
+      where.assigneeId = ctx.userId;
+      where.project = { status: 'ACTIVE' };
+    } else if (projectId) {
+      where.projectId = projectId;
+    } else {
+      where.project = { status: 'ACTIVE' };
+    }
 
     const items = await this.prisma.workItem.findMany({
       where,

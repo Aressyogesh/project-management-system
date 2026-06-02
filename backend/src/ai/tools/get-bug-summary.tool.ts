@@ -8,7 +8,7 @@ export const BUG_SUMMARY_TOOL_DEFINITION = {
   type: 'function' as const,
   function: {
     name: 'get_bug_summary',
-    description: 'Returns a summary of bugs grouped by severity and status. Use when user asks about bugs, defects, issues, or bug counts.',
+    description: 'Returns bugs grouped by severity and status. CALL THIS for: "bugs", "defects", "bug count", "issues", "how many bugs", "bug summary".',
     parameters: {
       type: 'object',
       properties: {
@@ -27,8 +27,14 @@ export class GetBugSummaryTool {
     const projectId = args.projectId ?? ctx.projectId;
 
     const where: any = { type: 'BUG' };
-    if (projectId) where.projectId = projectId;
-    if (ctx.systemRole === SystemRole.EMPLOYEE) where.assigneeId = ctx.userId;
+    if (ctx.systemRole === SystemRole.EMPLOYEE) {
+      where.assigneeId = ctx.userId;
+      where.project = { status: 'ACTIVE' };
+    } else if (projectId) {
+      where.projectId = projectId;
+    } else {
+      where.project = { status: 'ACTIVE' };
+    }
 
     const [bySeverity, byStatus, recent] = await Promise.all([
       this.prisma.workItem.groupBy({

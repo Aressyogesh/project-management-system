@@ -7,7 +7,7 @@ export const SPRINT_SUMMARY_TOOL_DEFINITION = {
   type: 'function' as const,
   function: {
     name: 'get_sprint_summary',
-    description: 'Returns a summary of work items in a sprint grouped by status. Use when user asks about a specific sprint, its items, progress, or what is in the current sprint.',
+    description: 'Returns work items in the current/active sprint grouped by status. CALL THIS for: "sprint summary", "current sprint", "what is in the sprint", "sprint items", "sprint progress", "Show current sprint".',
     parameters: {
       type: 'object',
       properties: {
@@ -28,10 +28,14 @@ export class GetSprintSummaryTool {
 
     let sprint: any = null;
     if (args.sprintId) {
-      sprint = await this.prisma.sprint.findUnique({ where: { id: args.sprintId } });
+      const found = await this.prisma.sprint.findUnique({
+        where: { id: args.sprintId },
+        include: { project: { select: { status: true } } },
+      });
+      if (found && (found as any).project?.status === 'ACTIVE') sprint = found;
     } else if (projectId) {
       sprint = await this.prisma.sprint.findFirst({
-        where: { projectId, isActive: true },
+        where: { projectId, isActive: true, project: { status: 'ACTIVE' } },
       });
     }
 

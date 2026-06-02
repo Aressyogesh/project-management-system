@@ -8,7 +8,7 @@ export const WEEKLY_SUMMARY_TOOL_DEFINITION = {
   type: 'function' as const,
   function: {
     name: 'get_weekly_summary',
-    description: 'Returns work items completed this week (since Monday). Use when user asks about work done this week, weekly output, or recent completions.',
+    description: 'Returns work items completed this week (since Monday). CALL THIS for: "this week", "weekly summary", "done this week", "completed this week", "weekly output".',
     parameters: {
       type: 'object',
       properties: {
@@ -42,8 +42,14 @@ export class GetWeeklySummaryTool {
       status: 'QA_DONE',
     };
 
-    if (ctx.systemRole === SystemRole.EMPLOYEE) where.assigneeId = ctx.userId;
-    if (projectId) where.projectId = projectId;
+    if (ctx.systemRole === SystemRole.EMPLOYEE) {
+      where.assigneeId = ctx.userId;
+      where.project = { status: 'ACTIVE' };
+    } else if (projectId) {
+      where.projectId = projectId;
+    } else {
+      where.project = { status: 'ACTIVE' };
+    }
 
     const items = await this.prisma.workItem.findMany({
       where,

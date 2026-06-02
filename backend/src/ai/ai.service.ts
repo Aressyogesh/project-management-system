@@ -33,9 +33,24 @@ const ADMIN_ROLES = new Set<SystemRole>([SystemRole.SUPER_USER, SystemRole.ADMIN
 
 const BASE_SYSTEM_PROMPT = `You are an AI assistant embedded in a Project Management System (PMS).
 You help users understand their project data — tasks, work items, sprints, milestones, bugs, and team workload.
-You have access to tools that query the live database. Use the appropriate tool(s) to answer the user's question accurately.
-Always base your answers on the tool results — do not make up data.
-Be concise, factual, and helpful. Format lists clearly. If no data is found, say so honestly.`;
+You MUST call one or more tools to answer any question about project data. Never invent data.
+
+Tool selection guide (use the BEST match):
+- "overdue", "missed deadline", "late tasks", "past due" → get_overdue_work_items
+- "sprint summary", "current sprint", "sprint items", "what's in the sprint" → get_sprint_summary
+- "blocked", "blockers", "impediments", "stuck" → get_blocked_items
+- "project progress", "completion", "how far along", "project status" → get_project_progress
+- "workload", "who is busy", "capacity", "assignments", "team load" → get_team_workload
+- "bugs", "defects", "issues", "bug count" → get_bug_summary
+- "this week", "weekly", "done this week", "completed this week" → get_weekly_summary
+- "milestones", "deliveries", "delivery dates", "release dates" → get_milestone_status
+- "velocity", "story points", "burndown", "points delivered" → get_sprint_velocity
+- "find", "search", "look for" + keyword → search_work_items
+
+Rules:
+- Only return data from ACTIVE projects (archived projects are excluded automatically).
+- Be concise and factual. Format lists clearly with item titles and status.
+- If no data is found, say so honestly.`;
 
 function buildSystemPrompt(projectName?: string): string {
   if (!projectName) return BASE_SYSTEM_PROMPT;
@@ -175,14 +190,23 @@ export class AiService {
     if (dto.projectId) {
       const project = await this.prisma.project.findUnique({
         where: { id: dto.projectId },
-        select: { name: true },
+        select: { name: true, status: true },
       });
-      return { projectId: dto.projectId, projectName: project?.name };
+      if (!project || (project as any).status === 'ARCHIVE') {
+        return {
+          clarify: {
+            answer: 'That project is archived and no longer active. I can only provide information about active projects.',
+            sources: [],
+            toolsUsed: [],
+          },
+        };
+      }
+      return { projectId: dto.projectId, projectName: project.name };
     }
 
-    // Fetch all projects this user is a member of
+    // Fetch only ACTIVE projects this user is a member of
     const memberships = await this.prisma.projectMember.findMany({
-      where: { userId },
+      where: { userId, project: { status: 'ACTIVE' } },
       select: { project: { select: { id: true, name: true } } },
     });
     const projects = memberships.map((m) => m.project);

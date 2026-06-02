@@ -8,7 +8,7 @@ export const PROJECT_PROGRESS_TOOL_DEFINITION = {
   type: 'function' as const,
   function: {
     name: 'get_project_progress',
-    description: 'Returns completion percentage for one or all projects. Use when user asks about project progress, how far along a project is, or overall project health.',
+    description: 'Returns completion percentage for active projects. CALL THIS for: "project progress", "how far along", "Show project progress", "project completion", "project health", "project status".',
     parameters: {
       type: 'object',
       properties: {

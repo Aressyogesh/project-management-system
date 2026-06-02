@@ -7,7 +7,7 @@ export const TEAM_WORKLOAD_TOOL_DEFINITION = {
   type: 'function' as const,
   function: {
     name: 'get_team_workload',
-    description: 'Returns team members ranked by number of open (non-completed) work items assigned to them. Use when user asks about workload, who is busy, capacity, or assignments.',
+    description: 'Returns team members ranked by open work items assigned. CALL THIS for: "workload", "who is busy", "highest workload", "capacity", "who has most tasks", "Who has the highest workload?".',
     parameters: {
       type: 'object',
       properties: {
@@ -31,7 +31,11 @@ export class GetTeamWorkloadTool {
       assigneeId: { not: null },
       status: { notIn: ['QA_DONE'] },
     };
-    if (projectId) where.projectId = projectId;
+    if (projectId) {
+      where.projectId = projectId;
+    } else {
+      where.project = { status: 'ACTIVE' };
+    }
 
     const grouped = await this.prisma.workItem.groupBy({
       by: ['assigneeId'],

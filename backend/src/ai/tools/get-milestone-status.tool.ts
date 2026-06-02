@@ -7,7 +7,7 @@ export const MILESTONE_STATUS_TOOL_DEFINITION = {
   type: 'function' as const,
   function: {
     name: 'get_milestone_status',
-    description: 'Returns milestones and their current status. Use when user asks about milestones, deliveries, delayed milestones, or upcoming due dates.',
+    description: 'Returns milestones and their status. CALL THIS for: "milestones", "deliveries", "delivery dates", "delayed milestones", "upcoming milestones", "release dates".',
     parameters: {
       type: 'object',
       properties: {
@@ -27,7 +27,11 @@ export class GetMilestoneStatusTool {
     const projectId = args.projectId ?? ctx.projectId;
 
     const where: any = {};
-    if (projectId) where.projectId = projectId;
+    if (projectId) {
+      where.projectId = projectId;
+    } else {
+      where.project = { status: 'ACTIVE' };
+    }
     if (args.status) where.status = args.status;
 
     const milestones = await this.prisma.milestone.findMany({

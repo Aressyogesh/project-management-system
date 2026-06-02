@@ -1,7 +1,8 @@
 export class AiSourceDto {
-  type: 'work_item' | 'project' | 'sprint' | 'milestone';
+  type: 'work_item' | 'project' | 'sprint' | 'milestone' | 'board';
   id: string;
   title: string;
+  url?: string;
 }
 
 export class ChatResponseDto {

@@ -7,7 +7,7 @@ export const SPRINT_VELOCITY_TOOL_DEFINITION = {
   type: 'function' as const,
   function: {
     name: 'get_sprint_velocity',
-    description: 'Returns story points committed vs delivered for a sprint. Use when user asks about sprint velocity, burndown, or story points.',
+    description: 'Returns story points committed vs delivered for the current sprint. CALL THIS for: "velocity", "story points", "burndown", "points delivered", "sprint velocity".',
     parameters: {
       type: 'object',
       properties: {
@@ -28,9 +28,15 @@ export class GetSprintVelocityTool {
 
     let sprint: any = null;
     if (args.sprintId) {
-      sprint = await this.prisma.sprint.findUnique({ where: { id: args.sprintId } });
+      const found = await this.prisma.sprint.findUnique({
+        where: { id: args.sprintId },
+        include: { project: { select: { status: true } } },
+      });
+      if (found && (found as any).project?.status === 'ACTIVE') sprint = found;
     } else if (projectId) {
-      sprint = await this.prisma.sprint.findFirst({ where: { projectId, isActive: true } });
+      sprint = await this.prisma.sprint.findFirst({
+        where: { projectId, isActive: true, project: { status: 'ACTIVE' } },
+      });
     }
 
     if (!sprint) {
