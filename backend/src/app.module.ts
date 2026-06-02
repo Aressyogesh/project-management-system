@@ -31,6 +31,7 @@ import { NotificationsModule } from './notifications/notifications.module';
 import { LeaveRequestsModule } from './leave-requests/leave-requests.module';
 import { BoardColumnConfigsModule } from './board-column-configs/board-column-configs.module';
 import { TestCasesModule } from './test-cases/test-cases.module';
+import { AiModule } from './ai/ai.module';
 
 @Module({
   imports: [
@@ -62,6 +63,7 @@ import { TestCasesModule } from './test-cases/test-cases.module';
     LeaveRequestsModule,
     BoardColumnConfigsModule,
     TestCasesModule,
+    AiModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: GlobalExceptionFilter },

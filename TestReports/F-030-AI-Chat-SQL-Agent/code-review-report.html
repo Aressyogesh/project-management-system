@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Code Review Report — F-030 AI Chat SQL Agent</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f8fafc; color: #1e293b; padding: 32px; }
+  h1 { font-size: 22px; font-weight: 700; color: #0f172a; margin-bottom: 4px; }
+  .subtitle { font-size: 14px; color: #64748b; margin-bottom: 28px; }
+  .summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 28px; }
+  .stat { background: white; border: 1px solid #e2e8f0; border-radius: 10px; padding: 20px; text-align: center; }
+  .stat .num { font-size: 36px; font-weight: 800; margin-bottom: 4px; }
+  .stat .lbl { font-size: 12px; color: #64748b; font-weight: 500; }
+  .green .num { color: #16a34a; }
+  .red .num { color: #dc2626; }
+  .blue .num { color: #2563eb; }
+  .amber .num { color: #d97706; }
+  table { width: 100%; border-collapse: collapse; background: white; border: 1px solid #e2e8f0; border-radius: 10px; overflow: hidden; margin-bottom: 28px; font-size: 13px; }
+  thead { background: #f1f5f9; }
+  th { padding: 11px 14px; text-align: left; font-weight: 600; color: #475569; font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; border-bottom: 1px solid #e2e8f0; }
+  td { padding: 10px 14px; border-bottom: 1px solid #f1f5f9; vertical-align: top; line-height: 1.5; }
+  tr:last-child td { border-bottom: none; }
+  .badge { display: inline-flex; align-items: center; font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 20px; }
+  .pass { background: #dcfce7; color: #15803d; }
+  .warn { background: #fef9c3; color: #854d0e; }
+  .fail { background: #fee2e2; color: #b91c1c; }
+  .info { background: #dbeafe; color: #1d4ed8; }
+  .section-title { font-size: 15px; font-weight: 700; color: #0f172a; margin-bottom: 12px; }
+  code { font-family: 'Courier New', monospace; font-size: 12px; background: #f1f5f9; padding: 1px 5px; border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<h1>Code Review Report</h1>
+<p class="subtitle">F-030 — AI Chat SQL Agent on Live PMS Data &nbsp;|&nbsp; Reviewed: 2026-06-02 &nbsp;|&nbsp; Reviewer: Claude Code</p>
+
+<div class="summary-grid">
+  <div class="stat blue"><div class="num">8</div><div class="lbl">Checks Run</div></div>
+  <div class="stat green"><div class="num">8</div><div class="lbl">Passed</div></div>
+  <div class="stat red"><div class="num">0</div><div class="lbl">Failed</div></div>
+  <div class="stat green"><div class="num">APPROVED</div><div class="lbl">Verdict</div></div>
+</div>
+
+<p class="section-title">Code Review Checklist (CR-1 through CR-8)</p>
+<table>
+  <thead>
+    <tr><th>Check</th><th>Criterion</th><th>Findings</th><th>Result</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>CR-1</strong><br>Correctness</td>
+      <td>Logic is correct; no off-by-one errors, data race conditions, or silent failures.</td>
+      <td>
+        Tool execution loop in <code>ai.service.ts</code> correctly sequences: (1) first Ollama call with tool defs, (2) tool execution for each requested tool, (3) second Ollama call for summarisation.
+        Each tool wraps Prisma calls in try/catch with graceful degradation.
+        RBAC filtering is applied per role in each tool — Employees scoped to <code>assigneeId</code>, Admins unrestricted.
+        <code>conversationId</code> generated with <code>crypto.randomUUID()</code> — correct.
+      </td>
+      <td><span class="badge pass">✓ PASS</span></td>
+    </tr>
+    <tr>
+      <td><strong>CR-2</strong><br>Type Safety</td>
+      <td>No <code>any</code> types unless justified; DTOs are correctly typed; strict TypeScript passes.</td>
+      <td>
+        Frontend and backend both compile with zero errors (<code>npx tsc --noEmit</code>).
+        <code>ChatMessageDto</code> uses class-validator decorators. <code>ChatResponseDto</code> uses typed fields.
+        <code>AiSource</code> interface with union literal type in <code>ai.api.ts</code>.
+        Minor: <code>messages: any[]</code> in <code>ai.service.ts</code> is justified — Ollama message format is opaque at build time.
+      </td>
+      <td><span class="badge pass">✓ PASS</span></td>
+    </tr>
+    <tr>
+      <td><strong>CR-3</strong><br>Error Handling</td>
+      <td>Errors are caught at system boundaries; internal failures produce meaningful HTTP status codes.</td>
+      <td>
+        <code>AiService.chat()</code>: ECONNREFUSED → 503 Service Unavailable. Generic errors → 500.
+        Tool failures caught individually; degraded result returned without crashing the request.
+        Frontend <code>useAIChat</code>: API error mapped to <code>error</code> state with user-facing message.
+        <code>ChatInput</code>: disabled state during loading prevents duplicate submissions.
+      </td>
+      <td><span class="badge pass">✓ PASS</span></td>
+    </tr>
+    <tr>
+      <td><strong>CR-4</strong><br>Security</td>
+      <td>No injection vectors; auth guard is applied; RBAC is enforced at the data layer.</td>
+      <td>
+        <code>JwtAuthGuard</code> is global — controller requires no explicit guard annotation.
+        RBAC applied inside each tool via <code>ctx.systemRole</code> — not trusted from the client.
+        Tool arguments passed to Prisma parameterised queries — no raw SQL, no injection risk.
+        Ollama host comes from <code>ConfigService</code> (env var), not from user input.
+        Detailed security review in <code>security-review-report.html</code>.
+      </td>
+      <td><span class="badge pass">✓ PASS</span></td>
+    </tr>
+    <tr>
+      <td><strong>CR-5</strong><br>Architecture</td>
+      <td>Follows existing module patterns; separation of concerns; no circular deps.</td>
+      <td>
+        <code>AiModule</code> follows NestJS module pattern: controller → service → injectable tools.
+        Each tool is a standalone injectable with single responsibility.
+        Frontend: feature folder <code>features/ai/</code> with <code>components/</code>, <code>hooks/</code>, <code>pages/</code> matches project conventions.
+        API abstracted in <code>api/ai.api.ts</code> — consistent with other API files in the project.
+        No circular dependencies introduced.
+      </td>
+      <td><span class="badge pass">✓ PASS</span></td>
+    </tr>
+    <tr>
+      <td><strong>CR-6</strong><br>Performance</td>
+      <td>No N+1 queries; no blocking operations on the main thread; reasonable pagination.</td>
+      <td>
+        All tools use a single Prisma query (or two at most for aggregation + lookup).
+        No N+1 patterns — user names resolved in one <code>findMany</code> after <code>groupBy</code>.
+        History trimmed to last 10 turns client-side before sending — prevents unbounded payload growth.
+        Ollama calls are awaited sequentially (required by the tool-calling protocol) — acceptable for chat latency.
+      </td>
+      <td><span class="badge pass">✓ PASS</span></td>
+    </tr>
+    <tr>
+      <td><strong>CR-7</strong><br>Code Quality</td>
+      <td>No dead code; consistent naming; no commented-out blocks; readable logic.</td>
+      <td>
+        Tool files follow consistent pattern: exported class + exported const definition.
+        No console.log; Logger used from NestJS.
+        Component props are simple and typed via interfaces.
+        Suggested prompts extracted as constants in components — not inline magic strings.
+        No unused imports detected in TS compilation output.
+      </td>
+      <td><span class="badge pass">✓ PASS</span></td>
+    </tr>
+    <tr>
+      <td><strong>CR-8</strong><br>Test Coverage</td>
+      <td>Each acceptance criterion is covered by at least one unit test and one E2E test.</td>
+      <td>
+        AC-1 through AC-14: all covered in UTC (unit) and TC (E2E) documents.
+        15 backend unit tests, 7 frontend unit tests, 15 E2E tests = 37 total.
+        RBAC tested at both unit level (B-004, B-005) and E2E level (TC-009).
+        Error paths tested: empty message (B-002, TC-011), message too long (B-003, TC-010), Ollama down (B-013).
+      </td>
+      <td><span class="badge pass">✓ PASS</span></td>
+    </tr>
+  </tbody>
+</table>
+
+<p class="section-title">Files Reviewed</p>
+<table>
+  <thead>
+    <tr><th>File</th><th>Lines</th><th>Notes</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>backend/src/ai/ai.service.ts</code></td><td>171</td><td>Core orchestration — tool loop, Ollama calls, error handling</td></tr>
+    <tr><td><code>backend/src/ai/ai.controller.ts</code></td><td>29</td><td>REST endpoints — clean, minimal</td></tr>
+    <tr><td><code>backend/src/ai/ai.module.ts</code></td><td>33</td><td>Module wiring — all 10 tools registered</td></tr>
+    <tr><td><code>backend/src/ai/dto/chat-message.dto.ts</code></td><td>—</td><td>Request DTO with validation</td></tr>
+    <tr><td><code>backend/src/ai/dto/chat-response.dto.ts</code></td><td>—</td><td>Response DTO</td></tr>
+    <tr><td><code>backend/src/ai/tools/*.tool.ts</code></td><td>10 files</td><td>10 Prisma-backed tools — RBAC applied in each</td></tr>
+    <tr><td><code>frontend/src/api/ai.api.ts</code></td><td>41</td><td>API client — typed request/response interfaces</td></tr>
+    <tr><td><code>frontend/src/features/ai/hooks/useAIChat.ts</code></td><td>77</td><td>Message state, loading, error, conversation history</td></tr>
+    <tr><td><code>frontend/src/features/ai/components/ChatMessage.tsx</code></td><td>117</td><td>User + assistant bubbles, source chips, typing indicator</td></tr>
+    <tr><td><code>frontend/src/features/ai/components/ChatInput.tsx</code></td><td>72</td><td>Auto-grow textarea, Enter-to-send, loading spinner</td></tr>
+    <tr><td><code>frontend/src/features/ai/components/AIChatWindow.tsx</code></td><td>~110</td><td>Slide-in panel — messages, suggested prompts, clear</td></tr>
+    <tr><td><code>frontend/src/features/ai/components/AIChatWidget.tsx</code></td><td>~50</td><td>Floating bubble toggle</td></tr>
+    <tr><td><code>frontend/src/features/ai/pages/AIAssistantPage.tsx</code></td><td>~85</td><td>Full-page /ai route</td></tr>
+    <tr><td><code>frontend/src/App.tsx</code></td><td>—</td><td>Added /ai route</td></tr>
+    <tr><td><code>frontend/src/components/layout/Sidebar.tsx</code></td><td>—</td><td>Added AI Assistant nav entry</td></tr>
+    <tr><td><code>frontend/src/components/layout/AppLayout.tsx</code></td><td>—</td><td>Added AIChatWidget</td></tr>
+  </tbody>
+</table>
+
+<p class="section-title">Verdict</p>
+<table>
+  <thead>
+    <tr><th>Category</th><th>Status</th><th>Comment</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Overall Review</td><td><span class="badge pass">✓ APPROVED</span></td><td>All 8 checks passed. Code is production-quality for local Ollama phase.</td></tr>
+    <tr><td>Blocking Issues</td><td><span class="badge pass">0 blockers</span></td><td>None found.</td></tr>
+    <tr><td>Suggestions (non-blocking)</td><td><span class="badge info">2 notes</span></td><td>
+      1. Replace <code>any[]</code> on messages with a typed Ollama message union if the <code>ollama</code> npm package exports one in a future version.<br>
+      2. Consider adding request-level timeout (e.g. 30 s) to Ollama calls for better UX when the model is slow.
+    </td></tr>
+  </tbody>
+</table>
+
+</body>
+</html>

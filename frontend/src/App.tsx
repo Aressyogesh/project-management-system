@@ -20,6 +20,7 @@ import { KpiPage } from './features/kpi/pages/KpiPage';
 import { ReportsPage } from './features/reports/pages/ReportsPage';
 import { MyTimesheetPage } from './features/timesheet/pages/MyTimesheetPage';
 import { LeavePage } from './features/leave/pages/LeavePage';
+import { AIAssistantPage } from './features/ai/pages/AIAssistantPage';
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 30_000 } },
@@ -75,6 +76,9 @@ export default function App() {
 
               {/* Leave Management */}
               <Route path="/leave-logs" element={<LeavePage />} />
+
+              {/* AI Assistant */}
+              <Route path="/ai" element={<AIAssistantPage />} />
             </Route>
           </Route>
 

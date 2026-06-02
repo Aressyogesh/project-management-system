@@ -3,6 +3,7 @@ import { Outlet } from 'react-router-dom';
 import { GlobalProgressBar } from './GlobalProgressBar';
 import { Sidebar } from './Sidebar';
 import { Topbar } from './Topbar';
+import { AIChatWidget } from '../../features/ai/components/AIChatWidget';
 
 export function AppLayout() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
@@ -26,6 +27,7 @@ export function AppLayout() {
           <Outlet />
         </main>
       </div>
+      <AIChatWidget />
     </div>
   );
 }

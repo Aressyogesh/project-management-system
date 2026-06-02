@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Test Summary Report — F-030 AI Chat SQL Agent</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f8fafc; color: #1e293b; padding: 32px; }
+  h1 { font-size: 22px; font-weight: 700; color: #0f172a; margin-bottom: 4px; }
+  .subtitle { font-size: 14px; color: #64748b; margin-bottom: 28px; }
+  .meta-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 28px; }
+  .meta-card { background: white; border: 1px solid #e2e8f0; border-radius: 10px; padding: 16px; }
+  .meta-card .label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: #94a3b8; margin-bottom: 6px; }
+  .meta-card .value { font-size: 15px; font-weight: 600; color: #0f172a; }
+  .summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 28px; }
+  .stat { background: white; border: 1px solid #e2e8f0; border-radius: 10px; padding: 20px; text-align: center; }
+  .stat .num { font-size: 36px; font-weight: 800; margin-bottom: 4px; }
+  .stat .lbl { font-size: 12px; color: #64748b; font-weight: 500; }
+  .green .num { color: #16a34a; }
+  .red .num { color: #dc2626; }
+  .blue .num { color: #2563eb; }
+  .gray .num { color: #64748b; }
+  table { width: 100%; border-collapse: collapse; background: white; border: 1px solid #e2e8f0; border-radius: 10px; overflow: hidden; margin-bottom: 28px; font-size: 13px; }
+  thead { background: #f1f5f9; }
+  th { padding: 11px 14px; text-align: left; font-weight: 600; color: #475569; font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; border-bottom: 1px solid #e2e8f0; }
+  td { padding: 10px 14px; border-bottom: 1px solid #f1f5f9; vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: #fafafa; }
+  .badge { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 20px; }
+  .pass { background: #dcfce7; color: #15803d; }
+  .fail { background: #fee2e2; color: #b91c1c; }
+  .skip { background: #fef9c3; color: #854d0e; }
+  .section-title { font-size: 15px; font-weight: 700; color: #0f172a; margin-bottom: 12px; }
+  .note { font-size: 12px; color: #64748b; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px 16px; margin-bottom: 28px; line-height: 1.6; }
+</style>
+</head>
+<body>
+
+<h1>Test Summary Report</h1>
+<p class="subtitle">F-030 — AI Chat SQL Agent on Live PMS Data &nbsp;|&nbsp; Generated: 2026-06-02</p>
+
+<div class="meta-grid">
+  <div class="meta-card"><div class="label">Feature ID</div><div class="value">F-030</div></div>
+  <div class="meta-card"><div class="label">Branch</div><div class="value">feature/F-030-ai-chat-sql-agent</div></div>
+  <div class="meta-card"><div class="label">Test Date</div><div class="value">2026-06-02</div></div>
+  <div class="meta-card"><div class="label">Frameworks</div><div class="value">Jest · Vitest · Playwright</div></div>
+</div>
+
+<div class="summary-grid">
+  <div class="stat blue"><div class="num">37</div><div class="lbl">Total Tests</div></div>
+  <div class="stat green"><div class="num">37</div><div class="lbl">Passed</div></div>
+  <div class="stat red"><div class="num">0</div><div class="lbl">Failed</div></div>
+  <div class="stat gray"><div class="num">100%</div><div class="lbl">Pass Rate</div></div>
+</div>
+
+<p class="section-title">Results by Layer</p>
+<table>
+  <thead>
+    <tr><th>Layer</th><th>Total</th><th>Passed</th><th>Failed</th><th>Skipped</th><th>Status</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Backend Unit (Jest)</td><td>15</td><td>15</td><td>0</td><td>0</td><td><span class="badge pass">✓ PASS</span></td></tr>
+    <tr><td>Frontend Unit (Vitest + RTL)</td><td>7</td><td>7</td><td>0</td><td>0</td><td><span class="badge pass">✓ PASS</span></td></tr>
+    <tr><td>E2E (Playwright)</td><td>15</td><td>15</td><td>0</td><td>0</td><td><span class="badge pass">✓ PASS</span></td></tr>
+    <tr><td><strong>Total</strong></td><td><strong>37</strong></td><td><strong>37</strong></td><td><strong>0</strong></td><td><strong>0</strong></td><td><span class="badge pass">✓ PASS</span></td></tr>
+  </tbody>
+</table>
+
+<p class="section-title">Backend Unit Tests — AiService &amp; Tools (15)</p>
+<table>
+  <thead>
+    <tr><th>#</th><th>Test ID</th><th>Title</th><th>Class</th><th>AC</th><th>Result</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>1</td><td>UTC-F030-B-001</td><td>chat_ValidMessage_CallsOllamaAndReturnsAnswer</td><td>AiService</td><td>AC-1</td><td><span class="badge pass">✓ PASS</span></td></tr>
+    <tr><td>2</td><td>UTC-F030-B-002</td><td>chat_EmptyMessage_ThrowsBadRequestException</td><td>AiService</td><td>AC-1</td><td><span class="badge pass">✓ PASS</span></td></tr>
+    <tr><td>3</td><td>UTC-F030-B-003</td><td>chat_MessageExceeds1000Chars_ThrowsBadRequestException</td><td>AiService</td><td>AC-1</td><td><span class="badge pass">✓ PASS</span></td></tr>
+    <tr><td>4</td><td>UTC-F030-B-004</td><td>getOverdueWorkItems_EmployeeRole_FiltersToAssignedItemsOnly</td><td>GetOverdueWorkItemsTool</td><td>AC-2, AC-11</td><td><span class="badge pass">✓ PASS</span></td></tr>
+    <tr><td>5</td><td>UTC-F030-B-005</td><td>getOverdueWorkItems_AdminRole_ReturnsAllOverdueItems</td><td>GetOverdueWorkItemsTool</td><td>AC-2, AC-11</td><td><span class="badge pass">✓ PASS</span></td></tr>
+    <tr><td>6</td><td>UTC-F030-B-006</td><td>getBlockedItems_WithSprintId_FiltersToSprint</td><td>GetBlockedItemsTool</td><td>AC-3</td><td><span class="badge pass">✓ PASS</span></td></tr>
+    <tr><td>7</td><td>UTC-F030-B-007</td><td>getProjectProgress_ReturnsCompletionPercentage</td><td>GetProjectProgressTool</td><td>AC-4</td><td><span class="badge pass">✓ PASS</span></td></tr>
+    <tr><td>8</td><td>UTC-F030-B-008</td><td>getTeamWorkload_ReturnsTopAssigneesSortedByOpenItems</td><td>GetTeamWorkloadTool</td><td>AC-5</td><td><span class="badge pass">✓ PASS</span></td></tr>
+    <tr><td>9</td><td>UTC-F030-B-009</td><td>getWeeklySummary_ReturnsItemsCompletedThisWeek</td><td>GetWeeklySummaryTool</td><td>AC-6</td><td><span class="badge pass">✓ PASS</span></td></tr>
+    <tr><td>10</td><td>UTC-F030-B-010</td><td>getMilestoneStatus_ReturnsMilestonesWithDelayedStatus</td><td>GetMilestoneStatusTool</td><td>AC-7</td><td><span class="badge pass">✓ PASS</span></td></tr>
+    <tr><td>11</td><td>UTC-F030-B-011</td><td>getBugSummary_ReturnsBugWorkItemsGroupedBySeverity</td><td>GetBugSummaryTool</td><td>AC-8</td><td><span class="badge pass">✓ PASS</span></td></tr>
+    <tr><td>12</td><td>UTC-F030-B-012</td><td>getSprintVelocity_ReturnsCommittedVsDeliveredPoints</td><td>GetSprintVelocityTool</td><td>AC-9</td><td><span class="badge pass">✓ PASS</span></td></tr>
+    <tr><td>13</td><td>UTC-F030-B-013</td><td>chat_OllamaUnreachable_ThrowsServiceUnavailableException</td><td>AiService</td><td>AC-1</td><td><span class="badge pass">✓ PASS</span></td></tr>
+    <tr><td>14</td><td>UTC-F030-B-014</td><td>health_OllamaReachable_ReturnsOkStatus</td><td>AiService</td><td>AC-14</td><td><span class="badge pass">✓ PASS</span></td></tr>
+    <tr><td>15</td><td>UTC-F030-B-015</td><td>health_OllamaUnreachable_ReturnsDegradedStatus</td><td>AiService</td><td>AC-14</td><td><span class="badge pass">✓ PASS</span></td></tr>
+  </tbody>
+</table>
+
+<p class="section-title">Frontend Unit Tests — Components &amp; Hooks (7)</p>
+<table>
+  <thead>
+    <tr><th>#</th><th>Test ID</th><th>Title</th><th>File</th><th>AC</th><th>Result</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>1</td><td>UTC-F030-F-001</td><td>AIChatWidget_Renders_FloatingButtonVisible</td><td>AIChatWidget.tsx</td><td>AC-12</td><td><span class="badge pass">✓ PASS</span></td></tr>
+    <tr><td>2</td><td>UTC-F030-F-002</td><td>AIChatWidget_ClickButton_OpensChatWindow</td><td>AIChatWidget.tsx</td><td>AC-12</td><td><span class="badge pass">✓ PASS</span></td></tr>
+    <tr><td>3</td><td>UTC-F030-F-003</td><td>ChatInput_EmptySubmit_DoesNotCallApi</td><td>ChatInput.tsx</td><td>AC-1</td><td><span class="badge pass">✓ PASS</span></td></tr>
+    <tr><td>4</td><td>UTC-F030-F-004</td><td>useAIChat_SendMessage_AddsUserMessageToHistory</td><td>useAIChat.ts</td><td>AC-1</td><td><span class="badge pass">✓ PASS</span></td></tr>
+    <tr><td>5</td><td>UTC-F030-F-005</td><td>useAIChat_ApiError_SetsErrorState</td><td>useAIChat.ts</td><td>AC-1</td><td><span class="badge pass">✓ PASS</span></td></tr>
+    <tr><td>6</td><td>UTC-F030-F-006</td><td>ChatMessage_AssistantRole_RendersSourceCards</td><td>ChatMessage.tsx</td><td>AC-10</td><td><span class="badge pass">✓ PASS</span></td></tr>
+    <tr><td>7</td><td>UTC-F030-F-007</td><td>AIAssistantPage_Renders_WithInputAndEmptyState</td><td>AIAssistantPage.tsx</td><td>AC-13</td><td><span class="badge pass">✓ PASS</span></td></tr>
+  </tbody>
+</table>
+
+<p class="section-title">E2E Tests — Playwright (15)</p>
+<table>
+  <thead>
+    <tr><th>#</th><th>Test ID</th><th>Title</th><th>Type</th><th>AC</th><th>Result</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>1</td><td>TC-F030-001</td><td>Authenticated User Sends Message and Receives AI Answer</td><td>Happy Path</td><td>AC-1</td><td><span class="badge pass">✓ PASS</span></td></tr>
+    <tr><td>2</td><td>TC-F030-002</td><td>Ask About Overdue Tasks — Returns Accurate List</td><td>Happy Path</td><td>AC-2</td><td><span class="badge pass">✓ PASS</span></td></tr>
+    <tr><td>3</td><td>TC-F030-003</td><td>Ask About Blockers in a Sprint</td><td>Happy Path</td><td>AC-3</td><td><span class="badge pass">✓ PASS</span></td></tr>
+    <tr><td>4</td><td>TC-F030-004</td><td>Ask for Project Progress — Returns Completion Percentages</td><td>Happy Path</td><td>AC-4</td><td><span class="badge pass">✓ PASS</span></td></tr>
+    <tr><td>5</td><td>TC-F030-005</td><td>Ask Who Has Highest Workload</td><td>Happy Path</td><td>AC-5</td><td><span class="badge pass">✓ PASS</span></td></tr>
+    <tr><td>6</td><td>TC-F030-006</td><td>Ask for Weekly Summary</td><td>Happy Path</td><td>AC-6</td><td><span class="badge pass">✓ PASS</span></td></tr>
+    <tr><td>7</td><td>TC-F030-007</td><td>Ask About Delayed Milestones</td><td>Happy Path</td><td>AC-7</td><td><span class="badge pass">✓ PASS</span></td></tr>
+    <tr><td>8</td><td>TC-F030-008</td><td>Unauthenticated Request Returns 401</td><td>Security</td><td>AC-11</td><td><span class="badge pass">✓ PASS</span></td></tr>
+    <tr><td>9</td><td>TC-F030-009</td><td>Employee Cannot See Other Users' Private Work Items</td><td>RBAC</td><td>AC-11</td><td><span class="badge pass">✓ PASS</span></td></tr>
+    <tr><td>10</td><td>TC-F030-010</td><td>Message Exceeding 1000 Characters Returns 400</td><td>Negative</td><td>AC-1</td><td><span class="badge pass">✓ PASS</span></td></tr>
+    <tr><td>11</td><td>TC-F030-011</td><td>Empty Message Returns 400</td><td>Negative</td><td>AC-1</td><td><span class="badge pass">✓ PASS</span></td></tr>
+    <tr><td>12</td><td>TC-F030-012</td><td>Chat Widget Is Visible on Dashboard Page</td><td>Happy Path</td><td>AC-12</td><td><span class="badge pass">✓ PASS</span></td></tr>
+    <tr><td>13</td><td>TC-F030-013</td><td>Full-Page AI Assistant Route Loads at /ai</td><td>Happy Path</td><td>AC-13</td><td><span class="badge pass">✓ PASS</span></td></tr>
+    <tr><td>14</td><td>TC-F030-014</td><td>Health Endpoint Returns Ollama Status</td><td>Happy Path</td><td>AC-14</td><td><span class="badge pass">✓ PASS</span></td></tr>
+    <tr><td>15</td><td>TC-F030-015</td><td>Multi-Turn Conversation Remembers Context</td><td>Happy Path</td><td>AC-1</td><td><span class="badge pass">✓ PASS</span></td></tr>
+  </tbody>
+</table>
+
+<div class="note">
+  <strong>Note:</strong> Unit tests are spec-based (Arrange/Act/Assert from UTC doc). E2E tests require Ollama running locally at http://localhost:11434 with model llama3.2:3b.
+  All TypeScript compilation passed with zero errors (frontend: <code>npx tsc --noEmit</code> ✓, backend: <code>npx tsc --noEmit</code> ✓).
+  Migration status: <strong>Not required</strong> — F-030 uses existing DB tables only. No schema changes.
+</div>
+
+</body>
+</html>

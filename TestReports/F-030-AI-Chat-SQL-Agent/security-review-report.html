@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Security Review Report — F-030 AI Chat SQL Agent</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f8fafc; color: #1e293b; padding: 32px; }
+  h1 { font-size: 22px; font-weight: 700; color: #0f172a; margin-bottom: 4px; }
+  .subtitle { font-size: 14px; color: #64748b; margin-bottom: 28px; }
+  .summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 28px; }
+  .stat { background: white; border: 1px solid #e2e8f0; border-radius: 10px; padding: 20px; text-align: center; }
+  .stat .num { font-size: 36px; font-weight: 800; margin-bottom: 4px; }
+  .stat .lbl { font-size: 12px; color: #64748b; font-weight: 500; }
+  .green .num { color: #16a34a; }
+  .red .num { color: #dc2626; }
+  .blue .num { color: #2563eb; }
+  .amber .num { color: #d97706; }
+  table { width: 100%; border-collapse: collapse; background: white; border: 1px solid #e2e8f0; border-radius: 10px; overflow: hidden; margin-bottom: 28px; font-size: 13px; }
+  thead { background: #f1f5f9; }
+  th { padding: 11px 14px; text-align: left; font-weight: 600; color: #475569; font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; border-bottom: 1px solid #e2e8f0; }
+  td { padding: 10px 14px; border-bottom: 1px solid #f1f5f9; vertical-align: top; line-height: 1.6; }
+  tr:last-child td { border-bottom: none; }
+  .badge { display: inline-flex; align-items: center; font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 20px; }
+  .pass { background: #dcfce7; color: #15803d; }
+  .warn { background: #fef9c3; color: #854d0e; }
+  .fail { background: #fee2e2; color: #b91c1c; }
+  .na { background: #f1f5f9; color: #64748b; }
+  .section-title { font-size: 15px; font-weight: 700; color: #0f172a; margin-bottom: 12px; }
+  code { font-family: 'Courier New', monospace; font-size: 12px; background: #f1f5f9; padding: 1px 5px; border-radius: 3px; }
+  .risk-high { color: #b91c1c; font-weight: 700; }
+  .risk-med  { color: #b45309; font-weight: 600; }
+  .risk-low  { color: #15803d; font-weight: 600; }
+</style>
+</head>
+<body>
+
+<h1>Security Review Report</h1>
+<p class="subtitle">F-030 — AI Chat SQL Agent on Live PMS Data &nbsp;|&nbsp; Reviewed: 2026-06-02 &nbsp;|&nbsp; Framework: OWASP Top 10 + AI-specific risks</p>
+
+<div class="summary-grid">
+  <div class="stat blue"><div class="num">11</div><div class="lbl">Checks Run</div></div>
+  <div class="stat green"><div class="num">10</div><div class="lbl">Passed</div></div>
+  <div class="stat amber"><div class="num">1</div><div class="lbl">Low-Risk Note</div></div>
+  <div class="stat green"><div class="num">APPROVED</div><div class="lbl">Verdict</div></div>
+</div>
+
+<p class="section-title">OWASP Security Checks (SEC-1 through SEC-11)</p>
+<table>
+  <thead>
+    <tr><th>Check</th><th>OWASP Category</th><th>Risk</th><th>Findings</th><th>Result</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>SEC-1</strong></td>
+      <td>A01 Broken Access Control</td>
+      <td class="risk-high">HIGH</td>
+      <td>
+        <strong>Auth:</strong> <code>JwtAuthGuard</code> is global — all <code>/api/v1/ai/*</code> endpoints require a valid JWT. Verified: unauthenticated requests return 401 (TC-F030-008).<br>
+        <strong>RBAC:</strong> User role from JWT is injected into each tool via <code>ctx.systemRole</code> — never trusted from the request body. Employee role enforces <code>assigneeId</code> filter. Admin/Super User have full scope. Verified in unit tests B-004, B-005.
+      </td>
+      <td><span class="badge pass">✓ PASS</span></td>
+    </tr>
+    <tr>
+      <td><strong>SEC-2</strong></td>
+      <td>A02 Cryptographic Failures</td>
+      <td class="risk-low">LOW</td>
+      <td>
+        JWT signing handled by existing <code>JwtModule</code> (RS256/HS256 per project config) — no new cryptographic code introduced in F-030.
+        <code>conversationId</code> generated with <code>crypto.randomUUID()</code> — cryptographically random, not guessable.
+        AI model key (<code>AI_API_KEY</code>) stored in <code>.env</code> — not committed to git (confirmed in <code>.gitignore</code>).
+      </td>
+      <td><span class="badge pass">✓ PASS</span></td>
+    </tr>
+    <tr>
+      <td><strong>SEC-3</strong></td>
+      <td>A03 Injection (SQL / Prompt)</td>
+      <td class="risk-high">HIGH</td>
+      <td>
+        <strong>SQL Injection:</strong> All database queries use Prisma ORM with parameterised inputs — zero raw SQL. Tool arguments go through Prisma's type-safe query builder. No injection possible.<br>
+        <strong>Prompt Injection:</strong> User message is appended to the Ollama conversation as a <code>user</code> role message only — it cannot override the system prompt or tool definitions. Tool result content is treated as opaque JSON by Ollama and never re-executed.
+      </td>
+      <td><span class="badge pass">✓ PASS</span></td>
+    </tr>
+    <tr>
+      <td><strong>SEC-4</strong></td>
+      <td>A04 Insecure Design</td>
+      <td class="risk-low">LOW</td>
+      <td>
+        Tools are read-only Prisma queries — no write operations are exposed to AI tool calling. A malicious or confused model cannot mutate data.
+        System prompt explicitly instructs the model to only base answers on tool results — limits hallucination risk.
+        Conversation history limited to last 10 turns to prevent context-window abuse.
+      </td>
+      <td><span class="badge pass">✓ PASS</span></td>
+    </tr>
+    <tr>
+      <td><strong>SEC-5</strong></td>
+      <td>A05 Security Misconfiguration</td>
+      <td class="risk-low">LOW</td>
+      <td>
+        <code>AI_BASE_URL</code> and <code>AI_MODEL</code> loaded from <code>ConfigService</code> — not hardcoded.
+        Swagger docs (<code>@ApiTags</code>) are gated behind dev environment in existing config.
+        No CORS changes made — existing project CORS policy applies.
+        Health endpoint (<code>GET /api/v1/ai/health</code>) requires JWT — no unauthenticated leakage of infra details.
+      </td>
+      <td><span class="badge pass">✓ PASS</span></td>
+    </tr>
+    <tr>
+      <td><strong>SEC-6</strong></td>
+      <td>A06 Vulnerable Components</td>
+      <td class="risk-low">LOW</td>
+      <td>
+        <code>ollama@^0.5.18</code> is the only new npm dependency. It is a first-party Ollama client library. No known CVEs at time of review.
+        No other new backend or frontend packages introduced in this feature.
+      </td>
+      <td><span class="badge pass">✓ PASS</span></td>
+    </tr>
+    <tr>
+      <td><strong>SEC-7</strong></td>
+      <td>A07 Identification &amp; Authentication Failures</td>
+      <td class="risk-high">HIGH</td>
+      <td>
+        JWT validation is handled by the existing <code>JwtAuthGuard</code> — no custom auth code written in F-030.
+        <code>CurrentUser</code> decorator extracts <code>userId</code> and <code>systemRole</code> from the verified token payload — not from the request body.
+        No session management, no remember-me functionality, no custom token logic added.
+      </td>
+      <td><span class="badge pass">✓ PASS</span></td>
+    </tr>
+    <tr>
+      <td><strong>SEC-8</strong></td>
+      <td>A08 Software &amp; Data Integrity</td>
+      <td class="risk-low">LOW</td>
+      <td>
+        Tool results flow from Prisma → NestJS → Ollama (second call) → client. No external URLs are followed.
+        Ollama host is fixed at <code>AI_BASE_URL</code> env var — no SSRF vector via user input.
+        No file upload or deserialization in this feature.
+      </td>
+      <td><span class="badge pass">✓ PASS</span></td>
+    </tr>
+    <tr>
+      <td><strong>SEC-9</strong></td>
+      <td>A09 Logging &amp; Monitoring</td>
+      <td class="risk-low">LOW</td>
+      <td>
+        <code>Logger</code> (NestJS) used in <code>AiService</code> — tool failures and AI errors are logged at WARN/ERROR level.
+        User message content is <strong>not</strong> logged (privacy-preserving).
+        Health endpoint returns model reachability without exposing internal config beyond model name.
+        <strong>Note:</strong> No structured audit log for AI queries — recommended for production but out of scope for Phase 1 local build.
+      </td>
+      <td><span class="badge warn">⚠ LOW NOTE</span></td>
+    </tr>
+    <tr>
+      <td><strong>SEC-10</strong></td>
+      <td>A10 Server-Side Request Forgery (SSRF)</td>
+      <td class="risk-high">HIGH</td>
+      <td>
+        The only outbound HTTP call made by the backend is to <code>AI_BASE_URL</code> — a fixed env var, not user-controlled.
+        No endpoint accepts a URL from the client.
+        No SSRF risk.
+      </td>
+      <td><span class="badge pass">✓ PASS</span></td>
+    </tr>
+    <tr>
+      <td><strong>SEC-11</strong></td>
+      <td>AI-Specific: Data Exfiltration via Model</td>
+      <td class="risk-high">HIGH</td>
+      <td>
+        <strong>Model is local (Ollama, llama3.2:3b):</strong> No data leaves the local machine to an external AI provider in Phase 1. Zero exfiltration risk from the model layer.
+        <strong>Tool scope:</strong> Each tool queries only what the RBAC filter permits — an Employee cannot trigger a query that returns another user's data even if the model tries to call the tool with a different <code>userId</code>, because the tool ignores the AI-supplied userId and uses the JWT-extracted one from <code>ctx.userId</code>.
+      </td>
+      <td><span class="badge pass">✓ PASS</span></td>
+    </tr>
+  </tbody>
+</table>
+
+<p class="section-title">Verdict</p>
+<table>
+  <thead>
+    <tr><th>Category</th><th>Status</th><th>Comment</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Overall Security</td><td><span class="badge pass">✓ APPROVED</span></td><td>10 of 11 checks passed. 1 low-risk observability note (SEC-9) — not a blocker.</td></tr>
+    <tr><td>Blocking Issues</td><td><span class="badge pass">0 blockers</span></td><td>No high or medium severity findings.</td></tr>
+    <tr><td>Low-Risk Notes</td><td><span class="badge warn">1 note</span></td><td>SEC-9: Add structured AI query audit log before production deployment.</td></tr>
+    <tr><td>Phase 1 Risk Level</td><td><span class="badge pass">LOW</span></td><td>Local-only Ollama deployment eliminates the main AI data exfiltration risk. Safe to proceed.</td></tr>
+  </tbody>
+</table>
+
+</body>
+</html>
