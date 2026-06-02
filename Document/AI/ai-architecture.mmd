@@ -1,0 +1,112 @@
+flowchart TD
+    %% ── User Layer ──────────────────────────────────────────────
+    U(["👤 User\n(PM / Dev / QA / Designer)"])
+
+    %% ── Frontend ────────────────────────────────────────────────
+    subgraph FE["Frontend  ·  React 18 + Vite"]
+        W["🟣 AIChatWidget\n(floating bubble)"]
+        P["📄 AIAssistantPage\n(/ai route)"]
+        H["⚙️ useAIChat hook\nconversation history · loading · error"]
+        API["📡 ai.api.ts\nPOST /api/v1/ai/chat"]
+    end
+
+    %% ── Backend ─────────────────────────────────────────────────
+    subgraph BE["Backend  ·  NestJS 10"]
+        CTL["🎮 AiController\nPOST /api/v1/ai/chat\nGET  /api/v1/ai/health\n─────────────────\nJwtAuthGuard (global)"]
+        SVC["🧠 AiService\n─────────────────\n1 · resolveProjectContext()\n  SUPER_USER/ADMIN → no filter\n  1 project → auto-scope\n  N projects → ask which\n2 · withTimeout(55 s)\n3 · Ollama tool-calling loop"]
+    end
+
+    %% ── Project Resolution ──────────────────────────────────────
+    subgraph PROJ["Project Resolution  (RBAC)"]
+        PR0["0 projects\n→ 'Not assigned yet'"]
+        PR1["1 project\n→ auto-scope ctx.projectId"]
+        PRN["N projects + name in msg\n→ resolve & proceed"]
+        PRNK["N projects, no name\n→ ask user to pick"]
+    end
+
+    %% ── Ollama Tool Loop ────────────────────────────────────────
+    subgraph LOOP["Ollama  ·  llama3.2:3b  ·  Tool-Calling Loop"]
+        C1["Call 1\nModel selects tool(s)\nfrom 10 definitions"]
+        EXEC["Execute selected tool(s)\n(Prisma queries — RBAC filtered)"]
+        C2["Call 2\nModel summarises\ntool results → answer"]
+    end
+
+    %% ── Phase 1 Tools ───────────────────────────────────────────
+    subgraph TOOLS["Phase 1 — 10 SQL Agent Tools"]
+        T1["get_overdue_work_items"]
+        T2["get_sprint_summary"]
+        T3["get_blocked_items"]
+        T4["get_project_progress"]
+        T5["get_team_workload"]
+        T6["get_bug_summary"]
+        T7["get_weekly_summary"]
+        T8["get_milestone_status"]
+        T9["get_sprint_velocity"]
+        T10["search_work_items"]
+    end
+
+    %% ── Structured DB ───────────────────────────────────────────
+    subgraph SQLDB["Structured Data  ·  PostgreSQL (Prisma)"]
+        DB1[("work_items\n39 cols · 322 rows")]
+        DB2[("projects\nstatus · dates · progress")]
+        DB3[("sprints\nactive · dates")]
+        DB4[("milestones\ndelivery targets")]
+        DB5[("users · project_members\nroles · assignments")]
+        DB6[("timesheet_entries\nhours logged")]
+    end
+
+    %% ── Phase 2 RAG (planned) ───────────────────────────────────
+    subgraph RAG["Phase 2 — RAG Agent  (planned F-031)"]
+        EMB["Embed question\nvoyage-3-lite 768-dim"]
+        VEC[("knowledge_documents\npgvector · HNSW index")]
+        CHK["Top-5 chunk retrieval\ncosine similarity"]
+        SUM2["Claude generates answer\nwith chunk citations"]
+    end
+
+    %% ── Response ────────────────────────────────────────────────
+    RESP["📦 ChatResponseDto\n{ answer · sources · toolsUsed · conversationId }"]
+
+    %% ── Connections ─────────────────────────────────────────────
+    U --> W & P
+    W & P --> H --> API
+    API -->|"Bearer JWT"| CTL
+    CTL --> SVC
+
+    SVC --> PR0 & PR1 & PRN & PRNK
+    PR0 & PRNK -->|"clarify response\n(no Ollama call)"| RESP
+    PR1 & PRN -->|"ctx.projectId set"| C1
+
+    C1 --> EXEC
+    EXEC --> T1 & T2 & T3 & T4 & T5 & T6 & T7 & T8 & T9 & T10
+    T1 & T2 & T3 & T4 & T5 & T6 & T7 & T8 & T9 & T10 -->|"Prisma · RBAC"| DB1 & DB2 & DB3 & DB4 & DB5 & DB6
+    EXEC --> C2
+
+    C1 -->|"no tool calls\n(direct answer)"| RESP
+    C2 --> RESP
+
+    %% Phase 2 path (dashed intent)
+    SVC -.->|"document question\n(Phase 2)"| EMB
+    EMB -.-> VEC -.-> CHK -.-> SUM2 -.-> RESP
+
+    RESP -->|"answer + source chips"| H
+
+    %% ── Styles ──────────────────────────────────────────────────
+    classDef user    fill:#6d28d9,color:#fff,stroke:none
+    classDef fe      fill:#0ea5e9,color:#fff,stroke:none
+    classDef be      fill:#0f172a,color:#fff,stroke:none
+    classDef loop    fill:#1e3a5f,color:#fff,stroke:none
+    classDef tool    fill:#065f46,color:#fff,stroke:none,font-size:12px
+    classDef db      fill:#78350f,color:#fff,stroke:none
+    classDef rag     fill:#4c1d95,color:#fff,stroke:none,stroke-dasharray:5
+    classDef resp    fill:#15803d,color:#fff,stroke:none
+    classDef proj    fill:#9a3412,color:#fff,stroke:none
+
+    class U user
+    class W,P,H,API fe
+    class CTL,SVC be
+    class C1,EXEC,C2 loop
+    class T1,T2,T3,T4,T5,T6,T7,T8,T9,T10 tool
+    class DB1,DB2,DB3,DB4,DB5,DB6 db
+    class EMB,VEC,CHK,SUM2 rag
+    class RESP resp
+    class PR0,PR1,PRN,PRNK proj
