@@ -7,6 +7,7 @@ import {
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateUserDto } from './dto/create-user.dto';
+import { UpdateProfileDto } from './dto/update-profile.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UsersQueryDto } from './dto/users-query.dto';
 
@@ -124,6 +125,54 @@ export class UsersService {
       where: { id },
       data: { profilePhoto: filePath },
       select: USER_SELECT,
+    });
+  }
+
+  async getProfile(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true, fullName: true, email: true,
+        profilePhoto: true, systemRole: true,
+        phone: true, joinDate: true,
+      },
+    });
+    if (!user) throw new NotFoundException('User not found');
+    return user;
+  }
+
+  async updateProfile(userId: string, dto: UpdateProfileDto, file?: Express.Multer.File) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new NotFoundException('User not found');
+
+    if (dto.email) {
+      const conflict = await this.prisma.user.findUnique({ where: { email: dto.email.toLowerCase() } });
+      if (conflict && conflict.id !== userId) throw new ConflictException('Email already in use');
+    }
+
+    let passwordHash: string | undefined;
+    if (dto.newPassword) {
+      if (!dto.currentPassword) throw new BadRequestException('Current password is required to change password');
+      const valid = await bcrypt.compare(dto.currentPassword, user.passwordHash);
+      if (!valid) throw new BadRequestException('Current password is incorrect');
+      passwordHash = await bcrypt.hash(dto.newPassword, 10);
+    }
+
+    const profilePhoto = file ? file.path.replace(/\\/g, '/') : undefined;
+
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        ...(dto.fullName && { fullName: dto.fullName }),
+        ...(dto.email && { email: dto.email.toLowerCase() }),
+        ...(passwordHash && { passwordHash }),
+        ...(profilePhoto !== undefined && { profilePhoto }),
+      },
+      select: {
+        id: true, fullName: true, email: true,
+        profilePhoto: true, systemRole: true,
+        phone: true, joinDate: true,
+      },
     });
   }
 }

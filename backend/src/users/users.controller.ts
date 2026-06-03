@@ -24,6 +24,7 @@ import { extname } from 'path';
 import { Roles } from '../common/decorators/roles.decorator';
 import { CreateUserDto } from './dto/create-user.dto';
 import { SetStatusDto } from './dto/set-status.dto';
+import { UpdateProfileDto } from './dto/update-profile.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UsersQueryDto } from './dto/users-query.dto';
 import { UsersService } from './users.service';
@@ -47,6 +48,27 @@ export class UsersController {
   @ApiOperation({ summary: 'List users with search and pagination' })
   findAll(@Query() query: UsersQueryDto) {
     return this.usersService.findAll(query);
+  }
+
+  @Get('profile')
+  @Roles(SystemRole.SUPER_USER, SystemRole.ADMIN, SystemRole.EMPLOYEE)
+  @ApiOperation({ summary: 'Get current user profile' })
+  getProfile(@Request() req: { user: { id: string } }) {
+    return this.usersService.getProfile(req.user.id);
+  }
+
+  @Patch('profile')
+  @HttpCode(200)
+  @Roles(SystemRole.SUPER_USER, SystemRole.ADMIN, SystemRole.EMPLOYEE)
+  @ApiOperation({ summary: 'Update current user profile' })
+  @ApiConsumes('multipart/form-data')
+  @UseInterceptors(FileInterceptor('photo', { storage: photoStorage, limits: { fileSize: 2 * 1024 * 1024 } }))
+  updateProfile(
+    @Request() req: { user: { id: string } },
+    @Body() dto: UpdateProfileDto,
+    @UploadedFile() file?: Express.Multer.File,
+  ) {
+    return this.usersService.updateProfile(req.user.id, dto, file);
   }
 
   @Get(':id')

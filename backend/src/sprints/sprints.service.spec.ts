@@ -12,6 +12,7 @@ const mockPrisma = {
     updateMany: jest.fn(),
     delete: jest.fn(),
   },
+  $queryRaw: jest.fn(),
 };
 
 const baseSprint = {
@@ -69,6 +70,7 @@ describe('SprintsService', () => {
     it('returns sprints ordered by createdAt ascending', async () => {
       const sprints = [{ ...baseSprint }, { ...baseSprint, id: 's-2' }];
       mockPrisma.sprint.findMany.mockResolvedValue(sprints);
+      mockPrisma.$queryRaw.mockResolvedValue([]);
 
       const result = await service.findByProject('p-1');
       expect(result).toHaveLength(2);
