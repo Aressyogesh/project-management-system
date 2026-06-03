@@ -634,7 +634,9 @@ export function WorkItemModal({ item, sprints, members, milestones, onClose, onS
               </>
             )}
             <TypeBadge type={detail.type} />
-            <span className="text-xs text-gray-400 font-mono shrink-0">#{detail.id.replace(/-/g, '').slice(-6).toUpperCase()}</span>
+            {detail.displayId && (
+              <span className="text-xs text-gray-400 font-mono shrink-0">{detail.displayId}</span>
+            )}
           </div>
           {/* Delete button with inline confirm */}
           {(() => {
