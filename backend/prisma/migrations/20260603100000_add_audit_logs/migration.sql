@@ -53,10 +53,16 @@ CREATE INDEX IF NOT EXISTS "audit_logs_entity_idx"    ON "audit_logs"("entity");
 CREATE INDEX IF NOT EXISTS "audit_logs_projectId_idx" ON "audit_logs"("projectId");
 CREATE INDEX IF NOT EXISTS "audit_logs_createdAt_idx" ON "audit_logs"("createdAt" DESC);
 
-ALTER TABLE "audit_logs"
-  ADD CONSTRAINT IF NOT EXISTS "audit_logs_userId_fkey"
-    FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE;
+DO $$ BEGIN
+  ALTER TABLE "audit_logs"
+    ADD CONSTRAINT "audit_logs_userId_fkey"
+      FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE;
+EXCEPTION WHEN duplicate_object THEN null;
+END $$;
 
-ALTER TABLE "audit_logs"
-  ADD CONSTRAINT IF NOT EXISTS "audit_logs_projectId_fkey"
-    FOREIGN KEY ("projectId") REFERENCES "projects"("id") ON DELETE SET NULL;
+DO $$ BEGIN
+  ALTER TABLE "audit_logs"
+    ADD CONSTRAINT "audit_logs_projectId_fkey"
+      FOREIGN KEY ("projectId") REFERENCES "projects"("id") ON DELETE SET NULL;
+EXCEPTION WHEN duplicate_object THEN null;
+END $$;

@@ -3,24 +3,64 @@ name: Deploy to Local Server
 on:
   push:
     branches: [main]
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 
+# ──────────────────────────────────────────────────────────────────────────────
+# Job 1 — TEST GATE
+# Runs on every push and PR. Deploy will not start if this fails.
+# ──────────────────────────────────────────────────────────────────────────────
 jobs:
-  deploy:
-    name: Build & Deploy (self-hosted)
+  test:
+    name: Run Backend Unit Tests
     runs-on: self-hosted
 
     steps:
-      # ── 1. Checkout ────────────────────────────────────────────────────────
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Install backend dependencies
+        working-directory: backend
+        run: npm ci
+
+      - name: Run unit tests
+        working-directory: backend
+        run: npm test -- --passWithNoTests
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DIRECT_URL: ${{ secrets.DIRECT_URL }}
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Job 2 — DEPLOY
+# Runs only on push to main (not PRs). Requires test job to pass.
+# ──────────────────────────────────────────────────────────────────────────────
+  deploy:
+    name: Build & Deploy (self-hosted)
+    runs-on: self-hosted
+    needs: test
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+
+    steps:
+      # ── 1. Checkout ──────────────────────────────────────────────────────────
       - name: Checkout main
         uses: actions/checkout@v4
         with:
           fetch-depth: 1
 
-      # ── 2. Backend ─────────────────────────────────────────────────────────
+      # ── 2. Backend ───────────────────────────────────────────────────────────
       - name: Install backend dependencies
         working-directory: backend
         run: npm ci
+
+      - name: Generate Prisma client
+        working-directory: backend
+        run: npx prisma generate
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DIRECT_URL: ${{ secrets.DIRECT_URL }}
 
       - name: Run Prisma migrations
         working-directory: backend
@@ -36,10 +76,19 @@ jobs:
       - name: Restart backend via PM2
         working-directory: backend
         run: |
-          pm2 describe pms-backend > /dev/null 2>&1 && pm2 restart pms-backend || pm2 start npm --name pms-backend -- run start:prod
+          pm2 describe pms-backend > $null 2>&1
+          if ($LASTEXITCODE -eq 0) {
+            pm2 restart pms-backend
+          } else {
+            pm2 start npm --name pms-backend -- run start:prod
+          }
           pm2 save
+        shell: pwsh
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DIRECT_URL: ${{ secrets.DIRECT_URL }}
 
-      # ── 3. Frontend ────────────────────────────────────────────────────────
+      # ── 3. Frontend ──────────────────────────────────────────────────────────
       - name: Install frontend dependencies
         working-directory: frontend
         run: npm ci
@@ -53,17 +102,42 @@ jobs:
       - name: Restart frontend via PM2
         working-directory: frontend
         run: |
-          pm2 describe pms-frontend > /dev/null 2>&1 && pm2 restart pms-frontend || pm2 serve dist 5173 --name pms-frontend --spa
+          pm2 describe pms-frontend > $null 2>&1
+          if ($LASTEXITCODE -eq 0) {
+            pm2 restart pms-frontend
+          } else {
+            pm2 serve dist 5173 --name pms-frontend --spa
+          }
           pm2 save
+        shell: pwsh
 
-      # ── 4. Health check ────────────────────────────────────────────────────
+      # ── 4. Health check (retry x3, 5s delay) ─────────────────────────────────
       - name: Health check — backend
         run: |
-          sleep 5
-          curl -f http://localhost:3000/api/v1/health || echo "Backend health check failed"
+          $maxAttempts = 3
+          $delay = 5
+          for ($i = 1; $i -le $maxAttempts; $i++) {
+            try {
+              $response = Invoke-WebRequest -Uri "http://localhost:3000/api/v1/health" -UseBasicParsing -TimeoutSec 10
+              if ($response.StatusCode -eq 200) {
+                Write-Host "Health check passed on attempt $i"
+                exit 0
+              }
+            } catch {
+              Write-Host "Attempt $i failed: $_"
+            }
+            if ($i -lt $maxAttempts) {
+              Write-Host "Retrying in ${delay}s..."
+              Start-Sleep -Seconds $delay
+            }
+          }
+          Write-Host "Health check failed after $maxAttempts attempts"
+          exit 1
+        shell: pwsh
 
-      # ── 5. Summary ─────────────────────────────────────────────────────────
+      # ── 5. Deployment summary ─────────────────────────────────────────────────
       - name: Deployment summary
         run: |
-          echo "✅ Deployment complete"
+          Write-Host "✅ Deployment complete"
           pm2 list
+        shell: pwsh
