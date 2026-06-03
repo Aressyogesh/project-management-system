@@ -9,6 +9,6 @@ export class HealthController {
   @Public()
   @ApiOperation({ summary: 'Health check' })
   check() {
-    return { status: 'ok', timestamp: new Date().toISOString() };
+    return { status: 'ok', timestamp: new Date().toISOString(), uptime: process.uptime() };
   }
 }
