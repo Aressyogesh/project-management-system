@@ -90,7 +90,7 @@ jobs:
         working-directory: backend
         run: |
           pm2 delete pms-backend 2>$null; $true
-          pm2 start dist/main.js --name pms-backend
+          pm2 start dist/src/main.js --name pms-backend
           pm2 save
         shell: pwsh
         env:
