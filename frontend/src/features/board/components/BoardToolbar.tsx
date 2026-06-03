@@ -184,7 +184,7 @@ export function BoardToolbar({
         </svg>
         <input
           type="text"
-          placeholder="Search items…"
+          placeholder="Search title or ID…"
           value={filters.search ?? ''}
           onChange={(e) => onFiltersChange({ ...filters, search: e.target.value || undefined })}
           className="text-xs border border-gray-200 rounded-lg pl-7 pr-2.5 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 w-36 text-gray-700"

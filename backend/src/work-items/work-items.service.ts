@@ -102,7 +102,10 @@ export class WorkItemsService implements OnModuleInit {
         ...(filters.status && { status: filters.status }),
         ...(filters.priority && { priority: filters.priority }),
         ...(filters.search && {
-          title: { contains: filters.search, mode: 'insensitive' as const },
+          OR: [
+            { title: { contains: filters.search, mode: 'insensitive' as const } },
+            { displayId: { contains: filters.search, mode: 'insensitive' as const } },
+          ],
         }),
       },
       include: {
