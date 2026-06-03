@@ -156,11 +156,22 @@ export function BoardPage() {
 
   const systemRole = user?.systemRole;
   const myProjectRole = members.find((m) => m.user.id === user?.id)?.projectRole;
+  const isAdminOrSuper = systemRole === 'SUPER_USER' || systemRole === 'ADMIN';
 
   const canManageSprints =
-    systemRole === 'SUPER_USER' ||
-    systemRole === 'ADMIN' ||
-    myProjectRole === 'PROJECT_MANAGER';
+    isAdminOrSuper ||
+    myProjectRole === 'PROJECT_MANAGER' ||
+    myProjectRole === 'TEAM_LEAD';
+
+  const canDeleteWorkItem =
+    isAdminOrSuper ||
+    myProjectRole === 'PROJECT_MANAGER' ||
+    myProjectRole === 'TEAM_LEAD';
+
+  const canEditColumns =
+    isAdminOrSuper ||
+    myProjectRole === 'PROJECT_MANAGER' ||
+    myProjectRole === 'TEAM_LEAD';
 
   useEffect(() => {
     if (!toast) return;
@@ -212,17 +223,19 @@ export function BoardPage() {
             )}
           </div>
           <div className="flex items-center gap-2">
-            {/* Edit column labels button */}
-            <button
-              onClick={() => setShowEditLabels(true)}
-              title="Edit column labels"
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition"
-            >
-              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-              </svg>
-              Columns
-            </button>
+            {/* Edit column labels button — PM / TL only */}
+            {canEditColumns && (
+              <button
+                onClick={() => setShowEditLabels(true)}
+                title="Edit column labels"
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                </svg>
+                Columns
+              </button>
+            )}
             <Link
               to={`/projects/${projectId}`}
               className="text-xs text-gray-500 hover:text-primary-600 transition flex items-center gap-1"
@@ -278,6 +291,7 @@ export function BoardPage() {
           sprints={sprints}
           members={memberOptions}
           milestones={milestones}
+          canDelete={canDeleteWorkItem}
           onClose={() => setSelectedItem(null)}
           onSaved={() => setSelectedItem(null)}
           onSuccess={setToast}
