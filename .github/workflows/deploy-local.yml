@@ -89,12 +89,8 @@ jobs:
       - name: Restart backend via PM2
         working-directory: backend
         run: |
-          pm2 describe pms-backend > $null 2>&1
-          if ($LASTEXITCODE -eq 0) {
-            pm2 restart pms-backend
-          } else {
-            pm2 start dist/main.js --name pms-backend
-          }
+          pm2 delete pms-backend 2>$null; $true
+          pm2 start dist/main.js --name pms-backend
           pm2 save
         shell: pwsh
         env:
@@ -115,12 +111,8 @@ jobs:
       - name: Restart frontend via PM2
         working-directory: frontend
         run: |
-          pm2 describe pms-frontend > $null 2>&1
-          if ($LASTEXITCODE -eq 0) {
-            pm2 restart pms-frontend
-          } else {
-            pm2 serve dist 5173 --name pms-frontend --spa
-          }
+          pm2 delete pms-frontend 2>$null; $true
+          pm2 serve dist 5173 --name pms-frontend --spa
           pm2 save
         shell: pwsh
 
