@@ -94,6 +94,7 @@ export interface WorkItemMilestone {
 
 export interface WorkItem {
   id: string;
+  displayId?: string | null;
   projectId: string;
   parentId?: string | null;
   sprintId?: string | null;

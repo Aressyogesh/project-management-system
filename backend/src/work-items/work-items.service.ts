@@ -11,6 +11,7 @@ import { join } from 'path';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { CreateWorkItemDto, MoveWorkItemDto, UpdateWorkItemDto } from './dto/work-item.dto';
+import { generateWorkItemPrefix } from './work-items.utils';
 
 const UPLOAD_DIR = join(process.cwd(), 'uploads', 'attachments');
 
@@ -128,27 +129,38 @@ export class WorkItemsService implements OnModuleInit {
   async create(projectId: string, reporterId: string, dto: CreateWorkItemDto) {
     if (dto.parentId) await this.validateParentType(dto.type, dto.parentId);
 
-    const item = await this.prisma.workItem.create({
-      data: {
-        projectId, reporterId,
-        type: dto.type, title: dto.title, description: dto.description,
-        priority: dto.priority, parentId: dto.parentId, sprintId: dto.sprintId,
-        assigneeId: dto.assigneeId, storyPoints: dto.storyPoints,
-        estimatedHours: dto.estimatedHours, labels: dto.labels ?? [],
-        components: dto.components ?? [], fixVersion: dto.fixVersion,
-        severity: dto.severity, bugClassification: dto.bugClassification,
-        environment: dto.environment, stepsToRepro: dto.stepsToRepro,
-        definitionOfDone: dto.definitionOfDone,
-        startDate: dto.startDate ? new Date(dto.startDate) : undefined,
-        dueDate: dto.dueDate ? new Date(dto.dueDate) : undefined,
-        bugFlag: dto.bugFlag, bugReproducibility: dto.bugReproducibility,
-        bugStatus: dto.bugStatus, module: dto.module,
-        responsibleUserId: dto.responsibleUserId, billingStatus: dto.billingStatus,
-        affectedBuildVersion: dto.affectedBuildVersion, fixedBuildVersion: dto.fixedBuildVersion,
-        reminderType: dto.reminderType, releaseMilestoneId: dto.releaseMilestoneId,
-        affectedMilestoneId: dto.affectedMilestoneId,
-      },
-      include: ITEM_INCLUDE,
+    const item = await this.prisma.$transaction(async (tx) => {
+      const project = await tx.project.update({
+        where: { id: projectId },
+        data: { workItemCounter: { increment: 1 } },
+        select: { name: true, workItemCounter: true },
+      });
+
+      const prefix = generateWorkItemPrefix(project.name);
+      const displayId = `${prefix}${project.workItemCounter}`;
+
+      return tx.workItem.create({
+        data: {
+          projectId, reporterId, displayId,
+          type: dto.type, title: dto.title, description: dto.description,
+          priority: dto.priority, parentId: dto.parentId, sprintId: dto.sprintId,
+          assigneeId: dto.assigneeId, storyPoints: dto.storyPoints,
+          estimatedHours: dto.estimatedHours, labels: dto.labels ?? [],
+          components: dto.components ?? [], fixVersion: dto.fixVersion,
+          severity: dto.severity, bugClassification: dto.bugClassification,
+          environment: dto.environment, stepsToRepro: dto.stepsToRepro,
+          definitionOfDone: dto.definitionOfDone,
+          startDate: dto.startDate ? new Date(dto.startDate) : undefined,
+          dueDate: dto.dueDate ? new Date(dto.dueDate) : undefined,
+          bugFlag: dto.bugFlag, bugReproducibility: dto.bugReproducibility,
+          bugStatus: dto.bugStatus, module: dto.module,
+          responsibleUserId: dto.responsibleUserId, billingStatus: dto.billingStatus,
+          affectedBuildVersion: dto.affectedBuildVersion, fixedBuildVersion: dto.fixedBuildVersion,
+          reminderType: dto.reminderType, releaseMilestoneId: dto.releaseMilestoneId,
+          affectedMilestoneId: dto.affectedMilestoneId,
+        },
+        include: ITEM_INCLUDE,
+      });
     });
 
     await this.logActivity(item.id, reporterId, 'created', undefined, undefined, item.title);
