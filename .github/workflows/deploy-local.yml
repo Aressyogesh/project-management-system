@@ -120,8 +120,9 @@ jobs:
 
       - name: Restart frontend via PM2
         run: |
+          npm install -g serve 2>$null; $true
           pm2 delete pms-frontend 2>$null; $true
-          pm2 serve D:\pms-frontend 5173 --name pms-frontend --spa
+          pm2 start serve --name pms-frontend -- -s "D:\pms-frontend" -l 5173
           pm2 save
         shell: pwsh
 
