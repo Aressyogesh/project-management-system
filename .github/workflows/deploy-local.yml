@@ -17,6 +17,12 @@ jobs:
     runs-on: self-hosted
 
     steps:
+      - name: Stop PM2 processes
+        run: |
+          pm2 stop pms-backend  2>$null; $true
+          pm2 stop pms-frontend 2>$null; $true
+        shell: pwsh
+
       - name: Checkout
         uses: actions/checkout@v4
         with:
