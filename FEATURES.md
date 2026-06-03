@@ -1,6 +1,6 @@
 # PMS — Feature Tracker
 
-> Last updated: 2026-05-28 (F-022 complete, F-023 in progress)
+> Last updated: 2026-06-03 (F-034 complete, F-035 pending)
 > ~~Strikethrough~~ = completed and in production. Plain text = pending development.
 
 ---
@@ -96,9 +96,7 @@
 
 ## Phase 8 — Leave / Overtime Log
 
-- Leave / overtime entry form (date, type, hours, description)
-- My log history view
-- Admin / Project Manager approval flow (PENDING → APPROVED / REJECTED)
+- ~~**F-025 — Leave Management** — Apply / approve / reject / cancel leave and overtime logs; `LeaveLog` model (`userId`, `date`, `type` LEAVE/OVERTIME, `hours`, `status` PENDING/APPROVED/REJECTED/CANCELLED); `GET /leave-logs` (EMPLOYEE sees own, ADMIN/SUPER_USER sees all); `POST /leave-logs`; `PATCH /leave-logs/:id/approve` + `/reject` + `/cancel`; LeavePage with tabs (My Requests, All Requests for Admin); leave badge colours by status; capacity integration (leaves excluded from workload); 33 tests (19 BE + 14 FE + 14 E2E)~~
 - Leave days excluded from timesheet tracking (8h deducted on leave days)
 
 ---
@@ -146,14 +144,28 @@
 ## Phase 12 — JIRA Kanban Board + Dynamic KPI & Reports
 
 - ~~**F-022 — JIRA Kanban Board** — Full JIRA-style project board at `/projects/:id/board`; 6 Kanban columns (TODO, IN_PROGRESS, BLOCKED, IN_REVIEW, QA, QA_DONE); drag-and-drop via `@hello-pangea/dnd` with optimistic updates; Sprint model + Sprint Manager (create/edit/activate/delete sprints); WorkItem model with full hierarchy (Epic → Story → Task → SubTask → Bug) with RBAC; TimesheetEntry model ("Log Work" per item, JIRA-style); WorkItemModal (5 tabs: Details, Log Time, Comments, Attachments, Child Items); TypeBadge component; BoardToolbar with sprint/type/assignee/priority/search filters; removed `/allocations`, `/timesheets`, `/bugs` nav items; project cards now navigate to board; ProjectDetailPage "Open Board" link; 9 backend unit tests + 26 frontend unit tests; code review + security review HTML reports~~
-- **F-023 — Dynamic KPI + Reports + Monthly Capacity** — Replace all static KPI and Reports data with live DB queries; Analytics module (`GET /analytics/kpi`, 6 report endpoints); KPI Records module (admin monthly manual scores); Self-logs modules (leave-logs, learning-logs, innovation-logs); all 13 KPI metrics auto-computed from `WorkItem`/`TimesheetEntry` data; `KpiScoreEntryPanel` for admin input; Reports page 7th tab — Monthly Capacity matrix (employees × days, colour-coded: orange=holiday, gray=weekly-off, pink=leave, dark-blue=≥8h, amber=1–7.9h, light-green=available); sticky columns, horizontal scroll, today-highlight, hover tooltip, legend
-- **F-024 — JIRA Board Enhancement + Phase 9 Bug Management** — JIRA-style two-panel WorkItemModal (left: inline-editable title/description/child items/activity tabs; right: full properties sidebar with assignee dropdown + "Assign to me", inline label chips, bug details); Phase 9 Bug fields on WorkItem (bugFlag, bugReproducibility, bugStatus, module, responsibleUserId, billingStatus, affectedBuildVersion, fixedBuildVersion, reminderType, releaseMilestoneId, affectedMilestoneId) with 4 new Prisma enums; updated BugSeverity (SHOW_STOPPER added) + BugClassification (16 values); parent selector in CreateWorkItemModal for TASK/SUB_TASK/BUG; milestone dropdowns; ProjectDetailPage cleaned (Task Lists/Tasks/Allocations sections removed); Sidebar "Leave & OT" renamed to "Leaves Management"
+- ~~**F-023 — Dynamic KPI + Reports + Monthly Capacity** — Replace all static KPI and Reports data with live DB queries; Analytics module (`GET /analytics/kpi`, 6 report endpoints); KPI Records module (admin monthly manual scores); Self-logs modules (leave-logs, learning-logs, innovation-logs); all 13 KPI metrics auto-computed from `WorkItem`/`TimesheetEntry` data; `KpiScoreEntryPanel` for admin input; Reports page 7th tab — Monthly Capacity matrix (employees × days, colour-coded: orange=holiday, gray=weekly-off, pink=leave, dark-blue=≥8h, amber=1–7.9h, light-green=available); sticky columns, horizontal scroll, today-highlight, hover tooltip, legend~~
+- ~~**F-024 — JIRA Board Enhancement + Phase 9 Bug Management** — JIRA-style two-panel WorkItemModal (left: inline-editable title/description/child items/activity tabs; right: full properties sidebar with assignee dropdown + "Assign to me", inline label chips, bug details); Phase 9 Bug fields on WorkItem (bugFlag, bugReproducibility, bugStatus, module, responsibleUserId, billingStatus, affectedBuildVersion, fixedBuildVersion, reminderType, releaseMilestoneId, affectedMilestoneId) with 4 new Prisma enums; updated BugSeverity (SHOW_STOPPER added) + BugClassification (16 values); parent selector in CreateWorkItemModal for TASK/SUB_TASK/BUG; milestone dropdowns; ProjectDetailPage cleaned (Task Lists/Tasks/Allocations sections removed); Sidebar "Leave & OT" renamed to "Leaves Management"~~
 - ~~**F-026 — Dynamic Dashboard & Project-wise Team Progress** — Fully live dashboard: activity chart replaced with real 12-month WorkItem creation/completion data; new `GET /dashboard/projects-progress` endpoint (SUPER_USER/ADMIN only) returns per-project: name, client, PM, team size, tasks (total/completed), open bugs, progress %; `ProjectProgressPanel` component with colour-coded progress bars; Today's Task widget wired to real WorkItem due today; team performance score from live avg completion ratio; all stat cards live from DB; 13/13 backend unit tests pass; no schema changes~~
 
 ---
 
-## Infrastructure & DevOps (End of Build)
+## Phase 13 — Enhancements, Polish & Platform Features
 
+- ~~**F-027 — Project Team Activity Dashboard** — Per-project activity feed and team productivity metrics; project-scoped `GET /projects/:id/activity` endpoint; ActivityFeed component with action timeline; project member contribution stats~~
+- ~~**F-028 — Dynamic Reports KPI RBAC** — Reports and KPI pages enforce role-based data scoping at the API level; EMPLOYEE sees only own data; PROJECT_MANAGER/TEAM_LEAD see full project-team data; ADMIN/SUPER_USER see organisation-wide data~~
+- ~~**F-029 — Kanban Board Enhancements** — QA workflow columns, test case work item type, client filter on board toolbar, bulk add team members, global loading spinner; board column configuration persisted per project~~
+- ~~**F-030 — AI Chat SQL Agent** — Natural language query interface for project data; Ollama-powered local LLM; keyword pre-router skips LLM call for known query types; active project filter; board links in responses; `GET /ai/query` endpoint; chat widget in sidebar/topbar~~
+- ~~**F-031 — Work Item Display ID** — Project-based prefix + sequential number display ID (e.g. `HOR10001`); `displayId` field on `WorkItem`; prefix derived from project name (alphabetic chars only); shown in board cards, modal breadcrumb, and search; migration adds `displayId` column and back-fills existing records~~
+- ~~**F-032 — Edit Profile Page** — Gear icon in topbar dropdown opens `/profile`; avatar upload (S3/disk); password change (current + new + confirm); full name / phone / shift editable; `PATCH /users/me/profile` and `PATCH /users/me/password` endpoints; `EditProfilePage` component~~
+- ~~**F-033 — Project Role-Based Access Control** — Full enforcement of `ProjectRoleGuard` across all project-scoped endpoints; DEVELOPER/QA receive `403` on delete-work-item, create-sprint, manage-members; `SUPER_USER`/`ADMIN` bypass all project-role checks; frontend hides Delete, Manage Sprint, Add Member buttons based on computed project role; `canDeleteWorkItem`, `canManageSprints`, `canEditColumns` props in `BoardPage`; 24 tests~~
+- ~~**F-034 — User Activity Audit Log** — Append-only `audit_logs` table with `AuditAction` (14 values) and `AuditEntity` (5 values) enums; `AuditLogsService.log()` is fire-and-forget via `setImmediate()`; `@Global()` module injectable everywhere; login, work item CRUD, sprint CRUD, member changes, profile updates all emit events; `GET /audit-logs` RBAC-scoped (EMPLOYEE forced to own userId); Activity Log page at `/activity` (SUPER_USER/ADMIN only in sidebar) with filters and pagination; 24 tests (14 unit + 10 E2E)~~
+
+---
+
+## Phase 14 — Infrastructure & DevOps
+
+- **F-035 — CI/CD On-Premise Deployment** — Self-hosted GitHub Actions runner setup; workflow for automated deploy to local/on-premise server; health check endpoint integration; deployment guide
 - Docker Compose full stack bundle (PostgreSQL + pgAdmin + backend + frontend)
 - Environment variable hardening (`.env.example`, secrets management)
 - Production build optimisation (Vite build, NestJS dist)

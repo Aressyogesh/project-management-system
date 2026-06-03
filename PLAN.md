@@ -815,17 +815,52 @@ project-management-system/
   - Team Performance score — real avg completion ratio
   - Projects Progress panel (Super User / Admin only) — per-project: team size, tasks, bugs, progress %
   - Tasks Progress donut chart (live task counts)
-- [ ] Project summary report
-- [ ] Team productivity report
-- [ ] Task allocation report
-- [ ] Timesheet report
+- [x] Project summary report (F-021)
+- [x] Task allocation report (F-021)
+- [x] Timesheet report (F-021)
+- [x] PDF / CSV export (F-021)
 - [ ] Bug report (with Internal vs External breakdown)
 - [ ] KPI appraisal report
-- [ ] PDF / CSV export
 - [ ] Announcements / What's New
 - [ ] Toast notifications
-- [ ] Loading and error states
-- [ ] Responsive design
+
+---
+
+### Phase 11 — Leave Management ✅ COMPLETE
+- [x] **F-025** — Leave / overtime application form (date, type, hours, description)
+- [x] **F-025** — My log history view with status badges
+- [x] **F-025** — Admin / Project Manager approval / rejection / cancel flow
+- [x] **F-025** — `LeaveLog` model: `userId`, `date`, `type` (LEAVE/OVERTIME), `hours`, `status` (PENDING/APPROVED/REJECTED/CANCELLED)
+- [x] **F-025** — RBAC: EMPLOYEE sees own logs; ADMIN/SUPER_USER see all
+- [x] **F-025** — 33 tests (19 BE + 14 FE + 14 E2E)
+
+---
+
+### Phase 12 — JIRA Kanban Board + Dynamic KPI & Reports ✅ COMPLETE
+- [x] **F-022** — Full JIRA-style board, Sprint manager, WorkItem hierarchy, TimesheetEntry ("Log Work"), WorkItemModal 5 tabs, drag-and-drop, board filters
+- [x] **F-023** — Live KPI (13 metrics auto-computed), Monthly Capacity matrix, 6 live report endpoints
+- [x] **F-024** — Two-panel WorkItemModal, Phase 9 Bug fields on WorkItem, 4 new enums, parent selector, milestone dropdowns
+- [x] **F-026** — Fully live dashboard: 12-month activity chart, Projects Progress panel, Today's Task, Team Performance score
+
+---
+
+### Phase 13 — Enhancements, Polish & Platform Features ✅ COMPLETE
+- [x] **F-027** — Project Team Activity Dashboard — per-project activity feed, team productivity metrics
+- [x] **F-028** — Dynamic Reports KPI RBAC — API-level data scoping for all report/KPI endpoints
+- [x] **F-029** — Kanban Board Enhancements — QA workflow, test case type, client filter, bulk team add, global spinner
+- [x] **F-030** — AI Chat SQL Agent — Ollama LLM, keyword pre-router, natural language project queries, chat widget
+- [x] **F-031** — Work Item Display ID — project-prefix + sequential number (e.g. HOR10001), back-fill migration
+- [x] **F-032** — Edit Profile Page — avatar upload, password change, gear-icon dropdown, `/profile` route
+- [x] **F-033** — Project Role-Based Access Control — full `ProjectRoleGuard` enforcement, frontend RBAC gating
+- [x] **F-034** — User Activity Audit Log — append-only audit trail, fire-and-forget writes, RBAC-scoped read, Activity Log page
+
+---
+
+### Phase 14 — Infrastructure & DevOps
+- [ ] **F-035** — CI/CD On-Premise Deployment — self-hosted GitHub Actions runner, automated deploy workflow, health check integration
+- [ ] Docker Compose full stack bundle (PostgreSQL + pgAdmin + backend + frontend)
+- [ ] Environment variable hardening (`.env.example`, secrets management)
+- [ ] Socket.io notification gateway (bug reminders, real-time updates)
 
 ---
 
@@ -899,4 +934,4 @@ npm run dev                       # React app on http://localhost:5173
 
 ---
 
-*Plan version: 3.0 — Updated: 2026-05-25 | Backend: NestJS + Prisma + PostgreSQL*
+*Plan version: 4.0 — Updated: 2026-06-03 | Backend: NestJS + Prisma + PostgreSQL | 34 features delivered (F-001 – F-034)*
