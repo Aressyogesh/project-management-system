@@ -80,7 +80,7 @@ jobs:
           if ($LASTEXITCODE -eq 0) {
             pm2 restart pms-backend
           } else {
-            pm2 start npm --name pms-backend -- run start:prod
+            pm2 start dist/main.js --name pms-backend
           }
           pm2 save
         shell: pwsh
