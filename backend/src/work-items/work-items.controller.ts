@@ -63,6 +63,9 @@ export class WorkItemsController {
   }
 
   @Post('projects/:projectId/work-items')
+  @UseGuards(ProjectRoleGuard)
+  @ProjectRoles(ProjectRole.PROJECT_MANAGER, ProjectRole.TEAM_LEAD, ProjectRole.DEVELOPER, ProjectRole.QA, ProjectRole.DESIGNER, ProjectRole.DEVOPS)
+  @ProjectIdFrom('param')
   @ApiOperation({ summary: 'Create work item' })
   create(
     @Param('projectId') projectId: string,
@@ -73,12 +76,18 @@ export class WorkItemsController {
   }
 
   @Patch('work-items/:id')
+  @UseGuards(ProjectRoleGuard)
+  @ProjectRoles(ProjectRole.PROJECT_MANAGER, ProjectRole.TEAM_LEAD, ProjectRole.DEVELOPER, ProjectRole.QA, ProjectRole.DESIGNER, ProjectRole.DEVOPS)
+  @ProjectIdFrom('workItem')
   @ApiOperation({ summary: 'Update work item fields' })
   update(@Param('id') id: string, @Body() dto: UpdateWorkItemDto, @Request() req: any) {
     return this.workItemsService.update(id, req.user.id, req.user.systemRole, req.user.projectRole ?? null, dto);
   }
 
   @Patch('work-items/:id/move')
+  @UseGuards(ProjectRoleGuard)
+  @ProjectRoles(ProjectRole.PROJECT_MANAGER, ProjectRole.TEAM_LEAD, ProjectRole.DEVELOPER, ProjectRole.QA, ProjectRole.DESIGNER, ProjectRole.DEVOPS)
+  @ProjectIdFrom('workItem')
   @ApiOperation({ summary: 'Move work item to new status/position' })
   move(@Param('id') id: string, @Body() dto: MoveWorkItemDto, @Request() req: any) {
     return this.workItemsService.move(id, req.user.id, dto);
@@ -87,7 +96,7 @@ export class WorkItemsController {
   @Delete('work-items/:id')
   @HttpCode(HttpStatus.NO_CONTENT)
   @UseGuards(ProjectRoleGuard)
-  @ProjectRoles(ProjectRole.PROJECT_MANAGER)
+  @ProjectRoles(ProjectRole.PROJECT_MANAGER, ProjectRole.TEAM_LEAD)
   @ProjectIdFrom('workItem')
   @ApiOperation({ summary: 'Delete work item and children' })
   remove(@Param('id') id: string) {
