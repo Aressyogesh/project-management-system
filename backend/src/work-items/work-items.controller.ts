@@ -99,8 +99,8 @@ export class WorkItemsController {
   @ProjectRoles(ProjectRole.PROJECT_MANAGER, ProjectRole.TEAM_LEAD)
   @ProjectIdFrom('workItem')
   @ApiOperation({ summary: 'Delete work item and children' })
-  remove(@Param('id') id: string) {
-    return this.workItemsService.remove(id);
+  remove(@Param('id') id: string, @Request() req: any) {
+    return this.workItemsService.remove(id, req.user.id);
   }
 
   @Post('work-items/:id/attachments')

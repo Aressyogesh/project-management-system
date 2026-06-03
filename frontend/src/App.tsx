@@ -21,6 +21,7 @@ import { ReportsPage } from './features/reports/pages/ReportsPage';
 import { MyTimesheetPage } from './features/timesheet/pages/MyTimesheetPage';
 import { LeavePage } from './features/leave/pages/LeavePage';
 import { EditProfilePage } from './features/profile/pages/EditProfilePage';
+import { ActivityLogPage } from './features/activity/ActivityLogPage';
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 30_000 } },
@@ -79,6 +80,9 @@ export default function App() {
 
               {/* Leave Management */}
               <Route path="/leave-logs" element={<LeavePage />} />
+
+              {/* Activity Log */}
+              <Route path="/activity" element={<ActivityLogPage />} />
             </Route>
           </Route>
 

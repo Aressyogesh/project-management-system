@@ -4,8 +4,10 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { AuditAction, AuditEntity } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
+import { AuditLogsService } from '../audit-logs/audit-logs.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -27,7 +29,10 @@ const USER_SELECT = {
 
 @Injectable()
 export class UsersService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private auditLogs: AuditLogsService,
+  ) {}
 
   async findAll(query: UsersQueryDto) {
     const { page = 1, limit = 25, search } = query;
@@ -160,7 +165,7 @@ export class UsersService {
 
     const profilePhoto = file ? file.path.replace(/\\/g, '/') : undefined;
 
-    return this.prisma.user.update({
+    const updated = await this.prisma.user.update({
       where: { id: userId },
       data: {
         ...(dto.fullName && { fullName: dto.fullName }),
@@ -174,5 +179,23 @@ export class UsersService {
         phone: true, joinDate: true,
       },
     });
+
+    this.auditLogs.log({
+      userId,
+      action: AuditAction.PROFILE_UPDATED,
+      entity: AuditEntity.USER_PROFILE,
+      entityId: userId,
+      entityTitle: updated.fullName,
+      metadata: {
+        changedFields: [
+          ...(dto.fullName ? ['fullName'] : []),
+          ...(dto.email ? ['email'] : []),
+          ...(passwordHash ? ['password'] : []),
+          ...(profilePhoto !== undefined ? ['profilePhoto'] : []),
+        ],
+      },
+    });
+
+    return updated;
   }
 }
