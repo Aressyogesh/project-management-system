@@ -110,11 +110,18 @@ jobs:
         env:
           VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}
 
+      - name: Copy frontend dist to fixed deploy folder
+        run: |
+          $src  = "$env:GITHUB_WORKSPACE\frontend\dist"
+          $dest = "D:\pms-frontend"
+          if (Test-Path $dest) { Remove-Item $dest -Recurse -Force }
+          Copy-Item $src $dest -Recurse
+        shell: pwsh
+
       - name: Restart frontend via PM2
-        working-directory: frontend
         run: |
           pm2 delete pms-frontend 2>$null; $true
-          pm2 serve dist 5173 --name pms-frontend --spa
+          pm2 serve D:\pms-frontend 5173 --name pms-frontend --spa
           pm2 save
         shell: pwsh
 
