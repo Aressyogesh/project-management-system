@@ -122,7 +122,8 @@ jobs:
         run: |
           npm install -g serve 2>$null; $true
           pm2 delete pms-frontend 2>$null; $true
-          pm2 start serve --name pms-frontend -- -s "D:\pms-frontend" -l 5173
+          $serveMain = "$(npm root -g)\serve\build\main.js"
+          pm2 start $serveMain --name pms-frontend -- -s "D:\pms-frontend" -l 5173
           pm2 save
         shell: pwsh
 
