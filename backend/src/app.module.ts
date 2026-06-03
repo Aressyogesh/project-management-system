@@ -32,6 +32,7 @@ import { LeaveRequestsModule } from './leave-requests/leave-requests.module';
 import { BoardColumnConfigsModule } from './board-column-configs/board-column-configs.module';
 import { TestCasesModule } from './test-cases/test-cases.module';
 import { HealthModule } from './health/health.module';
+import { AuditLogsModule } from './audit-logs/audit-logs.module';
 
 @Module({
   imports: [
@@ -64,6 +65,7 @@ import { HealthModule } from './health/health.module';
     LeaveRequestsModule,
     BoardColumnConfigsModule,
     TestCasesModule,
+    AuditLogsModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: GlobalExceptionFilter },

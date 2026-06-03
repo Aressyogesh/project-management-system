@@ -1,5 +1,6 @@
 import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
+import { AuditLogsService } from '../audit-logs/audit-logs.service';
 import { UsersService } from './users.service';
 
 const PROFILE_SELECT = {
@@ -7,6 +8,8 @@ const PROFILE_SELECT = {
   profilePhoto: true, systemRole: true,
   phone: true, joinDate: true,
 };
+
+const mockAuditLogs: Partial<AuditLogsService> = { log: jest.fn() };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function makePrisma(): any {
@@ -18,13 +21,17 @@ function makePrisma(): any {
   };
 }
 
+function makeSvc(prisma: ReturnType<typeof makePrisma>) {
+  return new UsersService(prisma as never, mockAuditLogs as never);
+}
+
 describe('UsersService — profile methods', () => {
   describe('getProfile', () => {
     it('returns user when found', async () => {
       const stub = { id: 'u1', fullName: 'Alice', email: 'a@test.com' };
       const prisma = makePrisma();
       (prisma.user.findUnique as jest.Mock).mockResolvedValue(stub);
-      const svc = new UsersService(prisma as never);
+      const svc = makeSvc(prisma);
       const result = await svc.getProfile('u1');
       expect(result).toBe(stub);
       expect(prisma.user.findUnique).toHaveBeenCalledWith({ where: { id: 'u1' }, select: PROFILE_SELECT });
@@ -33,7 +40,7 @@ describe('UsersService — profile methods', () => {
     it('throws NotFoundException when user missing', async () => {
       const prisma = makePrisma();
       (prisma.user.findUnique as jest.Mock).mockResolvedValue(null);
-      const svc = new UsersService(prisma as never);
+      const svc = makeSvc(prisma);
       await expect(svc.getProfile('missing')).rejects.toBeInstanceOf(NotFoundException);
     });
   });
@@ -47,7 +54,7 @@ describe('UsersService — profile methods', () => {
         .mockResolvedValueOnce(existing)
         .mockResolvedValueOnce(null);
       (prisma.user.update as jest.Mock).mockResolvedValue(updated);
-      const svc = new UsersService(prisma as never);
+      const svc = makeSvc(prisma);
       const result = await svc.updateProfile('u1', { fullName: 'Bob', email: 'bob@test.com' });
       expect(result).toBe(updated);
       expect(prisma.user.update).toHaveBeenCalledWith(
@@ -58,7 +65,7 @@ describe('UsersService — profile methods', () => {
     it('throws NotFoundException when user not found', async () => {
       const prisma = makePrisma();
       (prisma.user.findUnique as jest.Mock).mockResolvedValue(null);
-      const svc = new UsersService(prisma as never);
+      const svc = makeSvc(prisma);
       await expect(svc.updateProfile('nope', {})).rejects.toBeInstanceOf(NotFoundException);
     });
 
@@ -69,7 +76,7 @@ describe('UsersService — profile methods', () => {
       (prisma.user.findUnique as jest.Mock)
         .mockResolvedValueOnce(existing)
         .mockResolvedValueOnce(conflict);
-      const svc = new UsersService(prisma as never);
+      const svc = makeSvc(prisma);
       await expect(svc.updateProfile('u1', { email: 'taken@test.com' })).rejects.toBeInstanceOf(ConflictException);
     });
 
@@ -77,7 +84,7 @@ describe('UsersService — profile methods', () => {
       const existing = { id: 'u1', passwordHash: 'hash' };
       const prisma = makePrisma();
       (prisma.user.findUnique as jest.Mock).mockResolvedValue(existing);
-      const svc = new UsersService(prisma as never);
+      const svc = makeSvc(prisma);
       await expect(svc.updateProfile('u1', { newPassword: 'secret123' })).rejects.toBeInstanceOf(BadRequestException);
     });
 
@@ -86,7 +93,7 @@ describe('UsersService — profile methods', () => {
       const existing = { id: 'u1', passwordHash: hash };
       const prisma = makePrisma();
       (prisma.user.findUnique as jest.Mock).mockResolvedValue(existing);
-      const svc = new UsersService(prisma as never);
+      const svc = makeSvc(prisma);
       await expect(svc.updateProfile('u1', { currentPassword: 'wrong', newPassword: 'newpass' }))
         .rejects.toBeInstanceOf(BadRequestException);
     });
@@ -98,7 +105,7 @@ describe('UsersService — profile methods', () => {
       const prisma = makePrisma();
       (prisma.user.findUnique as jest.Mock).mockResolvedValue(existing);
       (prisma.user.update as jest.Mock).mockResolvedValue(updated);
-      const svc = new UsersService(prisma as never);
+      const svc = makeSvc(prisma);
       await svc.updateProfile('u1', { currentPassword: 'correct', newPassword: 'newpass123' });
       const updateCall = (prisma.user.update as jest.Mock).mock.calls[0][0];
       expect(updateCall.data.passwordHash).toBeDefined();

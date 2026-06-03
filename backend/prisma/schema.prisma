@@ -265,6 +265,7 @@ model User {
   learningLogs          LearningLog[]        @relation("LearningLogs")
   innovationLogs        InnovationLog[]      @relation("InnovationLogs")
   createdTestCases      TestCase[]           @relation("CreatedTestCases")
+  auditLogs             AuditLog[]           @relation("UserAuditLogs")
 
   @@index([email])
   @@map("users")
@@ -357,6 +358,7 @@ model Project {
   sprints    Sprint[]
   workItems  WorkItem[]
   boardColumnConfigs BoardColumnConfig[]
+  auditLogs          AuditLog[]          @relation("ProjectAuditLogs")
 
   @@index([status])
   @@index([projectType])
@@ -873,4 +875,52 @@ model BoardColumnConfig {
   @@unique([projectId, status])
   @@index([projectId])
   @@map("board_column_configs")
+}
+
+// ─── Audit Log ────────────────────────────────────────────────────────────────
+
+enum AuditAction {
+  LOGIN
+  WORK_ITEM_CREATED
+  WORK_ITEM_UPDATED
+  WORK_ITEM_STATUS_CHANGED
+  WORK_ITEM_DELETED
+  WORK_ITEM_ASSIGNED
+  SPRINT_CREATED
+  SPRINT_UPDATED
+  SPRINT_ACTIVATED
+  SPRINT_DELETED
+  MEMBER_ADDED
+  MEMBER_REMOVED
+  MEMBER_ROLE_CHANGED
+  PROFILE_UPDATED
+}
+
+enum AuditEntity {
+  AUTH
+  WORK_ITEM
+  SPRINT
+  PROJECT_MEMBER
+  USER_PROFILE
+}
+
+model AuditLog {
+  id          String      @id @default(uuid())
+  userId      String
+  action      AuditAction
+  entity      AuditEntity
+  entityId    String?     @db.VarChar(100)
+  entityTitle String?     @db.VarChar(300)
+  projectId   String?
+  metadata    Json?
+  createdAt   DateTime    @default(now())
+
+  user    User     @relation("UserAuditLogs", fields: [userId], references: [id], onDelete: Cascade)
+  project Project? @relation("ProjectAuditLogs", fields: [projectId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([entity])
+  @@index([projectId])
+  @@index([createdAt(sort: Desc)])
+  @@map("audit_logs")
 }

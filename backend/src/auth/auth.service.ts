@@ -1,10 +1,11 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
-import { User } from '@prisma/client';
+import { AuditAction, AuditEntity, User } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
+import { AuditLogsService } from '../audit-logs/audit-logs.service';
 import { AuthResponseDto, TokenPairDto } from './dto/auth-response.dto';
 
 @Injectable()
@@ -13,6 +14,7 @@ export class AuthService {
     private prisma: PrismaService,
     private jwtService: JwtService,
     private configService: ConfigService,
+    private auditLogs: AuditLogsService,
   ) {}
 
   async validateUser(email: string, password: string): Promise<User | null | false> {
@@ -31,6 +33,13 @@ export class AuthService {
     await this.prisma.user.update({
       where: { id: user.id },
       data: { lastLoginAt: new Date() },
+    });
+
+    this.auditLogs.log({
+      userId: user.id,
+      action: AuditAction.LOGIN,
+      entity: AuditEntity.AUTH,
+      entityTitle: user.fullName,
     });
 
     return {

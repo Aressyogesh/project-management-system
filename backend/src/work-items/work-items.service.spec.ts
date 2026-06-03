@@ -3,6 +3,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { BoardStatus, ProjectRole, SystemRole, WorkItemType } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { AuditLogsService } from '../audit-logs/audit-logs.service';
 import { WorkItemsService } from './work-items.service';
 
 const mockPrisma = {
@@ -62,6 +63,7 @@ describe('WorkItemsService', () => {
         WorkItemsService,
         { provide: PrismaService, useValue: mockPrisma },
         { provide: NotificationsService, useValue: mockNotifications },
+        { provide: AuditLogsService, useValue: { log: jest.fn() } },
       ],
     }).compile();
 

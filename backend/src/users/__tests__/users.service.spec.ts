@@ -2,6 +2,7 @@ import { BadRequestException, ConflictException, NotFoundException } from '@nest
 import { Test, TestingModule } from '@nestjs/testing';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../../prisma/prisma.service';
+import { AuditLogsService } from '../../audit-logs/audit-logs.service';
 import { UsersService } from '../users.service';
 
 const mockPrisma = {
@@ -28,6 +29,8 @@ const mockUser = {
   shift: null,
 };
 
+const mockAuditLogs = { log: jest.fn() };
+
 describe('UsersService', () => {
   let service: UsersService;
 
@@ -36,6 +39,7 @@ describe('UsersService', () => {
       providers: [
         UsersService,
         { provide: PrismaService, useValue: mockPrisma },
+        { provide: AuditLogsService, useValue: mockAuditLogs },
       ],
     }).compile();
     service = module.get<UsersService>(UsersService);
