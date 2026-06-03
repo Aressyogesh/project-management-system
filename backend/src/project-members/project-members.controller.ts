@@ -11,9 +11,9 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
-import { SystemRole } from '@prisma/client';
-import { Roles } from '../common/decorators/roles.decorator';
-import { RolesGuard } from '../common/guards/roles.guard';
+import { ProjectRole } from '@prisma/client';
+import { ProjectIdFrom, ProjectRoles } from '../common/decorators/project-roles.decorator';
+import { ProjectRoleGuard } from '../common/guards/project-role.guard';
 import { AddMemberDto, UpdateMemberRoleDto } from './dto/project-member.dto';
 import { ProjectMembersService } from './project-members.service';
 
@@ -29,8 +29,9 @@ export class ProjectMembersController {
   }
 
   @Post()
-  @UseGuards(RolesGuard)
-  @Roles(SystemRole.SUPER_USER, SystemRole.ADMIN)
+  @UseGuards(ProjectRoleGuard)
+  @ProjectRoles(ProjectRole.PROJECT_MANAGER)
+  @ProjectIdFrom('param')
   addMember(
     @Param('projectId') projectId: string,
     @Body() dto: AddMemberDto,
@@ -39,8 +40,9 @@ export class ProjectMembersController {
   }
 
   @Patch(':userId')
-  @UseGuards(RolesGuard)
-  @Roles(SystemRole.SUPER_USER, SystemRole.ADMIN)
+  @UseGuards(ProjectRoleGuard)
+  @ProjectRoles(ProjectRole.PROJECT_MANAGER)
+  @ProjectIdFrom('param')
   updateRole(
     @Param('projectId') projectId: string,
     @Param('userId') userId: string,
@@ -50,8 +52,9 @@ export class ProjectMembersController {
   }
 
   @Delete(':userId')
-  @UseGuards(RolesGuard)
-  @Roles(SystemRole.SUPER_USER, SystemRole.ADMIN)
+  @UseGuards(ProjectRoleGuard)
+  @ProjectRoles(ProjectRole.PROJECT_MANAGER)
+  @ProjectIdFrom('param')
   @HttpCode(HttpStatus.NO_CONTENT)
   removeMember(
     @Param('projectId') projectId: string,
