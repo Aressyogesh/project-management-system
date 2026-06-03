@@ -60,7 +60,7 @@ jobs:
       - name: Health check — backend
         run: |
           sleep 5
-          curl -f http://localhost:3000/api/v1/ai/health || echo "Backend health check failed"
+          curl -f http://localhost:3000/api/v1/health || echo "Backend health check failed"
 
       # ── 5. Summary ─────────────────────────────────────────────────────────
       - name: Deployment summary

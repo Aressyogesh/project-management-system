@@ -31,11 +31,13 @@ import { NotificationsModule } from './notifications/notifications.module';
 import { LeaveRequestsModule } from './leave-requests/leave-requests.module';
 import { BoardColumnConfigsModule } from './board-column-configs/board-column-configs.module';
 import { TestCasesModule } from './test-cases/test-cases.module';
+import { HealthModule } from './health/health.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     PrismaModule,
+    HealthModule,
     AuthModule,
     DashboardModule,
     SettingsModule,
