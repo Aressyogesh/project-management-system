@@ -5,6 +5,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { SystemRole } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../../prisma/prisma.service';
+import { AuditLogsService } from '../../audit-logs/audit-logs.service';
 import { AuthService } from '../auth.service';
 
 const HASHED_PASSWORD = bcrypt.hashSync('Password@123', 10);
@@ -37,6 +38,7 @@ const mockPrisma = {
 
 const mockJwt = { sign: jest.fn().mockReturnValue('fake-access-token') };
 const mockConfig = { get: jest.fn().mockReturnValue('15m') };
+const mockAuditLogs = { log: jest.fn() };
 
 describe('AuthService', () => {
   let service: AuthService;
@@ -48,6 +50,7 @@ describe('AuthService', () => {
         { provide: PrismaService, useValue: mockPrisma },
         { provide: JwtService, useValue: mockJwt },
         { provide: ConfigService, useValue: mockConfig },
+        { provide: AuditLogsService, useValue: mockAuditLogs },
       ],
     }).compile();
 

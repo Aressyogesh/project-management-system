@@ -1,6 +1,7 @@
 import { ConflictException, NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { PrismaService } from '../../prisma/prisma.service';
+import { AuditLogsService } from '../../audit-logs/audit-logs.service';
 import { ProjectMembersService } from '../project-members.service';
 
 const mockPrisma = {
@@ -15,6 +16,8 @@ const mockPrisma = {
   },
 };
 
+const mockAuditLogs = { log: jest.fn() };
+
 const mockProject = { id: 'proj-001', name: 'Alpha App' };
 const mockUser = { id: 'user-001', fullName: 'Alice', isActive: true };
 const mockMember = {
@@ -24,6 +27,8 @@ const mockMember = {
   user: { id: 'user-001', fullName: 'Alice', email: 'alice@test.com', profilePhoto: null, department: null },
 };
 
+const ACTOR = 'actor-123';
+
 describe('ProjectMembersService', () => {
   let service: ProjectMembersService;
 
@@ -32,6 +37,7 @@ describe('ProjectMembersService', () => {
       providers: [
         ProjectMembersService,
         { provide: PrismaService, useValue: mockPrisma },
+        { provide: AuditLogsService, useValue: mockAuditLogs },
       ],
     }).compile();
     service = module.get<ProjectMembersService>(ProjectMembersService);
@@ -45,7 +51,7 @@ describe('ProjectMembersService', () => {
     mockPrisma.projectMember.findUnique.mockResolvedValue(null);
     mockPrisma.projectMember.create.mockResolvedValue(mockMember);
 
-    const result = await service.addMember('proj-001', 'user-001', 'DEVELOPER' as any);
+    const result = await service.addMember('proj-001', 'user-001', 'DEVELOPER' as any, ACTOR);
     expect(result.projectRole).toBe('DEVELOPER');
     expect(mockPrisma.projectMember.create).toHaveBeenCalledTimes(1);
   });
@@ -53,14 +59,14 @@ describe('ProjectMembersService', () => {
   // UTC-F-008-B-002
   it('AddMember_ProjectNotFound_ThrowsNotFoundException', async () => {
     mockPrisma.project.findUnique.mockResolvedValue(null);
-    await expect(service.addMember('bad-id', 'user-001', 'DEVELOPER' as any)).rejects.toThrow(NotFoundException);
+    await expect(service.addMember('bad-id', 'user-001', 'DEVELOPER' as any, ACTOR)).rejects.toThrow(NotFoundException);
   });
 
   // UTC-F-008-B-003
   it('AddMember_UserNotFound_ThrowsNotFoundException', async () => {
     mockPrisma.project.findUnique.mockResolvedValue(mockProject);
     mockPrisma.user.findUnique.mockResolvedValue(null);
-    await expect(service.addMember('proj-001', 'bad-user', 'DEVELOPER' as any)).rejects.toThrow(NotFoundException);
+    await expect(service.addMember('proj-001', 'bad-user', 'DEVELOPER' as any, ACTOR)).rejects.toThrow(NotFoundException);
   });
 
   // UTC-F-008-B-004
@@ -69,7 +75,7 @@ describe('ProjectMembersService', () => {
     mockPrisma.user.findUnique.mockResolvedValue(mockUser);
     mockPrisma.projectMember.findUnique.mockResolvedValue(mockMember);
 
-    await expect(service.addMember('proj-001', 'user-001', 'DEVELOPER' as any)).rejects.toThrow(ConflictException);
+    await expect(service.addMember('proj-001', 'user-001', 'DEVELOPER' as any, ACTOR)).rejects.toThrow(ConflictException);
     expect(mockPrisma.projectMember.create).not.toHaveBeenCalled();
   });
 
@@ -78,14 +84,14 @@ describe('ProjectMembersService', () => {
     mockPrisma.projectMember.findUnique.mockResolvedValue(mockMember);
     mockPrisma.projectMember.update.mockResolvedValue({ ...mockMember, projectRole: 'TEAM_LEAD' });
 
-    const result = await service.updateRole('proj-001', 'user-001', 'TEAM_LEAD' as any);
+    const result = await service.updateRole('proj-001', 'user-001', 'TEAM_LEAD' as any, ACTOR);
     expect(result.projectRole).toBe('TEAM_LEAD');
   });
 
   // UTC-F-008-B-006
   it('UpdateRole_MemberNotFound_ThrowsNotFoundException', async () => {
     mockPrisma.projectMember.findUnique.mockResolvedValue(null);
-    await expect(service.updateRole('proj-001', 'bad-user', 'TEAM_LEAD' as any)).rejects.toThrow(NotFoundException);
+    await expect(service.updateRole('proj-001', 'bad-user', 'TEAM_LEAD' as any, ACTOR)).rejects.toThrow(NotFoundException);
   });
 
   // UTC-F-008-B-007
@@ -93,14 +99,14 @@ describe('ProjectMembersService', () => {
     mockPrisma.projectMember.findUnique.mockResolvedValue(mockMember);
     mockPrisma.projectMember.delete.mockResolvedValue(mockMember);
 
-    await service.removeMember('proj-001', 'user-001');
+    await service.removeMember('proj-001', 'user-001', ACTOR);
     expect(mockPrisma.projectMember.delete).toHaveBeenCalledTimes(1);
   });
 
   // UTC-F-008-B-008
   it('RemoveMember_NotFound_ThrowsNotFoundException', async () => {
     mockPrisma.projectMember.findUnique.mockResolvedValue(null);
-    await expect(service.removeMember('proj-001', 'bad-user')).rejects.toThrow(NotFoundException);
+    await expect(service.removeMember('proj-001', 'bad-user', ACTOR)).rejects.toThrow(NotFoundException);
   });
 
   // UTC-F-008-B-009

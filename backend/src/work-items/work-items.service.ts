@@ -5,11 +5,12 @@ import {
   NotFoundException,
   OnModuleInit,
 } from '@nestjs/common';
-import { BoardStatus, ProjectRole, SystemRole, TaskPriority, WorkItemType } from '@prisma/client';
+import { AuditAction, AuditEntity, BoardStatus, ProjectRole, SystemRole, TaskPriority, WorkItemType } from '@prisma/client';
 import { mkdir, unlink } from 'fs/promises';
 import { join } from 'path';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { AuditLogsService } from '../audit-logs/audit-logs.service';
 import { CreateWorkItemDto, MoveWorkItemDto, UpdateWorkItemDto } from './dto/work-item.dto';
 import { generateWorkItemPrefix } from './work-items.utils';
 
@@ -70,6 +71,7 @@ export class WorkItemsService implements OnModuleInit {
   constructor(
     private readonly prisma: PrismaService,
     private readonly notifications: NotificationsService,
+    private readonly auditLogs: AuditLogsService,
   ) {}
 
   async onModuleInit() {
@@ -167,6 +169,15 @@ export class WorkItemsService implements OnModuleInit {
     });
 
     await this.logActivity(item.id, reporterId, 'created', undefined, undefined, item.title);
+
+    this.auditLogs.log({
+      userId: reporterId,
+      action: AuditAction.WORK_ITEM_CREATED,
+      entity: AuditEntity.WORK_ITEM,
+      entityId: item.id,
+      entityTitle: `${item.displayId} — ${item.title}`,
+      projectId,
+    });
 
     if (dto.parentId) {
       await this.logActivity(dto.parentId, reporterId, 'child_added', 'children', null, item.title);
@@ -403,14 +414,37 @@ export class WorkItemsService implements OnModuleInit {
     if (dto.status !== item.status) {
       await this.logActivity(id, userId, 'status_changed', 'status', item.status, dto.status);
       await this.checkAndPromoteParent(item.parentId, userId);
+
+      this.auditLogs.log({
+        userId,
+        action: AuditAction.WORK_ITEM_STATUS_CHANGED,
+        entity: AuditEntity.WORK_ITEM,
+        entityId: item.id,
+        entityTitle: `${item.displayId} — ${item.title}`,
+        projectId: item.projectId,
+        metadata: { from: item.status, to: dto.status },
+      });
     }
 
     return result;
   }
 
-  async remove(id: string) {
-    await this.findOneOrFail(id);
-    return this.prisma.workItem.delete({ where: { id } });
+  async remove(id: string, userId?: string) {
+    const item = await this.findOneOrFail(id);
+    const result = await this.prisma.workItem.delete({ where: { id } });
+
+    if (userId) {
+      this.auditLogs.log({
+        userId,
+        action: AuditAction.WORK_ITEM_DELETED,
+        entity: AuditEntity.WORK_ITEM,
+        entityId: id,
+        entityTitle: `${item.displayId} — ${item.title}`,
+        projectId: item.projectId,
+      });
+    }
+
+    return result;
   }
 
   async addComment(workItemId: string, authorId: string, content: string, mentions: string[] = []) {

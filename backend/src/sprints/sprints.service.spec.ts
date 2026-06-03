@@ -1,6 +1,7 @@
 import { NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { PrismaService } from '../prisma/prisma.service';
+import { AuditLogsService } from '../audit-logs/audit-logs.service';
 import { SprintsService } from './sprints.service';
 
 const mockPrisma = {
@@ -15,6 +16,8 @@ const mockPrisma = {
   $queryRaw: jest.fn(),
 };
 
+const mockAuditLogs = { log: jest.fn() };
+
 const baseSprint = {
   id: 's-1',
   projectId: 'p-1',
@@ -27,6 +30,8 @@ const baseSprint = {
   updatedAt: new Date(),
 };
 
+const ACTOR = 'actor-123';
+
 describe('SprintsService', () => {
   let service: SprintsService;
 
@@ -35,6 +40,7 @@ describe('SprintsService', () => {
       providers: [
         SprintsService,
         { provide: PrismaService, useValue: mockPrisma },
+        { provide: AuditLogsService, useValue: mockAuditLogs },
       ],
     }).compile();
 
@@ -48,7 +54,7 @@ describe('SprintsService', () => {
       mockPrisma.sprint.updateMany.mockResolvedValue({ count: 2 });
       mockPrisma.sprint.update.mockResolvedValue({ ...baseSprint, isActive: true });
 
-      await service.setActive('s-1', 'p-1');
+      await service.setActive('s-1', 'p-1', ACTOR);
 
       expect(mockPrisma.sprint.updateMany).toHaveBeenCalledWith({
         where: { projectId: 'p-1' },
@@ -62,7 +68,7 @@ describe('SprintsService', () => {
 
     it('throws NotFoundException when sprint not found', async () => {
       mockPrisma.sprint.findUnique.mockResolvedValue(null);
-      await expect(service.setActive('s-999', 'p-1')).rejects.toThrow(NotFoundException);
+      await expect(service.setActive('s-999', 'p-1', ACTOR)).rejects.toThrow(NotFoundException);
     });
   });
 
@@ -85,13 +91,13 @@ describe('SprintsService', () => {
       mockPrisma.sprint.findUnique.mockResolvedValue(baseSprint);
       mockPrisma.sprint.delete.mockResolvedValue(baseSprint);
 
-      await service.remove('s-1');
+      await service.remove('s-1', ACTOR);
       expect(mockPrisma.sprint.delete).toHaveBeenCalledWith({ where: { id: 's-1' } });
     });
 
     it('throws NotFoundException for unknown sprint', async () => {
       mockPrisma.sprint.findUnique.mockResolvedValue(null);
-      await expect(service.remove('s-999')).rejects.toThrow(NotFoundException);
+      await expect(service.remove('s-999', ACTOR)).rejects.toThrow(NotFoundException);
     });
   });
 });

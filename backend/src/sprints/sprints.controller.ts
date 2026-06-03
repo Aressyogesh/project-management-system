@@ -8,6 +8,7 @@ import {
   Param,
   Patch,
   Post,
+  Request,
   UseGuards,
 } from '@nestjs/common';
 import { ProjectRole } from '@prisma/client';
@@ -35,8 +36,8 @@ export class SprintsController {
   @ProjectRoles(ProjectRole.PROJECT_MANAGER, ProjectRole.TEAM_LEAD)
   @ProjectIdFrom('param')
   @ApiOperation({ summary: 'Create sprint' })
-  create(@Param('projectId') projectId: string, @Body() dto: CreateSprintDto) {
-    return this.sprintsService.create(projectId, dto);
+  create(@Param('projectId') projectId: string, @Body() dto: CreateSprintDto, @Request() req: any) {
+    return this.sprintsService.create(projectId, dto, req.user.id);
   }
 
   @Patch('sprints/:id/activate')
@@ -44,8 +45,8 @@ export class SprintsController {
   @ProjectRoles(ProjectRole.PROJECT_MANAGER, ProjectRole.TEAM_LEAD)
   @ProjectIdFrom('sprint')
   @ApiOperation({ summary: 'Activate a sprint (deactivates others in project)' })
-  activate(@Param('id') id: string, @Body('projectId') projectId: string) {
-    return this.sprintsService.setActive(id, projectId);
+  activate(@Param('id') id: string, @Body('projectId') projectId: string, @Request() req: any) {
+    return this.sprintsService.setActive(id, projectId, req.user.id);
   }
 
   @Patch('sprints/:id')
@@ -53,8 +54,8 @@ export class SprintsController {
   @ProjectRoles(ProjectRole.PROJECT_MANAGER, ProjectRole.TEAM_LEAD)
   @ProjectIdFrom('sprint')
   @ApiOperation({ summary: 'Update sprint' })
-  update(@Param('id') id: string, @Body() dto: UpdateSprintDto) {
-    return this.sprintsService.update(id, dto);
+  update(@Param('id') id: string, @Body() dto: UpdateSprintDto, @Request() req: any) {
+    return this.sprintsService.update(id, dto, req.user.id);
   }
 
   @Delete('sprints/:id')
@@ -63,7 +64,7 @@ export class SprintsController {
   @ProjectRoles(ProjectRole.PROJECT_MANAGER)
   @ProjectIdFrom('sprint')
   @ApiOperation({ summary: 'Delete sprint' })
-  remove(@Param('id') id: string) {
-    return this.sprintsService.remove(id);
+  remove(@Param('id') id: string, @Request() req: any) {
+    return this.sprintsService.remove(id, req.user.id);
   }
 }
