@@ -44,7 +44,14 @@ jobs:
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
 
     steps:
-      # ── 1. Checkout ──────────────────────────────────────────────────────────
+      # ── 1. Stop PM2 before checkout so dist folder is not locked ────────────
+      - name: Stop PM2 processes
+        run: |
+          pm2 stop pms-backend  2>$null; $true
+          pm2 stop pms-frontend 2>$null; $true
+        shell: pwsh
+
+      # ── 2. Checkout ──────────────────────────────────────────────────────────
       - name: Checkout main
         uses: actions/checkout@v4
         with:
