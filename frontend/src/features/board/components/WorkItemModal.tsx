@@ -693,6 +693,11 @@ export function WorkItemModal({ item, sprints, members, milestones, onClose, onS
             <div className="px-8 py-6 space-y-5">
 
               {/* Title */}
+              {detail.displayId && (
+                <span className="block text-xs font-mono font-semibold text-gray-400 tracking-wide">
+                  {detail.displayId}
+                </span>
+              )}
               {editingTitle ? (
                 <textarea
                   ref={titleRef}

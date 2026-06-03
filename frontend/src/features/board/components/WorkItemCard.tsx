@@ -107,6 +107,11 @@ export function WorkItemCard({ item, index, members = [], onClick, onAssigneeCha
             </div>
 
             {/* Title */}
+            {item.displayId && (
+              <span className="text-[10px] font-mono font-semibold text-gray-400 mb-0.5 block">
+                {item.displayId}
+              </span>
+            )}
             <p className="text-xs font-semibold text-gray-800 line-clamp-2 mb-2 leading-snug">
               {item.title}
             </p>
