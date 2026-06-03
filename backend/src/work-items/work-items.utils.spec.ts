@@ -26,4 +26,14 @@ describe('generateWorkItemPrefix', () => {
   it('handles extra whitespace gracefully', () => {
     expect(generateWorkItemPrefix('  Task   Board  ')).toBe('TAB');
   });
+
+  it('strips non-alphabetic characters from words', () => {
+    // "Eq2+TMA" → strip digits/symbols → words: ["Eq", "TMA"] → 2-word rule → "EQ" + "T" = "EQT"
+    expect(generateWorkItemPrefix('Eq2+TMA')).toBe('EQT');
+  });
+
+  it('strips numbers mixed into words', () => {
+    // "Project2 Board" → words: ["Project", "Board"] → 2-word rule → "PR" + "B" = "PRB"
+    expect(generateWorkItemPrefix('Project2 Board')).toBe('PRB');
+  });
 });

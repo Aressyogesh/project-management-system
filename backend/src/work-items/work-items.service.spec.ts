@@ -2,6 +2,7 @@ import { BadRequestException, ForbiddenException, NotFoundException } from '@nes
 import { Test, TestingModule } from '@nestjs/testing';
 import { BoardStatus, ProjectRole, SystemRole, WorkItemType } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { WorkItemsService } from './work-items.service';
 
 const mockPrisma = {
@@ -17,6 +18,21 @@ const mockPrisma = {
     create: jest.fn(),
     delete: jest.fn(),
   },
+  workItemActivity: {
+    create: jest.fn().mockResolvedValue({}),
+  },
+  project: {
+    update: jest.fn(),
+  },
+  user: {
+    findUnique: jest.fn().mockResolvedValue({ fullName: 'Test User' }),
+  },
+  $transaction: jest.fn(),
+};
+
+const mockNotifications = {
+  create: jest.fn().mockResolvedValue({}),
+  createMany: jest.fn().mockResolvedValue({}),
 };
 
 const baseItem = {
@@ -45,6 +61,7 @@ describe('WorkItemsService', () => {
       providers: [
         WorkItemsService,
         { provide: PrismaService, useValue: mockPrisma },
+        { provide: NotificationsService, useValue: mockNotifications },
       ],
     }).compile();
 
@@ -130,7 +147,9 @@ describe('WorkItemsService', () => {
     });
 
     it('creates item without parent when parentId is undefined', async () => {
+      mockPrisma.project.update.mockResolvedValue({ name: 'Test Project', workItemCounter: 10001 });
       mockPrisma.workItem.create.mockResolvedValue({ ...baseItem });
+      mockPrisma.$transaction.mockImplementation((cb: (tx: typeof mockPrisma) => Promise<unknown>) => cb(mockPrisma));
 
       await service.create('p-1', 'u-1', {
         type: WorkItemType.TASK,

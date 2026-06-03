@@ -12,6 +12,8 @@ const mockPrisma = {
     update: jest.fn(),
     delete: jest.fn(),
   },
+  $queryRaw: jest.fn(),
+  $executeRaw: jest.fn(),
 };
 
 const mockProject = { id: 'proj-001', name: 'Alpha App' };
@@ -51,6 +53,8 @@ describe('MilestonesService', () => {
     }).compile();
     service = module.get<MilestonesService>(MilestonesService);
     jest.resetAllMocks();
+    mockPrisma.$queryRaw.mockResolvedValue([]);
+    mockPrisma.$executeRaw.mockResolvedValue(0);
   });
 
   // UTC-F-009-B-001
@@ -97,6 +101,7 @@ describe('MilestonesService', () => {
   // UTC-F-009-B-006
   it('DeleteMilestone_ValidId_DeletesMilestone', async () => {
     mockPrisma.milestone.findUnique.mockResolvedValue(mockMilestone);
+    mockPrisma.$queryRaw.mockResolvedValueOnce([{ count: BigInt(0) }]);
     mockPrisma.milestone.delete.mockResolvedValue(mockMilestone);
 
     await service.remove('ms-001');
@@ -124,6 +129,9 @@ describe('MilestonesService', () => {
   it('findAll_MilestoneWithPartialCompletion_ReturnsCorrectProgress', async () => {
     mockPrisma.project.findUnique.mockResolvedValue(mockProject);
     mockPrisma.milestone.findMany.mockResolvedValueOnce([makeRow(3, 5)]);
+    mockPrisma.$queryRaw
+      .mockResolvedValueOnce([])  // fetchNames
+      .mockResolvedValueOnce([{ milestoneId: 'ms-001', total: BigInt(5), completed: BigInt(3) }]);
     const result = await service.findAll('proj-001');
     expect(result[0].totalTasks).toBe(5);
     expect(result[0].completedTasks).toBe(3);
@@ -134,6 +142,7 @@ describe('MilestonesService', () => {
   it('findAll_MilestoneWithNoTasks_ReturnsZeroProgress', async () => {
     mockPrisma.project.findUnique.mockResolvedValue(mockProject);
     mockPrisma.milestone.findMany.mockResolvedValueOnce([makeRow(0, 0)]);
+    // default $queryRaw mock returns [] — statsMap empty → total/completed = 0
     const result = await service.findAll('proj-001');
     expect(result[0].totalTasks).toBe(0);
     expect(result[0].completedTasks).toBe(0);
@@ -144,6 +153,9 @@ describe('MilestonesService', () => {
   it('findAll_AllTasksCompleted_Returns100Percent', async () => {
     mockPrisma.project.findUnique.mockResolvedValue(mockProject);
     mockPrisma.milestone.findMany.mockResolvedValueOnce([makeRow(3, 3)]);
+    mockPrisma.$queryRaw
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([{ milestoneId: 'ms-001', total: BigInt(3), completed: BigInt(3) }]);
     const result = await service.findAll('proj-001');
     expect(result[0].progressPercent).toBe(100);
   });
@@ -155,6 +167,12 @@ describe('MilestonesService', () => {
       { ...makeRow(2, 4), id: 'ms-1' },
       { ...makeRow(2, 2), id: 'ms-2' },
     ]);
+    mockPrisma.$queryRaw
+      .mockResolvedValueOnce([])  // fetchNames
+      .mockResolvedValueOnce([
+        { milestoneId: 'ms-1', total: BigInt(4), completed: BigInt(2) },
+        { milestoneId: 'ms-2', total: BigInt(2), completed: BigInt(2) },
+      ]);
     const result = await service.findAll('proj-001');
     expect(result[0].progressPercent).toBe(50);
     expect(result[1].progressPercent).toBe(100);
@@ -164,6 +182,9 @@ describe('MilestonesService', () => {
   it('findAll_ProgressPercent_RoundsToNearestInteger', async () => {
     mockPrisma.project.findUnique.mockResolvedValue(mockProject);
     mockPrisma.milestone.findMany.mockResolvedValueOnce([makeRow(1, 3)]);
+    mockPrisma.$queryRaw
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([{ milestoneId: 'ms-001', total: BigInt(3), completed: BigInt(1) }]);
     const result = await service.findAll('proj-001');
     expect(result[0].progressPercent).toBe(33);
   });

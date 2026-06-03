@@ -1,7 +1,24 @@
 import { apiClient } from './client';
 import type { CreateUserPayload, UpdateUserPayload, User, UsersPage } from '../types/users.types';
+import type { AuthUser } from '../types/auth.types';
 
 export const usersApi = {
+  getProfile: () =>
+    apiClient.get<AuthUser>('/users/profile').then((r) => r.data),
+
+  updateProfile: (payload: { fullName?: string; email?: string; currentPassword?: string; newPassword?: string }, photo?: File) => {
+    const form = new FormData();
+    if (payload.fullName) form.append('fullName', payload.fullName);
+    if (payload.email) form.append('email', payload.email);
+    if (payload.currentPassword) form.append('currentPassword', payload.currentPassword);
+    if (payload.newPassword) form.append('newPassword', payload.newPassword);
+    if (photo) form.append('photo', photo);
+    return apiClient.patch<AuthUser>('/users/profile', form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }).then((r) => r.data);
+  },
+
+
   list: (params: { page?: number; limit?: number; search?: string }) =>
     apiClient.get<UsersPage>('/users', { params }).then((r) => r.data),
 
