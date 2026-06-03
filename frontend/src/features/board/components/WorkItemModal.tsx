@@ -36,6 +36,7 @@ interface Props {
   sprints: Sprint[];
   members: MemberOption[];
   milestones: Milestone[];
+  canDelete?: boolean;
   onClose: () => void;
   onSaved: () => void;
   onSuccess?: (msg: string) => void;
@@ -407,7 +408,7 @@ function TestCasesPanel({ workItemId, projectId: _projectId, onCreateBug }: Test
 
 // ─── WorkItemModal (edit existing) ───────────────────────────────────────────
 
-export function WorkItemModal({ item, sprints, members, milestones, onClose, onSaved: _onSaved, onSuccess, onOpenChild }: Props) {
+export function WorkItemModal({ item, sprints, members, milestones, canDelete = true, onClose, onSaved: _onSaved, onSuccess, onOpenChild }: Props) {
   const { user } = useAuthStore();
   const qc = useQueryClient();
 
@@ -639,7 +640,7 @@ export function WorkItemModal({ item, sprints, members, milestones, onClose, onS
             )}
           </div>
           {/* Delete button with inline confirm */}
-          {(() => {
+          {canDelete && (() => {
             const childCount = detail._count?.children ?? detail.children?.length ?? 0;
             const hasChildren = childCount > 0;
             if (confirmDelete) {
