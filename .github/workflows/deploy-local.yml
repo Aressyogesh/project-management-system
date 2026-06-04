@@ -121,10 +121,12 @@ jobs:
       - name: Restart frontend via PM2
         run: |
           npm install -g serve 2>$null; $true
-          $serveMain = "$(npm root -g)/serve/build/main.js"
+          $serveMain = "$(npm root -g)/serve/build/main.js" -replace '\\','/'
+          $cfg = "module.exports={apps:[{name:'pms-frontend',script:'$serveMain',args:'-s D:/pms-frontend -l 5173',cwd:'D:/'}]};"
+          $cfg | Out-File -FilePath "D:/pms-frontend.config.js" -Encoding ASCII
           pm2 delete pms-frontend  2>$null; $true
           pm2 delete pms-ecosystem 2>$null; $true
-          pm2 start $serveMain --name pms-frontend -- -s D:/pms-frontend -l 5173
+          pm2 start "D:/pms-frontend.config.js"
           pm2 save
         shell: pwsh
 
