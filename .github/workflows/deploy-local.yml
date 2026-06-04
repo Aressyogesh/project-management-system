@@ -123,9 +123,9 @@ jobs:
           npm install -g serve 2>$null; $true
           $serveMain = "$(npm root -g)/serve/build/main.js"
           "module.exports={apps:[{name:'pms-frontend',script:'$serveMain',args:'-s D:/pms-frontend -l 5173'}]};" | `
-            Out-File -FilePath "C:/pms-ecosystem.js" -Encoding ASCII
+            Out-File -FilePath "D:/pms-ecosystem.js" -Encoding ASCII
           pm2 delete pms-frontend 2>$null; $true
-          pm2 start "C:/pms-ecosystem.js"
+          pm2 start "D:/pms-ecosystem.js"
           pm2 save
         shell: pwsh
 
