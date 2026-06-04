@@ -92,8 +92,12 @@ Configure at **GitHub → repo → Settings → Secrets and variables → Action
 | `DIRECT_URL` | `postgresql://postgres:postgres@localhost:5432/pms_db` |
 | `JWT_SECRET` | `pms-local-jwt-secret-2026` |
 | `JWT_REFRESH_SECRET` | `pms-local-refresh-secret-2026` |
-| `VITE_API_BASE_URL` | `http://<server-private-ip>:3000` — must be the server's LAN IP, not localhost |
-| `FRONTEND_URL` | `http://<server-private-ip>:5173` — used by backend CORS to allow the frontend origin |
+| `VITE_API_BASE_URL` | Use public IP if external access needed: `http://203.193.165.229:3000`, or private IP `http://192.168.210.112:3000` for LAN-only |
+| `FRONTEND_URL` | Match the IP used in VITE_API_BASE_URL: `http://203.193.165.229:5173` or `http://192.168.210.112:5173` |
+
+> **Note:** `VITE_API_BASE_URL` is baked into the frontend at build time. Changing it requires re-running the workflow. Use the public IP when users outside the office network need access — ensure ports 3000 and 5173 are both forwarded on the office router to `192.168.210.112`.
+>
+> **Chrome Private Network Access:** Browsers block requests from a public IP origin to a private IP. Always ensure `VITE_API_BASE_URL` and `FRONTEND_URL` use the same IP type (both public or both private).
 
 ---
 
