@@ -109,7 +109,7 @@ jobs:
         working-directory: frontend
         run: npm run build
         env:
-          VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}
+          VITE_API_URL: ${{ secrets.VITE_API_BASE_URL }}/api/v1
 
       - name: Copy frontend dist to fixed deploy folder
         run: |
