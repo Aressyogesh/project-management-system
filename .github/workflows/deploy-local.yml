@@ -98,6 +98,7 @@ jobs:
           DIRECT_URL: ${{ secrets.DIRECT_URL }}
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
           JWT_REFRESH_SECRET: ${{ secrets.JWT_REFRESH_SECRET }}
+          FRONTEND_URL: ${{ secrets.FRONTEND_URL }}
 
       # ── 3. Frontend ──────────────────────────────────────────────────────────
       - name: Install frontend dependencies

@@ -92,7 +92,8 @@ Configure at **GitHub → repo → Settings → Secrets and variables → Action
 | `DIRECT_URL` | `postgresql://postgres:postgres@localhost:5432/pms_db` |
 | `JWT_SECRET` | `pms-local-jwt-secret-2026` |
 | `JWT_REFRESH_SECRET` | `pms-local-refresh-secret-2026` |
-| `VITE_API_BASE_URL` | `http://localhost:3000` |
+| `VITE_API_BASE_URL` | `http://<server-private-ip>:3000` — must be the server's LAN IP, not localhost |
+| `FRONTEND_URL` | `http://<server-private-ip>:5173` — used by backend CORS to allow the frontend origin |
 
 ---
 
