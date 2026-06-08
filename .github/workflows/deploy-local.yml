@@ -92,14 +92,17 @@ jobs:
           # Remove any PM2 process that might own port 3000
           pm2 delete pms-backend   2>$null; $true
           pm2 delete pms-ecosystem 2>$null; $true
-          # Kill any stale process still listening on port 3000
-          $portPid = (netstat -ano 2>$null |
-            Where-Object { $_ -match "TCP\s+(?:0\.0\.0\.0|127\.0\.0\.1):3000\s+.*LISTENING" } |
+          # Kill ALL processes listening on port 3000 (IPv4 and IPv6 wildcard)
+          $portPids = netstat -ano 2>$null |
+            Where-Object { $_ -match ":3000\s+.*LISTENING" } |
             ForEach-Object { ($_ -split '\s+')[-1] } |
-            Select-Object -First 1)
-          if ($portPid -and $portPid -match '^\d+$' -and $portPid -ne '0') {
-            Write-Host "Killing stale PID $portPid on port 3000"
-            taskkill /PID $portPid /F 2>$null; $true
+            Where-Object { $_ -match '^\d+$' -and $_ -ne '0' } |
+            Select-Object -Unique
+          if ($portPids) {
+            foreach ($p in $portPids) {
+              Write-Host "Killing PID $p on port 3000"
+              taskkill /PID $p /F 2>$null; $true
+            }
             Start-Sleep -Seconds 2
           }
           # Start fresh
