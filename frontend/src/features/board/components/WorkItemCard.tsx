@@ -76,7 +76,7 @@ export function WorkItemCard({ item, index, members = [], onClick, onAssigneeCha
             {...provided.dragHandleProps}
             onClick={() => onClick(item)}
             title={TYPE_CONFIG[item.type].label}
-            style={{ borderLeftColor: TYPE_CONFIG[item.type].color }}
+            style={{ ...provided.draggableProps.style, borderLeftColor: TYPE_CONFIG[item.type].color }}
             className={`bg-white border border-l-4 rounded-lg p-3 cursor-pointer transition-all select-none ${
               snapshot.isDragging
                 ? 'shadow-lg rotate-1'
