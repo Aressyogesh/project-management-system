@@ -185,10 +185,10 @@ jobs:
       - name: Deployment summary
         run: |
           Write-Host "✅ Deployment complete"
-          pm2 jlist | ConvertFrom-Json |
-            Where-Object { $_.name -like 'pms-*' } |
+          pm2 jlist | ConvertFrom-Json -AsHashTable |
+            Where-Object { $_['name'] -like 'pms-*' } |
             ForEach-Object {
-              $mem = [math]::Round($_.monit.memory / 1MB, 1)
-              Write-Host "$($_.name)  |  status: $($_.pm2_env.status)  |  pid: $($_.pid)  |  restarts: $($_.pm2_env.restart_time)  |  mem: ${mem}mb"
+              $mem = [math]::Round($_['monit']['memory'] / 1MB, 1)
+              Write-Host "$($_['name'])  |  status: $($_['pm2_env']['status'])  |  pid: $($_['pid'])  |  restarts: $($_['pm2_env']['restart_time'])  |  mem: ${mem}mb"
             }
         shell: pwsh
