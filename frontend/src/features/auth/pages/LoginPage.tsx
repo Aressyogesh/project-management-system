@@ -1,44 +1,45 @@
 import { AxiosError } from 'axios';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useNavigate } from 'react-router-dom';
 import { authApi } from '../../../api/auth.api';
 import { useAuthStore } from '../../../store/authStore';
 import { LoginCredentials } from '../../../types/auth.types';
 
-const REMEMBER_KEY = 'pms_remember_email';
+const REMEMBER_EMAIL_KEY = 'pms_remember_email';
+const REMEMBER_PASS_KEY  = 'pms_remember_pass';
 
 export function LoginPage() {
   const navigate = useNavigate();
   const setAuth = useAuthStore((s) => s.setAuth);
   const [apiError, setApiError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
-  const [rememberMe, setRememberMe] = useState(() => !!localStorage.getItem(REMEMBER_KEY));
+  const [rememberMe, setRememberMe] = useState(() => !!localStorage.getItem(REMEMBER_EMAIL_KEY));
   const [forgotOpen, setForgotOpen] = useState(false);
   const [forgotEmail, setForgotEmail] = useState('');
   const [forgotStatus, setForgotStatus] = useState<'idle' | 'loading' | 'sent' | 'error'>('idle');
 
-  const savedEmail = localStorage.getItem(REMEMBER_KEY) ?? '';
-
   const {
     register,
     handleSubmit,
-    setValue,
     formState: { errors, isSubmitting },
-  } = useForm<LoginCredentials>();
-
-  useEffect(() => {
-    if (savedEmail) setValue('email', savedEmail);
-  }, []);
+  } = useForm<LoginCredentials>({
+    defaultValues: {
+      email:    localStorage.getItem(REMEMBER_EMAIL_KEY) ?? '',
+      password: localStorage.getItem(REMEMBER_PASS_KEY)  ?? '',
+    },
+  });
 
   const onSubmit = async (credentials: LoginCredentials) => {
     setApiError(null);
     try {
       const response = await authApi.login(credentials);
       if (rememberMe) {
-        localStorage.setItem(REMEMBER_KEY, credentials.email);
+        localStorage.setItem(REMEMBER_EMAIL_KEY, credentials.email);
+        localStorage.setItem(REMEMBER_PASS_KEY,  credentials.password);
       } else {
-        localStorage.removeItem(REMEMBER_KEY);
+        localStorage.removeItem(REMEMBER_EMAIL_KEY);
+        localStorage.removeItem(REMEMBER_PASS_KEY);
       }
       setAuth(response.user, response.accessToken, response.refreshToken);
       navigate('/dashboard');
