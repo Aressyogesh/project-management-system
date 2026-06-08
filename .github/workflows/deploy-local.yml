@@ -97,7 +97,7 @@ jobs:
           $ready = $false
           while ((Get-Date) -lt $deadline) {
             try {
-              $r = Invoke-WebRequest -Uri "http://localhost:3001/api/v1/health" -UseBasicParsing -TimeoutSec 3 -ErrorAction Stop
+              $r = Invoke-WebRequest -Uri "http://localhost:3000/api/v1/health" -UseBasicParsing -TimeoutSec 3 -ErrorAction Stop
               $body = $r.Content | ConvertFrom-Json
               if ($r.StatusCode -eq 200 -and $body.status -eq 'ok') { $ready = $true; break }
             } catch {}
@@ -116,7 +116,7 @@ jobs:
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
           JWT_REFRESH_SECRET: ${{ secrets.JWT_REFRESH_SECRET }}
           FRONTEND_URL: ${{ secrets.FRONTEND_URL }}
-          PORT: '3001'
+          PORT: '3000'
 
       # ── 3. Frontend ──────────────────────────────────────────────────────────
       - name: Install frontend dependencies
@@ -156,7 +156,7 @@ jobs:
           $delay = 5
           for ($i = 1; $i -le $maxAttempts; $i++) {
             try {
-              $response = Invoke-WebRequest -Uri "http://localhost:3001/api/v1/health" -UseBasicParsing -TimeoutSec 10
+              $response = Invoke-WebRequest -Uri "http://localhost:3000/api/v1/health" -UseBasicParsing -TimeoutSec 10
               $body = $response.Content | ConvertFrom-Json
               if ($response.StatusCode -eq 200 -and $body.status -eq 'ok') {
                 Write-Host "Health check passed on attempt $i"
