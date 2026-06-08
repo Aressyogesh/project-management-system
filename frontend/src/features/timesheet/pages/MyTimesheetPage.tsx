@@ -61,11 +61,12 @@ export function MyTimesheetPage() {
   const nextWeek = () => { setViewMode('week'); setWeekStart(addDays(weekStart, 7)); };
   const goToday  = () => { setViewMode('today'); setWeekStart(startOfWeek(today)); };
 
-  // Projects list
-  const { data: projects = [] } = useQuery({
+  // Projects list — exclude archived
+  const { data: allProjects = [] } = useQuery({
     queryKey: ['projects'],
     queryFn: () => projectsApi.list(),
   });
+  const projects = allProjects.filter((p) => p.status !== 'ARCHIVE');
 
   // Members of selected project
   const { data: members = [] } = useQuery({
