@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { businessUnitsApi } from '../../../api/businessUnits.api';
 import { clientsApi } from '../../../api/clients.api';
 import { departmentsApi } from '../../../api/departments.api';
@@ -29,6 +29,7 @@ export function ProjectFormModal({ project, onClose, onSuccess }: Props) {
   const [name, setName] = useState(project?.name ?? '');
   const [projectType, setProjectType] = useState<ProjectType>(project?.projectType ?? 'DEDICATED');
   const [businessUnitId, setBusinessUnitId] = useState('');
+  const [buInitialised, setBuInitialised] = useState(false);
   const [clientId, setClientId] = useState(project?.client?.id ?? '');
   const [departmentId, setDepartmentId] = useState(project?.department?.id ?? '');
   const [description, setDescription] = useState(project?.description ?? '');
@@ -43,6 +44,17 @@ export function ProjectFormModal({ project, onClose, onSuccess }: Props) {
   });
   const { data: clients = [] } = useQuery({ queryKey: ['clients-active'], queryFn: () => clientsApi.list(false) });
   const { data: departments = [] } = useQuery({ queryKey: ['departments-active'], queryFn: () => departmentsApi.list(false) });
+
+  // Pre-select business unit when editing an existing project
+  useEffect(() => {
+    if (!project || buInitialised) return;
+    if (!clients.length && !departments.length) return;
+    const buFromClient = clients.find((c) => c.id === project.client?.id)?.businessUnit?.id;
+    const buFromDept = departments.find((d) => d.id === project.department?.id)?.businessUnit?.id;
+    const resolvedBu = buFromClient ?? buFromDept ?? '';
+    if (resolvedBu) setBusinessUnitId(resolvedBu);
+    setBuInitialised(true);
+  }, [clients, departments]);
 
   // Filter clients and departments to BU scope when a BU is selected
   const filteredClients = businessUnitId

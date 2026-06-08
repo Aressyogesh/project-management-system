@@ -230,7 +230,7 @@ export function ProjectDetailPage() {
               )}
             </div>
             {project.description && (
-              <p className="text-sm text-gray-500 mt-2 max-w-2xl">{project.description}</p>
+              <p className="text-sm text-gray-500 mt-2 max-w-2xl" dangerouslySetInnerHTML={{ __html: project.description }} />
             )}
           </div>
         </div>

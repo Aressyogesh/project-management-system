@@ -60,6 +60,7 @@ export class ProjectRoleGuard implements CanActivate {
       throw new ForbiddenException('Insufficient permissions');
     }
 
+    request.user.projectRole = membership.projectRole;
     return true;
   }
 

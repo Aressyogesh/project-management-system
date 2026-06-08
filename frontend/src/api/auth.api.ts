@@ -15,4 +15,8 @@ export const authApi = {
   logout: async (refreshToken: string): Promise<void> => {
     await apiClient.post('/auth/logout', { refreshToken });
   },
+
+  forgotPassword: async (email: string): Promise<void> => {
+    await apiClient.post('/auth/forgot-password', { email });
+  },
 };
