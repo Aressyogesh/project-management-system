@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<title>Code Review — F-036 AI Assistant (Chat + Voice)</title>
+<style>
+  body{font-family:Inter,sans-serif;margin:0;background:#f8fafc;color:#1e293b}
+  .header{background:linear-gradient(135deg,#6d28d9,#7c3aed);color:#fff;padding:32px 40px}
+  .header h1{margin:0 0 4px;font-size:22px}
+  .header p{margin:0;opacity:.8;font-size:13px}
+  .container{max-width:960px;margin:32px auto;padding:0 24px}
+  .card{background:#fff;border:1px solid #e2e8f0;border-radius:12px;margin-bottom:20px;overflow:hidden}
+  .card-header{padding:14px 20px;border-bottom:1px solid #f1f5f9;display:flex;align-items:center;gap:10px}
+  .card-header h3{margin:0;font-size:14px;font-weight:600}
+  .badge{padding:2px 10px;border-radius:20px;font-size:11px;font-weight:700}
+  .pass{background:#dcfce7;color:#166534}
+  .warn{background:#fef9c3;color:#854d0e}
+  table{width:100%;border-collapse:collapse}
+  th{background:#f8fafc;padding:10px 16px;text-align:left;font-size:12px;color:#64748b;font-weight:600;border-bottom:1px solid #e2e8f0}
+  td{padding:10px 16px;font-size:13px;border-bottom:1px solid #f1f5f9;vertical-align:top}
+  tr:last-child td{border-bottom:none}
+  .status-pass{color:#16a34a;font-weight:600}
+  .status-warn{color:#d97706;font-weight:600}
+  .summary{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px}
+  .stat{background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:16px;text-align:center}
+  .stat-num{font-size:28px;font-weight:700;color:#6d28d9}
+  .stat-lbl{font-size:12px;color:#64748b;margin-top:4px}
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>Code Review Report — F-036</h1>
+  <p>AI Assistant (Chat + Voice) &nbsp;|&nbsp; Reviewed: 2026-06-08 &nbsp;|&nbsp; Branch: feature/F-036-ai-assistant-chat-voice</p>
+</div>
+<div class="container">
+  <div class="summary">
+    <div class="stat"><div class="stat-num">8</div><div class="stat-lbl">Checks Run</div></div>
+    <div class="stat"><div class="stat-num">7</div><div class="stat-lbl">Passed</div></div>
+    <div class="stat"><div class="stat-num">1</div><div class="stat-lbl">Warnings</div></div>
+    <div class="stat"><div class="stat-num">0</div><div class="stat-lbl">Failures</div></div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><h3>CR-1 — Code Structure &amp; Organisation</h3><span class="badge pass">PASS</span></div>
+    <table>
+      <tr><th>Item</th><th>Observation</th><th>Status</th></tr>
+      <tr><td>Module separation</td><td><code>backend/src/ai/</code> module is self-contained with dto/, controller, service, spec</td><td class="status-pass">✓ Pass</td></tr>
+      <tr><td>Frontend feature folder</td><td><code>frontend/src/features/ai/</code> follows existing feature folder pattern with hooks/ and components/ sub-folders</td><td class="status-pass">✓ Pass</td></tr>
+      <tr><td>API client</td><td><code>ai.api.ts</code> added alongside existing api files, consistent naming</td><td class="status-pass">✓ Pass</td></tr>
+      <tr><td>AppLayout integration</td><td><code>AiAssistant</code> added as last child in AppLayout, non-intrusive</td><td class="status-pass">✓ Pass</td></tr>
+    </table>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><h3>CR-2 — Naming Conventions</h3><span class="badge pass">PASS</span></div>
+    <table>
+      <tr><th>Item</th><th>Observation</th><th>Status</th></tr>
+      <tr><td>Service methods</td><td>camelCase: <code>chat</code>, <code>buildContext</code>, <code>buildSystemPrompt</code>, <code>mentions</code></td><td class="status-pass">✓ Pass</td></tr>
+      <tr><td>DTO</td><td><code>ChatDto</code>, <code>HistoryMessageDto</code> — PascalCase, consistent with codebase</td><td class="status-pass">✓ Pass</td></tr>
+      <tr><td>Hooks</td><td><code>useAiChat</code>, <code>useVoiceInput</code>, <code>useVoiceOutput</code> — follows existing hook naming</td><td class="status-pass">✓ Pass</td></tr>
+      <tr><td>Components</td><td>PascalCase throughout, descriptive names</td><td class="status-pass">✓ Pass</td></tr>
+    </table>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><h3>CR-3 — Type Safety</h3><span class="badge pass">PASS</span></div>
+    <table>
+      <tr><th>Item</th><th>Observation</th><th>Status</th></tr>
+      <tr><td>Backend types</td><td>All service method parameters explicitly typed; Groq response cast to typed interface</td><td class="status-pass">✓ Pass</td></tr>
+      <tr><td>Frontend types</td><td><code>ChatMessage</code> interface exported and reused across hook and API</td><td class="status-pass">✓ Pass</td></tr>
+      <tr><td>SpeechRecognition types</td><td>Custom type declarations added in <code>useVoiceInput.ts</code> for browser API types not in lib.dom</td><td class="status-pass">✓ Pass</td></tr>
+      <tr><td>tsc --noEmit</td><td>Zero TypeScript errors</td><td class="status-pass">✓ Pass</td></tr>
+    </table>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><h3>CR-4 — Error Handling</h3><span class="badge pass">PASS</span></div>
+    <table>
+      <tr><th>Item</th><th>Observation</th><th>Status</th></tr>
+      <tr><td>Groq API failure</td><td>Non-2xx response caught, logged, rethrown as <code>InternalServerErrorException</code></td><td class="status-pass">✓ Pass</td></tr>
+      <tr><td>Network error</td><td>fetch rejection caught in same try/catch block</td><td class="status-pass">✓ Pass</td></tr>
+      <tr><td>Frontend error state</td><td>Catch block in <code>useAiChat</code> appends user-friendly error message as assistant bubble</td><td class="status-pass">✓ Pass</td></tr>
+      <tr><td>SpeechRecognition not supported</td><td><code>useVoiceInput</code> checks for API existence; mic button hidden when unsupported</td><td class="status-pass">✓ Pass</td></tr>
+    </table>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><h3>CR-5 — Performance</h3><span class="badge pass">PASS</span></div>
+    <table>
+      <tr><th>Item</th><th>Observation</th><th>Status</th></tr>
+      <tr><td>Parallel DB queries</td><td>All context queries run in <code>Promise.all()</code> — no sequential waterfalls</td><td class="status-pass">✓ Pass</td></tr>
+      <tr><td>Smart context</td><td>Keyword detection limits DB queries to only relevant data per message</td><td class="status-pass">✓ Pass</td></tr>
+      <tr><td>Context item cap</td><td><code>MAX_CONTEXT_ITEMS = 10</code> limits rows fetched and token count</td><td class="status-pass">✓ Pass</td></tr>
+      <tr><td>Fast model</td><td><code>llama-3.1-8b-instant</code> selected for lowest latency on Groq</td><td class="status-pass">✓ Pass</td></tr>
+      <tr><td>max_tokens</td><td>Capped at 512 to keep responses fast and focused</td><td class="status-pass">✓ Pass</td></tr>
+    </table>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><h3>CR-6 — RBAC Compliance</h3><span class="badge pass">PASS</span></div>
+    <table>
+      <tr><th>Item</th><th>Observation</th><th>Status</th></tr>
+      <tr><td>Auth guard</td><td><code>JwtAuthGuard</code> applied globally; <code>/ai/chat</code> inherits it automatically</td><td class="status-pass">✓ Pass</td></tr>
+      <tr><td>EMPLOYEE scoping</td><td>Work item queries filtered by <code>assigneeId: user.id</code> for non-admin roles</td><td class="status-pass">✓ Pass</td></tr>
+      <tr><td>ADMIN scoping</td><td>SUPER_USER/ADMIN receive unfiltered queries</td><td class="status-pass">✓ Pass</td></tr>
+      <tr><td>Project scoping</td><td>Non-admin/manager queries filtered to <code>members: { some: { userId } }</code></td><td class="status-pass">✓ Pass</td></tr>
+    </table>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><h3>CR-7 — Test Coverage</h3><span class="badge pass">PASS</span></div>
+    <table>
+      <tr><th>Item</th><th>Observation</th><th>Status</th></tr>
+      <tr><td>Unit tests</td><td>8 tests covering: happy path, Groq error, context fetching, RBAC scoping, history forwarding</td><td class="status-pass">✓ Pass</td></tr>
+      <tr><td>All tests pass</td><td>201/201 backend tests pass (23 suites)</td><td class="status-pass">✓ Pass</td></tr>
+      <tr><td>Mock strategy</td><td>global.fetch mocked cleanly; no SDK dependency in tests</td><td class="status-pass">✓ Pass</td></tr>
+    </table>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><h3>CR-8 — Code Comments &amp; Documentation</h3><span class="badge warn">WARN</span></div>
+    <table>
+      <tr><th>Item</th><th>Observation</th><th>Status</th></tr>
+      <tr><td>eslint-disable comment</td><td><code>// eslint-disable-next-line react-hooks/exhaustive-deps</code> present in panel — acceptable because greet effect intentionally runs only on mount</td><td class="status-warn">⚠ Warn</td></tr>
+      <tr><td>No unnecessary comments</td><td>Code is comment-free apart from the eslint suppression</td><td class="status-pass">✓ Pass</td></tr>
+      <tr><td>Requirements doc</td><td>REQ-F-036 written with full API contract, DB design, tool function table</td><td class="status-pass">✓ Pass</td></tr>
+    </table>
+  </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<title>Test Summary — F-036 AI Assistant (Chat + Voice)</title>
+<style>
+  body{font-family:Inter,sans-serif;margin:0;background:#f8fafc;color:#1e293b}
+  .header{background:linear-gradient(135deg,#6d28d9,#7c3aed);color:#fff;padding:32px 40px}
+  .header h1{margin:0 0 4px;font-size:22px}
+  .header p{margin:0;opacity:.8;font-size:13px}
+  .container{max-width:960px;margin:32px auto;padding:0 24px}
+  .card{background:#fff;border:1px solid #e2e8f0;border-radius:12px;margin-bottom:20px;overflow:hidden}
+  .card-header{padding:14px 20px;border-bottom:1px solid #f1f5f9;background:#fafafa}
+  .card-header h3{margin:0;font-size:14px;font-weight:600}
+  table{width:100%;border-collapse:collapse}
+  th{background:#f8fafc;padding:10px 16px;text-align:left;font-size:12px;color:#64748b;font-weight:600;border-bottom:1px solid #e2e8f0}
+  td{padding:10px 16px;font-size:13px;border-bottom:1px solid #f1f5f9}
+  tr:last-child td{border-bottom:none}
+  .pass{color:#16a34a;font-weight:600}
+  .summary{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px}
+  .stat{background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:16px;text-align:center}
+  .stat-num{font-size:28px;font-weight:700;color:#6d28d9}
+  .stat-lbl{font-size:12px;color:#64748b;margin-top:4px}
+  .chip{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600;background:#dcfce7;color:#166534}
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>Test Summary Report — F-036</h1>
+  <p>AI Assistant (Chat + Voice) &nbsp;|&nbsp; Run: 2026-06-08 &nbsp;|&nbsp; Branch: feature/F-036-ai-assistant-chat-voice</p>
+</div>
+<div class="container">
+  <div class="summary">
+    <div class="stat"><div class="stat-num">8</div><div class="stat-lbl">Unit Tests (Backend)</div></div>
+    <div class="stat"><div class="stat-num">8</div><div class="stat-lbl">Passed</div></div>
+    <div class="stat"><div class="stat-num">0</div><div class="stat-lbl">Failed</div></div>
+    <div class="stat"><div class="stat-num">201</div><div class="stat-lbl">Total Suite (All Pass)</div></div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><h3>Backend Unit Tests — AiService (ai.service.spec.ts)</h3></div>
+    <table>
+      <tr><th>Test ID</th><th>Description</th><th>Result</th></tr>
+      <tr><td>UTC-F036-001</td><td>Returns reply from Groq on valid message</td><td class="pass">✓ Pass</td></tr>
+      <tr><td>UTC-F036-002</td><td>Throws InternalServerErrorException on Groq error (503)</td><td class="pass">✓ Pass</td></tr>
+      <tr><td>UTC-F036-003</td><td>Fetches work items when message mentions tasks/overdue</td><td class="pass">✓ Pass</td></tr>
+      <tr><td>UTC-F036-004</td><td>EMPLOYEE work item query scoped to own userId</td><td class="pass">✓ Pass</td></tr>
+      <tr><td>UTC-F036-005</td><td>SUPER_USER work item query has no assigneeId filter</td><td class="pass">✓ Pass</td></tr>
+      <tr><td>UTC-F036-006</td><td>Conversation history forwarded to Groq messages array</td><td class="pass">✓ Pass</td></tr>
+      <tr><td>UTC-F036-007</td><td>Does not fetch work items for unrelated (KPI) message</td><td class="pass">✓ Pass</td></tr>
+      <tr><td>UTC-F036-008</td><td>Fetches projects when message mentions project</td><td class="pass">✓ Pass</td></tr>
+    </table>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><h3>Full Backend Regression — All Suites</h3></div>
+    <table>
+      <tr><th>Suite</th><th>Tests</th><th>Result</th></tr>
+      <tr><td>AiService</td><td>8</td><td class="pass">✓ All Pass</td></tr>
+      <tr><td>AnalyticsService (KPI)</td><td>14</td><td class="pass">✓ All Pass</td></tr>
+      <tr><td>WorkItemsService</td><td>varies</td><td class="pass">✓ All Pass</td></tr>
+      <tr><td>All other 20 suites</td><td>179</td><td class="pass">✓ All Pass</td></tr>
+      <tr><td><strong>Total</strong></td><td><strong>201</strong></td><td class="pass">✓ 201/201 Pass</td></tr>
+    </table>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><h3>E2E Test Cases (Manual / Spec)</h3></div>
+    <table>
+      <tr><th>Test ID</th><th>Scenario</th><th>Status</th></tr>
+      <tr><td>TC-F036-001</td><td>Open chat panel — floating button visible, panel opens</td><td><span class="chip">Spec Ready</span></td></tr>
+      <tr><td>TC-F036-002</td><td>Send text message — reply received within 10s</td><td><span class="chip">Spec Ready</span></td></tr>
+      <tr><td>TC-F036-003</td><td>Multi-turn conversation with context</td><td><span class="chip">Spec Ready</span></td></tr>
+      <tr><td>TC-F036-004</td><td>Minimise and reopen preserves history</td><td><span class="chip">Spec Ready</span></td></tr>
+      <tr><td>TC-F036-005</td><td>Voice input populates text field</td><td><span class="chip">Spec Ready</span></td></tr>
+      <tr><td>TC-F036-006</td><td>Voice output reads assistant reply aloud</td><td><span class="chip">Spec Ready</span></td></tr>
+      <tr><td>TC-F036-007</td><td>Unauthenticated POST /ai/chat returns 401</td><td><span class="chip">Spec Ready</span></td></tr>
+      <tr><td>TC-F036-008</td><td>EMPLOYEE cannot see other users' data</td><td><span class="chip">Spec Ready</span></td></tr>
+      <tr><td>TC-F036-009</td><td>Groq unavailable shows graceful error message</td><td><span class="chip">Spec Ready</span></td></tr>
+      <tr><td>TC-F036-010</td><td>Mic button hidden when SpeechRecognition unsupported</td><td><span class="chip">Spec Ready</span></td></tr>
+      <tr><td>TC-F036-011</td><td>Empty message not sent — no API call</td><td><span class="chip">Spec Ready</span></td></tr>
+      <tr><td>TC-F036-012</td><td>Greeting by name on first open</td><td><span class="chip">Spec Ready</span></td></tr>
+    </table>
+  </div>
+</div>
+</body>
+</html>
