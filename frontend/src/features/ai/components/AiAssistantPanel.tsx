@@ -3,6 +3,7 @@ import { useAiChat } from '../hooks/useAiChat';
 import { useVoiceInput } from '../hooks/useVoiceInput';
 import { useVoiceOutput } from '../hooks/useVoiceOutput';
 import { ChatMessage } from './ChatMessage';
+import { ActionConfirmCard } from './ActionConfirmCard';
 
 const CloseIcon = () => (
   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -48,6 +49,7 @@ interface Props {
 }
 
 const SUGGESTIONS = [
+  'What should I focus on today?',
   'What are my overdue tasks?',
   'Summarise my projects',
   'What is my KPI score this month?',
@@ -56,7 +58,7 @@ const SUGGESTIONS = [
 export function AiAssistantPanel({ onClose, userName, greetOnMount }: Props) {
   const [input, setInput] = useState('');
   const [voiceEnabled, setVoiceEnabled] = useState(false);
-  const { messages, loading, sendMessage, clearHistory } = useAiChat();
+  const { messages, loading, pendingAction, sendMessage, appendMessage, clearPendingAction, clearHistory } = useAiChat();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const greetedRef = useRef(false);
@@ -120,7 +122,7 @@ export function AiAssistantPanel({ onClose, userName, greetOnMount }: Props) {
           <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-[11px] font-bold">AI</div>
           <div>
             <p className="font-semibold text-sm leading-tight">PMS Assistant</p>
-            <p className="text-[11px] text-purple-200">Tasks · Projects · KPIs</p>
+            <p className="text-[11px] text-purple-200">Tasks · Projects · KPIs · Actions</p>
           </div>
         </div>
         <div className="flex items-center gap-0.5">
@@ -171,6 +173,21 @@ export function AiAssistantPanel({ onClose, userName, greetOnMount }: Props) {
         )}
         <div ref={messagesEndRef} />
       </div>
+
+      {/* Action confirmation */}
+      {pendingAction && (
+        <ActionConfirmCard
+          action={pendingAction}
+          onConfirm={(msg) => {
+            clearPendingAction();
+            appendMessage({ role: 'assistant', content: msg });
+          }}
+          onCancel={() => {
+            clearPendingAction();
+            appendMessage({ role: 'assistant', content: 'No problem — action cancelled.' });
+          }}
+        />
+      )}
 
       {/* Input bar */}
       <div className="px-3 py-3 border-t border-gray-100 flex items-center gap-2 shrink-0">
