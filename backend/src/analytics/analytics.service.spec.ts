@@ -3,6 +3,7 @@ import { AnalyticsService } from './analytics.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { BoardStatus, WorkItemType } from '@prisma/client';
 
+let _wiId = 0;
 // Helper to create a mock work item
 const wi = (
   status: BoardStatus,
@@ -16,6 +17,7 @@ const wi = (
     severity: string | null;
   }> = {},
 ) => ({
+  id: `wi-${++_wiId}`,
   status,
   storyPoints: null,
   estimatedHours: null,
@@ -50,7 +52,7 @@ describe('AnalyticsService — KPI computation', () => {
             workItem: { findMany: jest.fn(), count: jest.fn() },
             timesheetEntry: { aggregate: jest.fn(), groupBy: jest.fn(), findMany: jest.fn() },
             kpiRecord: { findMany: jest.fn() },
-            leaveLog: { findMany: jest.fn() },
+            leaveRequest: { findMany: jest.fn() },
             learningLog: { findMany: jest.fn() },
             innovationLog: { findMany: jest.fn() },
             portalConfig: { findUnique: jest.fn() },
@@ -70,7 +72,7 @@ describe('AnalyticsService — KPI computation', () => {
     timesheetHours = 0,
     bugItems = [],
     manualScores = [],
-    leaveLogs = [],
+    leaveRequests = [],
     learningLogs = [],
     innovationLogs = [],
   }: {
@@ -79,7 +81,7 @@ describe('AnalyticsService — KPI computation', () => {
     timesheetHours?: number;
     bugItems?: { severity: string | null }[];
     manualScores?: { metricId: string; points: number }[];
-    leaveLogs?: { type: string }[];
+    leaveRequests?: { status: string; startDate: Date; endDate: Date }[];
     learningLogs?: { hours: number }[];
     innovationLogs?: { type: string }[];
   }) {
@@ -92,7 +94,7 @@ describe('AnalyticsService — KPI computation', () => {
       _sum: { hours: timesheetHours },
     });
     (prisma.kpiRecord.findMany as jest.Mock).mockResolvedValue(manualScores);
-    (prisma.leaveLog.findMany as jest.Mock).mockResolvedValue(leaveLogs);
+    (prisma.leaveRequest.findMany as jest.Mock).mockResolvedValue(leaveRequests);
     (prisma.learningLog.findMany as jest.Mock).mockResolvedValue(learningLogs);
     (prisma.innovationLog.findMany as jest.Mock).mockResolvedValue(innovationLogs);
   }
@@ -185,15 +187,21 @@ describe('AnalyticsService — KPI computation', () => {
     expect(metric.points).toBe(0);
   });
 
-  it('Attendance: unapproved leave returns 0', async () => {
-    setupUserKpiMocks({ leaveLogs: [{ type: 'UNAPPROVED' }] });
+  it('Attendance: rejected leave request returns 0', async () => {
+    setupUserKpiMocks({
+      leaveRequests: [{
+        status: 'REJECTED',
+        startDate: new Date('2026-05-10'),
+        endDate: new Date('2026-05-10'),
+      }],
+    });
     const [result] = await service.getKpi('2026-05', 'user-1', true);
     const metric = result.metrics.find((m) => m.metricId === 'attendance')!;
     expect(metric.points).toBe(0);
   });
 
   it('Attendance: 0 leave days returns 5', async () => {
-    setupUserKpiMocks({ leaveLogs: [] });
+    setupUserKpiMocks({ leaveRequests: [] });
     const [result] = await service.getKpi('2026-05', 'user-1', true);
     const metric = result.metrics.find((m) => m.metricId === 'attendance')!;
     expect(metric.points).toBe(5);
