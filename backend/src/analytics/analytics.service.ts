@@ -172,7 +172,7 @@ export class AnalyticsService {
           reopenCount: true,
         },
       }),
-      // All assigned items (for Delivery Timeliness + Rework)
+      // All assigned items (for Delivery Timeliness + Rework + non-sprint fallback)
       this.prisma.workItem.findMany({
         where: {
           assigneeId: userId,
@@ -185,6 +185,8 @@ export class AnalyticsService {
           reopenCount: true,
           type: true,
           severity: true,
+          storyPoints: true,
+          estimatedHours: true,
         },
       }),
       // Timesheet hours sum (for Estimation Accuracy)
@@ -223,9 +225,14 @@ export class AnalyticsService {
       }),
     ]);
 
+    // Auto-detect: if no sprint items exist, fall back to all assigned items so that
+    // non-sprint projects (Kanban, Waterfall, ad-hoc) are scored fairly.
+    const isSprintBased = sprintItems.length > 0;
+    const deliveryBase = isSprintBased ? sprintItems : allAssignedItems;
+
     // Sprint Reliability
-    const sprintCommitted = sprintItems.reduce((s, i) => s + (i.storyPoints ?? 1), 0);
-    const sprintDelivered = sprintItems
+    const sprintCommitted = deliveryBase.reduce((s, i) => s + (i.storyPoints ?? 1), 0);
+    const sprintDelivered = deliveryBase
       .filter((i) => i.status === BoardStatus.QA_DONE)
       .reduce((s, i) => s + (i.storyPoints ?? 1), 0);
     const sprintReliability = computeSprintReliability(sprintCommitted, sprintDelivered);
@@ -237,18 +244,18 @@ export class AnalyticsService {
     );
     const deliveryTimeliness = computeDeliveryTimeliness(onTimeItems.length, itemsWithDue.length);
 
-    // Estimation Accuracy
-    const totalEstimated = sprintItems.reduce(
+    // Estimation Accuracy — uses same deliveryBase as sprint reliability
+    const totalEstimated = deliveryBase.reduce(
       (s, i) => s + Number(i.estimatedHours ?? 0),
       0,
     );
     const totalActual = Number(timesheetSum._sum.hours ?? 0);
     const estimationAccuracy = computeEstimationAccuracy(totalEstimated, totalActual);
 
-    // Throughput
-    const sprintTotal = sprintItems.length;
-    const sprintCompleted = sprintItems.filter((i) => i.status === BoardStatus.QA_DONE).length;
-    const throughput = computeThroughput(sprintCompleted, sprintTotal);
+    // Throughput — uses same deliveryBase
+    const throughputTotal = deliveryBase.length;
+    const throughputCompleted = deliveryBase.filter((i) => i.status === BoardStatus.QA_DONE).length;
+    const throughput = computeThroughput(throughputCompleted, throughputTotal);
 
     // Rework Ratio
     const totalReopens = allAssignedItems.reduce((s, i) => s + i.reopenCount, 0);
