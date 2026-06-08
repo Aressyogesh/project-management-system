@@ -102,10 +102,26 @@ jobs:
             taskkill /PID $portPid /F 2>$null; $true
             Start-Sleep -Seconds 2
           }
-          # Start fresh and wait for online (up to 30 s)
+          # Start fresh
           pm2 start dist/src/main.js --name pms-backend
           pm2 save
-          pm2 wait-online pms-backend --timeout 30000
+          # Poll the health endpoint until NestJS finishes initialising (max 30 s)
+          $deadline = (Get-Date).AddSeconds(30)
+          $ready = $false
+          while ((Get-Date) -lt $deadline) {
+            try {
+              $r = Invoke-WebRequest -Uri "http://localhost:3000/api/v1/health" -UseBasicParsing -TimeoutSec 3 -ErrorAction Stop
+              $body = $r.Content | ConvertFrom-Json
+              if ($r.StatusCode -eq 200 -and $body.status -eq 'ok') { $ready = $true; break }
+            } catch {}
+            Start-Sleep -Seconds 2
+          }
+          if (-not $ready) {
+            Write-Host "Backend did not come online within 30s — PM2 logs:"
+            pm2 logs pms-backend --lines 30 --nostream 2>$null
+            exit 1
+          }
+          Write-Host "Backend startup confirmed"
         shell: pwsh
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
