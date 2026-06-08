@@ -89,9 +89,23 @@ jobs:
       - name: Restart backend via PM2
         working-directory: backend
         run: |
-          pm2 delete pms-backend 2>$null; $true
+          # Remove any PM2 process that might own port 3000
+          pm2 delete pms-backend   2>$null; $true
+          pm2 delete pms-ecosystem 2>$null; $true
+          # Kill any stale process still listening on port 3000
+          $portPid = (netstat -ano 2>$null |
+            Where-Object { $_ -match "TCP\s+(?:0\.0\.0\.0|127\.0\.0\.1):3000\s+.*LISTENING" } |
+            ForEach-Object { ($_ -split '\s+')[-1] } |
+            Select-Object -First 1)
+          if ($portPid -and $portPid -match '^\d+$' -and $portPid -ne '0') {
+            Write-Host "Killing stale PID $portPid on port 3000"
+            taskkill /PID $portPid /F 2>$null; $true
+            Start-Sleep -Seconds 2
+          }
+          # Start fresh and wait for online (up to 30 s)
           pm2 start dist/src/main.js --name pms-backend
           pm2 save
+          pm2 wait-online pms-backend --timeout 30000
         shell: pwsh
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
@@ -131,18 +145,20 @@ jobs:
           pm2 save
         shell: pwsh
 
-      # ── 4. Health check (retry x3, 5s delay) ─────────────────────────────────
+      # ── 4. Health check (retry x6, 5s delay) ─────────────────────────────────
       - name: Health check — backend
         run: |
-          $maxAttempts = 3
+          $maxAttempts = 6
           $delay = 5
           for ($i = 1; $i -le $maxAttempts; $i++) {
             try {
               $response = Invoke-WebRequest -Uri "http://localhost:3000/api/v1/health" -UseBasicParsing -TimeoutSec 10
-              if ($response.StatusCode -eq 200) {
+              $body = $response.Content | ConvertFrom-Json
+              if ($response.StatusCode -eq 200 -and $body.status -eq 'ok') {
                 Write-Host "Health check passed on attempt $i"
                 exit 0
               }
+              Write-Host "Attempt $i: unexpected response: $($response.Content)"
             } catch {
               Write-Host "Attempt $i failed: $_"
             }
@@ -151,7 +167,8 @@ jobs:
               Start-Sleep -Seconds $delay
             }
           }
-          Write-Host "Health check failed after $maxAttempts attempts"
+          Write-Host "Health check failed after $maxAttempts attempts — PM2 logs:"
+          pm2 logs pms-backend --lines 50 --nostream 2>$null
           exit 1
         shell: pwsh
 
