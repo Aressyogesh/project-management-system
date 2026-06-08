@@ -170,6 +170,7 @@ export function KpiPage() {
   const isAdminOrSuper = user?.systemRole === 'SUPER_USER' || user?.systemRole === 'ADMIN';
 
   const [selectedPeriod, setSelectedPeriod] = useState(DEFAULT_PERIOD);
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState<string | null>(null);
   const [deptFilter, setDeptFilter] = useState('All Departments');
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedUserId, setExpandedUserId] = useState<string | null>(null);
@@ -257,37 +258,67 @@ export function KpiPage() {
     );
   }
 
+  const selectedEmployee = selectedEmployeeId
+    ? employees.find((e) => e.userId === selectedEmployeeId) ?? null
+    : null;
+
   // ── Admin / Super User view ────────────────────────────────────────────────
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <h1 className="text-xl font-bold text-gray-900">KPI Appraisal</h1>
           <p className="text-sm text-gray-400 mt-0.5">
-            Digital Appraisal System · {PERIOD_OPTIONS.find((p) => p.value === selectedPeriod)?.label ?? selectedPeriod}
+            {selectedEmployee
+              ? `${selectedEmployee.name} · ${PERIOD_OPTIONS.find((p) => p.value === selectedPeriod)?.label ?? selectedPeriod}`
+              : `Digital Appraisal System · ${PERIOD_OPTIONS.find((p) => p.value === selectedPeriod)?.label ?? selectedPeriod}`}
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setShowScoreEntry(true)}
-            className="flex items-center gap-1.5 text-xs font-medium text-white bg-primary-600 hover:bg-primary-700 px-3 py-1.5 rounded-lg transition"
-          >
-            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-            </svg>
-            Enter Monthly Scores
-          </button>
-          <label className="text-xs text-gray-500 font-medium shrink-0">Period:</label>
-          <select
-            value={selectedPeriod}
-            onChange={(e) => { setSelectedPeriod(e.target.value); setExpandedUserId(null); }}
-            className="text-sm border border-gray-200 rounded-lg px-3 py-1.5 bg-white text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            {PERIOD_OPTIONS.map((p) => (
-              <option key={p.value} value={p.value}>{p.label}</option>
-            ))}
-          </select>
+        <div className="flex flex-wrap items-center gap-2">
+          {!selectedEmployeeId && (
+            <button
+              onClick={() => setShowScoreEntry(true)}
+              className="flex items-center gap-1.5 text-xs font-medium text-white bg-primary-600 hover:bg-primary-700 px-3 py-1.5 rounded-lg transition"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                  d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              </svg>
+              Enter Monthly Scores
+            </button>
+          )}
+
+          {/* Employee selector */}
+          <div className="flex items-center gap-1.5">
+            <label className="text-xs text-gray-500 font-medium shrink-0">Employee:</label>
+            <select
+              value={selectedEmployeeId ?? ''}
+              onChange={(e) => setSelectedEmployeeId(e.target.value || null)}
+              className="text-sm border border-gray-200 rounded-lg px-3 py-1.5 bg-white text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 max-w-[180px]"
+            >
+              <option value="">All Employees</option>
+              {[...employees]
+                .sort((a, b) => a.name.localeCompare(b.name))
+                .map((e) => (
+                  <option key={e.userId} value={e.userId}>{e.name}</option>
+                ))}
+            </select>
+          </div>
+
+          {/* Period selector */}
+          <div className="flex items-center gap-1.5">
+            <label className="text-xs text-gray-500 font-medium shrink-0">Period:</label>
+            <select
+              value={selectedPeriod}
+              onChange={(e) => { setSelectedPeriod(e.target.value); setExpandedUserId(null); }}
+              className="text-sm border border-gray-200 rounded-lg px-3 py-1.5 bg-white text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              {PERIOD_OPTIONS.map((p) => (
+                <option key={p.value} value={p.value}>{p.label}</option>
+              ))}
+            </select>
+          </div>
         </div>
       </div>
 
@@ -295,7 +326,28 @@ export function KpiPage() {
         <div className="flex items-center justify-center h-48">
           <div className="w-6 h-6 border-2 border-primary-300 border-t-primary-600 rounded-full animate-spin" />
         </div>
+      ) : selectedEmployee ? (
+        /* ── Individual employee detail view ── */
+        <>
+          {/* Grade badge row */}
+          <div className="flex items-center gap-3">
+            {(() => {
+              const grade = GRADE_CONFIG[selectedEmployee.grade];
+              return (
+                <span className={`text-sm font-bold px-3 py-1.5 rounded-full ${grade.bg} ${grade.text}`}>
+                  Grade {selectedEmployee.grade} — {selectedEmployee.totalScore} / 100
+                </span>
+              );
+            })()}
+            <span className="text-xs text-gray-400">{selectedEmployee.role} · {selectedEmployee.department}</span>
+          </div>
+          <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
+            <KpiRadarChart employee={selectedEmployee} />
+          </div>
+          <KpiEmployeeDetailPanel employee={selectedEmployee} />
+        </>
       ) : (
+        /* ── Team dashboard view ── */
         <>
           {summary && (
             <>
