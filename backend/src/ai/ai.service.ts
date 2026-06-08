@@ -150,8 +150,7 @@ export class AiService {
     }
 
     if (this.mentions(msg, ['kpi', 'score', 'performance', 'metric', 'rating'])) {
-      const now = new Date();
-      const period = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+      const period = this.resolvePeriod(msg);
       queries.push(
         this.analytics.getKpi(period, user.id, isAdmin).then((results) => {
           if (!results.length) return;
@@ -222,6 +221,23 @@ Today is ${today}. You are speaking with ${user.fullName} (role: ${user.systemRo
 
 ## Live data
 ${context || 'No specific data was retrieved for this query.'}`;
+  }
+
+  private resolvePeriod(msg: string): string {
+    const now = new Date();
+    if (msg.includes('last month') || msg.includes('previous month')) {
+      const d = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    }
+    const monthNames = ['january','february','march','april','may','june','july','august','september','october','november','december'];
+    for (let i = 0; i < monthNames.length; i++) {
+      if (msg.includes(monthNames[i])) {
+        const yearMatch = msg.match(/\b(20\d{2})\b/);
+        const year = yearMatch ? parseInt(yearMatch[1]) : now.getFullYear();
+        return `${year}-${String(i + 1).padStart(2, '0')}`;
+      }
+    }
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
   }
 
   private mentions(msg: string, keywords: string[]): boolean {
