@@ -1,23 +1,34 @@
 import { Test } from '@nestjs/testing';
 import { InternalServerErrorException } from '@nestjs/common';
+import * as https from 'https';
 import { AiService } from './ai.service';
 import { PrismaService } from '../prisma/prisma.service';
+
+jest.mock('https');
 
 const mockUser = { id: 'u1', systemRole: 'EMPLOYEE', fullName: 'Test User' };
 const adminUser = { id: 'u2', systemRole: 'SUPER_USER', fullName: 'Admin User' };
 
-const mockFetch = jest.fn();
-global.fetch = mockFetch;
+function setupHttpsMock(statusCode: number, responseBody: string) {
+  (https.request as jest.Mock).mockImplementation((_opts: unknown, cb: (res: unknown) => void) => {
+    const res = {
+      statusCode,
+      on: jest.fn((event: string, handler: (data?: string) => void) => {
+        if (event === 'data') handler(responseBody);
+        if (event === 'end') handler();
+      }),
+    };
+    cb(res);
+    return { write: jest.fn(), end: jest.fn(), on: jest.fn() };
+  });
+}
 
 describe('AiService', () => {
   let service: AiService;
   let prisma: jest.Mocked<PrismaService>;
 
   beforeEach(async () => {
-    mockFetch.mockResolvedValue({
-      ok: true,
-      json: async () => ({ choices: [{ message: { content: 'Mock reply' } }] }),
-    });
+    setupHttpsMock(200, JSON.stringify({ choices: [{ message: { content: 'Mock reply' } }] }));
 
     const module = await Test.createTestingModule({
       providers: [
@@ -44,7 +55,7 @@ describe('AiService', () => {
   });
 
   it('UTC-F036-002 — throws InternalServerErrorException on Groq error', async () => {
-    mockFetch.mockResolvedValue({ ok: false, status: 503, text: async () => 'Service unavailable' });
+    setupHttpsMock(503, 'Service unavailable');
     await expect(service.chat({ message: 'Hello', history: [] }, mockUser)).rejects.toThrow(
       InternalServerErrorException,
     );
@@ -68,13 +79,29 @@ describe('AiService', () => {
   });
 
   it('UTC-F036-006 — history is forwarded to Groq messages', async () => {
-    mockFetch.mockClear();
+    let capturedBody = '';
+    (https.request as jest.Mock).mockImplementation((_opts: unknown, cb: (res: unknown) => void) => {
+      const res = {
+        statusCode: 200,
+        on: jest.fn((event: string, handler: (data?: string) => void) => {
+          if (event === 'data') handler(JSON.stringify({ choices: [{ message: { content: 'Mock reply' } }] }));
+          if (event === 'end') handler();
+        }),
+      };
+      cb(res);
+      return {
+        write: jest.fn((data: string) => { capturedBody = data; }),
+        end: jest.fn(),
+        on: jest.fn(),
+      };
+    });
+
     const history = [
       { role: 'user' as const, content: 'Hi' },
       { role: 'assistant' as const, content: 'Hello' },
     ];
     await service.chat({ message: 'follow up', history }, mockUser);
-    const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+    const body = JSON.parse(capturedBody);
     expect(body.messages[1]).toMatchObject({ role: 'user', content: 'Hi' });
     expect(body.messages[2]).toMatchObject({ role: 'assistant', content: 'Hello' });
   });

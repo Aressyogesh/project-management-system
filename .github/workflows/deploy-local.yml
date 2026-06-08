@@ -121,6 +121,7 @@ jobs:
           JWT_REFRESH_SECRET: ${{ secrets.JWT_REFRESH_SECRET }}
           FRONTEND_URL: ${{ secrets.FRONTEND_URL }}
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          NODE_OPTIONS: '--use-system-ca'
           PORT: '3000'
 
       # ── 3. Frontend ──────────────────────────────────────────────────────────

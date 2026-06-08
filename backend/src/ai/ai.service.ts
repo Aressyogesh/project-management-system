@@ -1,8 +1,10 @@
 import { Injectable, InternalServerErrorException, Logger } from '@nestjs/common';
+import * as https from 'https';
 import { PrismaService } from '../prisma/prisma.service';
 import { ChatDto } from './dto/chat.dto';
 
-const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
+const GROQ_HOST = 'api.groq.com';
+const GROQ_PATH = '/openai/v1/chat/completions';
 const MODEL = 'llama-3.1-8b-instant';
 const MAX_CONTEXT_ITEMS = 10;
 
@@ -32,26 +34,49 @@ export class AiService {
     ];
 
     try {
-      const res = await fetch(GROQ_API_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
-        },
-        body: JSON.stringify({ model: MODEL, messages, max_tokens: 512, temperature: 0.3 }),
-      });
-      if (!res.ok) {
-        const err = await res.text();
-        this.logger.error(`Groq error ${res.status}: ${err}`);
-        throw new Error(`Groq ${res.status}`);
-      }
-      const data = (await res.json()) as { choices: { message: { content: string } }[] };
-      const reply = data.choices[0]?.message?.content ?? 'No response from AI.';
+      const reply = await this.callGroq(messages);
       return { reply };
     } catch (err) {
       this.logger.error('Groq API error', err);
       throw new InternalServerErrorException('AI service unavailable. Please try again later.');
     }
+  }
+
+  private callGroq(messages: ChatMessage[]): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const body = JSON.stringify({ model: MODEL, messages, max_tokens: 512, temperature: 0.3 });
+      const req = https.request(
+        {
+          hostname: GROQ_HOST,
+          path: GROQ_PATH,
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
+            'Content-Length': Buffer.byteLength(body),
+          },
+        },
+        (res) => {
+          let raw = '';
+          res.on('data', (chunk) => (raw += chunk));
+          res.on('end', () => {
+            if (res.statusCode !== 200) {
+              reject(new Error(`Groq ${res.statusCode}: ${raw}`));
+              return;
+            }
+            try {
+              const data = JSON.parse(raw) as { choices: { message: { content: string } }[] };
+              resolve(data.choices[0]?.message?.content ?? 'No response from AI.');
+            } catch {
+              reject(new Error('Failed to parse Groq response'));
+            }
+          });
+        },
+      );
+      req.on('error', reject);
+      req.write(body);
+      req.end();
+    });
   }
 
   private async buildContext(message: string, user: { id: string; systemRole: string }): Promise<string> {
