@@ -56,7 +56,10 @@ function computeDefectLeakage(
   bugs: { severity: BugSeverity | null }[],
 ): number {
   const criticalOrBlocker = bugs.filter(
-    (b) => b.severity === 'CRITICAL' || b.severity === 'BLOCKER',
+    (b) =>
+      b.severity === 'SHOW_STOPPER' ||
+      b.severity === 'CRITICAL' ||
+      b.severity === 'BLOCKER',
   ).length;
   if (criticalOrBlocker > 0) return 0;
   const minors = bugs.filter((b) => b.severity === 'MINOR' || b.severity === 'TRIVIAL').length;
@@ -74,19 +77,33 @@ function computeDependencyAgile(
 ): number {
   if (totalItems === 0) return 5;
   const ratio = blockedCount / totalItems;
-  if (ratio >= 0.5) return 5;
-  if (ratio >= 0.2) return 3;
+  if (ratio === 0) return 5;
+  if (ratio <= 0.1) return 3;
   return 0;
 }
 
 function computeAttendance(
-  leaveDays: { type: string }[],
+  leaveRequests: { status: string; startDate: Date; endDate: Date }[],
+  periodStart: Date,
+  periodEnd: Date,
 ): number {
-  const unapproved = leaveDays.filter((l) => l.type === 'UNAPPROVED').length;
-  if (unapproved > 0) return 0;
-  const approved = leaveDays.filter((l) => l.type === 'APPROVED').length;
-  if (approved > 1.5) return 0;
-  if (approved > 1) return 3;
+  // Rejected leave = absence that was not approved
+  const hasRejected = leaveRequests.some((r) => r.status === 'REJECTED');
+  if (hasRejected) return 0;
+
+  // Count approved leave days that fall within the KPI period
+  let approvedDays = 0;
+  for (const r of leaveRequests.filter((r) => r.status === 'APPROVED')) {
+    const overlapStart = r.startDate > periodStart ? r.startDate : periodStart;
+    const overlapEnd = r.endDate < periodEnd ? r.endDate : new Date(periodEnd.getTime() - 1);
+    if (overlapStart <= overlapEnd) {
+      approvedDays +=
+        Math.round((overlapEnd.getTime() - overlapStart.getTime()) / (24 * 60 * 60 * 1000)) + 1;
+    }
+  }
+
+  if (approvedDays > 1.5) return 0;
+  if (approvedDays > 1) return 3;
   return 5;
 }
 
@@ -149,10 +166,9 @@ export class AnalyticsService {
     const [
       sprintItems,
       allAssignedItems,
-      timesheetSum,
       bugItems,
       manualScores,
-      leaveLogs,
+      leaveRequests,
       learningLogs,
       innovationLogs,
     ] = await Promise.all([
@@ -164,6 +180,7 @@ export class AnalyticsService {
           createdAt: { gte: start, lt: end },
         },
         select: {
+          id: true,
           status: true,
           storyPoints: true,
           estimatedHours: true,
@@ -179,6 +196,7 @@ export class AnalyticsService {
           createdAt: { gte: start, lt: end },
         },
         select: {
+          id: true,
           status: true,
           completedAt: true,
           dueDate: true,
@@ -189,15 +207,10 @@ export class AnalyticsService {
           estimatedHours: true,
         },
       }),
-      // Timesheet hours sum (for Estimation Accuracy)
-      this.prisma.timesheetEntry.aggregate({
-        where: { userId, date: { gte: start, lt: end } },
-        _sum: { hours: true },
-      }),
-      // Bug items reported by this user (Defect Leakage)
+      // Bug items where this user is responsible (defects found in their work)
       this.prisma.workItem.findMany({
         where: {
-          reporterId: userId,
+          responsibleUserId: userId,
           type: WorkItemType.BUG,
           createdAt: { gte: start, lt: end },
         },
@@ -208,10 +221,15 @@ export class AnalyticsService {
         where: { userId, period },
         select: { metricId: true, points: true },
       }),
-      // Leave logs
-      this.prisma.leaveLog.findMany({
-        where: { userId, date: { gte: start, lt: end } },
-        select: { type: true },
+      // Approved/rejected leave requests overlapping this period (for Attendance)
+      this.prisma.leaveRequest.findMany({
+        where: {
+          userId,
+          status: { in: ['APPROVED', 'REJECTED'] },
+          startDate: { lte: end },
+          endDate: { gte: start },
+        },
+        select: { status: true, startDate: true, endDate: true },
       }),
       // Learning logs
       this.prisma.learningLog.findMany({
@@ -225,10 +243,17 @@ export class AnalyticsService {
       }),
     ]);
 
-    // Auto-detect: if no sprint items exist, fall back to all assigned items so that
-    // non-sprint projects (Kanban, Waterfall, ad-hoc) are scored fairly.
+    // Timesheet hours scoped to deliveryBase items only (accurate estimation comparison)
     const isSprintBased = sprintItems.length > 0;
     const deliveryBase = isSprintBased ? sprintItems : allAssignedItems;
+    const deliveryItemIds = deliveryBase.map((i) => i.id);
+    const timesheetSum = await this.prisma.timesheetEntry.aggregate({
+      where: {
+        userId,
+        ...(deliveryItemIds.length > 0 ? { workItemId: { in: deliveryItemIds } } : { date: { gte: start, lt: end } }),
+      },
+      _sum: { hours: true },
+    });
 
     // Sprint Reliability
     const sprintCommitted = deliveryBase.reduce((s, i) => s + (i.storyPoints ?? 1), 0);
@@ -271,13 +296,13 @@ export class AnalyticsService {
 
     // Manual scores
     const getManual = (metricId: string) =>
-      manualScores.find((s) => s.metricId === metricId)?.points ?? 5;
+      manualScores.find((s) => s.metricId === metricId)?.points ?? 0;
     const engineeringHygiene = getManual('engineering_hygiene');
     const reportingDocs = getManual('reporting_documentation');
     const positiveBehaviour = getManual('positive_behaviour');
 
     // Self-service
-    const attendance = computeAttendance(leaveLogs);
+    const attendance = computeAttendance(leaveRequests as { status: string; startDate: Date; endDate: Date }[], start, end);
     const learningHours = learningLogs.reduce((s, l) => s + l.hours, 0);
     const learningVelocity = computeLearningVelocity(learningHours);
     const automationInnovation = computeInnovation(innovationLogs);

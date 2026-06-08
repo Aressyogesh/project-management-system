@@ -211,6 +211,8 @@ export class WorkItemsService implements OnModuleInit {
     if (dto.parentId) await this.validateParentType(dto.type ?? item.type, dto.parentId);
 
     const { startDate, dueDate, ...restDto } = dto;
+    const isCompletingViaEdit = dto.status === BoardStatus.QA_DONE && item.status !== BoardStatus.QA_DONE;
+    const isUncompletingViaEdit = item.status === BoardStatus.QA_DONE && !!dto.status && dto.status !== BoardStatus.QA_DONE;
     const updated = await this.prisma.workItem.update({
       where: { id },
       data: {
@@ -219,6 +221,8 @@ export class WorkItemsService implements OnModuleInit {
         components: dto.components ?? undefined,
         ...(startDate !== undefined && { startDate: startDate ? new Date(startDate) : null }),
         ...(dueDate !== undefined && { dueDate: dueDate ? new Date(dueDate) : null }),
+        ...(isCompletingViaEdit && { completedAt: new Date() }),
+        ...(isUncompletingViaEdit && { completedAt: null }),
       },
       include: {
         assignee: { select: { id: true, fullName: true, profilePhoto: true } },
