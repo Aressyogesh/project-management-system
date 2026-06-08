@@ -89,31 +89,15 @@ jobs:
       - name: Restart backend via PM2
         working-directory: backend
         run: |
-          # Remove any PM2 process that might own port 3000
-          pm2 delete pms-backend   2>$null; $true
-          pm2 delete pms-ecosystem 2>$null; $true
-          # Kill ALL processes listening on port 3000 (IPv4 and IPv6 wildcard)
-          $portPids = netstat -ano 2>$null |
-            Where-Object { $_ -match ":3000\s+.*LISTENING" } |
-            ForEach-Object { ($_ -split '\s+')[-1] } |
-            Where-Object { $_ -match '^\d+$' -and $_ -ne '0' } |
-            Select-Object -Unique
-          if ($portPids) {
-            foreach ($p in $portPids) {
-              Write-Host "Killing PID $p on port 3000"
-              taskkill /PID $p /F 2>$null; $true
-            }
-            Start-Sleep -Seconds 2
-          }
-          # Start fresh
+          pm2 delete pms-backend 2>$null; $true
           pm2 start dist/src/main.js --name pms-backend
           pm2 save
-          # Poll the health endpoint until NestJS finishes initialising (max 30 s)
+          # Poll health endpoint until NestJS finishes initialising (max 30 s)
           $deadline = (Get-Date).AddSeconds(30)
           $ready = $false
           while ((Get-Date) -lt $deadline) {
             try {
-              $r = Invoke-WebRequest -Uri "http://localhost:3000/api/v1/health" -UseBasicParsing -TimeoutSec 3 -ErrorAction Stop
+              $r = Invoke-WebRequest -Uri "http://localhost:3001/api/v1/health" -UseBasicParsing -TimeoutSec 3 -ErrorAction Stop
               $body = $r.Content | ConvertFrom-Json
               if ($r.StatusCode -eq 200 -and $body.status -eq 'ok') { $ready = $true; break }
             } catch {}
@@ -132,6 +116,7 @@ jobs:
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
           JWT_REFRESH_SECRET: ${{ secrets.JWT_REFRESH_SECRET }}
           FRONTEND_URL: ${{ secrets.FRONTEND_URL }}
+          PORT: '3001'
 
       # ── 3. Frontend ──────────────────────────────────────────────────────────
       - name: Install frontend dependencies
@@ -164,14 +149,14 @@ jobs:
           pm2 save
         shell: pwsh
 
-      # ── 4. Health check (retry x6, 5s delay) ─────────────────────────────────
+      # ── 4. Health check ───────────────────────────────────────────────────────
       - name: Health check — backend
         run: |
           $maxAttempts = 6
           $delay = 5
           for ($i = 1; $i -le $maxAttempts; $i++) {
             try {
-              $response = Invoke-WebRequest -Uri "http://localhost:3000/api/v1/health" -UseBasicParsing -TimeoutSec 10
+              $response = Invoke-WebRequest -Uri "http://localhost:3001/api/v1/health" -UseBasicParsing -TimeoutSec 10
               $body = $response.Content | ConvertFrom-Json
               if ($response.StatusCode -eq 200 -and $body.status -eq 'ok') {
                 Write-Host "Health check passed on attempt $i"
