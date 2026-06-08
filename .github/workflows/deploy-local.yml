@@ -94,7 +94,7 @@ jobs:
         working-directory: backend
         run: |
           pm2 delete pms-backend 2>$null | Out-Null; $true
-          pm2 start dist/src/main.js --name pms-backend | Out-Null
+          pm2 start dist/src/main.js --name pms-backend --node-args="--use-system-ca" | Out-Null
           pm2 save | Out-Null
           # Poll health endpoint until NestJS finishes initialising (max 30 s)
           $deadline = (Get-Date).AddSeconds(30)
