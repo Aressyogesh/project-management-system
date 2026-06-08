@@ -3,6 +3,7 @@ import { InternalServerErrorException } from '@nestjs/common';
 import * as https from 'https';
 import { AiService } from './ai.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { AnalyticsService } from '../analytics/analytics.service';
 
 jest.mock('https');
 
@@ -26,6 +27,7 @@ function setupHttpsMock(statusCode: number, responseBody: string) {
 describe('AiService', () => {
   let service: AiService;
   let prisma: jest.Mocked<PrismaService>;
+  let analytics: jest.Mocked<AnalyticsService>;
 
   beforeEach(async () => {
     setupHttpsMock(200, JSON.stringify({ choices: [{ message: { content: 'Mock reply' } }] }));
@@ -38,8 +40,15 @@ describe('AiService', () => {
           useValue: {
             workItem: { findMany: jest.fn().mockResolvedValue([]) },
             project: { findMany: jest.fn().mockResolvedValue([]) },
-            kpiRecord: { findMany: jest.fn().mockResolvedValue([]) },
             leaveRequest: { findMany: jest.fn().mockResolvedValue([]) },
+          },
+        },
+        {
+          provide: AnalyticsService,
+          useValue: {
+            getKpi: jest.fn().mockResolvedValue([
+              { userId: 'u1', name: 'Test User', totalScore: 35, metrics: [] },
+            ]),
           },
         },
       ],
@@ -47,6 +56,7 @@ describe('AiService', () => {
 
     service = module.get(AiService);
     prisma = module.get(PrismaService) as jest.Mocked<PrismaService>;
+    analytics = module.get(AnalyticsService) as jest.Mocked<AnalyticsService>;
   });
 
   it('UTC-F036-001 — returns reply from Groq', async () => {
@@ -106,9 +116,10 @@ describe('AiService', () => {
     expect(body.messages[2]).toMatchObject({ role: 'assistant', content: 'Hello' });
   });
 
-  it('UTC-F036-007 — does not fetch work items for unrelated message', async () => {
+  it('UTC-F036-007 — KPI message calls getKpi not workItem.findMany', async () => {
     await service.chat({ message: 'what is my kpi score', history: [] }, mockUser);
     expect(prisma.workItem.findMany).not.toHaveBeenCalled();
+    expect(analytics.getKpi).toHaveBeenCalled();
   });
 
   it('UTC-F036-008 — fetches projects when message mentions project', async () => {

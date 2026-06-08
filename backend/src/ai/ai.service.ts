@@ -1,6 +1,7 @@
 import { Injectable, InternalServerErrorException, Logger } from '@nestjs/common';
 import * as https from 'https';
 import { PrismaService } from '../prisma/prisma.service';
+import { AnalyticsService } from '../analytics/analytics.service';
 import { ChatDto } from './dto/chat.dto';
 
 const GROQ_HOST = 'api.groq.com';
@@ -14,7 +15,10 @@ type ChatMessage = { role: 'system' | 'user' | 'assistant'; content: string };
 export class AiService {
   private readonly logger = new Logger(AiService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly analytics: AnalyticsService,
+  ) {}
 
   async chat(dto: ChatDto, user: { id: string; systemRole: string; fullName: string }): Promise<{ reply: string }> {
     if (dto.message.startsWith('__greet__')) {
@@ -149,22 +153,25 @@ export class AiService {
       const now = new Date();
       const period = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
       queries.push(
-        this.prisma.kpiRecord
-          .findMany({
-            where: isAdmin ? {} : { userId: user.id },
-            select: { user: { select: { fullName: true } }, metricId: true, points: true, period: true },
-            orderBy: { period: 'desc' },
-            take: MAX_CONTEXT_ITEMS,
-          })
-          .then((records) => {
-            const current = records.filter((r) => r.period === period);
-            if (current.length) {
-              parts.push(
-                `KPI RECORDS (${period}):\n` +
-                  current.map((r) => `- ${r.user.fullName} | ${r.metricId}: ${r.points} pts`).join('\n'),
-              );
-            }
-          }),
+        this.analytics.getKpi(period, user.id, isAdmin).then((results) => {
+          if (!results.length) return;
+          if (isAdmin) {
+            parts.push(
+              `KPI SCORES (${period}) — all users:\n` +
+                results
+                  .sort((a, b) => b.totalScore - a.totalScore)
+                  .slice(0, MAX_CONTEXT_ITEMS)
+                  .map((r) => `- ${r.name}: ${r.totalScore} pts`)
+                  .join('\n'),
+            );
+          } else {
+            const r = results[0];
+            parts.push(
+              `KPI SCORE (${period}) for ${r.name}: ${r.totalScore} pts\n` +
+                r.metrics.map((m) => `  ${m.metricId}: ${m.points} pts`).join('\n'),
+            );
+          }
+        }),
       );
     }
 
@@ -196,12 +203,25 @@ export class AiService {
 
   private buildSystemPrompt(user: { id: string; systemRole: string; fullName: string }, context: string): string {
     const today = new Date().toISOString().slice(0, 10);
-    return `You are PMS Assistant, a helpful AI for a project management system.
-Today is ${today}. You are talking to ${user.fullName} (role: ${user.systemRole}).
-Answer concisely and factually. Use the live data below. If asked to create something, explain you can help navigate there.
-Do not make up data not present below.
+    return `You are PMS Assistant — a professional, friendly AI assistant built into a project management system.
 
-${context || 'No specific data retrieved for this query.'}`;
+Today is ${today}. You are speaking with ${user.fullName} (role: ${user.systemRole}).
+
+## How to respond
+- Always acknowledge the user's perspective or intent before giving an answer. A brief empathetic opener (1 sentence) is enough.
+- Be concise, clear, and respectful. Avoid jargon or overly technical language unless the user's role warrants it.
+- Use a warm but professional tone — the way a knowledgeable colleague would speak, not a chatbot.
+- For lists or multi-part answers, use a short structured format (bullet points or numbered steps).
+- If something is unclear, ask one clarifying question rather than guessing.
+
+## Data rules
+- Use ONLY the live data provided below. Never invent, estimate, or assume numbers, statuses, names, or dates not present in it.
+- KPI scores are in raw points (e.g. "35 pts out of ~100"), NOT percentages. Do not convert to a percentage unless one is explicitly in the data.
+- If the data does not contain the answer, respond: "I don't have that information right now — you can check the [relevant module] for the latest details."
+- If asked to create or modify something, explain you can guide the user to the right place in the app.
+
+## Live data
+${context || 'No specific data was retrieved for this query.'}`;
   }
 
   private mentions(msg: string, keywords: string[]): boolean {
