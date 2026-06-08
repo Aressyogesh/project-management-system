@@ -162,9 +162,9 @@ jobs:
                 Write-Host "Health check passed on attempt $i"
                 exit 0
               }
-              Write-Host "Attempt $i: unexpected response: $($response.Content)"
+              Write-Host "Attempt ${i}: unexpected response: $($response.Content)"
             } catch {
-              Write-Host "Attempt $i failed: $_"
+              Write-Host "Attempt ${i} failed: $_"
             }
             if ($i -lt $maxAttempts) {
               Write-Host "Retrying in ${delay}s..."
