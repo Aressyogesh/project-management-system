@@ -34,6 +34,8 @@ const mockPrisma = {
   projectMember: { findFirst: jest.fn(), count: jest.fn() },
   project: { findMany: jest.fn() },
   milestone: { findMany: jest.fn() },
+  kpiRecord: { findMany: jest.fn() },
+  leaveRequest: { groupBy: jest.fn() },
 };
 
 const mockEmail = {
@@ -230,6 +232,70 @@ describe('NotificationsCronService', () => {
       mockEmail.sendEmail.mockRejectedValueOnce(new Error('SMTP down'));
 
       await expect(service.handleWeeklyProjectHealthReport()).resolves.not.toThrow();
+    });
+  });
+
+  // ── Monthly KPI digest ────────────────────────────────────────────────────
+
+  describe('handleMonthlyKpiDigest', () => {
+    it('UTC-F041-B-003: HandleMonthlyKpiDigest_UsersWithKpiRecords_SendsDigestEmail', async () => {
+      mockPrisma.user.findMany.mockResolvedValue([mockAssigneeA]);
+      mockPrisma.kpiRecord.findMany.mockResolvedValue([
+        { metricId: 'QUALITY', points: 90 },
+        { metricId: 'DELIVERY', points: 85 },
+      ]);
+
+      await service.handleMonthlyKpiDigest();
+
+      expect(mockEmail.sendEmail).toHaveBeenCalledTimes(1);
+      const [to, subject] = mockEmail.sendEmail.mock.calls[0];
+      expect(to).toBe('alice@pms.com');
+      expect(subject.toLowerCase()).toContain('kpi');
+    });
+
+    it('UTC-F041-B-004: HandleMonthlyKpiDigest_UserHasNoKpiRecords_SkipsEmail', async () => {
+      mockPrisma.user.findMany.mockResolvedValue([mockAssigneeA]);
+      mockPrisma.kpiRecord.findMany.mockResolvedValue([]);
+
+      await service.handleMonthlyKpiDigest();
+
+      expect(mockEmail.sendEmail).not.toHaveBeenCalled();
+    });
+
+    it('UTC-F041-B-005: HandleMonthlyKpiDigest_SmtpFails_LogsErrorAndDoesNotThrow', async () => {
+      mockPrisma.user.findMany.mockResolvedValue([mockAssigneeA]);
+      mockPrisma.kpiRecord.findMany.mockResolvedValue([{ metricId: 'QUALITY', points: 90 }]);
+      mockEmail.sendEmail.mockRejectedValueOnce(new Error('SMTP down'));
+
+      await expect(service.handleMonthlyKpiDigest()).resolves.not.toThrow();
+    });
+  });
+
+  // ── Monthly leave report ──────────────────────────────────────────────────
+
+  describe('handleMonthlyLeaveReport', () => {
+    it('UTC-F041-B-006: HandleMonthlyLeaveReport_ApprovedLeaveExists_SendsReportToAdmins', async () => {
+      mockPrisma.leaveRequest.groupBy.mockResolvedValue([
+        { userId: 'user-a', _sum: { totalDays: 5 } },
+      ]);
+      mockPrisma.user.findMany
+        .mockResolvedValueOnce([{ fullName: 'Admin', email: 'admin@pms.com' }]) // admins
+        .mockResolvedValueOnce([{ id: 'user-a', fullName: 'Alice' }]); // name lookup
+
+      await service.handleMonthlyLeaveReport();
+
+      expect(mockEmail.sendEmail).toHaveBeenCalledTimes(1);
+      const [to, subject] = mockEmail.sendEmail.mock.calls[0];
+      expect(to).toBe('admin@pms.com');
+      expect(subject.toLowerCase()).toContain('leave');
+    });
+
+    it('UTC-F041-B-007: HandleMonthlyLeaveReport_SmtpFails_LogsErrorAndDoesNotThrow', async () => {
+      mockPrisma.leaveRequest.groupBy.mockResolvedValue([]);
+      mockPrisma.user.findMany.mockResolvedValue([{ fullName: 'Admin', email: 'admin@pms.com' }]);
+      mockEmail.sendEmail.mockRejectedValueOnce(new Error('SMTP down'));
+
+      await expect(service.handleMonthlyLeaveReport()).resolves.not.toThrow();
     });
   });
 });

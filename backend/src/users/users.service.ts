@@ -2,12 +2,15 @@ import {
   BadRequestException,
   ConflictException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { AuditAction, AuditEntity } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
+import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditLogsService } from '../audit-logs/audit-logs.service';
+import { EmailService } from '../email/email.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -29,9 +32,13 @@ const USER_SELECT = {
 
 @Injectable()
 export class UsersService {
+  private readonly logger = new Logger(UsersService.name);
+
   constructor(
     private prisma: PrismaService,
     private auditLogs: AuditLogsService,
+    private email: EmailService,
+    private config: ConfigService,
   ) {}
 
   async findAll(query: UsersQueryDto) {
@@ -76,7 +83,7 @@ export class UsersService {
 
     const passwordHash = await bcrypt.hash(dto.password, 10);
 
-    return this.prisma.user.create({
+    const user = await this.prisma.user.create({
       data: {
         fullName: dto.fullName,
         email: dto.email.toLowerCase(),
@@ -89,6 +96,39 @@ export class UsersService {
       },
       select: USER_SELECT,
     });
+
+    const loginUrl =
+      this.config.get<string>('APP_FRONTEND_URL') ?? 'http://localhost:5173';
+    const body = `
+      <p style="margin:0 0 16px;color:#374151;font-size:15px;">
+        Hi ${user.fullName}, welcome to <strong>PMS</strong>! Your account has been created.
+      </p>
+      <table style="width:100%;border-collapse:collapse;font-size:14px;margin-bottom:20px;">
+        <tbody>
+          <tr><td style="padding:8px 12px;color:#6b7280;">Role</td><td style="padding:8px 12px;font-weight:600;">${user.systemRole}</td></tr>
+          <tr><td style="padding:8px 12px;color:#6b7280;">Email</td><td style="padding:8px 12px;">${user.email}</td></tr>
+        </tbody>
+      </table>
+      <a href="${loginUrl}/login" style="display:inline-block;background:#4f46e5;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:700;font-size:14px;">
+        Log In to PMS
+      </a>
+      <p style="margin:16px 0 0;color:#6b7280;font-size:13px;">
+        If you did not expect this email, please contact your administrator.
+      </p>`;
+
+    try {
+      await this.email.sendEmail(
+        user.email,
+        `Welcome to PMS, ${user.fullName}!`,
+        this.email.wrapHtml('Welcome to PMS', body),
+      );
+    } catch (err) {
+      this.logger.error(
+        `Failed to send welcome email to ${user.email}: ${(err as Error).message}`,
+      );
+    }
+
+    return user;
   }
 
   async updateUser(id: string, dto: UpdateUserDto) {

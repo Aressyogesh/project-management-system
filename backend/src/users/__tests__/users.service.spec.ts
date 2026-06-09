@@ -1,8 +1,10 @@
 import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import * as bcrypt from 'bcryptjs';
+import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AuditLogsService } from '../../audit-logs/audit-logs.service';
+import { EmailService } from '../../email/email.service';
 import { UsersService } from '../users.service';
 
 const mockPrisma = {
@@ -30,6 +32,11 @@ const mockUser = {
 };
 
 const mockAuditLogs = { log: jest.fn() };
+const mockEmail = {
+  sendEmail: jest.fn().mockResolvedValue(undefined),
+  wrapHtml: jest.fn().mockReturnValue('<html>wrapped</html>'),
+};
+const mockConfig = { get: jest.fn().mockReturnValue('http://localhost:5173') };
 
 describe('UsersService', () => {
   let service: UsersService;
@@ -40,10 +47,14 @@ describe('UsersService', () => {
         UsersService,
         { provide: PrismaService, useValue: mockPrisma },
         { provide: AuditLogsService, useValue: mockAuditLogs },
+        { provide: EmailService, useValue: mockEmail },
+        { provide: ConfigService, useValue: mockConfig },
       ],
     }).compile();
     service = module.get<UsersService>(UsersService);
     jest.clearAllMocks();
+    mockEmail.sendEmail.mockResolvedValue(undefined);
+    mockEmail.wrapHtml.mockReturnValue('<html>wrapped</html>');
   });
 
   // UTC-F-004-B-001
@@ -123,5 +134,41 @@ describe('UsersService', () => {
     expect(mockPrisma.user.update).toHaveBeenCalledWith(
       expect.objectContaining({ data: expect.objectContaining({ isActive: false }) }),
     );
+  });
+
+  // UTC-F041-B-001
+  it('UTC-F041-B-001: CreateUser_NewUser_SendsWelcomeEmail', async () => {
+    mockPrisma.user.findUnique.mockResolvedValue(null);
+    mockPrisma.user.create.mockResolvedValue(mockUser);
+    jest.spyOn(bcrypt, 'hash').mockResolvedValue('hashed' as never);
+
+    await service.createUser({
+      fullName: 'Jane Doe',
+      email: 'jane@pms.com',
+      password: 'Pass@1234',
+      systemRole: 'EMPLOYEE' as any,
+    });
+
+    expect(mockEmail.sendEmail).toHaveBeenCalledTimes(1);
+    const [to, subject] = mockEmail.sendEmail.mock.calls[0];
+    expect(to).toBe('jane@pms.com');
+    expect(subject.toLowerCase()).toContain('welcome');
+  });
+
+  // UTC-F041-B-002
+  it('UTC-F041-B-002: CreateUser_SmtpFails_UserCreatedAndErrorLogged', async () => {
+    mockPrisma.user.findUnique.mockResolvedValue(null);
+    mockPrisma.user.create.mockResolvedValue(mockUser);
+    jest.spyOn(bcrypt, 'hash').mockResolvedValue('hashed' as never);
+    mockEmail.sendEmail.mockRejectedValueOnce(new Error('SMTP down'));
+
+    const result = await service.createUser({
+      fullName: 'Jane Doe',
+      email: 'jane@pms.com',
+      password: 'Pass@1234',
+      systemRole: 'EMPLOYEE' as any,
+    });
+
+    expect(result.fullName).toBe('Jane Doe');
   });
 });

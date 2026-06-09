@@ -10,6 +10,8 @@ const PROFILE_SELECT = {
 };
 
 const mockAuditLogs: Partial<AuditLogsService> = { log: jest.fn() };
+const mockEmail = { sendEmail: jest.fn().mockResolvedValue(undefined), wrapHtml: jest.fn().mockReturnValue('') };
+const mockConfig = { get: jest.fn().mockReturnValue('http://localhost:5173') };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function makePrisma(): any {
@@ -22,7 +24,7 @@ function makePrisma(): any {
 }
 
 function makeSvc(prisma: ReturnType<typeof makePrisma>) {
-  return new UsersService(prisma as never, mockAuditLogs as never);
+  return new UsersService(prisma as never, mockAuditLogs as never, mockEmail as never, mockConfig as never);
 }
 
 describe('UsersService — profile methods', () => {

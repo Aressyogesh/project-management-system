@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
-import { BoardStatus, MilestoneStatus, ProjectRole, ProjectStatus, WorkItemType } from '@prisma/client';
+import { BoardStatus, LeaveStatus, MilestoneStatus, ProjectRole, ProjectStatus, SystemRole, WorkItemType } from '@prisma/client';
 import { EmailService } from '../email/email.service';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -374,5 +374,149 @@ export class NotificationsCronService {
     }
 
     this.logger.log('Weekly project health report cron complete');
+  }
+
+  @Cron('0 8 1 * *', { name: 'monthly-kpi-digest' })
+  async handleMonthlyKpiDigest(): Promise<void> {
+    this.logger.log('Running monthly KPI digest cron');
+
+    const now = new Date();
+    const prevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const period = `${prevMonth.getFullYear()}-${String(prevMonth.getMonth() + 1).padStart(2, '0')}`;
+
+    const activeUsers = await this.prisma.user.findMany({
+      where: { isActive: true },
+      select: { id: true, fullName: true, email: true },
+    });
+
+    for (const user of activeUsers) {
+      const records = await this.prisma.kpiRecord.findMany({
+        where: { userId: user.id, period },
+        select: { metricId: true, points: true },
+      });
+
+      if (records.length === 0) continue;
+
+      const rows = records
+        .map(
+          (r) => `<tr>
+            <td style="padding:8px 12px;border-bottom:1px solid #f3f4f6;">${r.metricId}</td>
+            <td style="padding:8px 12px;border-bottom:1px solid #f3f4f6;text-align:right;font-weight:700;">${r.points}</td>
+          </tr>`,
+        )
+        .join('');
+
+      const body = `
+        <p style="margin:0 0 16px;color:#374151;font-size:15px;">
+          Hi ${user.fullName}, here is your KPI summary for <strong>${period}</strong>.
+        </p>
+        <table style="width:100%;border-collapse:collapse;font-size:14px;">
+          <thead>
+            <tr style="background:#f9fafb;">
+              <th style="padding:8px 12px;text-align:left;border-bottom:2px solid #e5e7eb;">Metric</th>
+              <th style="padding:8px 12px;text-align:right;border-bottom:2px solid #e5e7eb;">Points</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>`;
+
+      try {
+        await this.email.sendEmail(
+          user.email,
+          `Your KPI Digest for ${period}`,
+          this.email.wrapHtml('Monthly KPI Digest', body),
+        );
+      } catch (err) {
+        this.logger.error(
+          `Failed to send KPI digest to ${user.email}: ${(err as Error).message}`,
+        );
+      }
+    }
+
+    this.logger.log(`Monthly KPI digest cron complete for period ${period}`);
+  }
+
+  @Cron('5 8 1 * *', { name: 'monthly-leave-report' })
+  async handleMonthlyLeaveReport(): Promise<void> {
+    this.logger.log('Running monthly leave report cron');
+
+    const now = new Date();
+    const prevMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const prevMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
+    const periodLabel = prevMonthStart.toLocaleString('en-GB', { month: 'long', year: 'numeric' });
+
+    const leaveGroups = await this.prisma.leaveRequest.groupBy({
+      by: ['userId'],
+      where: {
+        status: LeaveStatus.APPROVED,
+        startDate: { gte: prevMonthStart, lte: prevMonthEnd },
+      },
+      _sum: { totalDays: true },
+    });
+
+    const admins = await this.prisma.user.findMany({
+      where: {
+        isActive: true,
+        systemRole: { in: [SystemRole.SUPER_USER, SystemRole.ADMIN] },
+      },
+      select: { fullName: true, email: true },
+    });
+
+    if (admins.length === 0) {
+      this.logger.log('No admins found — skipping leave report');
+      return;
+    }
+
+    const userIds = leaveGroups.map((g) => g.userId);
+    const users = userIds.length > 0
+      ? await this.prisma.user.findMany({
+          where: { id: { in: userIds } },
+          select: { id: true, fullName: true },
+        })
+      : [];
+
+    const nameMap = new Map(users.map((u) => [u.id, u.fullName]));
+
+    const rows =
+      leaveGroups.length > 0
+        ? leaveGroups
+            .map(
+              (g) => `<tr>
+              <td style="padding:8px 12px;border-bottom:1px solid #f3f4f6;">${nameMap.get(g.userId) ?? g.userId}</td>
+              <td style="padding:8px 12px;border-bottom:1px solid #f3f4f6;text-align:center;font-weight:700;">${g._sum.totalDays ?? 0}</td>
+            </tr>`,
+            )
+            .join('')
+        : '<tr><td colspan="2" style="padding:8px 12px;color:#9ca3af;font-style:italic;">No approved leave taken in this period.</td></tr>';
+
+    const body = `
+      <p style="margin:0 0 16px;color:#374151;font-size:15px;">
+        Here is the team leave usage summary for <strong>${periodLabel}</strong>.
+      </p>
+      <table style="width:100%;border-collapse:collapse;font-size:14px;">
+        <thead>
+          <tr style="background:#f9fafb;">
+            <th style="padding:8px 12px;text-align:left;border-bottom:2px solid #e5e7eb;">Employee</th>
+            <th style="padding:8px 12px;text-align:center;border-bottom:2px solid #e5e7eb;">Days Taken</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>`;
+
+    for (const admin of admins) {
+      try {
+        await this.email.sendEmail(
+          admin.email!,
+          `Monthly Leave Report — ${periodLabel}`,
+          this.email.wrapHtml('Monthly Leave Usage Report', body),
+        );
+      } catch (err) {
+        this.logger.error(
+          `Failed to send leave report to ${admin.email}: ${(err as Error).message}`,
+        );
+      }
+    }
+
+    this.logger.log('Monthly leave report cron complete');
   }
 }
