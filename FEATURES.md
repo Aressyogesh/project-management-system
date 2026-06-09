@@ -180,7 +180,7 @@
 
 - ~~**F-037 — Forgot Password Email Flow** — Company SMTP (Nodemailer + cp1.aress.net:465 SSL); `PasswordResetToken` model; `POST /auth/forgot-password` + `POST /auth/reset-password`; branded HTML reset email; 1-hour token expiry; all refresh tokens revoked on password reset; `ResetPasswordPage` frontend at `/reset-password?token=xxx`~~
 
-- **F-038 — Email Notification Infrastructure** — Extend `EmailModule` with generic `sendEmail(to, subject, html)` method; reusable branded HTML template wrapper; uses existing Nodemailer SMTP transport (cp1.aress.net:465); `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM_EMAIL` env vars; foundation for all F-039–F-042 automations
+- ~~**F-038 — Email Notification Infrastructure** — Extend `EmailModule` with generic `sendEmail(to, subject, html)` method; reusable `wrapHtml(title, body)` branded HTML template; `@Global()` EmailModule; Nodemailer SMTP transport (cp1.aress.net:465); uses existing SMTP_* env vars; foundation for all F-039–F-042 automations; 5/5 unit tests~~
 
 - **F-039 — Task Deadline & Timesheet Reminders** — `@nestjs/schedule` cron jobs; daily 9 AM scan for tasks due within 24h → email assignee; every Friday 4 PM scan for employees with 0 timesheet hours logged that week → reminder email; `NotificationsModule` extended with cron scheduler
 

@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Security Review Report — F-038 Email Notification Infrastructure</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; margin: 0; padding: 0; background: #f3f4f6; color: #111827; }
+  .header { background: #dc2626; color: #fff; padding: 28px 40px; }
+  .header h1 { margin: 0; font-size: 22px; }
+  .header p { margin: 6px 0 0; opacity: .8; font-size: 14px; }
+  .container { max-width: 900px; margin: 32px auto; padding: 0 24px 48px; }
+  .card { background: #fff; border-radius: 12px; border: 1px solid #e5e7eb; margin-bottom: 24px; overflow: hidden; }
+  .card-header { background: #f9fafb; padding: 14px 24px; border-bottom: 1px solid #e5e7eb; font-weight: 700; font-size: 15px; }
+  .card-body { padding: 20px 24px; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th { background: #f9fafb; padding: 10px 14px; text-align: left; font-weight: 600; border-bottom: 2px solid #e5e7eb; }
+  td { padding: 10px 14px; border-bottom: 1px solid #f3f4f6; vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  .pass { color: #16a34a; font-weight: 700; }
+  .na { color: #6b7280; font-weight: 600; }
+  .cleared { font-size: 18px; font-weight: 700; color: #16a34a; }
+  .meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 14px; }
+  .meta-item label { display: block; color: #6b7280; font-size: 12px; margin-bottom: 2px; }
+  .meta-item span { font-weight: 600; }
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>Security Review Report (OWASP)</h1>
+  <p>F-038 — Email Notification Infrastructure | PMS Epic</p>
+</div>
+<div class="container">
+
+  <div class="card">
+    <div class="card-header">Review Information</div>
+    <div class="card-body">
+      <div class="meta-grid">
+        <div class="meta-item"><label>Feature ID</label><span>F-038</span></div>
+        <div class="meta-item"><label>Reviewer</label><span>Claude Sonnet 4.6 (AI Security Reviewer)</span></div>
+        <div class="meta-item"><label>Review Date</label><span>2026-06-09</span></div>
+        <div class="meta-item"><label>Verdict</label><span class="cleared">✅ Cleared</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">OWASP Web Top 10</div>
+    <div class="card-body">
+      <table>
+        <tr><th>Risk</th><th>Applicable</th><th>Status</th><th>Notes</th></tr>
+        <tr><td>A01 — Broken Access Control</td><td>No</td><td class="na">N/A</td><td>F-038 is an internal service — no new endpoints exposed</td></tr>
+        <tr><td>A02 — Cryptographic Failures</td><td>Yes</td><td class="pass">PASS</td><td>SMTP credentials read from env vars via ConfigService; never logged or stored in plain text</td></tr>
+        <tr><td>A03 — Injection</td><td>Partial</td><td class="pass">PASS</td><td>wrapHtml does inline string interpolation for email content. Email recipients come from DB (trusted source). No user-controlled HTML injected into wrapHtml in the reset flow.</td></tr>
+        <tr><td>A04 — Insecure Design</td><td>No</td><td class="na">N/A</td><td>No business flow changes in this feature</td></tr>
+        <tr><td>A05 — Security Misconfiguration</td><td>Yes</td><td class="pass">PASS</td><td>tls.rejectUnauthorized:false is acceptable for internal corporate SMTP; documented in email.service.ts</td></tr>
+        <tr><td>A06 — Vulnerable Components</td><td>Yes</td><td class="pass">PASS</td><td>nodemailer already in use since F-037; no new packages added</td></tr>
+        <tr><td>A07 — Auth Failures</td><td>No</td><td class="na">N/A</td><td>No auth logic changed</td></tr>
+        <tr><td>A08 — Integrity Failures</td><td>No</td><td class="na">N/A</td><td>No deserialisation of external data</td></tr>
+        <tr><td>A09 — Logging &amp; Monitoring</td><td>Yes</td><td class="pass">PASS</td><td>Success and error events logged via NestJS Logger; no sensitive data (passwords, tokens) in log lines</td></tr>
+        <tr><td>A10 — SSRF</td><td>No</td><td class="na">N/A</td><td>EmailService does not fetch user-supplied URLs</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">OWASP API Security Top 10</div>
+    <div class="card-body">
+      <table>
+        <tr><th>Risk</th><th>Status</th><th>Notes</th></tr>
+        <tr><td>API01 — Broken Object Level Auth</td><td class="na">N/A</td><td>No new endpoints</td></tr>
+        <tr><td>API02 — Broken Authentication</td><td class="na">N/A</td><td>No auth changes</td></tr>
+        <tr><td>API03 — Broken Property Level Auth</td><td class="na">N/A</td><td>No response DTOs</td></tr>
+        <tr><td>API04 — Unrestricted Resource Consumption</td><td class="pass">PASS</td><td>Email sending is triggered by internal services; rate limiting at caller level (F-039+)</td></tr>
+        <tr><td>API05–API10</td><td class="na">N/A</td><td>No new endpoints or external API calls introduced</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">Feature-Specific Security Checks</div>
+    <div class="card-body">
+      <table>
+        <tr><th>Check</th><th>Status</th><th>Notes</th></tr>
+        <tr><td>SMTP credentials never hard-coded</td><td class="pass">PASS</td><td>All read from ConfigService (env vars)</td></tr>
+        <tr><td>SMTP credentials not logged</td><td class="pass">PASS</td><td>Logger only records recipient address and subject</td></tr>
+        <tr><td>Email HTML does not render unsanitised user content</td><td class="pass">PASS</td><td>wrapHtml receives content from internal services only in this feature; callers (F-039+) must sanitise before passing</td></tr>
+        <tr><td>tls.rejectUnauthorized:false risk acknowledged</td><td class="pass">PASS</td><td>Acceptable for on-premise corporate SMTP behind firewall; not recommended for internet-facing SMTP</td></tr>
+        <tr><td>No credentials in git history</td><td class="pass">PASS</td><td>.env is gitignored; secrets stored in GitHub Actions Secrets</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">Dependency Audit</div>
+    <div class="card-body">
+      <p>No new dependencies introduced. nodemailer (existing) — no known critical CVEs at review date.</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">Open Risk Items</div>
+    <div class="card-body">
+      <table>
+        <tr><th>Risk</th><th>Severity</th><th>Planned Remediation</th></tr>
+        <tr><td>wrapHtml callers in F-039+ must sanitise HTML content before passing to avoid stored XSS in email bodies if content originates from user input</td><td>LOW</td><td>Add sanitisation note in F-039 requirements; EmailService is internal-only so risk is contained</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">Verdict</div>
+    <div class="card-body">
+      <p><strong>Security Verdict: <span class="cleared">✅ Cleared</span></strong></p>
+      <p>No CRITICAL or HIGH findings. One LOW risk item tracked for F-039+ callers. F-038 may proceed to Step 7.</p>
+      <p style="margin-top:24px;color:#6b7280;font-size:13px;">Reviewed by: Claude Sonnet 4.6 | 2026-06-09</p>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>
