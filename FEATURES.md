@@ -182,7 +182,7 @@
 
 - ~~**F-038 — Email Notification Infrastructure** — Extend `EmailModule` with generic `sendEmail(to, subject, html)` method; reusable `wrapHtml(title, body)` branded HTML template; `@Global()` EmailModule; Nodemailer SMTP transport (cp1.aress.net:465); uses existing SMTP_* env vars; foundation for all F-039–F-042 automations; 5/5 unit tests~~
 
-- **F-039 — Task Deadline & Timesheet Reminders** — `@nestjs/schedule` cron jobs; daily 9 AM scan for tasks due within 24h → email assignee; every Friday 4 PM scan for employees with 0 timesheet hours logged that week → reminder email; `NotificationsModule` extended with cron scheduler
+- ~~**F-039 — Task Deadline & Timesheet Reminders** — `@nestjs/schedule` cron jobs; daily 9 AM scan for tasks due within 24h → email assignee; every Friday 4 PM scan for employees with 0 timesheet hours logged that week → reminder email; `NotificationsModule` extended with cron scheduler; 6/6 unit tests~~
 
 - **F-040 — Overdue Task Escalation & Project Health Report** — daily cron: tasks overdue by 2+ days → email Project Manager with assignee + days overdue; every Monday 8 AM: per-project health summary email to PM (tasks completed, pending, overdue counts, open bugs, milestone status)
 
