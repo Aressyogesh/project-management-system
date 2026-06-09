@@ -31,7 +31,7 @@
 - Extend Prisma schema with all remaining models (Project, Task, Bug, etc. — see PLAN.md)
 - `FileStorageService` — Multer disk storage for task/bug attachments
 - ~~`ProjectRoleGuard` — checks user's project-level role (Project Manager, Team Lead, etc.)~~
-- ~~Forgotten password flow — email reset link via Brevo REST API; `PasswordResetToken` model; `POST /auth/forgot-password` + `POST /auth/reset-password`; `ResetPasswordPage` frontend; 1-hour token expiry; all refresh tokens revoked on reset~~
+- ~~Forgotten password flow — email reset link via company SMTP (cp1.aress.net:465); `PasswordResetToken` model; `POST /auth/forgot-password` + `POST /auth/reset-password`; `ResetPasswordPage` frontend; 1-hour token expiry; all refresh tokens revoked on reset~~
 - Sign-up / registration page (pending Admin approval)
 
 ---
@@ -163,9 +163,9 @@
 
 ---
 
-## Phase 14 — Infrastructure & DevOps
+## Phase 14 — Infrastructure & DevOps ✅ COMPLETE
 
-- **F-035 — CI/CD On-Premise Deployment** — Self-hosted GitHub Actions runner setup; workflow for automated deploy to local/on-premise server; health check endpoint integration; deployment guide
+- ~~**F-035 — CI/CD On-Premise Deployment** — Self-hosted GitHub Actions runner setup; workflow for automated deploy to local/on-premise server; health check endpoint integration; SMTP + GROQ secrets in GitHub Actions; idempotent Prisma migrations; deployment guide~~
 - Docker Compose full stack bundle (PostgreSQL + pgAdmin + backend + frontend)
 - Environment variable hardening (`.env.example`, secrets management)
 - Production build optimisation (Vite build, NestJS dist)
@@ -175,12 +175,12 @@
 
 ## Phase 15 — Smart Email Notifications & Workflow Automation
 
-> **Stack:** NestJS `@nestjs/schedule` (cron) + Brevo REST API (email) + Groq API (AI)
-> **Cost:** 100% free — no paid services required
+> **Stack:** NestJS `@nestjs/schedule` (cron) + Company SMTP via Nodemailer (cp1.aress.net:465) + Groq API (AI)
+> **Cost:** 100% free — uses existing company mail server
 
-- ~~**F-037 — Forgot Password Email Flow** — Brevo REST API integration; `PasswordResetToken` model; `POST /auth/forgot-password` + `POST /auth/reset-password`; branded HTML reset email; 1-hour token expiry; all refresh tokens revoked on password reset; `ResetPasswordPage` frontend at `/reset-password?token=xxx`~~
+- ~~**F-037 — Forgot Password Email Flow** — Company SMTP (Nodemailer + cp1.aress.net:465 SSL); `PasswordResetToken` model; `POST /auth/forgot-password` + `POST /auth/reset-password`; branded HTML reset email; 1-hour token expiry; all refresh tokens revoked on password reset; `ResetPasswordPage` frontend at `/reset-password?token=xxx`~~
 
-- **F-038 — Email Notification Infrastructure** — `EmailModule` with Brevo REST API transport; reusable `sendEmail()` method for all notification types; HTML email templates; `BREVO_API_KEY` + `SMTP_FROM_EMAIL` env config; foundation for all F-039–F-042 automations
+- **F-038 — Email Notification Infrastructure** — Extend `EmailModule` with generic `sendEmail(to, subject, html)` method; reusable branded HTML template wrapper; uses existing Nodemailer SMTP transport (cp1.aress.net:465); `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM_EMAIL` env vars; foundation for all F-039–F-042 automations
 
 - **F-039 — Task Deadline & Timesheet Reminders** — `@nestjs/schedule` cron jobs; daily 9 AM scan for tasks due within 24h → email assignee; every Friday 4 PM scan for employees with 0 timesheet hours logged that week → reminder email; `NotificationsModule` extended with cron scheduler
 

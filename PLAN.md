@@ -16,7 +16,7 @@ A full-stack, role-based Project Management System for a software development fi
 **File Uploads:** Multer (task & bug attachments)
 **API Docs:** Swagger via @nestjs/swagger
 **AI:** Groq API (LLM inference — free tier)
-**Email:** Brevo REST API (transactional email — free tier, 300/day)
+**Email:** Company SMTP via Nodemailer (cp1.aress.net:465 SSL — pmtool@aress.net)
 **Scheduler:** @nestjs/schedule (cron-based automation)
 
 Both frontend and backend are 100% TypeScript — Prisma auto-generates types from `schema.prisma` that are shared across the stack.
@@ -64,7 +64,7 @@ UI design follows the **Taskee** reference (`Document/Design/project-management-
 | **LLM Abstraction** | Provider switching = 3 env vars only (`GROQ_API_KEY`, `AI_BASE_URL`, `AI_MODEL`); no code changes needed to swap Ollama ↔ Groq |
 | **Tool Calling** | Groq native tool use (OpenAI-compatible function calling); used by SQL Agent to select Prisma query tools based on user question |
 | **Embeddings (Phase 2)** | **Voyage AI** `voyage-3-lite` (768 dims) — document embeddings for RAG knowledge base; pgvector extension on existing PostgreSQL |
-| **Email Delivery** | **Brevo REST API** — transactional email, 300 emails/day free forever; password reset, deadline reminders, project health reports, welcome emails |
+| **Email Delivery** | **Company SMTP via Nodemailer** — cp1.aress.net:465 SSL; authenticated as pmtool@aress.net; password reset, deadline reminders, project health reports, welcome emails |
 | **Workflow Automation** | **NestJS `@nestjs/schedule`** — built-in cron scheduler, no external tool; deadline reminders, timesheet reminders, overdue escalation, monthly KPI digest |
 
 #### AI Model Reference
@@ -918,11 +918,11 @@ project-management-system/
 
 ### Phase 15 — Smart Email Notifications & Workflow Automation
 
-> **Guiding principle:** 100% free stack — NestJS `@nestjs/schedule` + Brevo REST API (300 emails/day) + Groq API. No paid services.
+> **Guiding principle:** 100% free stack — NestJS `@nestjs/schedule` + Company SMTP via Nodemailer + Groq API. No paid services.
 
 - [x] **F-037 — Forgot Password Email Flow** ✅
   - `PasswordResetToken` Prisma model (token, userId, expiresAt, usedAt)
-  - `POST /auth/forgot-password` — generates token, sends branded HTML email via Brevo
+  - `POST /auth/forgot-password` — generates token, sends branded HTML email via company SMTP
   - `POST /auth/reset-password` — validates token, hashes new password, revokes all refresh tokens
   - `ResetPasswordPage` frontend at `/reset-password?token=xxx`
   - Token expires in 1 hour; previous unused tokens invalidated on new request
@@ -930,7 +930,7 @@ project-management-system/
 - [ ] **F-038 — Email Notification Infrastructure**
   - Extend `EmailModule` with generic `sendEmail(to, subject, html)` method
   - Reusable branded HTML template wrapper (header/footer consistent with reset email)
-  - `BREVO_API_KEY`, `SMTP_FROM_EMAIL`, `SMTP_FROM_NAME` env vars (already in `.env`)
+  - `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM_EMAIL`, `SMTP_FROM_NAME` env vars (already in `.env`)
   - Foundation used by all subsequent notification features
 
 - [ ] **F-039 — Task Deadline & Timesheet Reminders**
@@ -1028,4 +1028,4 @@ npm run dev                       # React app on http://localhost:5173
 
 ---
 
-*Plan version: 5.0 — Updated: 2026-06-09 | Backend: NestJS + Prisma + PostgreSQL | 37 features tracked (F-001 – F-037 complete, F-038–F-042 planned)*
+*Plan version: 5.1 — Updated: 2026-06-09 | Backend: NestJS + Prisma + PostgreSQL | 38 features tracked (F-001 – F-037 complete, F-038–F-042 planned) | Email: Company SMTP (Nodemailer) — Brevo removed*
