@@ -1,11 +1,11 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { BoardStatus } from '@prisma/client';
+import { BoardStatus, MilestoneStatus } from '@prisma/client';
 import { EmailService } from '../../email/email.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { NotificationsCronService } from '../notifications-cron.service';
 
-const mockAssigneeA = { id: 'user-a', fullName: 'Alice', email: 'alice@pms.com' };
-const mockAssigneeB = { id: 'user-b', fullName: 'Bob', email: 'bob@pms.com' };
+const mockAssigneeA = { id: 'user-a', fullName: 'Alice', email: 'alice@pms.com', isActive: true };
+const mockAssigneeB = { id: 'user-b', fullName: 'Bob', email: 'bob@pms.com', isActive: true };
 
 const makeTask = (assignee: typeof mockAssigneeA, title = 'Fix bug') => ({
   id: `task-${Math.random()}`,
@@ -17,10 +17,23 @@ const makeTask = (assignee: typeof mockAssigneeA, title = 'Fix bug') => ({
   project: { name: 'Project Alpha' },
 });
 
+const makeOverdueTask = (projectId: string, projectName: string) => ({
+  id: `task-${Math.random()}`,
+  title: 'Overdue Task',
+  type: 'TASK',
+  status: BoardStatus.IN_PROGRESS,
+  dueDate: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
+  assignee: { fullName: 'Alice' },
+  project: { id: projectId, name: projectName },
+});
+
 const mockPrisma = {
-  workItem: { findMany: jest.fn() },
+  workItem: { findMany: jest.fn(), count: jest.fn() },
   user: { findMany: jest.fn() },
   timesheetEntry: { aggregate: jest.fn() },
+  projectMember: { findFirst: jest.fn(), count: jest.fn() },
+  project: { findMany: jest.fn() },
+  milestone: { findMany: jest.fn() },
 };
 
 const mockEmail = {
@@ -110,6 +123,113 @@ describe('NotificationsCronService', () => {
       mockEmail.sendEmail.mockRejectedValueOnce(new Error('SMTP down'));
 
       await expect(service.handleTimesheetReminders()).resolves.not.toThrow();
+    });
+  });
+
+  // ── Overdue task escalation ───────────────────────────────────────────────
+
+  describe('handleOverdueTaskEscalation', () => {
+    it('UTC-F040-B-001: HandleOverdueTaskEscalation_OverdueTasksWithPm_SendsEscalationEmailToPm', async () => {
+      mockPrisma.workItem.findMany.mockResolvedValue([
+        makeOverdueTask('proj-1', 'Project Alpha'),
+        makeOverdueTask('proj-1', 'Project Alpha'),
+      ]);
+      mockPrisma.projectMember.findFirst.mockResolvedValue({
+        user: mockAssigneeA,
+      });
+
+      await service.handleOverdueTaskEscalation();
+
+      expect(mockEmail.sendEmail).toHaveBeenCalledTimes(1);
+      const [to, subject] = mockEmail.sendEmail.mock.calls[0];
+      expect(to).toBe('alice@pms.com');
+      expect(subject.toLowerCase()).toContain('overdue');
+    });
+
+    it('UTC-F040-B-002: HandleOverdueTaskEscalation_NoOverdueTasks_SendsNoEmails', async () => {
+      mockPrisma.workItem.findMany.mockResolvedValue([]);
+
+      await service.handleOverdueTaskEscalation();
+
+      expect(mockEmail.sendEmail).not.toHaveBeenCalled();
+    });
+
+    it('UTC-F040-B-003: HandleOverdueTaskEscalation_ProjectHasNoPm_SkipsProject', async () => {
+      mockPrisma.workItem.findMany.mockResolvedValue([
+        makeOverdueTask('proj-1', 'Project Alpha'),
+      ]);
+      mockPrisma.projectMember.findFirst.mockResolvedValue(null);
+
+      await service.handleOverdueTaskEscalation();
+
+      expect(mockEmail.sendEmail).not.toHaveBeenCalled();
+    });
+
+    it('UTC-F040-B-004: HandleOverdueTaskEscalation_SmtpFails_LogsErrorAndDoesNotThrow', async () => {
+      mockPrisma.workItem.findMany.mockResolvedValue([
+        makeOverdueTask('proj-1', 'Project Alpha'),
+      ]);
+      mockPrisma.projectMember.findFirst.mockResolvedValue({ user: mockAssigneeA });
+      mockEmail.sendEmail.mockRejectedValueOnce(new Error('SMTP down'));
+
+      await expect(service.handleOverdueTaskEscalation()).resolves.not.toThrow();
+    });
+  });
+
+  // ── Weekly project health report ──────────────────────────────────────────
+
+  describe('handleWeeklyProjectHealthReport', () => {
+    const setupHealthMocks = () => {
+      mockPrisma.project.findMany.mockResolvedValue([
+        { id: 'proj-1', name: 'Project Alpha' },
+        { id: 'proj-2', name: 'Project Beta' },
+      ]);
+      mockPrisma.projectMember.findFirst.mockResolvedValue({ user: mockAssigneeA });
+      mockPrisma.workItem.count
+        .mockResolvedValueOnce(10)  // total proj-1
+        .mockResolvedValueOnce(5)   // completed proj-1
+        .mockResolvedValueOnce(2)   // overdue proj-1
+        .mockResolvedValueOnce(1)   // bugs proj-1
+        .mockResolvedValueOnce(10)  // total proj-2
+        .mockResolvedValueOnce(8)   // completed proj-2
+        .mockResolvedValueOnce(0)   // overdue proj-2
+        .mockResolvedValueOnce(0);  // bugs proj-2
+      mockPrisma.milestone.findMany.mockResolvedValue([
+        { name: 'M1', status: MilestoneStatus.IN_PROGRESS, dueDate: new Date() },
+      ]);
+      mockPrisma.projectMember.count.mockResolvedValue(4);
+    };
+
+    it('UTC-F040-B-005: HandleWeeklyProjectHealthReport_ActiveProjectsWithPm_SendsHealthEmailPerPm', async () => {
+      setupHealthMocks();
+
+      await service.handleWeeklyProjectHealthReport();
+
+      expect(mockEmail.sendEmail).toHaveBeenCalledTimes(2);
+      const subjects = mockEmail.sendEmail.mock.calls.map((c: string[]) => c[1]);
+      subjects.forEach((s: string) =>
+        expect(s.toLowerCase()).toMatch(/health|weekly/),
+      );
+    });
+
+    it('UTC-F040-B-006: HandleWeeklyProjectHealthReport_ProjectHasNoPm_SkipsProject', async () => {
+      mockPrisma.project.findMany.mockResolvedValue([{ id: 'proj-1', name: 'Project Alpha' }]);
+      mockPrisma.projectMember.findFirst.mockResolvedValue(null);
+
+      await service.handleWeeklyProjectHealthReport();
+
+      expect(mockEmail.sendEmail).not.toHaveBeenCalled();
+    });
+
+    it('UTC-F040-B-007: HandleWeeklyProjectHealthReport_SmtpFails_LogsErrorAndDoesNotThrow', async () => {
+      mockPrisma.project.findMany.mockResolvedValue([{ id: 'proj-1', name: 'Project Alpha' }]);
+      mockPrisma.projectMember.findFirst.mockResolvedValue({ user: mockAssigneeA });
+      mockPrisma.workItem.count.mockResolvedValue(0);
+      mockPrisma.milestone.findMany.mockResolvedValue([]);
+      mockPrisma.projectMember.count.mockResolvedValue(1);
+      mockEmail.sendEmail.mockRejectedValueOnce(new Error('SMTP down'));
+
+      await expect(service.handleWeeklyProjectHealthReport()).resolves.not.toThrow();
     });
   });
 });

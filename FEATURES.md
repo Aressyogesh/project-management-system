@@ -184,7 +184,7 @@
 
 - ~~**F-039 — Task Deadline & Timesheet Reminders** — `@nestjs/schedule` cron jobs; daily 9 AM scan for tasks due within 24h → email assignee; every Friday 4 PM scan for employees with 0 timesheet hours logged that week → reminder email; `NotificationsModule` extended with cron scheduler; 6/6 unit tests~~
 
-- **F-040 — Overdue Task Escalation & Project Health Report** — daily cron: tasks overdue by 2+ days → email Project Manager with assignee + days overdue; every Monday 8 AM: per-project health summary email to PM (tasks completed, pending, overdue counts, open bugs, milestone status)
+- ~~**F-040 — Overdue Task Escalation & Project Health Report** — daily cron: tasks overdue by 2+ days → email Project Manager with assignee + days overdue; every Monday 8 AM: per-project health summary email to PM (tasks completed, pending, overdue counts, open bugs, milestone status); 7/7 unit tests~~
 
 - **F-041 — New User Welcome Email & Monthly KPI Digest** — event hook on user creation → branded welcome email with login link; 1st of every month cron → auto-generate KPI summary per employee and email to managers; monthly leave balance report to admins
 
