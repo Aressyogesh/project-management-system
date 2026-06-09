@@ -1,6 +1,6 @@
 # PMS — Feature Tracker
 
-> Last updated: 2026-06-03 (F-034 complete, F-035 pending)
+> Last updated: 2026-06-09 (F-037 complete, F-038–F-042 planned — Phase 15)
 > ~~Strikethrough~~ = completed and in production. Plain text = pending development.
 
 ---
@@ -31,7 +31,7 @@
 - Extend Prisma schema with all remaining models (Project, Task, Bug, etc. — see PLAN.md)
 - `FileStorageService` — Multer disk storage for task/bug attachments
 - ~~`ProjectRoleGuard` — checks user's project-level role (Project Manager, Team Lead, etc.)~~
-- Forgotten password flow (email OTP / reset link)
+- ~~Forgotten password flow — email reset link via Brevo REST API; `PasswordResetToken` model; `POST /auth/forgot-password` + `POST /auth/reset-password`; `ResetPasswordPage` frontend; 1-hour token expiry; all refresh tokens revoked on reset~~
 - Sign-up / registration page (pending Admin approval)
 
 ---
@@ -101,17 +101,17 @@
 
 ---
 
-## Phase 9 — Bug Management
+## Phase 9 — Bug Management ✅ COMPLETE
 
-- Bug entry form — all fields: title, description, attachments, project, task, module, assigned to, responsible developer, billing status, severity, classification, flag (Internal / External), reproducibility, release milestone, affected milestone, build versions, reminder, status
-- Bug list with full filter set (status, severity, classification, flag, project, milestone, assignee)
-- File attachment upload / download on bugs
-- Bug assignment to developer
-- Bug status lifecycle (8 statuses: Open → Reopen → To Be Tested → In Progress → Closed → Acknowledge → Deferred → On Hold)
-- Bug comments
-- Reminder notification system (None / Daily / 1 Day / 2 Days / 3 Days) via Socket.io
-- My Bug Statistics page (charts: by status, severity, classification)
-- Bug count badge on project cards
+- ~~Bug entry form — all fields: title, description, attachments, project, task, module, assigned to, responsible developer, billing status, severity, classification, flag (Internal / External), reproducibility, release milestone, affected milestone, build versions, reminder, status~~
+- ~~Bug list with full filter set (status, severity, classification, flag, project, milestone, assignee)~~
+- ~~File attachment upload / download on bugs~~
+- ~~Bug assignment to developer~~
+- ~~Bug status lifecycle (8 statuses: Open → Reopen → To Be Tested → In Progress → Closed → Acknowledge → Deferred → On Hold)~~
+- ~~Bug comments~~
+- ~~Reminder notification system (None / Daily / 1 Day / 2 Days / 3 Days) via Socket.io~~
+- ~~My Bug Statistics page (charts: by status, severity, classification)~~
+- ~~Bug count badge on project cards~~
 
 ---
 
@@ -170,3 +170,22 @@
 - Environment variable hardening (`.env.example`, secrets management)
 - Production build optimisation (Vite build, NestJS dist)
 - Socket.io notification gateway (bug reminders, real-time updates)
+
+---
+
+## Phase 15 — Smart Email Notifications & Workflow Automation
+
+> **Stack:** NestJS `@nestjs/schedule` (cron) + Brevo REST API (email) + Groq API (AI)
+> **Cost:** 100% free — no paid services required
+
+- ~~**F-037 — Forgot Password Email Flow** — Brevo REST API integration; `PasswordResetToken` model; `POST /auth/forgot-password` + `POST /auth/reset-password`; branded HTML reset email; 1-hour token expiry; all refresh tokens revoked on password reset; `ResetPasswordPage` frontend at `/reset-password?token=xxx`~~
+
+- **F-038 — Email Notification Infrastructure** — `EmailModule` with Brevo REST API transport; reusable `sendEmail()` method for all notification types; HTML email templates; `BREVO_API_KEY` + `SMTP_FROM_EMAIL` env config; foundation for all F-039–F-042 automations
+
+- **F-039 — Task Deadline & Timesheet Reminders** — `@nestjs/schedule` cron jobs; daily 9 AM scan for tasks due within 24h → email assignee; every Friday 4 PM scan for employees with 0 timesheet hours logged that week → reminder email; `NotificationsModule` extended with cron scheduler
+
+- **F-040 — Overdue Task Escalation & Project Health Report** — daily cron: tasks overdue by 2+ days → email Project Manager with assignee + days overdue; every Monday 8 AM: per-project health summary email to PM (tasks completed, pending, overdue counts, open bugs, milestone status)
+
+- **F-041 — New User Welcome Email & Monthly KPI Digest** — event hook on user creation → branded welcome email with login link; 1st of every month cron → auto-generate KPI summary per employee and email to managers; monthly leave balance report to admins
+
+- **F-042 — AI-Powered Smart Automation** — Groq API (already configured); smart task description expander (AI fills short descriptions on task create); blocker detection (daily scan of work item comments for blocked/stuck keywords → alert PM); sprint planning suggestion (PM-triggered: AI analyses backlog + team velocity → suggests items for next sprint)

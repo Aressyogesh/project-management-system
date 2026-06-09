@@ -3,6 +3,7 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { AppLayout } from './components/layout/AppLayout';
 import { ProtectedRoute } from './components/shared/ProtectedRoute';
 import { LoginPage } from './features/auth/pages/LoginPage';
+import { ResetPasswordPage } from './features/auth/pages/ResetPasswordPage';
 import { DashboardPage } from './features/dashboard/pages/DashboardPage';
 import { CompanySettingsPage } from './features/settings/pages/CompanySettingsPage';
 import { PortalConfigPage } from './features/settings/pages/PortalConfigPage';
@@ -30,10 +31,11 @@ const queryClient = new QueryClient({
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
+      <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <Routes>
           {/* Public */}
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
 
           {/* Protected — wrapped in AppLayout (Sidebar + Topbar) */}
           <Route element={<ProtectedRoute />}>

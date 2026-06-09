@@ -10,11 +10,14 @@ A full-stack, role-based Project Management System for a software development fi
 **Frontend:** React 18 + TypeScript + Vite + Tailwind CSS
 **Backend:** NestJS (Node.js + TypeScript)
 **ORM:** Prisma
-**Database:** PostgreSQL (Docker)
+**Database:** PostgreSQL (Supabase production / Docker local)
 **Auth:** Passport.js + JWT
 **Real-time:** Socket.io (bug reminders, notifications)
 **File Uploads:** Multer (task & bug attachments)
 **API Docs:** Swagger via @nestjs/swagger
+**AI:** Groq API (LLM inference — free tier)
+**Email:** Brevo REST API (transactional email — free tier, 300/day)
+**Scheduler:** @nestjs/schedule (cron-based automation)
 
 Both frontend and backend are 100% TypeScript — Prisma auto-generates types from `schema.prisma` that are shared across the stack.
 
@@ -26,25 +29,74 @@ UI design follows the **Taskee** reference (`Document/Design/project-management-
 
 ## Tech Stack
 
+### Frontend
 | Layer | Technology |
 |-------|-----------|
-| Frontend | React 18 + TypeScript + Vite |
+| Framework | React 18 + TypeScript + Vite |
 | Styling | Tailwind CSS |
 | Data Fetching | TanStack React Query |
 | State Management | Zustand |
 | Routing | React Router v6 |
 | HTTP Client | Axios (with JWT interceptors) |
 | Charts | Recharts |
-| File Upload | Multer (multipart/form-data — stored on disk, path configurable) |
-| **Backend** | **NestJS (Node.js + TypeScript)** |
-| **ORM** | **Prisma ORM** |
-| **Database** | **PostgreSQL (Docker)** |
-| **Authentication** | **Passport.js + JWT (@nestjs/jwt + @nestjs/passport)** |
-| **Password Hashing** | **bcrypt** |
-| **Validation** | **class-validator + class-transformer (backend) + React Hook Form (frontend)** |
-| **API Docs** | **Swagger / OpenAPI (@nestjs/swagger)** |
-| **Real-time** | **Socket.io (@nestjs/websockets) — bug reminders, notifications** |
+| Forms | React Hook Form |
+
+### Backend
+| Layer | Technology |
+|-------|-----------|
+| Framework | NestJS (Node.js + TypeScript) |
+| ORM | Prisma ORM |
+| Database | PostgreSQL |
+| Authentication | Passport.js + JWT (`@nestjs/jwt` + `@nestjs/passport`) |
+| Password Hashing | bcryptjs |
+| Validation | class-validator + class-transformer |
+| API Docs | Swagger / OpenAPI (`@nestjs/swagger`) |
+| Real-time | Socket.io (`@nestjs/websockets`) — notifications |
+| File Upload | Multer (multipart/form-data, stored on disk) |
+| Scheduler | `@nestjs/schedule` — cron jobs for reminders & automation |
+
+### AI & Automation
+| Layer | Technology |
+|-------|-----------|
+| **Local LLM (dev)** | **Ollama** — runs `llama3.2:3b` locally at `http://localhost:11434`; OpenAI-compatible API; zero cost; used during development for F-030 AI Chat SQL Agent |
+| **Cloud LLM (prod)** | **Groq API** — free tier, ultra-fast inference via `api.groq.com`; drop-in replacement for Ollama (same OpenAI-compatible API); used in production for all AI features |
+| **Groq Models** | `llama-3.3-70b-versatile` — primary model for chat, SQL agent, sprint planning (best quality); `llama-3.1-8b-instant` — fast model for blocker detection, smart descriptions (low latency) |
+| **LLM Abstraction** | Provider switching = 3 env vars only (`GROQ_API_KEY`, `AI_BASE_URL`, `AI_MODEL`); no code changes needed to swap Ollama ↔ Groq |
+| **Tool Calling** | Groq native tool use (OpenAI-compatible function calling); used by SQL Agent to select Prisma query tools based on user question |
+| **Embeddings (Phase 2)** | **Voyage AI** `voyage-3-lite` (768 dims) — document embeddings for RAG knowledge base; pgvector extension on existing PostgreSQL |
+| **Email Delivery** | **Brevo REST API** — transactional email, 300 emails/day free forever; password reset, deadline reminders, project health reports, welcome emails |
+| **Workflow Automation** | **NestJS `@nestjs/schedule`** — built-in cron scheduler, no external tool; deadline reminders, timesheet reminders, overdue escalation, monthly KPI digest |
+
+#### AI Model Reference
+
+| Model | Provider | Context | Use Case in PMS |
+|-------|----------|---------|-----------------|
+| `llama3.2:3b` | Ollama (local) | 128k | Development / local testing |
+| `llama-3.3-70b-versatile` | Groq (cloud) | 128k | AI Chat SQL Agent, sprint planning, complex summaries |
+| `llama-3.1-8b-instant` | Groq (cloud) | 128k | Blocker detection, smart task description, quick checks |
+| `voyage-3-lite` | Voyage AI | — | Document chunk embeddings (Phase 2 RAG only) |
+
+#### Environment Variables (AI)
+```env
+# Local development (Ollama)
+GROQ_API_KEY=ollama
+AI_BASE_URL=http://localhost:11434/v1
+AI_MODEL=llama3.2:3b
+
+# Production (Groq)
+GROQ_API_KEY=gsk_xxxxxxxxxxxxxxxxxxxx
+AI_BASE_URL=https://api.groq.com/openai/v1
+AI_MODEL=llama-3.3-70b-versatile
+```
+
+### Infrastructure & DevOps
+| Layer | Technology |
+|-------|-----------|
 | Dev Environment | Docker Compose (PostgreSQL + pgAdmin) |
+| Deployment | On-premise server + GitHub Actions self-hosted runner |
+| Frontend Hosting | Vercel |
+| Backend Hosting | Render (`pms-backend-zhez.onrender.com`) |
+| Database Hosting | Supabase (production) / PostgreSQL local (development) |
 
 ---
 
@@ -864,6 +916,48 @@ project-management-system/
 
 ---
 
+### Phase 15 — Smart Email Notifications & Workflow Automation
+
+> **Guiding principle:** 100% free stack — NestJS `@nestjs/schedule` + Brevo REST API (300 emails/day) + Groq API. No paid services.
+
+- [x] **F-037 — Forgot Password Email Flow** ✅
+  - `PasswordResetToken` Prisma model (token, userId, expiresAt, usedAt)
+  - `POST /auth/forgot-password` — generates token, sends branded HTML email via Brevo
+  - `POST /auth/reset-password` — validates token, hashes new password, revokes all refresh tokens
+  - `ResetPasswordPage` frontend at `/reset-password?token=xxx`
+  - Token expires in 1 hour; previous unused tokens invalidated on new request
+
+- [ ] **F-038 — Email Notification Infrastructure**
+  - Extend `EmailModule` with generic `sendEmail(to, subject, html)` method
+  - Reusable branded HTML template wrapper (header/footer consistent with reset email)
+  - `BREVO_API_KEY`, `SMTP_FROM_EMAIL`, `SMTP_FROM_NAME` env vars (already in `.env`)
+  - Foundation used by all subsequent notification features
+
+- [ ] **F-039 — Task Deadline & Timesheet Reminders**
+  - Install `@nestjs/schedule` + `@types/cron`
+  - `NotificationsCronService` with two cron jobs:
+    - **Daily 9 AM** — query tasks where `dueDate = tomorrow AND status != COMPLETED` → email each assignee
+    - **Friday 4 PM** — query employees with 0 `TimesheetEntry` hours this week → send reminder email
+  - Both jobs use `EmailService` for delivery
+  - RBAC: emails sent only to active users
+
+- [ ] **F-040 — Overdue Task Escalation & Weekly Project Health Report**
+  - **Daily cron** — tasks where `dueDate < today AND status != COMPLETED` overdue ≥ 2 days → group by project → email each Project Manager with table of overdue tasks (assignee, task title, days overdue)
+  - **Monday 8 AM cron** — per-project summary email to PM: tasks completed vs pending vs overdue, open bug count, milestone status, team size
+  - Skip projects with no assigned PM
+
+- [ ] **F-041 — New User Welcome Email & Monthly KPI Digest**
+  - **Event hook** — `UsersService.create()` calls `EmailService` after user created → branded welcome email (name, login link, role)
+  - **1st of month cron** — for each employee, compile KPI scores for previous month → email to their manager/PM and CC employee
+  - **Monthly leave report** — email admin/super-user: team leave usage summary (total days taken per employee)
+
+- [ ] **F-042 — AI-Powered Smart Automation (Groq)**
+  - **Smart task description** — `WorkItemsService.create()` hook: if `description.length < 30` → call Groq API to expand into detailed description (steps, acceptance criteria)
+  - **Blocker detection cron** — daily scan of `WorkItemComment` text for keywords (blocked, stuck, waiting on, can't proceed) → group by project → email PM with list of flagged items + comment excerpt
+  - **Sprint planning suggestion** — new endpoint `POST /sprints/:id/suggest` — Groq analyses open backlog items, team velocity from last 2 sprints, member count → returns ranked list of suggested items with reasoning
+
+---
+
 ## End-to-End User Journeys
 
 ```
@@ -934,4 +1028,4 @@ npm run dev                       # React app on http://localhost:5173
 
 ---
 
-*Plan version: 4.0 — Updated: 2026-06-03 | Backend: NestJS + Prisma + PostgreSQL | 34 features delivered (F-001 – F-034)*
+*Plan version: 5.0 — Updated: 2026-06-09 | Backend: NestJS + Prisma + PostgreSQL | 37 features tracked (F-001 – F-037 complete, F-038–F-042 planned)*
