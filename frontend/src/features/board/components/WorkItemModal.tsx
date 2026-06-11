@@ -1202,7 +1202,7 @@ export function WorkItemModal({ item, sprints, members, milestones, canDelete = 
                             <div>
                               <p className="text-xs font-medium text-gray-800">{fmtDate(entry.date)} · <span className="text-emerald-600">{entry.hours}h</span></p>
                               {entry.description && <p className="text-xs text-gray-500">{entry.description}</p>}
-                              <p className="text-[10px] text-gray-400">{entry.user.fullName}</p>
+                              <p className="text-[10px] text-gray-400">{entry.user?.fullName}</p>
                             </div>
                             {(entry.userId === user?.id || user?.systemRole !== 'EMPLOYEE') && (
                               <button onClick={() => deleteEntryMut.mutate(entry.id)} className="text-gray-400 hover:text-red-500">

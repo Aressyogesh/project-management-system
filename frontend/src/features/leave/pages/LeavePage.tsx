@@ -146,7 +146,7 @@ function ApplyLeaveModal({
               />
             </div>
             <div>
-              <label className={labelCls}>End Date</label>
+              <label className={labelCls}>Last Day of Leave</label>
               <input
                 type="date"
                 value={endDate}
@@ -158,9 +158,13 @@ function ApplyLeaveModal({
             </div>
           </div>
 
+          <p className="text-[11px] text-gray-400 -mt-1">
+            Both dates are inclusive. For a single day off, set both dates to the same day.
+          </p>
+
           {totalDays > 0 && (
             <p className="text-xs font-medium text-primary-700 bg-primary-50 border border-primary-100 px-3 py-2 rounded-lg">
-              {totalDays} working day{totalDays !== 1 ? 's' : ''} of leave
+              {totalDays} day{totalDays !== 1 ? 's' : ''} of leave
             </p>
           )}
 
