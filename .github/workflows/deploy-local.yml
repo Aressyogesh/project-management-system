@@ -73,28 +73,41 @@ jobs:
       - name: Write backend .env
         working-directory: backend
         run: |
-          @"
-DATABASE_URL=${{ secrets.DATABASE_URL }}
-DIRECT_URL=${{ secrets.DIRECT_URL }}
-JWT_SECRET=${{ secrets.JWT_SECRET }}
-JWT_REFRESH_SECRET=${{ secrets.JWT_REFRESH_SECRET }}
-JWT_ACCESS_EXPIRY=15m
-JWT_REFRESH_EXPIRY_DAYS=7
-PORT=3000
-NODE_ENV=production
-UPLOAD_DEST=./uploads
-GROQ_API_KEY=${{ secrets.GROQ_API_KEY }}
-NODE_OPTIONS=--use-system-ca
-SMTP_HOST=${{ secrets.SMTP_HOST }}
-SMTP_PORT=${{ secrets.SMTP_PORT }}
-SMTP_USER=${{ secrets.SMTP_USER }}
-SMTP_PASS=${{ secrets.SMTP_PASS }}
-SMTP_FROM_NAME=${{ secrets.SMTP_FROM_NAME }}
-SMTP_FROM_EMAIL=${{ secrets.SMTP_FROM_EMAIL }}
-APP_FRONTEND_URL=${{ secrets.FRONTEND_URL }}
-FRONTEND_URL=${{ secrets.FRONTEND_URL }}
-"@ | Out-File -FilePath ".env" -Encoding UTF8
+          @(
+            "DATABASE_URL=$env:DATABASE_URL",
+            "DIRECT_URL=$env:DIRECT_URL",
+            "JWT_SECRET=$env:JWT_SECRET",
+            "JWT_REFRESH_SECRET=$env:JWT_REFRESH_SECRET",
+            "JWT_ACCESS_EXPIRY=15m",
+            "JWT_REFRESH_EXPIRY_DAYS=7",
+            "PORT=3000",
+            "NODE_ENV=production",
+            "UPLOAD_DEST=./uploads",
+            "GROQ_API_KEY=$env:GROQ_API_KEY",
+            "NODE_OPTIONS=--use-system-ca",
+            "SMTP_HOST=$env:SMTP_HOST",
+            "SMTP_PORT=$env:SMTP_PORT",
+            "SMTP_USER=$env:SMTP_USER",
+            "SMTP_PASS=$env:SMTP_PASS",
+            "SMTP_FROM_NAME=$env:SMTP_FROM_NAME",
+            "SMTP_FROM_EMAIL=$env:SMTP_FROM_EMAIL",
+            "APP_FRONTEND_URL=$env:FRONTEND_URL",
+            "FRONTEND_URL=$env:FRONTEND_URL"
+          ) | Out-File -FilePath ".env" -Encoding UTF8
         shell: pwsh
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DIRECT_URL: ${{ secrets.DIRECT_URL }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          JWT_REFRESH_SECRET: ${{ secrets.JWT_REFRESH_SECRET }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASS: ${{ secrets.SMTP_PASS }}
+          SMTP_FROM_NAME: ${{ secrets.SMTP_FROM_NAME }}
+          SMTP_FROM_EMAIL: ${{ secrets.SMTP_FROM_EMAIL }}
+          FRONTEND_URL: ${{ secrets.FRONTEND_URL }}
 
       - name: Install backend dependencies
         working-directory: backend
