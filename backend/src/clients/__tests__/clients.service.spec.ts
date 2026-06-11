@@ -11,6 +11,9 @@ const mockPrisma = {
     create: jest.fn(),
     update: jest.fn(),
   },
+  project: {
+    count: jest.fn(),
+  },
 };
 
 const mockClient = {
@@ -86,6 +89,7 @@ describe('ClientsService', () => {
   // UTC-F-006-B-006
   it('SetStatus_ValidId_TogglesIsActive', async () => {
     mockPrisma.client.findUnique.mockResolvedValue(mockClient);
+    mockPrisma.project.count.mockResolvedValue(0);
     mockPrisma.client.update.mockResolvedValue({ ...mockClient, isActive: false });
 
     const result = await service.setStatus('client-001', false);
@@ -94,6 +98,15 @@ describe('ClientsService', () => {
     expect(mockPrisma.client.update).toHaveBeenCalledWith(
       expect.objectContaining({ data: { isActive: false } }),
     );
+  });
+
+  // UTC-F-006-B-008
+  it('SetStatus_DeactivateWithActiveProjects_ThrowsConflictException', async () => {
+    mockPrisma.client.findUnique.mockResolvedValue(mockClient);
+    mockPrisma.project.count.mockResolvedValue(2);
+
+    await expect(service.setStatus('client-001', false)).rejects.toThrow(ConflictException);
+    expect(mockPrisma.client.update).not.toHaveBeenCalled();
   });
 
   // UTC-F-006-B-007
