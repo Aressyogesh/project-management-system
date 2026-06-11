@@ -958,6 +958,97 @@ project-management-system/
 
 ---
 
+### Phase 16 — Collaboration & Real-Time
+
+- [ ] **F-043 — In-App Notification Center**
+  - `Notification` Prisma model (`id`, `userId`, `type`, `title`, `body`, `entityId`, `entityType`, `isRead`, `createdAt`)
+  - `NotificationsGateway` (Socket.io) — push real-time notifications to connected clients on task assignment, leave approval/rejection, @mention, sprint activation, status change
+  - REST fallback: `GET /notifications` (paginated, unread-first), `PATCH /notifications/:id/read`, `PATCH /notifications/read-all`
+  - Bell icon in topbar with unread count badge; slide-out notification panel
+  - RBAC: each user sees only their own notifications
+
+- [ ] **F-044 — @mention in Comments**
+  - `@name` autocomplete in work item and bug comment editors — fetches project members as candidates
+  - On submit: extract mentions from comment text, create `Notification` records (F-043) for each mentioned user + trigger email via `EmailService`
+  - Frontend: mention picker dropdown with avatar + name; highlighted `@mention` chips in rendered comment text
+
+- [ ] **F-045 — Daily Standup Log**
+  - `StandupLog` Prisma model (`id`, `userId`, `projectId`, `date`, `yesterday`, `today`, `blockers`, `createdAt`)
+  - `POST /standup-logs` — employee submits once per calendar day per project (unique constraint on `userId + projectId + date`)
+  - `GET /standup-logs` — PM/Team Lead view team standups filtered by project + date range; Employee sees own logs
+  - `/standup` page with today's quick-entry form + recent log history
+  - Satisfies KPI "Standup Logs" (Dependency & Agile Management) metric auto-computation
+
+---
+
+### Phase 17 — Visibility & Planning
+
+- [ ] **F-046 — My Work Page**
+  - `/my-work` route — lists all `WorkItem` records assigned to the authenticated user across all projects
+  - Filters: status, priority, due date range, project selector
+  - Sort: due date (soonest first), priority (critical first), last updated
+  - Inline status update (same PATCH endpoint as board)
+  - Stat chips: Overdue count, Due Today, In Progress
+  - `GET /work-items/my` endpoint — RBAC: always scoped to `req.user.id`
+
+- [ ] **F-047 — Sprint Velocity & Burndown Charts**
+  - Add optional `storyPoints` (Int?) field to `WorkItem` Prisma model
+  - `GET /projects/:id/sprint-analytics` — returns per-sprint committed vs delivered points (last 6 sprints) + active sprint daily burndown data
+  - Sprint analytics panel on board page: velocity bar chart (Recharts) + burndown line chart
+  - Visible to PROJECT_MANAGER, TEAM_LEAD, ADMIN, SUPER_USER
+
+- [ ] **F-048 — Gantt / Timeline View**
+  - `/projects/:id/timeline` route — per-project Gantt chart
+  - Horizontal bars: milestones (coloured by status) and sprints (coloured by active/inactive) plotted on date axis
+  - Today marker; zoom levels: Month view / Quarter view (toggle)
+  - SVG or Recharts ComposedChart implementation — no drag-and-drop for MVP
+  - `GET /projects/:id/timeline` — returns milestones + sprints with start/end dates
+  - Accessible to all project members (read-only)
+
+---
+
+### Phase 18 — Developer Productivity
+
+- [ ] **F-049 — Work Timer**
+  - Start/stop timer button on work item board cards and WorkItemModal header
+  - Active timer state in Zustand store + persisted to localStorage (survives page refresh)
+  - One active timer per user at a time — starting a new timer auto-stops the previous
+  - On Stop: opens pre-filled timesheet log modal with elapsed hours (rounded to nearest 0.25h)
+  - Client-side only — no new Prisma model; reuses existing timesheet `POST /timesheet-entries`
+
+- [ ] **F-050 — Task Dependencies**
+  - `WorkItemDependency` Prisma model (`id`, `blockerId`, `blockedId`, `projectId`) — within-project only
+  - `GET /work-items/:id/dependencies`, `POST /work-items/:id/dependencies`, `DELETE /work-items/:id/dependencies/:depId`
+  - Dependency list tab in WorkItemModal — search and add blockers; remove link
+  - Board card: red "Blocked" badge when item has unresolved blockers (all blockers must be QA_DONE/DONE to clear)
+  - Feeds F-042 blocker detection — structural blockers take precedence over comment-based detection
+
+- [ ] **F-051 — Custom Labels / Tags**
+  - `Label` Prisma model (`id`, `projectId`, `name`, `colour`) + `WorkItemLabel` join table (`workItemId`, `labelId`)
+  - `GET/POST/PUT/DELETE /projects/:id/labels` — PROJECT_MANAGER+ can manage labels; all members read
+  - `POST/DELETE /work-items/:id/labels/:labelId` — add/remove label on work item (assignee+)
+  - Board toolbar: label multi-select filter
+  - Board cards: coloured label chips (max 3 shown + count overflow)
+
+---
+
+### Phase 19 — Knowledge & Docs
+
+- [ ] **F-052 — Project Wiki / Notes**
+  - `WikiPage` Prisma model (`id`, `projectId`, `title`, `content`, `createdById`, `updatedAt`)
+  - `GET /projects/:id/wiki` (list), `GET /projects/:id/wiki/:pageId`, `POST`, `PUT`, `DELETE`
+  - RBAC: PROJECT_MANAGER+ create/edit/delete; all project members read
+  - `/projects/:id/wiki` frontend: page list sidebar + rich-text editor (reuses `RichTextEditor` component)
+  - "Wiki" tab on ProjectDetailPage
+
+- [ ] **F-053 — Global Search**
+  - `GET /search?q=&types[]=work-items,bugs,projects,users` — RBAC-filtered: employees see only results in their projects
+  - Backend: `ILIKE %q%` queries across `WorkItem.title`, `WorkItem.displayId`, `Bug.title`, `Project.name`, `User.fullName` — no new model
+  - Frontend: Ctrl+K / Cmd+K opens full-screen search overlay; results grouped by type with icons; debounced 300 ms; click navigates to detail page
+  - Search input also in topbar for permanent access
+
+---
+
 ## End-to-End User Journeys
 
 ```
@@ -1028,4 +1119,4 @@ npm run dev                       # React app on http://localhost:5173
 
 ---
 
-*Plan version: 5.1 — Updated: 2026-06-09 | Backend: NestJS + Prisma + PostgreSQL | 38 features tracked (F-001 – F-037 complete, F-038–F-042 planned) | Email: Company SMTP (Nodemailer) — Brevo removed*
+*Plan version: 6.0 — Updated: 2026-06-09 | Backend: NestJS + Prisma + PostgreSQL | 53 features tracked (F-001–F-041 complete, F-042–F-053 planned) | Email: Company SMTP (Nodemailer) — Brevo removed*

@@ -78,12 +78,12 @@ function ClientFormModal({ client, onClose, onSuccess }: FormModalProps) {
       client
         ? clientsApi.update(client.id, {
             name: form.name.trim(), contactPerson: form.contactPerson.trim(), email: form.email.trim(),
-            phone: form.phone.trim() || undefined, address: form.address.trim() || undefined,
+            phone: form.phone.trim(), address: form.address.trim(),
             businessUnitId: form.businessUnitId || null,
           })
         : clientsApi.create({
             name: form.name.trim(), contactPerson: form.contactPerson.trim(), email: form.email.trim(),
-            phone: form.phone.trim() || undefined, address: form.address.trim() || undefined,
+            phone: form.phone.trim(), address: form.address.trim(),
             businessUnitId: form.businessUnitId || undefined,
           }),
     onSuccess: () => {
@@ -100,6 +100,9 @@ function ClientFormModal({ client, onClose, onSuccess }: FormModalProps) {
     if (!form.name.trim()) { setError('Client name is required'); return; }
     if (!form.contactPerson.trim()) { setError('Contact person is required'); return; }
     if (!form.email.trim()) { setError('Email is required'); return; }
+    if (form.phone.trim() && !/^[+\d\s\-().]{7,20}$/.test(form.phone.trim())) {
+      setError('Phone number may only contain digits, spaces, +, -, (, ) and must be 7–20 characters.'); return;
+    }
     mutation.mutate();
   }
 
@@ -190,6 +193,7 @@ export function ClientsPage() {
       qc.invalidateQueries({ queryKey: ['clients-all'] });
       setToast(variables.isActive ? 'Client activated' : 'Client deactivated');
     },
+    onError: (err: any) => setToast(err?.response?.data?.message ?? 'Failed to update client status'),
   });
 
   const active = clients.filter((c) => c.isActive).length;

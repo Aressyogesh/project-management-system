@@ -118,14 +118,14 @@ export class DashboardService {
         orderBy: { createdAt: 'desc' },
         take: 10,
       }),
-      this.prisma.task.count({ where: { status: TaskStatus.NOT_STARTED } }),
-      this.prisma.task.count({ where: { status: TaskStatus.IN_PROGRESS } }),
-      this.prisma.task.count({ where: { status: TaskStatus.ON_REVIEW } }),
-      this.prisma.task.count({ where: { status: TaskStatus.COMPLETED } }),
-      this.prisma.workItem.count(),
-      this.prisma.workItem.count({ where: { status: BoardStatus.QA_DONE } }),
+      this.prisma.task.count({ where: { status: TaskStatus.NOT_STARTED, project: { status: ProjectStatus.ACTIVE } } }),
+      this.prisma.task.count({ where: { status: TaskStatus.IN_PROGRESS, project: { status: ProjectStatus.ACTIVE } } }),
+      this.prisma.task.count({ where: { status: TaskStatus.ON_REVIEW, project: { status: ProjectStatus.ACTIVE } } }),
+      this.prisma.task.count({ where: { status: TaskStatus.COMPLETED, project: { status: ProjectStatus.ACTIVE } } }),
+      this.prisma.workItem.count({ where: { project: { status: ProjectStatus.ACTIVE } } }),
+      this.prisma.workItem.count({ where: { status: BoardStatus.QA_DONE, project: { status: ProjectStatus.ACTIVE } } }),
       this.prisma.workItem.findFirst({
-        where: { assigneeId: userId, dueDate: { gte: today, lt: tomorrow }, status: { not: BoardStatus.QA_DONE } },
+        where: { assigneeId: userId, dueDate: { gte: today, lt: tomorrow }, status: { not: BoardStatus.QA_DONE }, project: { status: ProjectStatus.ACTIVE } },
         select: { title: true, status: true },
         orderBy: { dueDate: 'asc' },
       }),
@@ -393,7 +393,7 @@ export class DashboardService {
   }
 
   async getTasksProgress(projectId?: string, period: '7d' | '30d' | 'all' = 'all'): Promise<TasksProgress> {
-    const base: any = projectId ? { projectId } : {};
+    const base: any = projectId ? { projectId } : { project: { status: ProjectStatus.ACTIVE } };
     if (period !== 'all') {
       const days = period === '7d' ? 7 : 30;
       const since = new Date();

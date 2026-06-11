@@ -1,4 +1,5 @@
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { ProjectStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateClientDto } from './dto/client.dto';
 import { UpdateClientDto } from './dto/client.dto';
@@ -55,7 +56,12 @@ export class ClientsService {
     }
     return this.prisma.client.update({
       where: { id },
-      data: { ...dto, ...(dto.name ? { name: dto.name.trim() } : {}) },
+      data: {
+        ...dto,
+        ...(dto.name ? { name: dto.name.trim() } : {}),
+        ...(dto.phone !== undefined && { phone: dto.phone.trim() || null }),
+        ...(dto.address !== undefined && { address: dto.address.trim() || null }),
+      },
       select: CLIENT_SELECT,
     });
   }
@@ -63,6 +69,16 @@ export class ClientsService {
   async setStatus(id: string, isActive: boolean) {
     const client = await this.prisma.client.findUnique({ where: { id } });
     if (!client) throw new NotFoundException('Client not found');
+    if (!isActive) {
+      const activeCount = await this.prisma.project.count({
+        where: { clientId: id, status: ProjectStatus.ACTIVE },
+      });
+      if (activeCount > 0) {
+        throw new ConflictException(
+          `Cannot deactivate: this client has ${activeCount} active project${activeCount > 1 ? 's' : ''}. Archive or reassign them first.`,
+        );
+      }
+    }
     return this.prisma.client.update({ where: { id }, data: { isActive }, select: CLIENT_SELECT });
   }
 }

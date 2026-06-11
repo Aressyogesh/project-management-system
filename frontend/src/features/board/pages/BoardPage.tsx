@@ -112,6 +112,15 @@ export function BoardPage() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['board', projectId] }),
   });
 
+  const deleteMut = useMutation({
+    mutationFn: (itemId: string) => boardApi.deleteWorkItem(itemId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['board', projectId] });
+      setToast('Item deleted');
+    },
+    onError: () => setToast('Failed to delete item'),
+  });
+
   const { data: project } = useQuery({
     queryKey: ['project', projectId],
     queryFn: () => projectsApi.getById(projectId!),
@@ -278,6 +287,7 @@ export function BoardPage() {
                 members={memberOptions}
                 onCardClick={setSelectedItem}
                 onAssigneeChange={(itemId, assigneeId) => assignMut.mutate({ itemId, assigneeId })}
+                onDelete={canDeleteWorkItem ? (itemId) => deleteMut.mutate(itemId) : undefined}
               />
             ))}
           </div>

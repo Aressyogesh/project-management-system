@@ -56,7 +56,7 @@ function BUFormModal({ bu, onClose, onSuccess }: FormModalProps) {
   const mutation = useMutation({
     mutationFn: () =>
       bu
-        ? businessUnitsApi.update(bu.id, { name: name.trim(), description: description || undefined })
+        ? businessUnitsApi.update(bu.id, { name: name.trim(), description: description })
         : businessUnitsApi.create({ name: name.trim(), description: description || undefined }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['business-units'] });

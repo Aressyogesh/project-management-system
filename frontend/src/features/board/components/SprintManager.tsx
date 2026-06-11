@@ -61,7 +61,7 @@ export function SprintManager({ projectId, milestones, onClose, onToast }: Props
     if (!form.name.trim()) return;
     const data = {
       name: form.name.trim(),
-      goal: form.goal.trim() || undefined,
+      goal: form.goal.trim(),
       startDate: form.startDate || undefined,
       endDate: form.endDate || undefined,
       milestoneId: form.milestoneId || undefined,
@@ -227,7 +227,7 @@ export function SprintManager({ projectId, milestones, onClose, onToast }: Props
                       return ms ? (
                         <span className="inline-flex items-center gap-1 text-[10px] font-medium text-violet-700 bg-violet-50 border border-violet-100 rounded-full px-2 py-0.5 mt-0.5">
                           <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 21l9-18 9 18M6.5 15h11" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 21V4M4 4h14l-4 5.5 4 5.5H4" />
                           </svg>
                           {ms.name ?? ms.description}
                         </span>

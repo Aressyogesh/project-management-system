@@ -210,7 +210,7 @@ export function BoardToolbar({
           className="flex items-center gap-1.5 text-xs font-medium text-violet-700 hover:text-violet-900 px-3 py-1.5 border border-violet-200 rounded-lg hover:bg-violet-50 transition"
         >
           <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 21l9-18 9 18M6.5 15h11" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 21V4M4 4h14l-4 5.5 4 5.5H4" />
           </svg>
           Milestone
         </button>

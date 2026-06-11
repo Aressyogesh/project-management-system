@@ -51,11 +51,12 @@ export class SprintsService {
 
   async update(id: string, dto: UpdateSprintDto, userId: string) {
     const existing = await this.findOneOrFail(id);
-    const { milestoneId, startDate, endDate, ...rest } = dto as UpdateSprintDto & { milestoneId?: string };
+    const { milestoneId, startDate, endDate, goal, ...rest } = dto as UpdateSprintDto & { milestoneId?: string };
     const sprint = await this.prisma.sprint.update({
       where: { id },
       data: {
         ...rest,
+        ...(goal !== undefined && { goal: goal.trim() || null }),
         ...(startDate !== undefined && { startDate: startDate ? new Date(startDate) : null }),
         ...(endDate !== undefined && { endDate: endDate ? new Date(endDate) : null }),
       },

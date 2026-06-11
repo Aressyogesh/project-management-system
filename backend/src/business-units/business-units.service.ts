@@ -41,7 +41,14 @@ export class BusinessUnitsService {
       if (conflict) throw new ConflictException('Business unit name already in use');
       dto.name = name;
     }
-    return this.prisma.businessUnit.update({ where: { id }, data: dto, select: BU_SELECT });
+    return this.prisma.businessUnit.update({
+      where: { id },
+      data: {
+        ...dto,
+        ...(dto.description !== undefined && { description: dto.description.trim() || null }),
+      },
+      select: BU_SELECT,
+    });
   }
 
   async setStatus(id: string, isActive: boolean) {

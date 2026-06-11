@@ -12,9 +12,10 @@ interface Props {
   members?: MemberOption[];
   onCardClick: (item: WorkItem) => void;
   onAssigneeChange?: (itemId: string, assigneeId: string | null) => void;
+  onDelete?: (itemId: string) => void;
 }
 
-export function KanbanColumn({ status, label, headerClass, items, members, onCardClick, onAssigneeChange }: Props) {
+export function KanbanColumn({ status, label, headerClass, items, members, onCardClick, onAssigneeChange, onDelete }: Props) {
   return (
     <div className="flex flex-col min-w-[240px] w-[240px] shrink-0">
       {/* Column header — sticky: stays visible while the board scrolls */}
@@ -48,6 +49,7 @@ export function KanbanColumn({ status, label, headerClass, items, members, onCar
                   members={members}
                   onClick={onCardClick}
                   onAssigneeChange={onAssigneeChange}
+                  onDelete={onDelete}
                 />
               ))
             )}

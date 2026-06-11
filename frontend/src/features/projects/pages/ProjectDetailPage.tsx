@@ -175,6 +175,13 @@ export function ProjectDetailPage() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['project-members', projectId] }),
   });
 
+  const membersTotalPages = Math.max(1, Math.ceil(members.length / MEMBERS_PAGE_SIZE));
+  const safeMembersPage = Math.min(membersPage, membersTotalPages);
+  const pagedMembers = useMemo(
+    () => members.slice((safeMembersPage - 1) * MEMBERS_PAGE_SIZE, safeMembersPage * MEMBERS_PAGE_SIZE),
+    [members, safeMembersPage],
+  );
+
   if (projLoading) {
     return <div className="flex items-center justify-center py-20 text-sm text-gray-400">Loading…</div>;
   }
@@ -184,13 +191,6 @@ export function ProjectDetailPage() {
   }
 
   const isOverdue = project.status === 'ACTIVE' && project.endDate !== null && new Date(project.endDate) < new Date();
-
-  const membersTotalPages = Math.max(1, Math.ceil(members.length / MEMBERS_PAGE_SIZE));
-  const safeMembersPage = Math.min(membersPage, membersTotalPages);
-  const pagedMembers = useMemo(
-    () => members.slice((safeMembersPage - 1) * MEMBERS_PAGE_SIZE, safeMembersPage * MEMBERS_PAGE_SIZE),
-    [members, safeMembersPage],
-  );
 
   return (
     <div className="space-y-5">

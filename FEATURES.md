@@ -1,6 +1,6 @@
 # PMS — Feature Tracker
 
-> Last updated: 2026-06-09 (F-037 complete, F-038–F-042 planned — Phase 15)
+> Last updated: 2026-06-09 (F-041 complete, F-042–F-053 planned — Phase 15–19)
 > ~~Strikethrough~~ = completed and in production. Plain text = pending development.
 
 ---
@@ -189,3 +189,41 @@
 - ~~**F-041 — New User Welcome Email & Monthly KPI Digest** — event hook on user creation → branded welcome email with login link; 1st of every month cron → auto-generate KPI summary per employee and email; monthly leave report to SUPER_USER/ADMIN; 7/7 unit tests~~
 
 - **F-042 — AI-Powered Smart Automation** — Groq API (already configured); smart task description expander (AI fills short descriptions on task create); blocker detection (daily scan of work item comments for blocked/stuck keywords → alert PM); sprint planning suggestion (PM-triggered: AI analyses backlog + team velocity → suggests items for next sprint)
+
+---
+
+## Phase 16 — Collaboration & Real-Time
+
+- **F-043 — In-App Notification Center** — Bell icon in topbar with unread count badge; notification feed listing task assignments, leave approvals/rejections, @mentions, sprint activations, work item status changes; mark as read / mark all read; `Notification` Prisma model; `NotificationsGateway` (Socket.io) for real-time push; REST fallback `GET /notifications`; RBAC: every user sees only their own notifications
+
+- **F-044 — @mention in Comments** — Typing `@name` in any work item or bug comment autocompletes to a team member; saves mention linked to comment; triggers in-app notification (F-043) and email to the mentioned user; frontend mention picker with name + avatar dropdown
+
+- **F-045 — Daily Standup Log** — Quick 3-field daily check-in (Yesterday / Today / Blockers); submitted once per calendar day per user; PM and Team Lead view team standup feed per project; `StandupLog` Prisma model (`userId`, `projectId`, `date`, `yesterday`, `today`, `blockers`); `GET /standup-logs` with project + date filters; satisfies KPI "Standup Logs" metric
+
+---
+
+## Phase 17 — Visibility & Planning
+
+- **F-046 — My Work Page** — Dedicated `/my-work` page listing all work items assigned to the logged-in user across every project; filters: status, priority, due date, project; quick inline status update; overdue / due-today stat chips; accessible to all employees
+
+- **F-047 — Sprint Velocity & Burndown Charts** — Per-project sprint analytics panel: velocity bar chart (committed vs delivered story points, last 6 sprints); burndown line chart for active sprint (ideal line vs actual remaining); `storyPoints` optional field on `WorkItem`; `GET /projects/:id/sprint-analytics`; visible to PM, Team Lead, Admin, Super User
+
+- **F-048 — Gantt / Timeline View** — Per-project read-only Gantt chart at `/projects/:id/timeline`; horizontal bars for milestones and sprints on a date axis; today marker; colour-coded by milestone status; zoom: month / quarter; SVG or Recharts-based frontend rendering; accessible to all project members
+
+---
+
+## Phase 18 — Developer Productivity
+
+- **F-049 — Work Timer** — Start/stop timer on any assigned work item card and modal; running timer persists across navigation (Zustand + localStorage); on Stop: pre-fills timesheet draft with elapsed hours (rounded to 0.25h); one active timer per user; client-side only — no new backend model; benefits Developer, QA, Designer roles
+
+- **F-050 — Task Dependencies** — "Blocked by" relationships between work items within the same project; blocked items show red badge on board card; `WorkItemDependency` Prisma model (`blockerId`, `blockedId`, `projectId`); `POST/DELETE /work-items/:id/dependencies`; feeds F-042 blocker detection with structural data
+
+- **F-051 — Custom Labels / Tags** — Free-form coloured labels on work items (e.g. `hotfix`, `needs-design`, `tech-debt`); labels scoped per project; PM+ can create/rename/delete; filter board by label; `Label` model + `WorkItemLabel` join table; label chips on board cards
+
+---
+
+## Phase 19 — Knowledge & Docs
+
+- **F-052 — Project Wiki / Notes** — Per-project wiki at `/projects/:id/wiki`; pages with title + rich-text body; create/edit/delete (PM+ write, all members read); `WikiPage` Prisma model (`id`, `projectId`, `title`, `content`, `createdById`, `updatedAt`); `GET/POST/PUT/DELETE /projects/:id/wiki`
+
+- **F-053 — Global Search** — Omnisearch bar in topbar (Ctrl+K / Cmd+K); searches work items (by display ID or title), bugs, projects, users in one query; results grouped by type; click navigates to detail page or board; `GET /search?q=&types[]=` with RBAC filtering; debounced 300 ms; uses existing `ILIKE` queries — no new Prisma model

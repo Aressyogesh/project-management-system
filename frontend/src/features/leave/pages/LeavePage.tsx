@@ -286,6 +286,7 @@ export function LeavePage() {
   const { user } = useAuthStore();
   const qc = useQueryClient();
   const isAdmin = user?.systemRole === 'SUPER_USER' || user?.systemRole === 'ADMIN';
+  const isSuperUser = user?.systemRole === 'SUPER_USER';
 
   const [showApply, setShowApply] = useState(false);
   const [rejectTarget, setRejectTarget] = useState<LeaveRequest | null>(null);
@@ -340,15 +341,17 @@ export function LeavePage() {
                 : 'Apply for leave and track your request status'}
             </p>
           </div>
-          <button
-            onClick={() => setShowApply(true)}
-            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-lg transition"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            Apply for Leave
-          </button>
+          {!isSuperUser && (
+            <button
+              onClick={() => setShowApply(true)}
+              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-lg transition"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              Apply for Leave
+            </button>
+          )}
         </div>
 
         {/* Summary stat chips */}
