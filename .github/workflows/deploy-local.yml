@@ -127,6 +127,14 @@ jobs:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           DIRECT_URL: ${{ secrets.DIRECT_URL }}
 
+      - name: Resolve any failed Prisma migrations
+        working-directory: backend
+        run: npx prisma migrate resolve --rolled-back 20260612000000_project_description_text 2>$null; $true
+        shell: pwsh
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DIRECT_URL: ${{ secrets.DIRECT_URL }}
+
       - name: Run Prisma migrations
         working-directory: backend
         run: npx prisma migrate deploy
