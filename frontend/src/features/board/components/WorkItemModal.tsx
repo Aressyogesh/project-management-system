@@ -749,26 +749,22 @@ export function WorkItemModal({ item, sprints, members, milestones, canDelete = 
 
         {/* Bug close guard banner */}
         {showBugCloseGuard && (
-          <div className="mx-6 mt-3 flex items-center justify-between gap-3 bg-red-50 border border-red-200 rounded-lg px-4 py-3">
-            <p className="text-sm text-red-700 font-medium">
-              Severity and Classification are required before closing this bug.
-            </p>
-            <div className="flex items-center gap-2 shrink-0">
-              <button
-                type="button"
-                onClick={() => setShowBugCloseGuard(false)}
-                className="text-xs font-semibold text-primary-600 hover:text-primary-800 transition"
-              >
-                Continue editing
-              </button>
-              <button
-                type="button"
-                onClick={onClose}
-                className="text-xs font-semibold text-red-600 hover:text-red-800 transition"
-              >
-                Close anyway
-              </button>
+          <div className="mx-6 mt-3 flex items-center justify-between gap-3 bg-red-50 border border-red-300 rounded-lg px-4 py-3">
+            <div className="flex items-center gap-2">
+              <svg className="w-4 h-4 text-red-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+              </svg>
+              <p className="text-sm text-red-700 font-semibold">
+                Severity and Classification are required. Please fill in both fields and click <span className="underline">Save</span> before closing.
+              </p>
             </div>
+            <button
+              type="button"
+              onClick={() => setShowBugCloseGuard(false)}
+              className="text-xs font-semibold text-red-600 hover:text-red-800 underline shrink-0 transition"
+            >
+              Dismiss
+            </button>
           </div>
         )}
 
