@@ -456,13 +456,17 @@ export class DashboardService {
       since.setDate(since.getDate() - 30);
     }
 
-    const projectFilter = projectId ? { projectId } : {};
-    const dateUntil     = until ?? new Date();
+    const dateUntil = until ?? new Date();
+
+    // Scope all queries to active projects only (or the specific project if given)
+    const activeProjectIds = projectId
+      ? [projectId]
+      : (await this.prisma.project.findMany({ where: { status: ProjectStatus.ACTIVE }, select: { id: true } })).map((p) => p.id);
 
     const [completedMilestones, activeSprints, newMembers, bugProjects] = await Promise.all([
       this.prisma.milestone.findMany({
         where: {
-          ...projectFilter,
+          projectId: { in: activeProjectIds },
           status: MilestoneStatus.COMPLETED,
           updatedAt: { gte: since, lt: dateUntil },
         },
@@ -471,24 +475,24 @@ export class DashboardService {
         take: 4,
       }),
       this.prisma.sprint.findMany({
-        where: { ...projectFilter, isActive: true },
+        where: { projectId: { in: activeProjectIds }, isActive: true },
         select: { id: true, name: true, project: { select: { name: true } }, startDate: true },
         orderBy: { startDate: 'desc' },
         take: 3,
       }),
       this.prisma.projectMember.findMany({
-        where: { ...projectFilter, joinedAt: { gte: since, lt: dateUntil } },
+        where: { projectId: { in: activeProjectIds }, joinedAt: { gte: since, lt: dateUntil } },
         select: { id: true, user: { select: { fullName: true } }, project: { select: { name: true } }, joinedAt: true },
         orderBy: { joinedAt: 'desc' },
         take: 3,
       }),
       this.prisma.project.findMany({
-        where: projectId ? { id: projectId } : { status: ProjectStatus.ACTIVE },
+        where: { id: { in: activeProjectIds } },
         select: {
           id: true, name: true,
           _count: { select: { workItems: { where: { type: WorkItemType.BUG, status: { not: BoardStatus.QA_DONE } } } } },
         },
-        take: projectId ? 1 : 10,
+        take: activeProjectIds.length,
       }),
     ]);
 
