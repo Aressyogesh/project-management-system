@@ -345,12 +345,14 @@ export class AnalyticsService {
   async getProductivityReport(period: string, projectId?: string) {
     const { start, end } = periodToRange(period);
 
+    const activeProjectIds = projectId
+      ? [projectId]
+      : (await this.prisma.project.findMany({ where: { status: 'ACTIVE' }, select: { id: true } })).map((p) => p.id);
+
     const users = await this.prisma.user.findMany({
       where: {
         isActive: true,
-        ...(projectId
-          ? { projectMembers: { some: { projectId } } }
-          : {}),
+        projectMembers: { some: { projectId: { in: activeProjectIds } } },
       },
       select: {
         id: true,
@@ -362,27 +364,20 @@ export class AnalyticsService {
 
     const results = await Promise.all(
       users.map(async (user) => {
-        const projectFilter = projectId
-          ? { projectId }
-          : { project: { status: 'ACTIVE' } };
-        const tsProjectFilter = projectId
-          ? { workItem: { projectId } }
-          : { workItem: { project: { status: 'ACTIVE' } } };
-
         const [completedItems, timesheetSum, allItems] = await Promise.all([
           this.prisma.workItem.count({
             where: {
               assigneeId: user.id,
               status: BoardStatus.QA_DONE,
               completedAt: { gte: start, lt: end },
-              ...projectFilter,
+              projectId: { in: activeProjectIds },
             },
           }),
           this.prisma.timesheetEntry.aggregate({
             where: {
               userId: user.id,
               date: { gte: start, lt: end },
-              ...tsProjectFilter,
+              workItem: { projectId: { in: activeProjectIds } },
             },
             _sum: { hours: true },
           }),
@@ -390,7 +385,7 @@ export class AnalyticsService {
             where: {
               assigneeId: user.id,
               dueDate: { gte: start, lt: end },
-              ...projectFilter,
+              projectId: { in: activeProjectIds },
             },
           }),
         ]);
@@ -400,11 +395,11 @@ export class AnalyticsService {
             assigneeId: user.id,
             status: BoardStatus.QA_DONE,
             completedAt: { gte: start, lt: end },
-            ...projectFilter,
+            projectId: { in: activeProjectIds },
           },
         });
 
-        const hoursLogged = Math.round(Number(timesheetSum._sum.hours ?? 0) * 10) / 10;
+        const hoursLogged = Math.round(Number(timesheetSum._sum?.hours ?? 0) * 10) / 10;
         const onTimePct = allItems > 0 ? Math.round((onTimeItems / allItems) * 100) : 0;
         const score = Math.round(
           ((completedItems * 0.4 + hoursLogged * 0.3 + onTimePct * 0.3) / 100) * 100,
@@ -549,10 +544,14 @@ export class AnalyticsService {
   async getAllocationReport(period: string, projectId?: string) {
     const { start, end } = periodToRange(period);
 
+    const activeProjectIds = projectId
+      ? [projectId]
+      : (await this.prisma.project.findMany({ where: { status: 'ACTIVE' }, select: { id: true } })).map((p) => p.id);
+
     const users = await this.prisma.user.findMany({
       where: {
         isActive: true,
-        ...(projectId ? { projectMembers: { some: { projectId } } } : {}),
+        projectMembers: { some: { projectId: { in: activeProjectIds } } },
       },
       select: {
         id: true,
@@ -564,32 +563,25 @@ export class AnalyticsService {
 
     const results = await Promise.all(
       users.map(async (user) => {
-        const projectFilter = projectId
-          ? { projectId }
-          : { project: { status: 'ACTIVE' } };
-        const tsProjectFilter = projectId
-          ? { workItem: { projectId } }
-          : { workItem: { project: { status: 'ACTIVE' } } };
-
         const [itemCount, hoursSum] = await Promise.all([
           this.prisma.workItem.count({
             where: {
               assigneeId: user.id,
               createdAt: { gte: start, lt: end },
-              ...projectFilter,
+              projectId: { in: activeProjectIds },
             },
           }),
           this.prisma.timesheetEntry.aggregate({
             where: {
               userId: user.id,
               date: { gte: start, lt: end },
-              ...tsProjectFilter,
+              workItem: { projectId: { in: activeProjectIds } },
             },
             _sum: { hours: true },
           }),
         ]);
 
-        const hoursAllocated = Math.round(Number(hoursSum._sum.hours ?? 0) * 10) / 10;
+        const hoursAllocated = Math.round(Number(hoursSum._sum?.hours ?? 0) * 10) / 10;
         const maxMonthlyHours = 176;
         const utilisationPct = Math.round((hoursAllocated / maxMonthlyHours) * 100);
 
@@ -610,15 +602,15 @@ export class AnalyticsService {
   async getTimesheetReport(period: string, projectId?: string) {
     const { start, end } = periodToRange(period);
 
-    const tsProjectFilter = projectId
-      ? { workItem: { projectId } }
-      : { workItem: { project: { status: 'ACTIVE' } } };
+    const activeProjectIds = projectId
+      ? [projectId]
+      : (await this.prisma.project.findMany({ where: { status: 'ACTIVE' }, select: { id: true } })).map((p) => p.id);
 
     const entries = await this.prisma.timesheetEntry.groupBy({
       by: ['userId'],
       where: {
         date: { gte: start, lt: end },
-        ...tsProjectFilter,
+        workItem: { projectId: { in: activeProjectIds } },
       },
       _sum: { hours: true },
     });
@@ -631,9 +623,7 @@ export class AnalyticsService {
         fullName: true,
         systemRole: true,
         projectMembers: {
-          ...(projectId
-            ? { where: { projectId } }
-            : { where: { project: { status: 'ACTIVE' } } }),
+          where: { projectId: { in: activeProjectIds } },
           select: { projectRole: true, project: { select: { name: true } } },
         },
       },
@@ -649,7 +639,7 @@ export class AnalyticsService {
           user?.systemRole ??
           'N/A',
         project: user?.projectMembers[0]?.project?.name ?? (projectId ? 'N/A' : 'Multiple'),
-        hoursLogged: Math.round(Number(entry._sum.hours ?? 0) * 10) / 10,
+        hoursLogged: Math.round(Number(entry._sum?.hours ?? 0) * 10) / 10,
         status: 'Approved' as const,
       };
     });
