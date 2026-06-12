@@ -49,6 +49,7 @@ describe('AnalyticsService — KPI computation', () => {
           provide: PrismaService,
           useValue: {
             user: { findMany: jest.fn() },
+            project: { findMany: jest.fn() },
             workItem: { findMany: jest.fn(), count: jest.fn() },
             timesheetEntry: { aggregate: jest.fn(), groupBy: jest.fn(), findMany: jest.fn() },
             kpiRecord: { findMany: jest.fn() },
@@ -86,6 +87,7 @@ describe('AnalyticsService — KPI computation', () => {
     innovationLogs?: { type: string }[];
   }) {
     (prisma.user.findMany as jest.Mock).mockResolvedValue([mockUser]);
+    (prisma.project.findMany as jest.Mock).mockResolvedValue([{ id: 'active-project-1' }]);
     (prisma.workItem.findMany as jest.Mock)
       .mockResolvedValueOnce(sprintItems)
       .mockResolvedValueOnce(allItems)

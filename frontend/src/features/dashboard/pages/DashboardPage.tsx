@@ -64,8 +64,8 @@ export function DashboardPage() {
 
   // Projects list for the selector (Admin / Super only)
   const { data: projects = [], isLoading: projectsLoading } = useQuery({
-    queryKey: ['projects-list'],
-    queryFn:  () => projectsApi.list(),
+    queryKey: ['projects-list', 'active'],
+    queryFn:  () => projectsApi.list({ status: 'ACTIVE' }),
     enabled:  isAdminOrSuper,
     staleTime: 120_000,
   });

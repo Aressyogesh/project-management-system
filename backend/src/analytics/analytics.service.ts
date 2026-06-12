@@ -130,6 +130,11 @@ export class AnalyticsService {
   async getKpi(period: string, currentUserId: string, isAdmin: boolean) {
     const { start, end } = periodToRange(period);
 
+    const activeProjectIds = (await this.prisma.project.findMany({
+      where: { status: 'ACTIVE' },
+      select: { id: true },
+    })).map((p) => p.id);
+
     const users = await this.prisma.user.findMany({
       where: isAdmin ? { isActive: true } : { id: currentUserId, isActive: true },
       select: {
@@ -142,7 +147,7 @@ export class AnalyticsService {
     });
 
     const results = await Promise.all(
-      users.map((user) => this.computeUserKpi(user, period, start, end)),
+      users.map((user) => this.computeUserKpi(user, period, start, end, activeProjectIds)),
     );
 
     return results;
@@ -159,6 +164,7 @@ export class AnalyticsService {
     period: string,
     start: Date,
     end: Date,
+    activeProjectIds: string[],
   ) {
     const userId = user.id;
 
@@ -178,6 +184,7 @@ export class AnalyticsService {
           assigneeId: userId,
           sprintId: { not: null },
           createdAt: { gte: start, lt: end },
+          projectId: { in: activeProjectIds },
         },
         select: {
           id: true,
@@ -194,6 +201,7 @@ export class AnalyticsService {
         where: {
           assigneeId: userId,
           createdAt: { gte: start, lt: end },
+          projectId: { in: activeProjectIds },
         },
         select: {
           id: true,
@@ -213,6 +221,7 @@ export class AnalyticsService {
           responsibleUserId: userId,
           type: WorkItemType.BUG,
           createdAt: { gte: start, lt: end },
+          projectId: { in: activeProjectIds },
         },
         select: { severity: true },
       }),

@@ -418,9 +418,12 @@ export class DashboardService {
   }
 
   private async buildWeeklyActivityData(projectId?: string): Promise<ActivityPoint[]> {
-    const now   = new Date();
-    const base  = projectId ? { projectId } : {};
+    const now    = new Date();
     const points: ActivityPoint[] = [];
+
+    const activeProjectIds = projectId
+      ? [projectId]
+      : (await this.prisma.project.findMany({ where: { status: ProjectStatus.ACTIVE }, select: { id: true } })).map((p) => p.id);
 
     for (let i = 11; i >= 0; i--) {
       const weekStart = new Date(now);
@@ -430,8 +433,8 @@ export class DashboardService {
       weekEnd.setDate(weekStart.getDate() + 7);
 
       const [created, completed] = await Promise.all([
-        this.prisma.workItem.count({ where: { ...base, createdAt: { gte: weekStart, lt: weekEnd } } }),
-        this.prisma.workItem.count({ where: { ...base, status: BoardStatus.QA_DONE, updatedAt: { gte: weekStart, lt: weekEnd } } }),
+        this.prisma.workItem.count({ where: { projectId: { in: activeProjectIds }, createdAt: { gte: weekStart, lt: weekEnd } } }),
+        this.prisma.workItem.count({ where: { projectId: { in: activeProjectIds }, status: BoardStatus.QA_DONE, updatedAt: { gte: weekStart, lt: weekEnd } } }),
       ]);
 
       const label = `${MONTH_ABBR[weekStart.getMonth()]} W${Math.ceil(weekStart.getDate() / 7)}`;
@@ -546,14 +549,17 @@ export class DashboardService {
     const now = new Date();
     const points: ActivityPoint[] = [];
 
+    const activeProjectIds = projectId
+      ? [projectId]
+      : (await this.prisma.project.findMany({ where: { status: ProjectStatus.ACTIVE }, select: { id: true } })).map((p) => p.id);
+
     for (let i = 11; i >= 0; i--) {
       const date     = new Date(now.getFullYear(), now.getMonth() - i, 1);
       const nextDate = new Date(date.getFullYear(), date.getMonth() + 1, 1);
-      const base     = projectId ? { projectId } : {};
 
       const [created, completed] = await Promise.all([
-        this.prisma.workItem.count({ where: { ...base, createdAt: { gte: date, lt: nextDate } } }),
-        this.prisma.workItem.count({ where: { ...base, status: BoardStatus.QA_DONE, updatedAt: { gte: date, lt: nextDate } } }),
+        this.prisma.workItem.count({ where: { projectId: { in: activeProjectIds }, createdAt: { gte: date, lt: nextDate } } }),
+        this.prisma.workItem.count({ where: { projectId: { in: activeProjectIds }, status: BoardStatus.QA_DONE, updatedAt: { gte: date, lt: nextDate } } }),
       ]);
 
       points.push({ month: MONTH_ABBR[date.getMonth()], high: created, low: completed });
