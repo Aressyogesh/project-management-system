@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpCode, Param, Patch, Post, Query, Request } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Query, Request } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { ProjectStatus, SystemRole } from '@prisma/client';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -49,5 +49,13 @@ export class ProjectsController {
   @ApiOperation({ summary: 'Set project status (ACTIVE / ARCHIVE / ON_HOLD)' })
   setStatus(@Param('id') id: string, @Body() dto: SetProjectStatusDto) {
     return this.projectsService.setStatus(id, dto.status);
+  }
+
+  @Delete(':id')
+  @Roles(SystemRole.SUPER_USER, SystemRole.ADMIN)
+  @HttpCode(204)
+  @ApiOperation({ summary: 'Permanently delete an archived project (Super User and Admin only)' })
+  async delete(@Param('id') id: string): Promise<void> {
+    await this.projectsService.delete(id);
   }
 }

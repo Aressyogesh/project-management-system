@@ -176,14 +176,14 @@ describe('AnalyticsService — KPI computation', () => {
   });
 
   it('Defect Leakage: zero bugs returns 10', async () => {
-    setupUserKpiMocks({ bugItems: [] });
+    setupUserKpiMocks({ allItems: [wi(BoardStatus.QA_DONE)], bugItems: [] });
     const [result] = await service.getKpi('2026-05', 'user-1', true);
     const metric = result.metrics.find((m) => m.metricId === 'defect_leakage')!;
     expect(metric.points).toBe(10);
   });
 
   it('Defect Leakage: 1 CRITICAL bug returns 0', async () => {
-    setupUserKpiMocks({ bugItems: [{ severity: 'CRITICAL' }] });
+    setupUserKpiMocks({ allItems: [wi(BoardStatus.QA_DONE)], bugItems: [{ severity: 'CRITICAL' }] });
     const [result] = await service.getKpi('2026-05', 'user-1', true);
     const metric = result.metrics.find((m) => m.metricId === 'defect_leakage')!;
     expect(metric.points).toBe(0);
@@ -191,6 +191,7 @@ describe('AnalyticsService — KPI computation', () => {
 
   it('Attendance: rejected leave request returns 0', async () => {
     setupUserKpiMocks({
+      allItems: [wi(BoardStatus.QA_DONE)],
       leaveRequests: [{
         status: 'REJECTED',
         startDate: new Date('2026-05-10'),
@@ -203,7 +204,7 @@ describe('AnalyticsService — KPI computation', () => {
   });
 
   it('Attendance: 0 leave days returns 5', async () => {
-    setupUserKpiMocks({ leaveRequests: [] });
+    setupUserKpiMocks({ allItems: [wi(BoardStatus.QA_DONE)], leaveRequests: [] });
     const [result] = await service.getKpi('2026-05', 'user-1', true);
     const metric = result.metrics.find((m) => m.metricId === 'attendance')!;
     expect(metric.points).toBe(5);

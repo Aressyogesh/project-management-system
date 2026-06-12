@@ -316,29 +316,33 @@ export class AnalyticsService {
     const learningVelocity = computeLearningVelocity(learningHours);
     const automationInnovation = computeInnovation(innovationLogs);
 
-    const metrics = [
-      { metricId: 'sprint_reliability',      points: sprintReliability },
-      { metricId: 'delivery_timeliness',      points: deliveryTimeliness },
-      { metricId: 'estimation_accuracy',      points: estimationAccuracy },
-      { metricId: 'throughput_complexity',    points: throughput },
-      { metricId: 'internal_rework_ratio',    points: reworkRatio },
-      { metricId: 'defect_leakage',           points: defectLeakage },
-      { metricId: 'dependency_agile',         points: dependencyAgile },
-      { metricId: 'engineering_hygiene',      points: engineeringHygiene },
-      { metricId: 'reporting_documentation',  points: reportingDocs },
-      { metricId: 'learning_velocity',        points: learningVelocity },
-      { metricId: 'automation_innovation',    points: automationInnovation },
-      { metricId: 'attendance',               points: attendance },
-      { metricId: 'positive_behaviour',       points: positiveBehaviour },
+    const hasNoActivity =
+      sprintItems.length === 0 &&
+      allAssignedItems.length === 0 &&
+      manualScores.length === 0 &&
+      learningLogs.length === 0 &&
+      innovationLogs.length === 0;
+
+    // When the user has no assigned work and no manual scores for this period,
+    // zero out all metrics so the radar chart and category scores reflect reality.
+    const metricPoints = hasNoActivity
+      ? Array(13).fill(0)
+      : [sprintReliability, deliveryTimeliness, estimationAccuracy, throughput,
+         reworkRatio, defectLeakage, dependencyAgile, engineeringHygiene,
+         reportingDocs, learningVelocity, automationInnovation, attendance, positiveBehaviour];
+
+    const metricIds = [
+      'sprint_reliability', 'delivery_timeliness', 'estimation_accuracy', 'throughput_complexity',
+      'internal_rework_ratio', 'defect_leakage', 'dependency_agile', 'engineering_hygiene',
+      'reporting_documentation', 'learning_velocity', 'automation_innovation', 'attendance', 'positive_behaviour',
     ];
 
-    const totalScore = Math.round(metrics.reduce((s, m) => s + m.points, 0) * 10) / 10;
+    const metrics = metricIds.map((metricId, i) => ({ metricId, points: metricPoints[i] }));
+    const totalScore = hasNoActivity ? 0 : Math.round(metrics.reduce((s, m) => s + m.points, 0) * 10) / 10;
 
     const role =
       user.projectMembers[0]?.projectRole?.replace('_', ' ') ??
       user.systemRole;
-
-    const hasNoActivity = allAssignedItems.length === 0 && manualScores.length === 0;
 
     return {
       userId,

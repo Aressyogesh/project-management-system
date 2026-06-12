@@ -28,13 +28,35 @@ export function KpiEmployeeDetailPanel({ employee }: Props) {
               <p className="text-xs text-gray-400">{employee.role} · {employee.department}</p>
             </div>
             <div className="text-right">
-              <p className="text-2xl font-bold text-gray-900">{employee.totalScore}</p>
-              <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${grade.bg} ${grade.text}`}>
-                Grade {employee.grade} — {grade.label}
-              </span>
+              {employee.hasNoActivity ? (
+                <>
+                  <p className="text-2xl font-bold text-gray-400">—</p>
+                  <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">
+                    N/A — No Data
+                  </span>
+                </>
+              ) : (
+                <>
+                  <p className="text-2xl font-bold text-gray-900">{employee.totalScore}</p>
+                  <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${grade.bg} ${grade.text}`}>
+                    Grade {employee.grade} — {grade.label}
+                  </span>
+                </>
+              )}
             </div>
           </div>
-          <KpiRadarChart employee={employee} />
+          {employee.hasNoActivity ? (
+            <div className="flex flex-col items-center justify-center h-48 text-center gap-2">
+              <svg className="w-10 h-10 text-gray-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+                  d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414A1 1 0 0122 9.414V19a2 2 0 01-2 2z" />
+              </svg>
+              <p className="text-xs text-gray-400 font-medium">No activity this period</p>
+              <p className="text-[10px] text-gray-300">Assign work items to start tracking KPI</p>
+            </div>
+          ) : (
+            <KpiRadarChart employee={employee} />
+          )}
         </div>
       </div>
 

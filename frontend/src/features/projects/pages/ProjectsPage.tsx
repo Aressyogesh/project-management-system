@@ -54,6 +54,7 @@ export function ProjectsPage() {
 
   const [showForm, setShowForm] = useState(false);
   const [editTarget, setEditTarget] = useState<Project | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Project | null>(null);
   const [quickFilter, setQuickFilter] = useState<QuickFilter>('');
   const [clientFilter, setClientFilter] = useState(searchParams.get('clientId') ?? '');
   const [page, setPage] = useState(1);
@@ -130,6 +131,16 @@ export function ProjectsPage() {
       qc.invalidateQueries({ queryKey: ['projects-summary'] });
       const label = variables.status === 'ARCHIVE' ? 'archived' : variables.status === 'ACTIVE' ? 'restored to active' : 'put on hold';
       setToast(`Project ${label}`);
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => projectsApi.delete(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['projects'] });
+      qc.invalidateQueries({ queryKey: ['projects-summary'] });
+      setDeleteTarget(null);
+      setToast('Project permanently deleted');
     },
   });
 
@@ -288,14 +299,25 @@ export function ProjectsPage() {
                           </svg>
                         </button>
                       ) : (
-                        <button title="Restore to Active" onClick={() => statusMutation.mutate({ id: project.id, status: 'ACTIVE' })}
-                          disabled={statusMutation.isPending}
-                          className="p-2 rounded-lg text-gray-500 hover:text-green-600 hover:bg-green-50 transition">
-                          <svg style={{ width: '18px', height: '18px' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                              d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                          </svg>
-                        </button>
+                        <>
+                          <button title="Restore to Active" onClick={() => statusMutation.mutate({ id: project.id, status: 'ACTIVE' })}
+                            disabled={statusMutation.isPending}
+                            className="p-2 rounded-lg text-gray-500 hover:text-green-600 hover:bg-green-50 transition">
+                            <svg style={{ width: '18px', height: '18px' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                          </button>
+                          {project.status === 'ARCHIVE' && (
+                            <button title="Delete permanently" onClick={() => setDeleteTarget(project)}
+                              className="p-2 rounded-lg text-gray-500 hover:text-red-600 hover:bg-red-50 transition">
+                              <svg style={{ width: '18px', height: '18px' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                              </svg>
+                            </button>
+                          )}
+                        </>
                       )}
                     </div>
                   )}
@@ -352,6 +374,45 @@ export function ProjectsPage() {
           onClose={() => { setShowForm(false); setEditTarget(null); }}
           onSuccess={setToast}
         />
+      )}
+
+      {deleteTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">
+            <div className="flex items-center justify-center w-12 h-12 rounded-full bg-red-100 mx-auto mb-4">
+              <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                  d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+              </svg>
+            </div>
+            <h3 className="text-base font-semibold text-gray-900 text-center mb-1">Delete Project</h3>
+            <p className="text-sm text-gray-500 text-center mb-1">
+              You are about to permanently delete
+            </p>
+            <p className="text-sm font-semibold text-gray-800 text-center mb-4">
+              "{deleteTarget.name}"
+            </p>
+            <p className="text-xs text-red-600 bg-red-50 rounded-lg p-3 mb-5 text-center">
+              This action cannot be undone. All work items, members, sprints, milestones, and tasks will be permanently removed.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setDeleteTarget(null)}
+                disabled={deleteMutation.isPending}
+                className="flex-1 py-2.5 rounded-lg border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => deleteMutation.mutate(deleteTarget.id)}
+                disabled={deleteMutation.isPending}
+                className="flex-1 py-2.5 rounded-lg bg-red-600 hover:bg-red-700 disabled:opacity-60 text-white text-sm font-semibold transition"
+              >
+                {deleteMutation.isPending ? 'Deleting…' : 'Delete Permanently'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {toast && <Toast message={toast} onClose={() => setToast(null)} />}

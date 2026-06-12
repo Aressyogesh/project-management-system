@@ -107,6 +107,15 @@ export class ProjectsService {
     return this.prisma.project.update({ where: { id }, data: { status }, select: PROJECT_SELECT });
   }
 
+  async delete(id: string): Promise<void> {
+    const project = await this.prisma.project.findUnique({ where: { id } });
+    if (!project) throw new NotFoundException('Project not found');
+    if (project.status !== ProjectStatus.ARCHIVE) {
+      throw new BadRequestException('Only archived projects can be deleted. Archive the project first.');
+    }
+    await this.prisma.project.delete({ where: { id } });
+  }
+
   private validateDates(startDate?: string, endDate?: string) {
     if (startDate && endDate && new Date(endDate) < new Date(startDate)) {
       throw new BadRequestException('End date must be on or after start date');

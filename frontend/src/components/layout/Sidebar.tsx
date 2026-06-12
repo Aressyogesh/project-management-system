@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
+import { authApi } from '../../api/auth.api';
 import { useAuthStore } from '../../store/authStore';
 import { SystemRole } from '../../types/auth.types';
 import { UserAvatar } from '../shared/UserAvatar';
@@ -143,10 +144,13 @@ interface SidebarProps {
 
 export function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const navigate = useNavigate();
-  const { user, clearAuth } = useAuthStore();
+  const { user, refreshToken, clearAuth } = useAuthStore();
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  function handleLogout() {
+  async function handleLogout() {
+    if (refreshToken) {
+      try { await authApi.logout(refreshToken); } catch { /* ignore — token may already be expired */ }
+    }
     clearAuth();
     navigate('/login');
   }

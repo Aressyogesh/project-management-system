@@ -31,4 +31,7 @@ export const projectsApi = {
 
   removeMember: (projectId: string, userId: string) =>
     apiClient.delete(`/projects/${projectId}/members/${userId}`),
+
+  delete: (id: string) =>
+    apiClient.delete(`/projects/${id}`),
 };

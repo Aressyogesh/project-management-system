@@ -224,15 +224,18 @@ export const STATIC_KPI_DATA: EmployeeKpiRecord[] = [
 // ─── Team Summary ─────────────────────────────────────────────────────────────
 
 export function buildTeamSummary(employees: EmployeeKpiRecord[], period: string): KpiTeamSummary {
-  const total = employees.reduce((s, e) => s + e.totalScore, 0);
-  const teamAverage = Math.round((total / employees.length) * 10) / 10;
+  // Exclude no-activity users from averages and grade counts so they don't skew the team metrics.
+  const scored = employees.filter((e) => !e.hasNoActivity);
+  const total = scored.reduce((s, e) => s + e.totalScore, 0);
+  const teamAverage = scored.length > 0 ? Math.round((total / scored.length) * 10) / 10 : 0;
 
   const categoryAverages = KPI_CATEGORIES.map((cat) => {
-    const avgEarned =
-      employees.reduce((s, e) => {
-        const cs = e.categoryScores.find((c) => c.category === cat.name);
-        return s + (cs?.earned ?? 0);
-      }, 0) / employees.length;
+    const avgEarned = scored.length > 0
+      ? scored.reduce((s, e) => {
+          const cs = e.categoryScores.find((c) => c.category === cat.name);
+          return s + (cs?.earned ?? 0);
+        }, 0) / scored.length
+      : 0;
     return {
       category: cat.name,
       earned: Math.round(avgEarned * 10) / 10,
@@ -245,10 +248,10 @@ export function buildTeamSummary(employees: EmployeeKpiRecord[], period: string)
     period,
     teamAverage,
     teamGrade: computeGrade(teamAverage),
-    gradeACcount: employees.filter((e) => e.grade === 'A').length,
-    gradeBCount: employees.filter((e) => e.grade === 'B').length,
-    gradeCCount: employees.filter((e) => e.grade === 'C').length,
-    gradeDCount: employees.filter((e) => e.grade === 'D').length,
+    gradeACcount: scored.filter((e) => e.grade === 'A').length,
+    gradeBCount: scored.filter((e) => e.grade === 'B').length,
+    gradeCCount: scored.filter((e) => e.grade === 'C').length,
+    gradeDCount: scored.filter((e) => e.grade === 'D').length,
     categoryAverages,
     employees,
   };
