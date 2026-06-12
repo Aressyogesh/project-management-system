@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { avatarUrl } from '../../utils/avatarUrl';
 
 type AvatarSize = 'xs' | 'sm' | 'md' | 'card' | 'lg';
@@ -23,6 +23,8 @@ interface Props {
 export function UserAvatar({ name, photo, size = 'md', className = '', title }: Props) {
   const [failed, setFailed] = useState(false);
   const src = avatarUrl(photo);
+
+  useEffect(() => { setFailed(false); }, [photo]);
   const initials = name.split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase();
   const { wrap, text } = SIZE_MAP[size];
 

@@ -507,12 +507,26 @@ function BugSummaryTab({ period, project }: { period: string; project: string })
   return (
     <div className="space-y-6">
       <div className="flex justify-end">
-        <CsvButton onClick={() => downloadCsv(`bug-summary-report-${period}.csv`, [
-          ['Section', 'Label', 'Count'],
-          ...(data?.severity ?? []).map((d) => ['Severity', d.severity, String(d.count)]),
-          ['', '', ''],
-          ...(data?.classification ?? []).map((d) => ['Classification', d.classification, String(d.count)]),
-        ])} />
+        <CsvButton onClick={() => {
+          const severityRows = data?.severity ?? [];
+          const classRows    = data?.classification ?? [];
+          const sevTotal     = severityRows.reduce((s, d) => s + d.count, 0);
+          const clsTotal     = classRows.reduce((s, d) => s + d.count, 0);
+          const periodLabel  = PERIOD_OPTIONS.find((p) => p.value === period)?.label ?? period;
+          downloadCsv(`bug-summary-report-${period}.csv`, [
+            [`Bug Summary Report — ${periodLabel}`, '', ''],
+            ['', '', ''],
+            ['=== BUG SEVERITY ===', '', ''],
+            ['Severity', 'Count', '% of Total'],
+            ...severityRows.map((d) => [d.severity, String(d.count), sevTotal > 0 ? `${Math.round((d.count / sevTotal) * 100)}%` : '0%']),
+            ['TOTAL', String(sevTotal), '100%'],
+            ['', '', ''],
+            ['=== BUG CLASSIFICATION ===', '', ''],
+            ['Classification', 'Count', '% of Total'],
+            ...classRows.map((d) => [d.classification, String(d.count), clsTotal > 0 ? `${Math.round((d.count / clsTotal) * 100)}%` : '0%']),
+            ['TOTAL', String(clsTotal), '100%'],
+          ]);
+        }} />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

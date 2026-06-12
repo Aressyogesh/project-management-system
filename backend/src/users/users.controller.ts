@@ -20,7 +20,7 @@ import {
 } from '@nestjs/swagger';
 import { SystemRole } from '@prisma/client';
 import { diskStorage } from 'multer';
-import { extname } from 'path';
+import { extname, join } from 'path';
 import { Roles } from '../common/decorators/roles.decorator';
 import { CreateUserDto } from './dto/create-user.dto';
 import { SetStatusDto } from './dto/set-status.dto';
@@ -29,8 +29,12 @@ import { UpdateUserDto } from './dto/update-user.dto';
 import { UsersQueryDto } from './dto/users-query.dto';
 import { UsersService } from './users.service';
 
+function avatarsDir() {
+  return join(process.env.UPLOAD_DEST ?? join(process.cwd(), 'uploads'), 'avatars');
+}
+
 const photoStorage = diskStorage({
-  destination: './uploads/avatars',
+  destination: (_req, _file, cb) => cb(null, avatarsDir()),
   filename: (_req, file, cb) => {
     const unique = Date.now() + '-' + Math.round(Math.random() * 1e9);
     cb(null, `avatar-${unique}${extname(file.originalname)}`);

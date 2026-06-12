@@ -8,6 +8,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { Public } from '../common/decorators/public.decorator';
 import { AuthService } from './auth.service';
 import { AuthResponseDto, TokenPairDto } from './dto/auth-response.dto';
@@ -27,6 +28,7 @@ export class AuthController {
   @UseGuards(LocalAuthGuard)
   @Post('login')
   @HttpCode(HttpStatus.OK)
+  @Throttle({ default: { ttl: 60_000, limit: 10 } })
   @ApiOperation({ summary: 'Login with email and password' })
   @ApiResponse({ status: 200, type: AuthResponseDto })
   @ApiResponse({ status: 400, description: 'Validation error' })

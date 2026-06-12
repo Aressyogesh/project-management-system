@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { ScheduleModule } from '@nestjs/schedule';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { APP_FILTER, APP_GUARD } from '@nestjs/core';
 import { AuthModule } from './auth/auth.module';
 import { ClientsModule } from './clients/clients.module';
@@ -38,6 +39,7 @@ import { AuditLogsModule } from './audit-logs/audit-logs.module';
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    ThrottlerModule.forRoot([{ name: 'global', ttl: 60_000, limit: 120 }]),
     ScheduleModule.forRoot(),
     PrismaModule,
     HealthModule,
@@ -71,6 +73,7 @@ import { AuditLogsModule } from './audit-logs/audit-logs.module';
   ],
   providers: [
     { provide: APP_FILTER, useClass: GlobalExceptionFilter },
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: RolesGuard },
   ],

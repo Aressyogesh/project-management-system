@@ -466,11 +466,15 @@ export class AnalyticsService {
   async getBugsReport(period: string, projectId?: string) {
     const { start, end } = periodToRange(period);
 
+    const activeProjectIds = projectId
+      ? [projectId]
+      : (await this.prisma.project.findMany({ where: { status: 'ACTIVE' }, select: { id: true } })).map((p) => p.id);
+
     const bugs = await this.prisma.workItem.findMany({
       where: {
         type: WorkItemType.BUG,
         createdAt: { gte: start, lt: end },
-        ...(projectId ? { projectId } : {}),
+        projectId: { in: activeProjectIds },
       },
       select: {
         severity: true,

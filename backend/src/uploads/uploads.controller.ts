@@ -19,11 +19,15 @@ const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
 
 @Controller('uploads')
 export class UploadsController {
+  private uploadsBase() {
+    return process.env.UPLOAD_DEST ?? join(process.cwd(), 'uploads');
+  }
+
   @Post('image')
   @UseInterceptors(
     FileInterceptor('file', {
       storage: diskStorage({
-        destination: join(process.cwd(), 'uploads', 'images'),
+        destination: (_req, _file, cb) => cb(null, join(process.env.UPLOAD_DEST ?? join(process.cwd(), 'uploads'), 'images')),
         filename: (_req, file, cb) =>
           cb(null, `${randomUUID()}${extname(file.originalname)}`),
       }),
@@ -48,7 +52,7 @@ export class UploadsController {
   @Get('image/:filename')
   @Public()
   serveImage(@Param('filename') filename: string, @Res() res: Response) {
-    const filePath = join(process.cwd(), 'uploads', 'images', filename);
+    const filePath = join(this.uploadsBase(), 'images', filename);
     res.sendFile(filePath, (err) => {
       if (err) res.status(404).json({ message: 'Image not found' });
     });
@@ -57,7 +61,7 @@ export class UploadsController {
   @Get('avatar/:filename')
   @Public()
   serveAvatar(@Param('filename') filename: string, @Res() res: Response) {
-    const filePath = join(process.cwd(), 'uploads', 'avatars', filename);
+    const filePath = join(this.uploadsBase(), 'avatars', filename);
     res.sendFile(filePath, (err) => {
       if (err) res.status(404).json({ message: 'Avatar not found' });
     });

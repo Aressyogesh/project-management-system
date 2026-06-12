@@ -54,6 +54,7 @@ export class AuthService {
         fullName: user.fullName,
         email: user.email,
         systemRole: user.systemRole,
+        profilePhoto: user.profilePhoto ?? null,
       },
     };
   }

@@ -89,7 +89,7 @@ jobs:
             "JWT_REFRESH_EXPIRY_DAYS=7",
             "PORT=3000",
             "NODE_ENV=production",
-            "UPLOAD_DEST=./uploads",
+            "UPLOAD_DEST=D:\pms-uploads",
             "GROQ_API_KEY=$env:GROQ_API_KEY",
             "NODE_OPTIONS=--use-system-ca",
             "SMTP_HOST=$env:SMTP_HOST",
@@ -141,6 +141,13 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           DIRECT_URL: ${{ secrets.DIRECT_URL }}
+
+      - name: Ensure upload directories exist
+        run: |
+          New-Item -ItemType Directory -Force -Path "D:\pms-uploads\avatars" | Out-Null
+          New-Item -ItemType Directory -Force -Path "D:\pms-uploads\images"  | Out-Null
+          Write-Host "Upload directories ready"
+        shell: pwsh
 
       - name: Build backend
         working-directory: backend

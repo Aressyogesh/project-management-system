@@ -6,6 +6,7 @@ export class AuthUserDto {
   @ApiProperty() fullName: string;
   @ApiProperty() email: string;
   @ApiProperty({ enum: SystemRole }) systemRole: SystemRole;
+  @ApiProperty({ required: false, nullable: true }) profilePhoto?: string | null;
 }
 
 export class AuthResponseDto {
