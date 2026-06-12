@@ -92,11 +92,12 @@ export class DashboardService {
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
 
-    // ADMIN sees stats scoped to their project memberships; SUPER_USER sees all
-    const scopedProjectIds: string[] | null = role === SystemRole.ADMIN
+    // Any non-EMPLOYEE with project memberships sees their own projects' stats.
+    // Users with no memberships (pure global admins) fall back to system-wide stats.
+    const scopedProjectIds: string[] | null = role !== SystemRole.EMPLOYEE
       ? await this.prisma.projectMember
           .findMany({ where: { userId, project: { status: ProjectStatus.ACTIVE } }, select: { projectId: true } })
-          .then((rows) => rows.map((r) => r.projectId))
+          .then((rows) => rows.length > 0 ? rows.map((r) => r.projectId) : null)
       : null;
 
     const projectActiveWhere = scopedProjectIds !== null
@@ -184,7 +185,7 @@ export class DashboardService {
         : [
             { label: 'Active Projects', value: activeProjectCount,                  change: 0, trend: 'up', color: 'green'  },
             { label: 'Total Tasks',     value: totalTaskCount,                       change: 0, trend: 'up', color: 'blue'   },
-            { label: role === SystemRole.ADMIN ? 'Team Members' : 'Total Users', value: activeUserCount, change: 0, trend: 'up', color: 'purple' },
+            { label: scopedProjectIds !== null ? 'Team Members' : 'Total Users', value: activeUserCount, change: 0, trend: 'up', color: 'purple' },
             { label: 'Completed Tasks', value: completedCount + completedWorkItems,  change: 0, trend: 'up', color: 'rose'   },
           ];
 
@@ -281,14 +282,14 @@ export class DashboardService {
   }
 
   async getProjectsProgress(userId: string, role: SystemRole): Promise<ProjectProgress[]> {
-    const scopedProjectIds: string[] | null = role === SystemRole.ADMIN
+    const memberProjectIds = role !== SystemRole.EMPLOYEE
       ? await this.prisma.projectMember
           .findMany({ where: { userId, project: { status: ProjectStatus.ACTIVE } }, select: { projectId: true } })
           .then((rows) => rows.map((r) => r.projectId))
-      : null;
+      : [];
 
-    const where = scopedProjectIds !== null
-      ? { id: { in: scopedProjectIds }, status: ProjectStatus.ACTIVE }
+    const where = memberProjectIds.length > 0
+      ? { id: { in: memberProjectIds }, status: ProjectStatus.ACTIVE }
       : { status: ProjectStatus.ACTIVE };
 
     const projects = await this.prisma.project.findMany({
