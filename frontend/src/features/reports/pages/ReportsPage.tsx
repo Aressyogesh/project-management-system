@@ -499,9 +499,10 @@ function BugSummaryTab({ period, project }: { period: string; project: string })
 
   if (isLoading) return <TabSpinner />;
 
-  const severityData = (data?.severity ?? []).filter((d) => d.count > 0);
+  const allSeverityData = (data?.severity ?? []);
+  const severityChartData = allSeverityData.filter((d) => d.count > 0);
   const classificationData = (data?.classification ?? []).filter((d) => d.count > 0);
-  const total = severityData.reduce((s, d) => s + d.count, 0);
+  const total = allSeverityData.reduce((s, d) => s + d.count, 0);
 
   return (
     <div className="space-y-6">
@@ -518,14 +519,14 @@ function BugSummaryTab({ period, project }: { period: string; project: string })
           <p className="text-xs text-gray-400 mb-3">
             Total: {total} bug{total !== 1 ? 's' : ''} — {PERIOD_OPTIONS.find((p) => p.value === period)?.label ?? period}
           </p>
-          {severityData.length === 0 ? (
+          {total === 0 ? (
             <div className="flex items-center justify-center h-32 text-sm text-gray-400">No bugs this period.</div>
           ) : (
             <ResponsiveContainer width="100%" height={200}>
               <PieChart>
-                <Pie data={severityData} cx="50%" cy="50%" innerRadius={55} outerRadius={80}
+                <Pie data={severityChartData} cx="50%" cy="50%" innerRadius={55} outerRadius={80}
                   paddingAngle={3} dataKey="count" nameKey="severity">
-                  {severityData.map((entry, idx) => <Cell key={idx} fill={entry.color} stroke="none" />)}
+                  {severityChartData.map((entry, idx) => <Cell key={idx} fill={entry.color} stroke="none" />)}
                 </Pie>
                 <Tooltip contentStyle={{ borderRadius: 10, fontSize: 12, border: '1px solid #E5E7EB' }}
                   formatter={(v: number, name: string) => [`${v} bugs`, name]} />
@@ -533,7 +534,7 @@ function BugSummaryTab({ period, project }: { period: string; project: string })
             </ResponsiveContainer>
           )}
           <div className="grid grid-cols-2 gap-2 mt-1">
-            {severityData.map((d) => (
+            {allSeverityData.map((d) => (
               <div key={d.severity} className="flex items-center gap-2">
                 <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: d.color }} />
                 <span className="text-xs text-gray-500">{d.severity} — <span className="font-semibold text-gray-700">{d.count}</span></span>
@@ -545,7 +546,9 @@ function BugSummaryTab({ period, project }: { period: string; project: string })
         <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
           <h3 className="text-sm font-semibold text-gray-800 mb-4">Bug Classification</h3>
           {classificationData.length === 0 ? (
-            <div className="flex items-center justify-center h-32 text-sm text-gray-400">No bugs this period.</div>
+            <div className="flex items-center justify-center h-32 text-sm text-gray-400">
+              {total > 0 ? 'No classification data for this period.' : 'No bugs this period.'}
+            </div>
           ) : (
             <div className="space-y-3">
               {classificationData.map((d) => (
