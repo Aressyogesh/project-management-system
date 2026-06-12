@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { boardApi } from '../api/boardApi';
-import { avatarUrl } from '../../../utils/avatarUrl';
+import { UserAvatar } from '../../../components/shared/UserAvatar';
 import { futureDateStr, pastDateStr, todayStr } from '../../../utils/dateUtils';
 import {
   DEFAULT_BOARD_COLUMNS,
@@ -62,17 +62,7 @@ function fmtDate(iso: string) {
 }
 
 function Avatar({ name, photo, size = 'sm' }: { name: string; photo?: string | null; size?: 'sm' | 'xs' }) {
-  const src = avatarUrl(photo);
-  const sz = size === 'xs' ? 'w-5 h-5 text-[8px]' : 'w-7 h-7 text-[10px]';
-  if (src) {
-    return <img src={src} alt={name} className={`inline-block rounded-full object-cover shrink-0 ${size === 'xs' ? 'w-5 h-5' : 'w-7 h-7'}`} />;
-  }
-  const initials = name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2);
-  return (
-    <span className={`inline-flex items-center justify-center rounded-full bg-primary-600 text-white font-bold shrink-0 ${sz}`}>
-      {initials}
-    </span>
-  );
+  return <UserAvatar name={name} photo={photo} size={size === 'xs' ? 'xs' : 'sm'} />;
 }
 
 // Right sidebar property row

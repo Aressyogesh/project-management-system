@@ -15,6 +15,7 @@ export function EditProfilePage() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [avatarFailed, setAvatarFailed] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -57,6 +58,7 @@ export function EditProfilePage() {
     if (!file) return;
     setPhotoFile(file);
     setPhotoPreview(URL.createObjectURL(file));
+    setAvatarFailed(false);
   }
 
   const currentAvatar = photoPreview ?? avatarUrl(user?.profilePhoto);
@@ -73,11 +75,12 @@ export function EditProfilePage() {
         {/* Avatar */}
         <div className="flex items-center gap-5">
           <div className="relative w-20 h-20 shrink-0">
-            {currentAvatar ? (
+            {currentAvatar && !avatarFailed ? (
               <img
                 src={currentAvatar}
                 alt="Avatar"
                 className="w-20 h-20 rounded-full object-cover border-2 border-gray-200"
+                onError={() => setAvatarFailed(true)}
               />
             ) : (
               <div className="w-20 h-20 rounded-full bg-primary-100 flex items-center justify-center text-primary-700 text-2xl font-bold border-2 border-gray-200">

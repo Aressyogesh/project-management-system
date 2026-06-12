@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../store/authStore';
 import { SystemRole } from '../../types/auth.types';
-import { avatarUrl } from '../../utils/avatarUrl';
+import { UserAvatar } from '../shared/UserAvatar';
 
 function IconOverview() {
   return (
@@ -159,8 +159,6 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
       .toUpperCase()
       .slice(0, 2) ?? 'U';
 
-  const userPhotoSrc = avatarUrl(user?.profilePhoto);
-
   const visibleNav = navItems.filter(
     (item) => !item.roles || item.roles.includes(user?.systemRole as SystemRole),
   );
@@ -227,16 +225,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
       <div className={`py-3 border-t border-gray-100 ${collapsed ? 'px-2' : 'px-3'}`}>
         {collapsed ? (
           <div className="flex flex-col items-center gap-2">
-            {userPhotoSrc ? (
-              <img src={userPhotoSrc} alt={user?.fullName} title={user?.fullName} className="w-8 h-8 rounded-full object-cover shrink-0" />
-            ) : (
-              <div
-                className="w-8 h-8 rounded-full bg-primary-600 flex items-center justify-center"
-                title={user?.fullName}
-              >
-                <span className="text-white text-xs font-semibold">{initials}</span>
-              </div>
-            )}
+            <UserAvatar name={user?.fullName ?? 'U'} photo={user?.profilePhoto} size="md" title={user?.fullName} />
             <button
               onClick={handleLogout}
               title="Sign out"
@@ -248,13 +237,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
         ) : (
           <>
             <div className="flex items-center gap-3 px-2 mb-2">
-              {userPhotoSrc ? (
-                <img src={userPhotoSrc} alt={user?.fullName} className="w-8 h-8 rounded-full object-cover shrink-0" />
-              ) : (
-                <div className="w-8 h-8 rounded-full bg-primary-600 flex items-center justify-center shrink-0">
-                  <span className="text-white text-xs font-semibold">{initials}</span>
-                </div>
-              )}
+              <UserAvatar name={user?.fullName ?? 'U'} photo={user?.profilePhoto} size="md" />
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-medium text-gray-800 truncate">{user?.fullName}</p>
                 <p className="text-xs text-gray-400 truncate capitalize">
@@ -325,13 +308,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
               </nav>
               <div className="px-3 py-4 border-t border-gray-100">
                 <div className="flex items-center gap-3 px-2 mb-2">
-                  {userPhotoSrc ? (
-                    <img src={userPhotoSrc} alt={user?.fullName} className="w-8 h-8 rounded-full object-cover shrink-0" />
-                  ) : (
-                    <div className="w-8 h-8 rounded-full bg-primary-600 flex items-center justify-center shrink-0">
-                      <span className="text-white text-xs font-semibold">{initials}</span>
-                    </div>
-                  )}
+                  <UserAvatar name={user?.fullName ?? 'U'} photo={user?.profilePhoto} size="md" />
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium text-gray-800 truncate">{user?.fullName}</p>
                     <p className="text-xs text-gray-400 truncate capitalize">

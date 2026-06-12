@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState, useMemo, useEffect } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { avatarUrl } from '../../../utils/avatarUrl';
+import { UserAvatar } from '../../../components/shared/UserAvatar';
 import { milestonesApi } from '../../../api/milestones.api';
 import { projectsApi } from '../../../api/projects.api';
 import { useAuthStore } from '../../../store/authStore';
@@ -97,18 +97,6 @@ function Toast({ message, variant = 'success', onClose }: { message: string; var
   );
 }
 
-function Avatar({ name, photo }: { name: string; photo: string | null }) {
-  const src = avatarUrl(photo);
-  if (src) {
-    return <img src={src} alt={name} className="w-8 h-8 rounded-full object-cover" />;
-  }
-  const initials = name.split(' ').map((p) => p[0]).join('').slice(0, 2).toUpperCase();
-  return (
-    <div className="w-8 h-8 rounded-full bg-primary-100 text-primary-700 flex items-center justify-center text-xs font-semibold shrink-0">
-      {initials}
-    </div>
-  );
-}
 
 export function ProjectDetailPage() {
   const { id: projectId } = useParams<{ id: string }>();
@@ -305,7 +293,7 @@ export function ProjectDetailPage() {
                   <tr key={member.id} className="hover:bg-gray-50 transition-colors">
                     <td className="px-6 py-3">
                       <div className="flex items-center gap-3">
-                        <Avatar name={member.user.fullName} photo={member.user.profilePhoto} />
+                        <UserAvatar name={member.user.fullName} photo={member.user.profilePhoto} size="md" />
                         <div>
                           <p className="text-sm font-medium text-gray-800">{member.user.fullName}</p>
                           <p className="text-xs text-gray-400">{member.user.email}</p>

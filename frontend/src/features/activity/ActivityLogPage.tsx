@@ -1,6 +1,6 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
-import { avatarUrl } from '../../utils/avatarUrl';
+import { UserAvatar } from '../../components/shared/UserAvatar';
 import { auditLogsApi, type AuditAction, type AuditEntity, type AuditLogEntry } from '../../api/auditLogsApi';
 import type { Project } from '../../types/projects.types';
 import { projectsApi } from '../../api/projects.api';
@@ -51,18 +51,6 @@ function relativeTime(iso: string): string {
   return `${Math.floor(h / 24)}d ago`;
 }
 
-function Avatar({ user }: { user: AuditLogEntry['user'] }) {
-  const src = avatarUrl(user.profilePhoto);
-  if (src) {
-    return <img src={src} className="w-8 h-8 rounded-full object-cover shrink-0" alt="" />;
-  }
-  const initials = user.fullName.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase();
-  return (
-    <div className="w-8 h-8 rounded-full bg-primary-100 text-primary-700 flex items-center justify-center text-xs font-semibold shrink-0">
-      {initials}
-    </div>
-  );
-}
 
 export function ActivityLogPage() {
   const user = useAuthStore((s) => s.user);
@@ -191,7 +179,7 @@ export function ActivityLogPage() {
             <ul className="divide-y divide-gray-50">
               {data.data.map((entry) => (
                 <li key={entry.id} className="flex items-start gap-3 px-5 py-3 hover:bg-gray-50 transition">
-                  <Avatar user={entry.user} />
+                  <UserAvatar name={entry.user.fullName} photo={entry.user.profilePhoto} size="md" />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="text-xs font-semibold text-gray-900">{entry.user.fullName}</span>

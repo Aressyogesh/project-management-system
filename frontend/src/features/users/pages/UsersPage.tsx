@@ -5,7 +5,7 @@ import { useAuthStore } from '../../../store/authStore';
 import type { User } from '../../../types/users.types';
 import { UserFormModal } from '../components/UserFormModal';
 import { usePageSize } from '../../../hooks/usePageSize';
-import { avatarUrl } from '../../../utils/avatarUrl';
+import { UserAvatar } from '../../../components/shared/UserAvatar';
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 
@@ -15,21 +15,6 @@ const ROLE_LABELS: Record<string, string> = {
   EMPLOYEE: 'Employee',
 };
 
-function initials(name: string) {
-  return name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2);
-}
-
-function Avatar({ name, photo }: { name: string; photo?: string | null }) {
-  const src = avatarUrl(photo);
-  if (src) {
-    return <img src={src} alt={name} className="w-9 h-9 rounded-full object-cover shrink-0" />;
-  }
-  return (
-    <div className="w-9 h-9 rounded-full bg-primary-100 text-primary-700 font-semibold text-sm flex items-center justify-center shrink-0">
-      {initials(name)}
-    </div>
-  );
-}
 
 function StatusBadge({ isActive }: { isActive: boolean }) {
   return (
@@ -187,7 +172,7 @@ export function UsersPage() {
                     <tr key={u.id} className="hover:bg-gray-50/50 transition-colors">
                       <td className="px-5 py-3.5">
                         <div className="flex items-center gap-3">
-                          <Avatar name={u.fullName} photo={u.profilePhoto} />
+                          <UserAvatar name={u.fullName} photo={u.profilePhoto} className="w-9 h-9 text-sm" />
                           <div className="min-w-0">
                             <p className="text-sm font-medium text-gray-800 truncate">{u.fullName}</p>
                             <p className="text-xs text-gray-400 truncate">{u.email}</p>
