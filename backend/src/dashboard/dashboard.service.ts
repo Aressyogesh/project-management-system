@@ -92,13 +92,24 @@ export class DashboardService {
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
 
-    // Any non-EMPLOYEE with project memberships sees their own projects' stats.
-    // Users with no memberships (pure global admins) fall back to system-wide stats.
-    const scopedProjectIds: string[] | null = role !== SystemRole.EMPLOYEE
-      ? await this.prisma.projectMember
-          .findMany({ where: { userId, project: { status: ProjectStatus.ACTIVE } }, select: { projectId: true } })
-          .then((rows) => rows.length > 0 ? rows.map((r) => r.projectId) : null)
-      : null;
+    // Determine effective project scope:
+    // - Non-EMPLOYEE with any active memberships → scoped to those projects
+    // - EMPLOYEE with PROJECT_MANAGER role in active projects → scoped to their managed projects
+    // - Anyone else (EMPLOYEE without PM role, or admin with no memberships) → global/personal stats
+    let scopedProjectIds: string[] | null = null;
+    if (role !== SystemRole.EMPLOYEE) {
+      const rows = await this.prisma.projectMember.findMany({
+        where: { userId, project: { status: ProjectStatus.ACTIVE } },
+        select: { projectId: true },
+      });
+      scopedProjectIds = rows.length > 0 ? rows.map((r) => r.projectId) : null;
+    } else {
+      const rows = await this.prisma.projectMember.findMany({
+        where: { userId, projectRole: ProjectRole.PROJECT_MANAGER, project: { status: ProjectStatus.ACTIVE } },
+        select: { projectId: true },
+      });
+      scopedProjectIds = rows.length > 0 ? rows.map((r) => r.projectId) : null;
+    }
 
     const projectActiveWhere = scopedProjectIds !== null
       ? { id: { in: scopedProjectIds }, status: ProjectStatus.ACTIVE }
@@ -174,8 +185,9 @@ export class DashboardService {
 
     const totalTaskCount = notStartedCount + inProgressCount + onReviewCount + completedCount + totalWorkItems;
 
+    // EMPLOYEE with no PROJECT_MANAGER role → personal cards; everyone else → management cards
     const cards: StatCard[] =
-      role === SystemRole.EMPLOYEE
+      role === SystemRole.EMPLOYEE && scopedProjectIds === null
         ? [
             { label: 'My Projects',   value: myProjectCount,         change: 0, trend: 'up', color: 'green'  },
             { label: 'My Tasks',      value: rawMyTasks.length,      change: 0, trend: 'up', color: 'blue'   },
