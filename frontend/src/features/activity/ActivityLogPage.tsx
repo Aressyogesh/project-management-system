@@ -1,7 +1,7 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { UserAvatar } from '../../components/shared/UserAvatar';
-import { auditLogsApi, type AuditAction, type AuditEntity, type AuditLogEntry } from '../../api/auditLogsApi';
+import { auditLogsApi, type AuditAction, type AuditEntity } from '../../api/auditLogsApi';
 import type { Project } from '../../types/projects.types';
 import { projectsApi } from '../../api/projects.api';
 import { useAuthStore } from '../../store/authStore';

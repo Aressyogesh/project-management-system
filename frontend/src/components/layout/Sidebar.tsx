@@ -151,14 +151,6 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
     navigate('/login');
   }
 
-  const initials =
-    user?.fullName
-      .split(' ')
-      .map((n) => n[0])
-      .join('')
-      .toUpperCase()
-      .slice(0, 2) ?? 'U';
-
   const visibleNav = navItems.filter(
     (item) => !item.roles || item.roles.includes(user?.systemRole as SystemRole),
   );
