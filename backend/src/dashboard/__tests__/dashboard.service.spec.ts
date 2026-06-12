@@ -6,7 +6,7 @@ const mockPrisma = {
   project: { count: jest.fn(), findMany: jest.fn() },
   task: { count: jest.fn(), findMany: jest.fn() },
   workItem: { count: jest.fn(), findFirst: jest.fn() },
-  projectMember: { count: jest.fn() },
+  projectMember: { count: jest.fn(), findMany: jest.fn() },
 };
 
 function buildService() {
@@ -32,6 +32,7 @@ beforeEach(() => {
   mockPrisma.workItem.count.mockResolvedValue(0);
   mockPrisma.workItem.findFirst.mockResolvedValue(null);
   mockPrisma.projectMember.count.mockResolvedValue(0);
+  mockPrisma.projectMember.findMany.mockResolvedValue([]);
 });
 
 // ─── F-026 backend unit tests ─────────────────────────────────────────────────
@@ -87,7 +88,7 @@ it('getProjectsProgress_ReturnsOnlyActiveProjects', async () => {
     },
   ]);
   const service = buildService();
-  const result = await service.getProjectsProgress();
+  const result = await service.getProjectsProgress('user-001', SystemRole.SUPER_USER);
   expect(result).toHaveLength(2);
   expect(result[0].name).toBe('Project A');
 });
@@ -109,7 +110,7 @@ it('getProjectsProgress_CalculatesProgressCorrectly', async () => {
     },
   ]);
   const service = buildService();
-  const result = await service.getProjectsProgress();
+  const result = await service.getProjectsProgress('user-001', SystemRole.SUPER_USER);
   expect(result[0].progress).toBe(40);
   expect(result[0].completedTasks).toBe(4);
   expect(result[0].totalTasks).toBe(10);
@@ -121,7 +122,7 @@ it('getProjectsProgress_ZeroTasks_ReturnsZeroProgress', async () => {
     { id: 'p1', name: 'Empty Project', client: null, members: [], workItems: [] },
   ]);
   const service = buildService();
-  const result = await service.getProjectsProgress();
+  const result = await service.getProjectsProgress('user-001', SystemRole.SUPER_USER);
   expect(result[0].progress).toBe(0);
   expect(result[0].totalTasks).toBe(0);
 });
@@ -148,7 +149,7 @@ it('getProjectsProgress_IncludesTeamSizeAndOpenBugs', async () => {
     },
   ]);
   const service = buildService();
-  const result = await service.getProjectsProgress();
+  const result = await service.getProjectsProgress('user-001', SystemRole.SUPER_USER);
   expect(result[0].teamSize).toBe(3);
   expect(result[0].openBugs).toBe(2);
 });
@@ -203,7 +204,9 @@ it('DashboardService_getStats_EmptyMyTasksWhenNoneAssigned', async () => {
 });
 
 it('DashboardService_getStats_AdminCardActiveProjectsIsLive', async () => {
-  mockPrisma.project.count.mockResolvedValue(7);
+  // ADMIN scopes to their memberships; mock 7 project memberships
+  const memberships = Array.from({ length: 7 }, (_, i) => ({ projectId: `p${i}` }));
+  mockPrisma.projectMember.findMany.mockResolvedValue(memberships);
   const service = buildService();
   const result = await service.getStats('user-001', SystemRole.ADMIN);
   const activeProjectCard = result.cards.find((c) => c.label === 'Active Projects');

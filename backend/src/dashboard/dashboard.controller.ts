@@ -39,7 +39,7 @@ export class DashboardController {
   @ApiOperation({ summary: 'Get project-wise team progress (Super User and Admin only)' })
   getProjectsProgress(@CurrentUser() user: JwtUser): Promise<ProjectProgress[]> {
     if (user.role === SystemRole.EMPLOYEE) throw new ForbiddenException('Access denied');
-    return this.dashboardService.getProjectsProgress();
+    return this.dashboardService.getProjectsProgress(user.sub, user.role);
   }
 
   @Get('team-activity')

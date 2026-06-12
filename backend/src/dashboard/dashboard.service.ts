@@ -92,6 +92,22 @@ export class DashboardService {
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
 
+    // ADMIN sees stats scoped to their project memberships; SUPER_USER sees all
+    const scopedProjectIds: string[] | null = role === SystemRole.ADMIN
+      ? await this.prisma.projectMember
+          .findMany({ where: { userId, project: { status: ProjectStatus.ACTIVE } }, select: { projectId: true } })
+          .then((rows) => rows.map((r) => r.projectId))
+      : null;
+
+    const projectActiveWhere = scopedProjectIds !== null
+      ? { id: { in: scopedProjectIds }, status: ProjectStatus.ACTIVE }
+      : { status: ProjectStatus.ACTIVE };
+
+    // Scalar project-id filter (avoids Prisma discriminated-union issues with mixed relation+scalar)
+    const taskWhere: any = scopedProjectIds !== null
+      ? { projectId: { in: scopedProjectIds } }
+      : { project: { status: ProjectStatus.ACTIVE } };
+
     const [
       activeUserCount,
       activeProjectCount,
@@ -106,8 +122,15 @@ export class DashboardService {
       activeProjects,
       myProjectCount,
     ] = await Promise.all([
-      this.prisma.user.count({ where: { isActive: true } }),
-      this.prisma.project.count({ where: { status: ProjectStatus.ACTIVE } }),
+      // Distinct team members across scoped projects for ADMIN; all active users for SUPER_USER
+      scopedProjectIds !== null
+        ? this.prisma.projectMember
+            .findMany({ where: { projectId: { in: scopedProjectIds } }, select: { userId: true }, distinct: ['userId'] })
+            .then((rows) => rows.length)
+        : this.prisma.user.count({ where: { isActive: true } }),
+      scopedProjectIds !== null
+        ? Promise.resolve(scopedProjectIds.length)
+        : this.prisma.project.count({ where: { status: ProjectStatus.ACTIVE } }),
       this.prisma.task.findMany({
         where: { assignedToId: userId, project: { status: ProjectStatus.ACTIVE } },
         select: {
@@ -118,19 +141,19 @@ export class DashboardService {
         orderBy: { createdAt: 'desc' },
         take: 10,
       }),
-      this.prisma.task.count({ where: { status: TaskStatus.NOT_STARTED, project: { status: ProjectStatus.ACTIVE } } }),
-      this.prisma.task.count({ where: { status: TaskStatus.IN_PROGRESS, project: { status: ProjectStatus.ACTIVE } } }),
-      this.prisma.task.count({ where: { status: TaskStatus.ON_REVIEW, project: { status: ProjectStatus.ACTIVE } } }),
-      this.prisma.task.count({ where: { status: TaskStatus.COMPLETED, project: { status: ProjectStatus.ACTIVE } } }),
-      this.prisma.workItem.count({ where: { project: { status: ProjectStatus.ACTIVE } } }),
-      this.prisma.workItem.count({ where: { status: BoardStatus.QA_DONE, project: { status: ProjectStatus.ACTIVE } } }),
+      this.prisma.task.count({ where: { status: TaskStatus.NOT_STARTED, ...taskWhere } }),
+      this.prisma.task.count({ where: { status: TaskStatus.IN_PROGRESS, ...taskWhere } }),
+      this.prisma.task.count({ where: { status: TaskStatus.ON_REVIEW, ...taskWhere } }),
+      this.prisma.task.count({ where: { status: TaskStatus.COMPLETED, ...taskWhere } }),
+      this.prisma.workItem.count({ where: { ...taskWhere } }),
+      this.prisma.workItem.count({ where: { status: BoardStatus.QA_DONE, ...taskWhere } }),
       this.prisma.workItem.findFirst({
-        where: { assigneeId: userId, dueDate: { gte: today, lt: tomorrow }, status: { not: BoardStatus.QA_DONE }, project: { status: ProjectStatus.ACTIVE } },
+        where: { assigneeId: userId, dueDate: { gte: today, lt: tomorrow }, status: { not: BoardStatus.QA_DONE }, ...taskWhere },
         select: { title: true, status: true },
         orderBy: { dueDate: 'asc' },
       }),
       this.prisma.project.findMany({
-        where: { status: ProjectStatus.ACTIVE },
+        where: projectActiveWhere,
         select: {
           _count: { select: { workItems: true } },
           workItems: { where: { status: BoardStatus.QA_DONE }, select: { id: true } },
@@ -161,7 +184,7 @@ export class DashboardService {
         : [
             { label: 'Active Projects', value: activeProjectCount,                  change: 0, trend: 'up', color: 'green'  },
             { label: 'Total Tasks',     value: totalTaskCount,                       change: 0, trend: 'up', color: 'blue'   },
-            { label: 'Total Users',     value: activeUserCount,                      change: 0, trend: 'up', color: 'purple' },
+            { label: role === SystemRole.ADMIN ? 'Team Members' : 'Total Users', value: activeUserCount, change: 0, trend: 'up', color: 'purple' },
             { label: 'Completed Tasks', value: completedCount + completedWorkItems,  change: 0, trend: 'up', color: 'rose'   },
           ];
 
@@ -257,9 +280,19 @@ export class DashboardService {
     };
   }
 
-  async getProjectsProgress(): Promise<ProjectProgress[]> {
+  async getProjectsProgress(userId: string, role: SystemRole): Promise<ProjectProgress[]> {
+    const scopedProjectIds: string[] | null = role === SystemRole.ADMIN
+      ? await this.prisma.projectMember
+          .findMany({ where: { userId, project: { status: ProjectStatus.ACTIVE } }, select: { projectId: true } })
+          .then((rows) => rows.map((r) => r.projectId))
+      : null;
+
+    const where = scopedProjectIds !== null
+      ? { id: { in: scopedProjectIds }, status: ProjectStatus.ACTIVE }
+      : { status: ProjectStatus.ACTIVE };
+
     const projects = await this.prisma.project.findMany({
-      where: { status: ProjectStatus.ACTIVE },
+      where,
       select: {
         id: true,
         name: true,
