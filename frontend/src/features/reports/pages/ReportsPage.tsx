@@ -508,8 +508,10 @@ function BugSummaryTab({ period, project }: { period: string; project: string })
     <div className="space-y-6">
       <div className="flex justify-end">
         <CsvButton onClick={() => downloadCsv(`bug-summary-report-${period}.csv`, [
-          ['Severity', 'Count'],
-          ...(data?.severity ?? []).map((d) => [d.severity, String(d.count)]),
+          ['Section', 'Label', 'Count'],
+          ...(data?.severity ?? []).map((d) => ['Severity', d.severity, String(d.count)]),
+          ['', '', ''],
+          ...(data?.classification ?? []).map((d) => ['Classification', d.classification, String(d.count)]),
         ])} />
       </div>
 

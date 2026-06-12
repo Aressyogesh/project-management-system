@@ -5,6 +5,7 @@ import { useAuthStore } from '../../../store/authStore';
 import type { User } from '../../../types/users.types';
 import { UserFormModal } from '../components/UserFormModal';
 import { usePageSize } from '../../../hooks/usePageSize';
+import { avatarUrl } from '../../../utils/avatarUrl';
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 
@@ -19,8 +20,9 @@ function initials(name: string) {
 }
 
 function Avatar({ name, photo }: { name: string; photo?: string | null }) {
-  if (photo) {
-    return <img src={`/api/${photo}`} alt={name} className="w-9 h-9 rounded-full object-cover shrink-0" />;
+  const src = avatarUrl(photo);
+  if (src) {
+    return <img src={src} alt={name} className="w-9 h-9 rounded-full object-cover shrink-0" />;
   }
   return (
     <div className="w-9 h-9 rounded-full bg-primary-100 text-primary-700 font-semibold text-sm flex items-center justify-center shrink-0">
