@@ -1023,25 +1023,25 @@ function PlannedVsActualTab({ currentUserId, period, project }: { currentUserId?
 
 // ─── Employee Personal Summary (live) ────────────────────────────────────────
 
-function MyPerformanceSummary({ userId, userName, period }: { userId: string; userName: string; period: string }) {
+function MyPerformanceSummary({ userId, userName, period, project }: { userId: string; userName: string; period: string; project: string }) {
   const { data: kpiRaw = [] } = useQuery({
     queryKey: ['kpi-live', period],
     queryFn: () => analyticsApi.getKpi(period),
     staleTime: 60_000,
   });
   const { data: prodData = [] } = useQuery({
-    queryKey: ['reports-productivity', period, 'all'],
-    queryFn: () => analyticsApi.getProductivity(period),
+    queryKey: ['reports-productivity', period, project],
+    queryFn: () => analyticsApi.getProductivity(period, project),
     staleTime: 60_000,
   });
   const { data: allocData = [] } = useQuery({
-    queryKey: ['reports-allocation', period, 'all'],
-    queryFn: () => analyticsApi.getAllocation(period),
+    queryKey: ['reports-allocation', period, project],
+    queryFn: () => analyticsApi.getAllocation(period, project),
     staleTime: 60_000,
   });
   const { data: tsData = [] } = useQuery({
-    queryKey: ['reports-timesheet', period, 'all'],
-    queryFn: () => analyticsApi.getTimesheet(period),
+    queryKey: ['reports-timesheet', period, project],
+    queryFn: () => analyticsApi.getTimesheet(period, project),
     staleTime: 60_000,
   });
 
@@ -1101,9 +1101,6 @@ function MyPerformanceSummary({ userId, userName, period }: { userId: string; us
         </div>
       )}
 
-      <p className="text-xs text-gray-400 text-center">
-        Full team reports are available to Admin and Super User roles.
-      </p>
     </div>
   );
 }
@@ -1173,7 +1170,7 @@ export function ReportsPage() {
 
       {/* Personal summary card — shown to non-admin users as a quick personal view */}
       {!isAdmin && user && (
-        <MyPerformanceSummary userId={user.id} userName={user.fullName} period={period} />
+        <MyPerformanceSummary userId={user.id} userName={user.fullName} period={period} project={project} />
       )}
 
       {/* Full report tabs — available to all roles */}

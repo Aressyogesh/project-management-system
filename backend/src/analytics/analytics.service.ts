@@ -362,22 +362,27 @@ export class AnalyticsService {
 
     const results = await Promise.all(
       users.map(async (user) => {
+        const projectFilter = projectId
+          ? { projectId }
+          : { project: { status: 'ACTIVE' } };
+        const tsProjectFilter = projectId
+          ? { workItem: { projectId } }
+          : { workItem: { project: { status: 'ACTIVE' } } };
+
         const [completedItems, timesheetSum, allItems] = await Promise.all([
           this.prisma.workItem.count({
             where: {
               assigneeId: user.id,
               status: BoardStatus.QA_DONE,
               completedAt: { gte: start, lt: end },
-              ...(projectId ? { projectId } : {}),
+              ...projectFilter,
             },
           }),
           this.prisma.timesheetEntry.aggregate({
             where: {
               userId: user.id,
               date: { gte: start, lt: end },
-              ...(projectId
-                ? { workItem: { projectId } }
-                : {}),
+              ...tsProjectFilter,
             },
             _sum: { hours: true },
           }),
@@ -385,7 +390,7 @@ export class AnalyticsService {
             where: {
               assigneeId: user.id,
               dueDate: { gte: start, lt: end },
-              ...(projectId ? { projectId } : {}),
+              ...projectFilter,
             },
           }),
         ]);
@@ -395,7 +400,7 @@ export class AnalyticsService {
             assigneeId: user.id,
             status: BoardStatus.QA_DONE,
             completedAt: { gte: start, lt: end },
-            ...(projectId ? { projectId } : {}),
+            ...projectFilter,
           },
         });
 
@@ -559,19 +564,26 @@ export class AnalyticsService {
 
     const results = await Promise.all(
       users.map(async (user) => {
+        const projectFilter = projectId
+          ? { projectId }
+          : { project: { status: 'ACTIVE' } };
+        const tsProjectFilter = projectId
+          ? { workItem: { projectId } }
+          : { workItem: { project: { status: 'ACTIVE' } } };
+
         const [itemCount, hoursSum] = await Promise.all([
           this.prisma.workItem.count({
             where: {
               assigneeId: user.id,
               createdAt: { gte: start, lt: end },
-              ...(projectId ? { projectId } : {}),
+              ...projectFilter,
             },
           }),
           this.prisma.timesheetEntry.aggregate({
             where: {
               userId: user.id,
               date: { gte: start, lt: end },
-              ...(projectId ? { workItem: { projectId } } : {}),
+              ...tsProjectFilter,
             },
             _sum: { hours: true },
           }),
@@ -598,11 +610,15 @@ export class AnalyticsService {
   async getTimesheetReport(period: string, projectId?: string) {
     const { start, end } = periodToRange(period);
 
+    const tsProjectFilter = projectId
+      ? { workItem: { projectId } }
+      : { workItem: { project: { status: 'ACTIVE' } } };
+
     const entries = await this.prisma.timesheetEntry.groupBy({
       by: ['userId'],
       where: {
         date: { gte: start, lt: end },
-        ...(projectId ? { workItem: { projectId } } : {}),
+        ...tsProjectFilter,
       },
       _sum: { hours: true },
     });
@@ -615,7 +631,9 @@ export class AnalyticsService {
         fullName: true,
         systemRole: true,
         projectMembers: {
-          ...(projectId ? { where: { projectId } } : {}),
+          ...(projectId
+            ? { where: { projectId } }
+            : { where: { project: { status: 'ACTIVE' } } }),
           select: { projectRole: true, project: { select: { name: true } } },
         },
       },
