@@ -444,6 +444,7 @@ export function WorkItemModal({ item, sprints, members, milestones, canDelete = 
   const [bugEnvironmentLocal, setBugEnvironmentLocal] = useState(item?.environment ?? '');
   const [bugStepsToReproLocal, setBugStepsToReproLocal] = useState(item?.stepsToRepro ?? '');
   const [bugDetailError, setBugDetailError] = useState('');
+  const [showBugCloseGuard, setShowBugCloseGuard] = useState(false);
   // @mention in comments
   const [mentionSearch, setMentionSearch] = useState('');
   const [showMentionMenu, setShowMentionMenu] = useState(false);
@@ -498,6 +499,14 @@ export function WorkItemModal({ item, sprints, members, milestones, canDelete = 
 
   const descChanged = descDraft !== (detail?.description ?? '');
   const dodChanged = dodDraft !== (detail?.definitionOfDone ?? '');
+
+  function handleClose() {
+    if (detail?.type === 'BUG' && (!detail?.severity || !detail?.bugClassification)) {
+      setShowBugCloseGuard(true);
+      return;
+    }
+    onClose();
+  }
 
   function saveBugDetails() {
     if (!bugSeverityLocal) { setBugDetailError('Severity is required'); return; }
@@ -731,12 +740,37 @@ export function WorkItemModal({ item, sprints, members, milestones, canDelete = 
             );
           })()}
 
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 shrink-0 p-1 rounded-lg hover:bg-gray-100 transition">
+          <button onClick={handleClose} className="text-gray-400 hover:text-gray-600 shrink-0 p-1 rounded-lg hover:bg-gray-100 transition">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
         </div>
+
+        {/* Bug close guard banner */}
+        {showBugCloseGuard && (
+          <div className="mx-6 mt-3 flex items-center justify-between gap-3 bg-red-50 border border-red-200 rounded-lg px-4 py-3">
+            <p className="text-sm text-red-700 font-medium">
+              Severity and Classification are required before closing this bug.
+            </p>
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => setShowBugCloseGuard(false)}
+                className="text-xs font-semibold text-primary-600 hover:text-primary-800 transition"
+              >
+                Continue editing
+              </button>
+              <button
+                type="button"
+                onClick={onClose}
+                className="text-xs font-semibold text-red-600 hover:text-red-800 transition"
+              >
+                Close anyway
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* ── Two-panel body ── */}
         <div className="flex flex-1 min-h-0 overflow-hidden">
