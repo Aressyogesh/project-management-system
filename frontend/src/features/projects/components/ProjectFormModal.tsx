@@ -35,7 +35,7 @@ export function ProjectFormModal({ project, onClose, onSuccess }: Props) {
   const [description, setDescription] = useState(project?.description ?? '');
   const [startDate, setStartDate] = useState(project?.startDate?.split('T')[0] ?? '');
   const [endDate, setEndDate] = useState(project?.endDate?.split('T')[0] ?? '');
-  const [isOngoing, setIsOngoing] = useState(project ? !project.endDate : false);
+  const [isOngoing, setIsOngoing] = useState(project ? (project.projectType === 'DEDICATED' && !project.endDate) : false);
   const [error, setError] = useState('');
 
   const { data: businessUnits = [] } = useQuery({
@@ -218,7 +218,7 @@ export function ProjectFormModal({ project, onClose, onSuccess }: Props) {
                   </label>
                 )}
               </div>
-              {isOngoing ? (
+              {isOngoing && projectType === 'DEDICATED' ? (
                 <div className="w-full px-3 py-2 text-sm border border-dashed border-gray-200 rounded-lg bg-gray-50 text-gray-400">
                   No end date (ongoing)
                 </div>
