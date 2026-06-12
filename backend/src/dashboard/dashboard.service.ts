@@ -105,7 +105,11 @@ export class DashboardService {
       scopedProjectIds = rows.length > 0 ? rows.map((r) => r.projectId) : null;
     } else {
       const rows = await this.prisma.projectMember.findMany({
-        where: { userId, projectRole: ProjectRole.PROJECT_MANAGER, project: { status: ProjectStatus.ACTIVE } },
+        where: {
+          userId,
+          projectRole: { in: [ProjectRole.PROJECT_MANAGER, ProjectRole.TEAM_LEAD] },
+          project: { status: ProjectStatus.ACTIVE },
+        },
         select: { projectId: true },
       });
       scopedProjectIds = rows.length > 0 ? rows.map((r) => r.projectId) : null;
