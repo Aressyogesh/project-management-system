@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useNavigate } from 'react-router-dom';
 import { authApi } from '../../../api/auth.api';
-import { useAuthStore } from '../../../store/authStore';
+import { REMEMBER_ME_KEY, useAuthStore } from '../../../store/authStore';
 import { LoginCredentials } from '../../../types/auth.types';
 
 const REMEMBER_EMAIL_KEY = 'pms_remember_email';
@@ -34,9 +34,12 @@ export function LoginPage() {
       const response = await authApi.login(credentials);
       if (rememberMe) {
         localStorage.setItem(REMEMBER_EMAIL_KEY, credentials.email);
+        localStorage.setItem(REMEMBER_ME_KEY, 'true');
       } else {
         localStorage.removeItem(REMEMBER_EMAIL_KEY);
+        localStorage.removeItem(REMEMBER_ME_KEY);
       }
+      // REMEMBER_ME_KEY must be set before setAuth so dynamicStorage writes to the correct store
       setAuth(response.user, response.accessToken, response.refreshToken);
       navigate('/dashboard');
     } catch (error) {
