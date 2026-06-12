@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Bar,
   BarChart,
@@ -1116,19 +1116,26 @@ export function ReportsPage() {
   const [period, setPeriod] = useState(DEFAULT_PERIOD);
   const [project, setProject] = useState('all');
 
-  const isAdminView = user?.systemRole === 'ADMIN' || user?.systemRole === 'SUPER_USER';
+  const isAdmin = user?.systemRole === 'ADMIN' || user?.systemRole === 'SUPER_USER';
 
   const { data: projectsList = [] } = useQuery({
     queryKey: ['projects-list', 'active'],
     queryFn: () => projectsApi.list({ status: 'ACTIVE' }),
-    enabled: isAdminView,
     staleTime: 120_000,
   });
 
-  const projectOptions = useMemo(() => [
-    { value: 'all', label: 'All Projects' },
-    ...(projectsList as { id: string; name: string }[]).map((p) => ({ value: p.id, label: p.name })),
-  ], [projectsList]);
+  // Auto-select first project for non-admin users once projects load
+  useEffect(() => {
+    if (!isAdmin && project === 'all' && (projectsList as { id: string }[]).length > 0) {
+      setProject((projectsList as { id: string }[])[0].id);
+    }
+  }, [isAdmin, projectsList]);
+
+  // Admin sees "All Projects" option; non-admin must pick one of their assigned projects
+  const projectOptions = useMemo(() => {
+    const mapped = (projectsList as { id: string; name: string }[]).map((p) => ({ value: p.id, label: p.name }));
+    return isAdmin ? [{ value: 'all', label: 'All Projects' }, ...mapped] : mapped;
+  }, [projectsList, isAdmin]);
 
   return (
     <div className="space-y-6">
@@ -1139,17 +1146,19 @@ export function ReportsPage() {
           <p className="text-xs text-gray-400 mt-0.5">Team performance overview and analytics</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          {isAdminView && (
-            <select
-              value={project}
-              onChange={(e) => setProject(e.target.value)}
-              className="text-sm border border-gray-200 rounded-xl px-3 py-2 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary-300"
-            >
-              {projectOptions.map((o) => (
-                <option key={o.value} value={o.value}>{o.label}</option>
-              ))}
-            </select>
-          )}
+          <select
+            value={project}
+            onChange={(e) => setProject(e.target.value)}
+            className="text-sm border border-gray-200 rounded-xl px-3 py-2 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary-300"
+          >
+            {!isAdmin && projectOptions.length === 0 && (
+              <option value="">No projects assigned</option>
+            )}
+            {!isAdmin && <option value="" disabled>Select a project</option>}
+            {projectOptions.map((o) => (
+              <option key={o.value} value={o.value}>{o.label}</option>
+            ))}
+          </select>
           <select
             value={period}
             onChange={(e) => setPeriod(e.target.value)}
@@ -1162,40 +1171,36 @@ export function ReportsPage() {
         </div>
       </div>
 
-      {/* Employee personal view (RBAC: Employee only sees own data) */}
-      {!isAdminView && user && (
+      {/* Personal summary card — shown to non-admin users as a quick personal view */}
+      {!isAdmin && user && (
         <MyPerformanceSummary userId={user.id} userName={user.fullName} period={period} />
       )}
 
-      {/* Admin / Super User tabs */}
-      {isAdminView && (
-        <>
-          <div className="flex flex-wrap gap-1 bg-gray-100/70 p-1 rounded-2xl w-fit">
-            {TABS.map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors ${
-                  activeTab === tab.id
-                    ? 'bg-white text-gray-900 shadow-sm'
-                    : 'text-gray-500 hover:text-gray-700'
-                }`}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
+      {/* Full report tabs — available to all roles */}
+      <div className="flex flex-wrap gap-1 bg-gray-100/70 p-1 rounded-2xl w-fit">
+        {TABS.filter((tab) => isAdmin || tab.id !== 'capacity').map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors ${
+              activeTab === tab.id
+                ? 'bg-white text-gray-900 shadow-sm'
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
 
-          {activeTab === 'productivity' && <TeamProductivityTab key={`prod-${period}-${project}`} currentUserId={user?.id} period={period} project={project} />}
-          {activeTab === 'kpi'          && <KpiAppraisalTab    key={`kpi-${period}`}               currentUserId={user?.id} period={period} />}
-          {activeTab === 'projects'     && <ProjectSummaryTab  key={`proj-${period}-${project}`}   period={period} project={project} />}
-          {activeTab === 'bugs'         && <BugSummaryTab      key={`bug-${period}-${project}`}    period={period} project={project} />}
-          {activeTab === 'allocation'   && <TaskAllocationTab  key={`alloc-${period}-${project}`}  currentUserId={user?.id} period={period} project={project} />}
-          {activeTab === 'timesheet'      && <TimesheetTab         key={`ts-${period}-${project}`}      currentUserId={user?.id} period={period} project={project} />}
-          {activeTab === 'planned-actual' && <PlannedVsActualTab  key={`pva-${period}-${project}`}     currentUserId={user?.id} period={period} project={project} />}
-          {activeTab === 'capacity'       && <CapacityReportTab />}
-        </>
-      )}
+      {activeTab === 'productivity' && <TeamProductivityTab key={`prod-${period}-${project}`} currentUserId={user?.id} period={period} project={project} />}
+      {activeTab === 'kpi'          && <KpiAppraisalTab    key={`kpi-${period}`}               currentUserId={user?.id} period={period} />}
+      {activeTab === 'projects'     && <ProjectSummaryTab  key={`proj-${period}-${project}`}   period={period} project={project} />}
+      {activeTab === 'bugs'         && <BugSummaryTab      key={`bug-${period}-${project}`}    period={period} project={project} />}
+      {activeTab === 'allocation'   && <TaskAllocationTab  key={`alloc-${period}-${project}`}  currentUserId={user?.id} period={period} project={project} />}
+      {activeTab === 'timesheet'    && <TimesheetTab       key={`ts-${period}-${project}`}      currentUserId={user?.id} period={period} project={project} />}
+      {activeTab === 'planned-actual' && <PlannedVsActualTab key={`pva-${period}-${project}`}  currentUserId={user?.id} period={period} project={project} />}
+      {activeTab === 'capacity' && isAdmin && <CapacityReportTab />}
     </div>
   );
 }

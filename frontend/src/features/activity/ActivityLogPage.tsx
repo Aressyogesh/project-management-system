@@ -40,6 +40,13 @@ const ACTION_COLORS: Record<AuditAction, string> = {
   PROFILE_UPDATED: 'bg-gray-100 text-gray-700',
 };
 
+function fmtTimestamp(iso: string): string {
+  return new Date(iso).toLocaleString('en-GB', {
+    day: '2-digit', month: 'short', year: 'numeric',
+    hour: '2-digit', minute: '2-digit', hour12: false,
+  });
+}
+
 function relativeTime(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
   const s = Math.floor(diff / 1000);
@@ -196,13 +203,9 @@ export function ActivityLogPage() {
                       </p>
                     )}
                   </div>
-                  <div className="shrink-0 text-right">
-                    <span
-                      className="text-[10px] text-gray-400 cursor-default"
-                      title={new Date(entry.createdAt).toLocaleString()}
-                    >
-                      {relativeTime(entry.createdAt)}
-                    </span>
+                  <div className="shrink-0 text-right space-y-0.5">
+                    <p className="text-[11px] text-gray-600 font-medium">{fmtTimestamp(entry.createdAt)}</p>
+                    <p className="text-[10px] text-gray-400">{relativeTime(entry.createdAt)}</p>
                   </div>
                 </li>
               ))}
