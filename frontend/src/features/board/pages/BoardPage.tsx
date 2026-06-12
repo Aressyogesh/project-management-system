@@ -202,7 +202,7 @@ export function BoardPage() {
     move.mutate({ id: draggableId, status: newStatus, position: destination.index });
   }
 
-  const memberOptions = members.map((m) => ({ id: m.user.id, fullName: m.user.fullName }));
+  const memberOptions = members.map((m) => ({ id: m.user.id, fullName: m.user.fullName, profilePhoto: m.user.profilePhoto }));
 
   return (
     <div className="flex flex-col h-full min-h-0">

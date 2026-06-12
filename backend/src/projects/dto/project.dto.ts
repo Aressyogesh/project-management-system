@@ -27,7 +27,7 @@ export class CreateProjectDto {
   @IsOptional() @IsUUID()
   departmentId?: string;
 
-  @IsOptional() @IsString() @MaxLength(1000)
+  @IsOptional() @IsString() @MaxLength(10000)
   description?: string;
 
   @IsOptional() @IsDateString()

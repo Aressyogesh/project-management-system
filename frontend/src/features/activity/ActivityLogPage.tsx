@@ -1,5 +1,6 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
+import { avatarUrl } from '../../utils/avatarUrl';
 import { auditLogsApi, type AuditAction, type AuditEntity, type AuditLogEntry } from '../../api/auditLogsApi';
 import type { Project } from '../../types/projects.types';
 import { projectsApi } from '../../api/projects.api';
@@ -51,8 +52,9 @@ function relativeTime(iso: string): string {
 }
 
 function Avatar({ user }: { user: AuditLogEntry['user'] }) {
-  if (user.profilePhoto) {
-    return <img src={user.profilePhoto} className="w-8 h-8 rounded-full object-cover shrink-0" alt="" />;
+  const src = avatarUrl(user.profilePhoto);
+  if (src) {
+    return <img src={src} className="w-8 h-8 rounded-full object-cover shrink-0" alt="" />;
   }
   const initials = user.fullName.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase();
   return (

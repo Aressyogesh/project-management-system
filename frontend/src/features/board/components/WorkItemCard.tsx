@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Draggable } from '@hello-pangea/dnd';
 import { PRIORITY_CONFIG, TYPE_CONFIG, type WorkItem } from '../types/board.types';
+import { avatarUrl } from '../../../utils/avatarUrl';
 
 interface MemberOption { id: string; fullName: string; }
 
@@ -207,7 +208,7 @@ export function WorkItemCard({ item, index, members = [], onClick, onAssigneeCha
                   <div className="w-6 h-6 rounded-full bg-primary-600 flex items-center justify-center ring-2 ring-transparent hover:ring-primary-300 transition">
                     {item.assignee.profilePhoto ? (
                       <img
-                        src={item.assignee.profilePhoto}
+                        src={avatarUrl(item.assignee.profilePhoto)}
                         alt={item.assignee.fullName}
                         className="w-full h-full rounded-full object-cover"
                       />

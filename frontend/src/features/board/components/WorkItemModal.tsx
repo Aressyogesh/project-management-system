@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { boardApi } from '../api/boardApi';
+import { avatarUrl } from '../../../utils/avatarUrl';
 import { futureDateStr, pastDateStr, todayStr } from '../../../utils/dateUtils';
 import {
   DEFAULT_BOARD_COLUMNS,
@@ -29,7 +30,7 @@ import { testCasesApi, type TestCase, type TestCaseStatus } from '../../../api/t
 
 type ActivityTab = 'comments' | 'logTime' | 'attachments' | 'activities' | 'testCases';
 
-interface MemberOption { id: string; fullName: string; }
+interface MemberOption { id: string; fullName: string; profilePhoto?: string | null; }
 
 interface Props {
   item: WorkItem | null;
@@ -60,10 +61,15 @@ function fmtDate(iso: string) {
   return new Date(iso).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
-function Avatar({ name, size = 'sm' }: { name: string; size?: 'sm' | 'xs' }) {
+function Avatar({ name, photo, size = 'sm' }: { name: string; photo?: string | null; size?: 'sm' | 'xs' }) {
+  const src = avatarUrl(photo);
+  const sz = size === 'xs' ? 'w-5 h-5 text-[8px]' : 'w-7 h-7 text-[10px]';
+  if (src) {
+    return <img src={src} alt={name} className={`inline-block rounded-full object-cover shrink-0 ${size === 'xs' ? 'w-5 h-5' : 'w-7 h-7'}`} />;
+  }
   const initials = name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2);
   return (
-    <span className={`inline-flex items-center justify-center rounded-full bg-primary-600 text-white font-bold shrink-0 ${size === 'xs' ? 'w-5 h-5 text-[8px]' : 'w-7 h-7 text-[10px]'}`}>
+    <span className={`inline-flex items-center justify-center rounded-full bg-primary-600 text-white font-bold shrink-0 ${sz}`}>
       {initials}
     </span>
   );
@@ -247,7 +253,7 @@ function ActivityLog({ workItemId }: { workItemId: string }) {
           {idx < activities.length - 1 && (
             <div className="absolute left-[13px] top-8 bottom-0 w-px bg-gray-100" />
           )}
-          <Avatar name={a.user.fullName} size="xs" />
+          <Avatar name={a.user.fullName} photo={a.user.profilePhoto} size="xs" />
           <div className="flex-1 min-w-0">
             <span className="text-xs font-semibold text-gray-800">{a.user.fullName}</span>
             {' '}
@@ -1186,7 +1192,7 @@ export function WorkItemModal({ item, sprints, members, milestones, canDelete = 
                                 }}
                                 className="flex items-center gap-2 w-full text-left px-3 py-2 hover:bg-gray-50 text-xs text-gray-700"
                               >
-                                <Avatar name={m.fullName} size="xs" />
+                                <Avatar name={m.fullName} photo={m.profilePhoto} size="xs" />
                                 {m.fullName}
                               </button>
                             ))}
@@ -1217,7 +1223,7 @@ export function WorkItemModal({ item, sprints, members, milestones, canDelete = 
                     </div>
                     {(detail.comments ?? []).map((c) => (
                       <div key={c.id} className="flex gap-3 bg-gray-50 rounded-xl p-3">
-                        <Avatar name={c.author.fullName} size="sm" />
+                        <Avatar name={c.author.fullName} photo={c.author.profilePhoto} size="sm" />
                         <div className="flex-1 min-w-0">
                           <p className="text-xs font-semibold text-gray-800">{c.author.fullName}</p>
                           <p className="text-xs text-gray-600 mt-0.5 whitespace-pre-wrap">{c.content}</p>
@@ -1412,7 +1418,7 @@ export function WorkItemModal({ item, sprints, members, milestones, canDelete = 
                   <div className="flex items-center gap-2">
                     {detail.assignee ? (
                       <>
-                        <Avatar name={detail.assignee.fullName} size="xs" />
+                        <Avatar name={detail.assignee.fullName} photo={detail.assignee.profilePhoto} size="xs" />
                         <span className="text-xs text-gray-700">{detail.assignee.fullName}</span>
                       </>
                     ) : (
@@ -1443,7 +1449,7 @@ export function WorkItemModal({ item, sprints, members, milestones, canDelete = 
               {/* Reporter */}
               <SidebarRow label="Reporter">
                 <div className="flex items-center gap-2">
-                  <Avatar name={detail.reporter.fullName} size="xs" />
+                  <Avatar name={detail.reporter.fullName} photo={detail.reporter.profilePhoto} size="xs" />
                   <span className="text-xs text-gray-700">{detail.reporter.fullName}</span>
                 </div>
               </SidebarRow>

@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState, useMemo, useEffect } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import { avatarUrl } from '../../../utils/avatarUrl';
 import { milestonesApi } from '../../../api/milestones.api';
 import { projectsApi } from '../../../api/projects.api';
 import { useAuthStore } from '../../../store/authStore';
@@ -97,8 +98,9 @@ function Toast({ message, variant = 'success', onClose }: { message: string; var
 }
 
 function Avatar({ name, photo }: { name: string; photo: string | null }) {
-  if (photo) {
-    return <img src={photo} alt={name} className="w-8 h-8 rounded-full object-cover" />;
+  const src = avatarUrl(photo);
+  if (src) {
+    return <img src={src} alt={name} className="w-8 h-8 rounded-full object-cover" />;
   }
   const initials = name.split(' ').map((p) => p[0]).join('').slice(0, 2).toUpperCase();
   return (
