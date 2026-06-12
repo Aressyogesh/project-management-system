@@ -204,7 +204,7 @@ it('DashboardService_getStats_EmptyMyTasksWhenNoneAssigned', async () => {
 });
 
 it('DashboardService_getStats_AdminCardActiveProjectsIsLive', async () => {
-  // ADMIN scopes to their memberships; mock 7 project memberships
+  // ADMIN with PM/TL role in 7 projects → Active Projects card shows 7
   const memberships = Array.from({ length: 7 }, (_, i) => ({ projectId: `p${i}` }));
   mockPrisma.projectMember.findMany.mockResolvedValue(memberships);
   const service = buildService();

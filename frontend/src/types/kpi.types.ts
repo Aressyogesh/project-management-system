@@ -32,6 +32,7 @@ export interface EmployeeKpiRecord {
   categoryScores: KpiCategoryScore[];
   totalScore: number;
   grade: KpiGrade;
+  hasNoActivity?: boolean;
 }
 
 export interface KpiTeamSummary {

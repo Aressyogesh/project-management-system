@@ -236,9 +236,15 @@ export function KpiPage() {
             </p>
           </div>
           <div className="flex items-center gap-3">
-            <span className={`text-sm font-bold px-3 py-1.5 rounded-full ${grade.bg} ${grade.text}`}>
-              Grade {ownRecord.grade} — {ownRecord.totalScore} / 100
-            </span>
+            {ownRecord.hasNoActivity ? (
+              <span className="text-sm font-bold px-3 py-1.5 rounded-full bg-gray-100 text-gray-500">
+                N/A — Insufficient Data
+              </span>
+            ) : (
+              <span className={`text-sm font-bold px-3 py-1.5 rounded-full ${grade.bg} ${grade.text}`}>
+                Grade {ownRecord.grade} — {ownRecord.totalScore} / 100
+              </span>
+            )}
             <select
               value={selectedPeriod}
               onChange={(e) => setSelectedPeriod(e.target.value)}
@@ -333,7 +339,11 @@ export function KpiPage() {
           <div className="flex items-center gap-3">
             {(() => {
               const grade = GRADE_CONFIG[selectedEmployee.grade];
-              return (
+              return selectedEmployee.hasNoActivity ? (
+                <span className="text-sm font-bold px-3 py-1.5 rounded-full bg-gray-100 text-gray-500">
+                  N/A — Insufficient Data
+                </span>
+              ) : (
                 <span className={`text-sm font-bold px-3 py-1.5 rounded-full ${grade.bg} ${grade.text}`}>
                   Grade {selectedEmployee.grade} — {selectedEmployee.totalScore} / 100
                 </span>
@@ -529,15 +539,27 @@ function EmployeeRow({
           <ScoreCell score={bnr?.earned ?? 0} max={10} pct={bnr?.percentage ?? 0} />
         </td>
         <td className="px-3 py-3.5 text-center">
-          <p className="font-bold text-gray-900 text-base">{employee.totalScore}</p>
-          <div className="w-12 mx-auto h-1 bg-gray-100 rounded-full mt-1 overflow-hidden">
-            <div className="h-full rounded-full" style={{ width: `${employee.totalScore}%`, backgroundColor: grade.color }} />
-          </div>
+          {employee.hasNoActivity ? (
+            <p className="font-bold text-gray-400 text-base">—</p>
+          ) : (
+            <>
+              <p className="font-bold text-gray-900 text-base">{employee.totalScore}</p>
+              <div className="w-12 mx-auto h-1 bg-gray-100 rounded-full mt-1 overflow-hidden">
+                <div className="h-full rounded-full" style={{ width: `${employee.totalScore}%`, backgroundColor: grade.color }} />
+              </div>
+            </>
+          )}
         </td>
         <td className="px-3 py-3.5 text-center">
-          <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold ${grade.bg} ${grade.text} border ${grade.border}`}>
-            {employee.grade}
-          </span>
+          {employee.hasNoActivity ? (
+            <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-gray-100 text-gray-500 border border-gray-200">
+              N/A
+            </span>
+          ) : (
+            <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold ${grade.bg} ${grade.text} border ${grade.border}`}>
+              {employee.grade}
+            </span>
+          )}
         </td>
         <td className="px-3 py-3.5 text-center">
           <svg

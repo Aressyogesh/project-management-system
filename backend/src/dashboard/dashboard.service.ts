@@ -92,28 +92,18 @@ export class DashboardService {
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
 
-    // Determine effective project scope:
-    // - Non-EMPLOYEE with any active memberships → scoped to those projects
-    // - EMPLOYEE with PROJECT_MANAGER role in active projects → scoped to their managed projects
-    // - Anyone else (EMPLOYEE without PM role, or admin with no memberships) → global/personal stats
-    let scopedProjectIds: string[] | null = null;
-    if (role !== SystemRole.EMPLOYEE) {
-      const rows = await this.prisma.projectMember.findMany({
-        where: { userId, project: { status: ProjectStatus.ACTIVE } },
-        select: { projectId: true },
-      });
-      scopedProjectIds = rows.length > 0 ? rows.map((r) => r.projectId) : null;
-    } else {
-      const rows = await this.prisma.projectMember.findMany({
-        where: {
-          userId,
-          projectRole: { in: [ProjectRole.PROJECT_MANAGER, ProjectRole.TEAM_LEAD] },
-          project: { status: ProjectStatus.ACTIVE },
-        },
-        select: { projectId: true },
-      });
-      scopedProjectIds = rows.length > 0 ? rows.map((r) => r.projectId) : null;
-    }
+    // Scope to projects where the user holds a management role (PM or TL), regardless of SystemRole.
+    // A SUPER_USER/ADMIN who is only a Developer in other projects sees their PM/TL project(s) only.
+    // Anyone with no PM/TL memberships gets global stats (SUPER_USER/ADMIN) or personal stats (EMPLOYEE).
+    const mgmtRows = await this.prisma.projectMember.findMany({
+      where: {
+        userId,
+        projectRole: { in: [ProjectRole.PROJECT_MANAGER, ProjectRole.TEAM_LEAD] },
+        project: { status: ProjectStatus.ACTIVE },
+      },
+      select: { projectId: true },
+    });
+    const scopedProjectIds: string[] | null = mgmtRows.length > 0 ? mgmtRows.map((r) => r.projectId) : null;
 
     const projectActiveWhere = scopedProjectIds !== null
       ? { id: { in: scopedProjectIds }, status: ProjectStatus.ACTIVE }
@@ -298,11 +288,16 @@ export class DashboardService {
   }
 
   async getProjectsProgress(userId: string, role: SystemRole): Promise<ProjectProgress[]> {
-    const memberProjectIds = role !== SystemRole.EMPLOYEE
-      ? await this.prisma.projectMember
-          .findMany({ where: { userId, project: { status: ProjectStatus.ACTIVE } }, select: { projectId: true } })
-          .then((rows) => rows.map((r) => r.projectId))
-      : [];
+    const memberProjectIds = await this.prisma.projectMember
+      .findMany({
+        where: {
+          userId,
+          projectRole: { in: [ProjectRole.PROJECT_MANAGER, ProjectRole.TEAM_LEAD] },
+          project: { status: ProjectStatus.ACTIVE },
+        },
+        select: { projectId: true },
+      })
+      .then((rows) => rows.map((r) => r.projectId));
 
     const where = memberProjectIds.length > 0
       ? { id: { in: memberProjectIds }, status: ProjectStatus.ACTIVE }

@@ -338,6 +338,8 @@ export class AnalyticsService {
       user.projectMembers[0]?.projectRole?.replace('_', ' ') ??
       user.systemRole;
 
+    const hasNoActivity = allAssignedItems.length === 0 && manualScores.length === 0;
+
     return {
       userId,
       name: user.fullName,
@@ -346,6 +348,7 @@ export class AnalyticsService {
       period,
       metrics,
       totalScore,
+      hasNoActivity,
     };
   }
 

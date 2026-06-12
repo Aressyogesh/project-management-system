@@ -13,6 +13,7 @@ export interface LiveEmployeeKpiRecord {
   period: string;
   metrics: KpiMetricScore[];
   totalScore: number;
+  hasNoActivity?: boolean;
 }
 
 export interface ProductivityRecord {
