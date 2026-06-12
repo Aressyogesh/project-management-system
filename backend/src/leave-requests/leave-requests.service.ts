@@ -45,6 +45,18 @@ export class LeaveRequestsService {
       );
     }
 
+    // Block leave on public holidays
+    const holidays = await this.prisma.holiday.findMany({
+      where: { date: { gte: start, lte: end } },
+      select: { name: true },
+    });
+    if (holidays.length > 0) {
+      const names = holidays.map((h) => h.name).join(', ');
+      throw new BadRequestException(
+        `Leave period includes public holiday(s): ${names}. Leave cannot be applied on holidays.`,
+      );
+    }
+
     return this.prisma.leaveRequest.create({
       data: {
         userId,

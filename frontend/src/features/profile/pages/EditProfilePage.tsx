@@ -3,12 +3,15 @@ import { useMutation } from '@tanstack/react-query';
 import { useAuthStore } from '../../../store/authStore';
 import { usersApi } from '../../../api/users.api';
 
-const BASE_URL = import.meta.env.VITE_API_URL?.replace('/api/v1', '') ?? 'http://localhost:3000';
+const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3000/api/v1';
 
 function avatarUrl(path?: string | null): string | undefined {
   if (!path) return undefined;
   if (path.startsWith('http')) return path;
-  return `${BASE_URL}/${path.replace(/^\//, '')}`;
+  // Extract just the filename — handles both old "uploads/avatars/x.jpg" paths and new bare filenames
+  const filename = path.split(/[/\\]/).pop();
+  if (!filename) return undefined;
+  return `${API_URL}/uploads/avatar/${filename}`;
 }
 
 export function EditProfilePage() {

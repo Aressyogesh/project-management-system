@@ -109,7 +109,7 @@ export class DashboardService {
       this.prisma.user.count({ where: { isActive: true } }),
       this.prisma.project.count({ where: { status: ProjectStatus.ACTIVE } }),
       this.prisma.task.findMany({
-        where: { assignedToId: userId },
+        where: { assignedToId: userId, project: { status: ProjectStatus.ACTIVE } },
         select: {
           id: true, title: true, priority: true, status: true,
           assignedTo: { select: { fullName: true } },
@@ -136,7 +136,7 @@ export class DashboardService {
           workItems: { where: { status: BoardStatus.QA_DONE }, select: { id: true } },
         },
       }),
-      this.prisma.projectMember.count({ where: { userId } }),
+      this.prisma.projectMember.count({ where: { userId, project: { status: ProjectStatus.ACTIVE } } }),
     ]);
 
     const myTasks: MyTask[] = rawMyTasks.map((t) => ({

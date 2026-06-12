@@ -203,7 +203,7 @@ export class UsersService {
       passwordHash = await bcrypt.hash(dto.newPassword, 10);
     }
 
-    const profilePhoto = file ? file.path.replace(/\\/g, '/') : undefined;
+    const profilePhoto = file ? file.filename : undefined;
 
     const updated = await this.prisma.user.update({
       where: { id: userId },

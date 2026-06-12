@@ -31,7 +31,6 @@ export function UserSettingsPage() {
   const qc = useQueryClient();
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
-  const [selected, setSelected] = useState<Set<string>>(new Set());
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
   const { data: users = [], isLoading, error } = useQuery({
@@ -64,14 +63,6 @@ export function UserSettingsPage() {
   useEffect(() => { setPage(1); }, [search]);
 
   const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
-
-  function toggleAll() {
-    setSelected(
-      selected.size === paginated.length
-        ? new Set()
-        : new Set(paginated.map((u) => u.id)),
-    );
-  }
 
   return (
     <div className="space-y-4">
@@ -112,18 +103,7 @@ export function UserSettingsPage() {
                   <th className="text-left px-4 py-3 text-xs font-medium text-gray-500">Name</th>
                   <th className="text-left px-4 py-3 text-xs font-medium text-gray-500">Email</th>
                   <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 w-44">Role</th>
-                  <th className="px-4 py-3 w-28">
-                    <div className="flex items-center justify-end gap-3">
-                      <span className="text-xs font-medium text-gray-500">Actions</span>
-                      <label className="flex items-center gap-1.5 cursor-pointer">
-                        <input type="checkbox"
-                          checked={paginated.length > 0 && selected.size === paginated.length}
-                          onChange={toggleAll}
-                          className="w-4 h-4 rounded accent-primary-600" />
-                        <span className="text-xs text-gray-400">All</span>
-                      </label>
-                    </div>
-                  </th>
+                  <th className="px-4 py-3 w-24 text-right text-xs font-medium text-gray-500">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
@@ -155,24 +135,14 @@ export function UserSettingsPage() {
                         {ROLES.map((r) => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}
                       </select>
                     </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center justify-end gap-2">
-                        <button onClick={() => setDeleteId(user.id)}
-                          className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-50 transition">
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-                              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                          </svg>
-                        </button>
-                        <input type="checkbox"
-                          checked={selected.has(user.id)}
-                          onChange={() => setSelected((prev) => {
-                            const n = new Set(prev);
-                            n.has(user.id) ? n.delete(user.id) : n.add(user.id);
-                            return n;
-                          })}
-                          className="w-4 h-4 rounded accent-primary-600" />
-                      </div>
+                    <td className="px-4 py-3 text-right">
+                      <button onClick={() => setDeleteId(user.id)}
+                        className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-50 transition">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -192,11 +162,8 @@ export function UserSettingsPage() {
                 onChange={setPage}
               />
             ) : filtered.length > 0 ? (
-              <div className="px-4 py-3 flex items-center justify-between text-xs text-gray-400">
-                <span>Showing {filtered.length} of {users.length} users</span>
-                {selected.size > 0 && (
-                  <span className="text-primary-600 font-medium">{selected.size} selected</span>
-                )}
+              <div className="px-4 py-3 text-xs text-gray-400">
+                Showing {filtered.length} of {users.length} users
               </div>
             ) : null}
           </div>

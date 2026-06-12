@@ -53,4 +53,13 @@ export class UploadsController {
       if (err) res.status(404).json({ message: 'Image not found' });
     });
   }
+
+  @Get('avatar/:filename')
+  @Public()
+  serveAvatar(@Param('filename') filename: string, @Res() res: Response) {
+    const filePath = join(process.cwd(), 'uploads', 'avatars', filename);
+    res.sendFile(filePath, (err) => {
+      if (err) res.status(404).json({ message: 'Avatar not found' });
+    });
+  }
 }

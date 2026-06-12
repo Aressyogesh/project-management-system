@@ -7,7 +7,6 @@ import { useAuthStore } from '../../../store/authStore';
 import { LoginCredentials } from '../../../types/auth.types';
 
 const REMEMBER_EMAIL_KEY = 'pms_remember_email';
-const REMEMBER_PASS_KEY  = 'pms_remember_pass';
 
 export function LoginPage() {
   const navigate = useNavigate();
@@ -25,8 +24,7 @@ export function LoginPage() {
     formState: { errors, isSubmitting },
   } = useForm<LoginCredentials>({
     defaultValues: {
-      email:    localStorage.getItem(REMEMBER_EMAIL_KEY) ?? '',
-      password: localStorage.getItem(REMEMBER_PASS_KEY)  ?? '',
+      email: localStorage.getItem(REMEMBER_EMAIL_KEY) ?? '',
     },
   });
 
@@ -36,10 +34,8 @@ export function LoginPage() {
       const response = await authApi.login(credentials);
       if (rememberMe) {
         localStorage.setItem(REMEMBER_EMAIL_KEY, credentials.email);
-        localStorage.setItem(REMEMBER_PASS_KEY,  credentials.password);
       } else {
         localStorage.removeItem(REMEMBER_EMAIL_KEY);
-        localStorage.removeItem(REMEMBER_PASS_KEY);
       }
       setAuth(response.user, response.accessToken, response.refreshToken);
       navigate('/dashboard');
@@ -150,7 +146,7 @@ export function LoginPage() {
                 <button
                   type="button"
                   onClick={() => setShowPassword((v) => !v)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 z-10 text-gray-500 hover:text-gray-700"
                   tabIndex={-1}
                   aria-label={showPassword ? 'Hide password' : 'Show password'}
                 >

@@ -470,6 +470,7 @@ export class AnalyticsService {
     });
 
     const severityCounts: Record<string, number> = {
+      SHOW_STOPPER: 0,
       BLOCKER: 0,
       CRITICAL: 0,
       MAJOR: 0,
@@ -477,11 +478,21 @@ export class AnalyticsService {
       TRIVIAL: 0,
     };
     const classificationCounts: Record<string, number> = {
-      UI_USABILITY: 0,
-      NEW_BUG: 0,
-      ENHANCEMENT: 0,
+      SECURITY: 0,
+      CRASH_HANG: 0,
+      DATA_LOSS: 0,
       PERFORMANCE: 0,
+      UI_USABILITY: 0,
+      OTHER_BUG: 0,
       OTHER: 0,
+      FEATURE_NEW: 0,
+      ENHANCEMENT: 0,
+      DESIGN: 0,
+      NEW_BUG: 0,
+      CODE_REVIEW: 0,
+      UNIT_TESTING: 0,
+      SUGGESTION: 0,
+      PROJECT_MANAGEMENT: 0,
     };
 
     for (const bug of bugs) {
@@ -490,6 +501,7 @@ export class AnalyticsService {
     }
 
     const severityColors: Record<string, string> = {
+      SHOW_STOPPER: '#450A0A',
       BLOCKER: '#7F1D1D',
       CRITICAL: '#EF4444',
       MAJOR: '#F97316',
@@ -498,11 +510,21 @@ export class AnalyticsService {
     };
 
     const classificationColors: Record<string, string> = {
-      UI_USABILITY: '#8B5CF6',
-      NEW_BUG: '#EF4444',
-      ENHANCEMENT: '#3B82F6',
+      SECURITY: '#DC2626',
+      CRASH_HANG: '#B91C1C',
+      DATA_LOSS: '#9F1239',
       PERFORMANCE: '#F59E0B',
-      OTHER: '#6B7280',
+      UI_USABILITY: '#8B5CF6',
+      OTHER_BUG: '#6B7280',
+      OTHER: '#9CA3AF',
+      FEATURE_NEW: '#10B981',
+      ENHANCEMENT: '#3B82F6',
+      DESIGN: '#EC4899',
+      NEW_BUG: '#EF4444',
+      CODE_REVIEW: '#6366F1',
+      UNIT_TESTING: '#14B8A6',
+      SUGGESTION: '#F97316',
+      PROJECT_MANAGEMENT: '#0EA5E9',
     };
 
     return {
