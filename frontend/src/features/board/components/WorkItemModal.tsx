@@ -70,7 +70,7 @@ function Avatar({ name, size = 'sm' }: { name: string; size?: 'sm' | 'xs' }) {
 }
 
 // Right sidebar property row
-function SidebarRow({ label, children }: { label: string; children: React.ReactNode }) {
+function SidebarRow({ label, children }: { label: React.ReactNode; children: React.ReactNode }) {
   return (
     <div className="flex items-start gap-2 py-2 border-b border-gray-100 last:border-0">
       <span className="text-[11px] font-medium text-gray-500 w-28 shrink-0 pt-1.5 leading-tight">{label}</span>
@@ -429,6 +429,21 @@ export function WorkItemModal({ item, sprints, members, milestones, canDelete = 
   const [expandedLogItems, setExpandedLogItems] = useState<Set<string>>(new Set());
   const [childLogForms, setChildLogForms] = useState<Record<string, { date: string; hours: string; desc: string }>>({});
   const [confirmDelete, setConfirmDelete] = useState(false);
+  // Bug detail local state (batch-saved via Save button)
+  const [bugSeverityLocal, setBugSeverityLocal] = useState<BugSeverity | ''>((item?.severity as BugSeverity) ?? '');
+  const [bugClassificationLocal, setBugClassificationLocal] = useState<BugClassification | ''>((item?.bugClassification as BugClassification) ?? '');
+  const [bugStatusLocal, setBugStatusLocal] = useState<BugStatus | ''>((item?.bugStatus as BugStatus) ?? '');
+  const [bugFlagLocal, setBugFlagLocal] = useState<BugFlag | ''>((item?.bugFlag as BugFlag) ?? '');
+  const [bugReproducibilityLocal, setBugReproducibilityLocal] = useState<BugReproducibility | ''>((item?.bugReproducibility as BugReproducibility) ?? '');
+  const [bugModuleLocal, setBugModuleLocal] = useState(item?.module ?? '');
+  const [bugResponsibleUserIdLocal, setBugResponsibleUserIdLocal] = useState(item?.responsibleUserId ?? '');
+  const [bugBillingStatusLocal, setBugBillingStatusLocal] = useState<BillingStatus | ''>((item?.billingStatus as BillingStatus) ?? '');
+  const [bugAffectedBuildLocal, setBugAffectedBuildLocal] = useState(item?.affectedBuildVersion ?? '');
+  const [bugFixedBuildLocal, setBugFixedBuildLocal] = useState(item?.fixedBuildVersion ?? '');
+  const [bugReminderTypeLocal, setBugReminderTypeLocal] = useState<BugReminderType>((item?.reminderType as BugReminderType) ?? 'NONE');
+  const [bugEnvironmentLocal, setBugEnvironmentLocal] = useState(item?.environment ?? '');
+  const [bugStepsToReproLocal, setBugStepsToReproLocal] = useState(item?.stepsToRepro ?? '');
+  const [bugDetailError, setBugDetailError] = useState('');
   // @mention in comments
   const [mentionSearch, setMentionSearch] = useState('');
   const [showMentionMenu, setShowMentionMenu] = useState(false);
@@ -458,17 +473,52 @@ export function WorkItemModal({ item, sprints, members, milestones, canDelete = 
     select: (items) => items.filter((i) => validParentTypes?.includes(i.type) && i.id !== item?.id),
   });
 
-  // Sync drafts when item first loads
+  // Sync drafts and bug detail fields when item changes
   useEffect(() => {
     if (detail) {
       setDescDraft(detail.description ?? '');
       setDodDraft(detail.definitionOfDone ?? '');
+      setBugSeverityLocal((detail.severity as BugSeverity) ?? '');
+      setBugClassificationLocal((detail.bugClassification as BugClassification) ?? '');
+      setBugStatusLocal((detail.bugStatus as BugStatus) ?? '');
+      setBugFlagLocal((detail.bugFlag as BugFlag) ?? '');
+      setBugReproducibilityLocal((detail.bugReproducibility as BugReproducibility) ?? '');
+      setBugModuleLocal(detail.module ?? '');
+      setBugResponsibleUserIdLocal(detail.responsibleUserId ?? '');
+      setBugBillingStatusLocal((detail.billingStatus as BillingStatus) ?? '');
+      setBugAffectedBuildLocal(detail.affectedBuildVersion ?? '');
+      setBugFixedBuildLocal(detail.fixedBuildVersion ?? '');
+      setBugReminderTypeLocal((detail.reminderType as BugReminderType) ?? 'NONE');
+      setBugEnvironmentLocal(detail.environment ?? '');
+      setBugStepsToReproLocal(detail.stepsToRepro ?? '');
+      setBugDetailError('');
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [item?.id]);
 
   const descChanged = descDraft !== (detail?.description ?? '');
   const dodChanged = dodDraft !== (detail?.definitionOfDone ?? '');
+
+  function saveBugDetails() {
+    if (!bugSeverityLocal) { setBugDetailError('Severity is required'); return; }
+    if (!bugClassificationLocal) { setBugDetailError('Classification is required'); return; }
+    setBugDetailError('');
+    updateMut.mutate({
+      severity: bugSeverityLocal as BugSeverity,
+      bugClassification: bugClassificationLocal as BugClassification,
+      bugStatus: (bugStatusLocal || undefined) as BugStatus | undefined,
+      bugFlag: (bugFlagLocal || undefined) as BugFlag | undefined,
+      bugReproducibility: (bugReproducibilityLocal || undefined) as BugReproducibility | undefined,
+      module: bugModuleLocal || undefined,
+      responsibleUserId: bugResponsibleUserIdLocal || undefined,
+      billingStatus: (bugBillingStatusLocal || undefined) as BillingStatus | undefined,
+      affectedBuildVersion: bugAffectedBuildLocal || undefined,
+      fixedBuildVersion: bugFixedBuildLocal || undefined,
+      reminderType: bugReminderTypeLocal,
+      environment: bugEnvironmentLocal || undefined,
+      stepsToRepro: bugStepsToReproLocal || undefined,
+    });
+  }
 
   const updateMut = useMutation({
     mutationFn: (data: Partial<WorkItem>) => boardApi.updateWorkItem(item!.id, data),
@@ -1555,14 +1605,28 @@ export function WorkItemModal({ item, sprints, members, milestones, canDelete = 
               {/* ── Bug Details ── */}
               {detail.type === 'BUG' && (
                 <div className="pt-3">
-                  <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest pb-2 border-t border-gray-200 pt-3">Bug Details</p>
+                  <div className="flex items-center justify-between border-t border-gray-200 pt-3 pb-2">
+                    <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest">Bug Details</p>
+                    <button
+                      type="button"
+                      onClick={saveBugDetails}
+                      disabled={updateMut.isPending}
+                      className="text-xs font-semibold text-white bg-primary-600 hover:bg-primary-700 px-3 py-1 rounded-md transition disabled:opacity-50"
+                    >
+                      {updateMut.isPending ? 'Saving…' : 'Save'}
+                    </button>
+                  </div>
+
+                  {bugDetailError && (
+                    <p className="text-xs text-red-500 mb-2">{bugDetailError}</p>
+                  )}
 
                   {/* Bug Status */}
                   <SidebarRow label="Bug Status">
                     <select
-                      value={detail.bugStatus ?? ''}
-                      onChange={(e) => updateMut.mutate({ bugStatus: (e.target.value as BugStatus) || undefined })}
-                      className={`input-sm w-full text-xs font-medium ${detail.bugStatus ? BUG_STATUS_CONFIG[detail.bugStatus].text : ''}`}
+                      value={bugStatusLocal}
+                      onChange={(e) => setBugStatusLocal(e.target.value as BugStatus)}
+                      className={`input-sm w-full text-xs font-medium ${bugStatusLocal ? BUG_STATUS_CONFIG[bugStatusLocal as BugStatus].text : ''}`}
                     >
                       <option value="">— select —</option>
                       {(Object.keys(BUG_STATUS_CONFIG) as BugStatus[]).map((s) => (
@@ -1571,12 +1635,12 @@ export function WorkItemModal({ item, sprints, members, milestones, canDelete = 
                     </select>
                   </SidebarRow>
 
-                  {/* Severity */}
-                  <SidebarRow label="Severity">
+                  {/* Severity — required */}
+                  <SidebarRow label={<>Severity <span className="text-red-500">*</span></>}>
                     <select
-                      value={detail.severity ?? ''}
-                      onChange={(e) => updateMut.mutate({ severity: (e.target.value as BugSeverity) || undefined })}
-                      className="input-sm w-full text-xs"
+                      value={bugSeverityLocal}
+                      onChange={(e) => { setBugSeverityLocal(e.target.value as BugSeverity); setBugDetailError(''); }}
+                      className={`input-sm w-full text-xs ${!bugSeverityLocal ? 'border-red-300' : ''}`}
                     >
                       <option value="">— select —</option>
                       {(['SHOW_STOPPER', 'BLOCKER', 'CRITICAL', 'MAJOR', 'MINOR', 'TRIVIAL'] as BugSeverity[]).map((s) => (
@@ -1585,12 +1649,12 @@ export function WorkItemModal({ item, sprints, members, milestones, canDelete = 
                     </select>
                   </SidebarRow>
 
-                  {/* Classification */}
-                  <SidebarRow label="Classification">
+                  {/* Classification — required */}
+                  <SidebarRow label={<>Classification <span className="text-red-500">*</span></>}>
                     <select
-                      value={detail.bugClassification ?? ''}
-                      onChange={(e) => updateMut.mutate({ bugClassification: (e.target.value as BugClassification) || undefined })}
-                      className="input-sm w-full text-xs"
+                      value={bugClassificationLocal}
+                      onChange={(e) => { setBugClassificationLocal(e.target.value as BugClassification); setBugDetailError(''); }}
+                      className={`input-sm w-full text-xs ${!bugClassificationLocal ? 'border-red-300' : ''}`}
                     >
                       <option value="">— select —</option>
                       <option value="UI_USABILITY">UI / Usability</option>
@@ -1615,8 +1679,8 @@ export function WorkItemModal({ item, sprints, members, milestones, canDelete = 
                   {/* Flag */}
                   <SidebarRow label="Flag">
                     <select
-                      value={detail.bugFlag ?? ''}
-                      onChange={(e) => updateMut.mutate({ bugFlag: (e.target.value as BugFlag) || undefined })}
+                      value={bugFlagLocal}
+                      onChange={(e) => setBugFlagLocal(e.target.value as BugFlag)}
                       className="input-sm w-full text-xs"
                     >
                       <option value="">— select —</option>
@@ -1628,8 +1692,8 @@ export function WorkItemModal({ item, sprints, members, milestones, canDelete = 
                   {/* Reproducibility */}
                   <SidebarRow label="Reproducibility">
                     <select
-                      value={detail.bugReproducibility ?? ''}
-                      onChange={(e) => updateMut.mutate({ bugReproducibility: (e.target.value as BugReproducibility) || undefined })}
+                      value={bugReproducibilityLocal}
+                      onChange={(e) => setBugReproducibilityLocal(e.target.value as BugReproducibility)}
                       className="input-sm w-full text-xs"
                     >
                       <option value="">— select —</option>
@@ -1646,8 +1710,8 @@ export function WorkItemModal({ item, sprints, members, milestones, canDelete = 
                   <SidebarRow label="Module">
                     <input
                       type="text"
-                      defaultValue={detail.module ?? ''}
-                      onBlur={(e) => updateMut.mutate({ module: e.target.value || undefined })}
+                      value={bugModuleLocal}
+                      onChange={(e) => setBugModuleLocal(e.target.value)}
                       placeholder="e.g. Auth, Dashboard"
                       className="input-sm w-full text-xs"
                     />
@@ -1656,8 +1720,8 @@ export function WorkItemModal({ item, sprints, members, milestones, canDelete = 
                   {/* Responsible Developer */}
                   <SidebarRow label="Responsible Dev">
                     <select
-                      value={detail.responsibleUserId ?? ''}
-                      onChange={(e) => updateMut.mutate({ responsibleUserId: e.target.value || undefined })}
+                      value={bugResponsibleUserIdLocal}
+                      onChange={(e) => setBugResponsibleUserIdLocal(e.target.value)}
                       className="input-sm w-full text-xs"
                     >
                       <option value="">— select —</option>
@@ -1670,8 +1734,8 @@ export function WorkItemModal({ item, sprints, members, milestones, canDelete = 
                   {/* Billing Status */}
                   <SidebarRow label="Billing">
                     <select
-                      value={detail.billingStatus ?? ''}
-                      onChange={(e) => updateMut.mutate({ billingStatus: (e.target.value as BillingStatus) || undefined })}
+                      value={bugBillingStatusLocal}
+                      onChange={(e) => setBugBillingStatusLocal(e.target.value as BillingStatus)}
                       className="input-sm w-full text-xs"
                     >
                       <option value="">— select —</option>
@@ -1684,8 +1748,8 @@ export function WorkItemModal({ item, sprints, members, milestones, canDelete = 
                   <SidebarRow label="Affected Build">
                     <input
                       type="text"
-                      defaultValue={detail.affectedBuildVersion ?? ''}
-                      onBlur={(e) => updateMut.mutate({ affectedBuildVersion: e.target.value || undefined })}
+                      value={bugAffectedBuildLocal}
+                      onChange={(e) => setBugAffectedBuildLocal(e.target.value)}
                       placeholder="e.g. 1.0.5"
                       className="input-sm w-full text-xs"
                     />
@@ -1695,8 +1759,8 @@ export function WorkItemModal({ item, sprints, members, milestones, canDelete = 
                   <SidebarRow label="Fixed Build">
                     <input
                       type="text"
-                      defaultValue={detail.fixedBuildVersion ?? ''}
-                      onBlur={(e) => updateMut.mutate({ fixedBuildVersion: e.target.value || undefined })}
+                      value={bugFixedBuildLocal}
+                      onChange={(e) => setBugFixedBuildLocal(e.target.value)}
                       placeholder="e.g. 1.0.6"
                       className="input-sm w-full text-xs"
                     />
@@ -1705,8 +1769,8 @@ export function WorkItemModal({ item, sprints, members, milestones, canDelete = 
                   {/* Reminder Type */}
                   <SidebarRow label="Reminder">
                     <select
-                      value={detail.reminderType ?? 'NONE'}
-                      onChange={(e) => updateMut.mutate({ reminderType: e.target.value as BugReminderType })}
+                      value={bugReminderTypeLocal}
+                      onChange={(e) => setBugReminderTypeLocal(e.target.value as BugReminderType)}
                       className="input-sm w-full text-xs"
                     >
                       <option value="NONE">None</option>
@@ -1721,8 +1785,8 @@ export function WorkItemModal({ item, sprints, members, milestones, canDelete = 
                   <SidebarRow label="Environment">
                     <input
                       type="text"
-                      defaultValue={detail.environment ?? ''}
-                      onBlur={(e) => updateMut.mutate({ environment: e.target.value || undefined })}
+                      value={bugEnvironmentLocal}
+                      onChange={(e) => setBugEnvironmentLocal(e.target.value)}
                       placeholder="e.g. Production, Chrome 124"
                       className="input-sm w-full text-xs"
                     />
@@ -1731,8 +1795,8 @@ export function WorkItemModal({ item, sprints, members, milestones, canDelete = 
                   {/* Steps to Reproduce */}
                   <SidebarRow label="Steps to Repro">
                     <textarea
-                      defaultValue={detail.stepsToRepro ?? ''}
-                      onBlur={(e) => updateMut.mutate({ stepsToRepro: e.target.value || undefined })}
+                      value={bugStepsToReproLocal}
+                      onChange={(e) => setBugStepsToReproLocal(e.target.value)}
                       rows={4}
                       placeholder="1. Go to…&#10;2. Click…&#10;3. Observe…"
                       className="input-sm w-full text-xs resize-none"

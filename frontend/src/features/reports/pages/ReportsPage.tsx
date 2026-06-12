@@ -1117,8 +1117,8 @@ export function ReportsPage() {
   const isAdminView = user?.systemRole === 'ADMIN' || user?.systemRole === 'SUPER_USER';
 
   const { data: projectsList = [] } = useQuery({
-    queryKey: ['projects-list'],
-    queryFn: () => projectsApi.list(),
+    queryKey: ['projects-list', 'active'],
+    queryFn: () => projectsApi.list({ status: 'ACTIVE' }),
     enabled: isAdminView,
     staleTime: 120_000,
   });
