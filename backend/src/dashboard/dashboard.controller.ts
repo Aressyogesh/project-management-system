@@ -62,10 +62,11 @@ export class DashboardController {
   @ApiQuery({ name: 'projectId', required: false })
   @ApiQuery({ name: 'period',    required: false, enum: ['7d', '30d', 'all'] })
   getTasksProgress(
+    @CurrentUser() user: JwtUser,
     @Query('projectId') projectId?: string,
     @Query('period')    period: '7d' | '30d' | 'all' = 'all',
   ): Promise<TasksProgress> {
-    return this.dashboardService.getTasksProgress(projectId, period);
+    return this.dashboardService.getTasksProgress(user.sub, user.role, projectId, period);
   }
 
   @Get('activity')
@@ -73,10 +74,11 @@ export class DashboardController {
   @ApiQuery({ name: 'projectId', required: false })
   @ApiQuery({ name: 'period',    required: false, enum: ['monthly', 'weekly'] })
   getActivityData(
+    @CurrentUser() user: JwtUser,
     @Query('projectId') projectId?: string,
     @Query('period')    period: 'monthly' | 'weekly' = 'monthly',
   ) {
-    return this.dashboardService.getActivityData(projectId, period);
+    return this.dashboardService.getActivityData(user.sub, projectId, period);
   }
 
   @Get('announcements')

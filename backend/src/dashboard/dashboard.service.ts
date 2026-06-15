@@ -197,7 +197,7 @@ export class DashboardService {
 
     return {
       cards,
-      activityData: await this.buildActivityData(),
+      activityData: await this.buildActivityData(undefined, scopedProjectIds ?? undefined),
       tasksProgress: { notStarted: notStartedCount, inProgress: inProgressCount, onReview: onReviewCount, completed: completedCount },
       myTasks,
       todayTask: todayWorkItem
@@ -437,8 +437,19 @@ export class DashboardService {
     );
   }
 
-  async getTasksProgress(projectId?: string, period: '7d' | '30d' | 'all' = 'all'): Promise<TasksProgress> {
-    const base: any = projectId ? { projectId } : { project: { status: ProjectStatus.ACTIVE } };
+  async getTasksProgress(userId: string, role: SystemRole, projectId?: string, period: '7d' | '30d' | 'all' = 'all'): Promise<TasksProgress> {
+    let base: any;
+    if (projectId) {
+      base = { projectId };
+    } else {
+      const mgmtRows = await this.prisma.projectMember.findMany({
+        where: { userId, projectRole: { in: [ProjectRole.PROJECT_MANAGER, ProjectRole.TEAM_LEAD] }, project: { status: ProjectStatus.ACTIVE } },
+        select: { projectId: true },
+      });
+      base = mgmtRows.length > 0
+        ? { projectId: { in: mgmtRows.map((r) => r.projectId) } }
+        : { project: { status: ProjectStatus.ACTIVE } };
+    }
     if (period !== 'all') {
       const days = period === '7d' ? 7 : 30;
       const since = new Date();
@@ -456,19 +467,29 @@ export class DashboardService {
     return { notStarted, inProgress, onReview, completed };
   }
 
-  async getActivityData(projectId?: string, period: 'monthly' | 'weekly' = 'monthly'): Promise<ActivityPoint[]> {
+  async getActivityData(userId: string, projectId?: string, period: 'monthly' | 'weekly' = 'monthly'): Promise<ActivityPoint[]> {
+    let scopedIds: string[] | undefined;
+    if (!projectId) {
+      const mgmtRows = await this.prisma.projectMember.findMany({
+        where: { userId, projectRole: { in: [ProjectRole.PROJECT_MANAGER, ProjectRole.TEAM_LEAD] }, project: { status: ProjectStatus.ACTIVE } },
+        select: { projectId: true },
+      });
+      if (mgmtRows.length > 0) scopedIds = mgmtRows.map((r) => r.projectId);
+    }
     return period === 'weekly'
-      ? this.buildWeeklyActivityData(projectId)
-      : this.buildActivityData(projectId);
+      ? this.buildWeeklyActivityData(projectId, scopedIds)
+      : this.buildActivityData(projectId, scopedIds);
   }
 
-  private async buildWeeklyActivityData(projectId?: string): Promise<ActivityPoint[]> {
+  private async buildWeeklyActivityData(projectId?: string, scopedIds?: string[]): Promise<ActivityPoint[]> {
     const now    = new Date();
     const points: ActivityPoint[] = [];
 
     const activeProjectIds = projectId
       ? [projectId]
-      : (await this.prisma.project.findMany({ where: { status: ProjectStatus.ACTIVE }, select: { id: true } })).map((p) => p.id);
+      : scopedIds !== undefined
+        ? scopedIds
+        : (await this.prisma.project.findMany({ where: { status: ProjectStatus.ACTIVE }, select: { id: true } })).map((p) => p.id);
 
     for (let i = 11; i >= 0; i--) {
       const weekStart = new Date(now);
@@ -590,13 +611,15 @@ export class DashboardService {
     return items.slice(0, 8);
   }
 
-  private async buildActivityData(projectId?: string): Promise<ActivityPoint[]> {
+  private async buildActivityData(projectId?: string, scopedIds?: string[]): Promise<ActivityPoint[]> {
     const now = new Date();
     const points: ActivityPoint[] = [];
 
     const activeProjectIds = projectId
       ? [projectId]
-      : (await this.prisma.project.findMany({ where: { status: ProjectStatus.ACTIVE }, select: { id: true } })).map((p) => p.id);
+      : scopedIds !== undefined
+        ? scopedIds
+        : (await this.prisma.project.findMany({ where: { status: ProjectStatus.ACTIVE }, select: { id: true } })).map((p) => p.id);
 
     for (let i = 11; i >= 0; i--) {
       const date     = new Date(now.getFullYear(), now.getMonth() - i, 1);
