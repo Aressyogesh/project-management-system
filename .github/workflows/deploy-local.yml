@@ -1,0 +1,266 @@
+name: Deploy to Local Server
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Job 1 — TEST GATE
+# Runs on every push and PR. Deploy will not start if this fails.
+# ──────────────────────────────────────────────────────────────────────────────
+jobs:
+  test:
+    name: Run Backend Unit Tests
+    runs-on: self-hosted
+
+    steps:
+      - name: Stop PMS processes
+        run: |
+          pm2 stop pms-backend  2>$null | Out-Null
+          pm2 stop pms-frontend 2>$null | Out-Null
+          $LASTEXITCODE = 0
+          Write-Host "pms-backend stopped"
+          Write-Host "pms-frontend stopped"
+        shell: pwsh
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Install backend dependencies
+        working-directory: backend
+        run: npm ci
+
+      - name: Generate Prisma client
+        working-directory: backend
+        run: npx prisma generate
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DIRECT_URL: ${{ secrets.DIRECT_URL }}
+
+      - name: Run unit tests
+        working-directory: backend
+        run: npm test -- --passWithNoTests
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DIRECT_URL: ${{ secrets.DIRECT_URL }}
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Job 2 — DEPLOY
+# Runs only on push to main (not PRs). Requires test job to pass.
+# ──────────────────────────────────────────────────────────────────────────────
+  deploy:
+    name: Build & Deploy (self-hosted)
+    runs-on: self-hosted
+    needs: test
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+
+    steps:
+      # ── 1. Stop PMS processes before checkout so dist folder is not locked ──
+      - name: Stop PMS processes
+        run: |
+          pm2 stop pms-backend  2>$null | Out-Null
+          pm2 stop pms-frontend 2>$null | Out-Null
+          $LASTEXITCODE = 0
+          Write-Host "pms-backend stopped"
+          Write-Host "pms-frontend stopped"
+        shell: pwsh
+
+      # ── 2. Checkout ──────────────────────────────────────────────────────────
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      # ── 2. Backend ───────────────────────────────────────────────────────────
+      - name: Write backend .env
+        working-directory: backend
+        run: |
+          @(
+            "DATABASE_URL=$env:DATABASE_URL",
+            "DIRECT_URL=$env:DIRECT_URL",
+            "JWT_SECRET=$env:JWT_SECRET",
+            "JWT_REFRESH_SECRET=$env:JWT_REFRESH_SECRET",
+            "JWT_ACCESS_EXPIRY=15m",
+            "JWT_REFRESH_EXPIRY_DAYS=7",
+            "PORT=3000",
+            "NODE_ENV=production",
+            "UPLOAD_DEST=D:\pms-uploads",
+            "GROQ_API_KEY=$env:GROQ_API_KEY",
+            "NODE_OPTIONS=--use-system-ca",
+            "SMTP_HOST=$env:SMTP_HOST",
+            "SMTP_PORT=$env:SMTP_PORT",
+            "SMTP_USER=$env:SMTP_USER",
+            "SMTP_PASS=$env:SMTP_PASS",
+            "SMTP_FROM_NAME=$env:SMTP_FROM_NAME",
+            "SMTP_FROM_EMAIL=$env:SMTP_FROM_EMAIL",
+            "APP_FRONTEND_URL=$env:FRONTEND_URL",
+            "FRONTEND_URL=$env:FRONTEND_URL"
+          ) | Out-File -FilePath ".env" -Encoding UTF8
+        shell: pwsh
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DIRECT_URL: ${{ secrets.DIRECT_URL }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          JWT_REFRESH_SECRET: ${{ secrets.JWT_REFRESH_SECRET }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASS: ${{ secrets.SMTP_PASS }}
+          SMTP_FROM_NAME: ${{ secrets.SMTP_FROM_NAME }}
+          SMTP_FROM_EMAIL: ${{ secrets.SMTP_FROM_EMAIL }}
+          FRONTEND_URL: ${{ secrets.FRONTEND_URL }}
+
+      - name: Install backend dependencies
+        working-directory: backend
+        run: npm ci
+
+      - name: Generate Prisma client
+        working-directory: backend
+        run: npx prisma generate
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DIRECT_URL: ${{ secrets.DIRECT_URL }}
+
+      - name: Resolve any failed Prisma migrations
+        working-directory: backend
+        run: npx prisma migrate resolve --rolled-back 20260612000000_project_description_text 2>$null; $true
+        shell: pwsh
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DIRECT_URL: ${{ secrets.DIRECT_URL }}
+
+      - name: Run Prisma migrations
+        working-directory: backend
+        run: npx prisma migrate deploy
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DIRECT_URL: ${{ secrets.DIRECT_URL }}
+
+      - name: Ensure upload directories exist
+        run: |
+          New-Item -ItemType Directory -Force -Path "D:\pms-uploads\avatars" | Out-Null
+          New-Item -ItemType Directory -Force -Path "D:\pms-uploads\images"  | Out-Null
+          Write-Host "Upload directories ready"
+        shell: pwsh
+
+      - name: Build backend
+        working-directory: backend
+        run: npm run build
+
+      - name: Restart backend via PM2
+        working-directory: backend
+        run: |
+          pm2 delete pms-backend 2>$null | Out-Null; $true
+          pm2 start dist/src/main.js --name pms-backend | Out-Null
+          pm2 save | Out-Null
+          # Poll health endpoint until NestJS finishes initialising (max 30 s)
+          $deadline = (Get-Date).AddSeconds(30)
+          $ready = $false
+          while ((Get-Date) -lt $deadline) {
+            try {
+              $r = Invoke-WebRequest -Uri "http://localhost:3000/api/v1/health" -UseBasicParsing -TimeoutSec 3 -ErrorAction Stop
+              $body = $r.Content | ConvertFrom-Json
+              if ($r.StatusCode -eq 200 -and $body.status -eq 'ok') { $ready = $true; break }
+            } catch {}
+            Start-Sleep -Seconds 2
+          }
+          if (-not $ready) {
+            Write-Host "Backend did not come online within 30s — PM2 logs:"
+            pm2 logs pms-backend --lines 30 --nostream 2>$null
+            exit 1
+          }
+          Write-Host "Backend startup confirmed"
+        shell: pwsh
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DIRECT_URL: ${{ secrets.DIRECT_URL }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          JWT_REFRESH_SECRET: ${{ secrets.JWT_REFRESH_SECRET }}
+          FRONTEND_URL: ${{ secrets.FRONTEND_URL }}
+          PORT: '3000'
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASS: ${{ secrets.SMTP_PASS }}
+          SMTP_FROM_NAME: ${{ secrets.SMTP_FROM_NAME }}
+          SMTP_FROM_EMAIL: ${{ secrets.SMTP_FROM_EMAIL }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          APP_FRONTEND_URL: ${{ secrets.FRONTEND_URL }}
+          NODE_OPTIONS: '--use-system-ca'
+
+      # ── 3. Frontend ──────────────────────────────────────────────────────────
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Build frontend
+        working-directory: frontend
+        run: npm run build
+        env:
+          VITE_API_URL: ${{ secrets.VITE_API_BASE_URL }}/api/v1
+
+      - name: Copy frontend dist to fixed deploy folder
+        run: |
+          $src  = "$env:GITHUB_WORKSPACE\frontend\dist"
+          $dest = "D:\pms-frontend"
+          if (Test-Path $dest) { Remove-Item $dest -Recurse -Force }
+          Copy-Item $src $dest -Recurse
+        shell: pwsh
+
+      - name: Restart frontend via PM2
+        run: |
+          npm install -g serve 2>$null; $true
+          $serveMain = "$(npm root -g)/serve/build/main.js" -replace '\\','/'
+          $cfg = "module.exports={apps:[{name:'pms-frontend',script:'$serveMain',args:'-s D:/pms-frontend -l 5173',cwd:'D:/'}]};"
+          $cfg | Out-File -FilePath "D:/pms-frontend.config.js" -Encoding ASCII
+          pm2 delete pms-frontend  2>$null | Out-Null; $true
+          pm2 delete pms-ecosystem 2>$null | Out-Null; $true
+          pm2 start "D:/pms-frontend.config.js" | Out-Null
+          pm2 save | Out-Null
+          Write-Host "pms-frontend started"
+        shell: pwsh
+
+      # ── 4. Health check ───────────────────────────────────────────────────────
+      - name: Health check — backend
+        run: |
+          $maxAttempts = 6
+          $delay = 5
+          for ($i = 1; $i -le $maxAttempts; $i++) {
+            try {
+              $response = Invoke-WebRequest -Uri "http://localhost:3000/api/v1/health" -UseBasicParsing -TimeoutSec 10
+              $body = $response.Content | ConvertFrom-Json
+              if ($response.StatusCode -eq 200 -and $body.status -eq 'ok') {
+                Write-Host "Health check passed on attempt $i"
+                exit 0
+              }
+              Write-Host "Attempt ${i}: unexpected response: $($response.Content)"
+            } catch {
+              Write-Host "Attempt ${i} failed: $_"
+            }
+            if ($i -lt $maxAttempts) {
+              Write-Host "Retrying in ${delay}s..."
+              Start-Sleep -Seconds $delay
+            }
+          }
+          Write-Host "Health check failed after $maxAttempts attempts — PM2 logs:"
+          pm2 logs pms-backend --lines 50 --nostream 2>$null
+          exit 1
+        shell: pwsh
+
+      # ── 5. Deployment summary ─────────────────────────────────────────────────
+      - name: Deployment summary
+        run: |
+          Write-Host "✅ Deployment complete"
+          pm2 jlist | ConvertFrom-Json -AsHashTable |
+            Where-Object { $_['name'] -like 'pms-*' } |
+            ForEach-Object {
+              $mem = [math]::Round($_['monit']['memory'] / 1MB, 1)
+              Write-Host "$($_['name'])  |  status: $($_['pm2_env']['status'])  |  pid: $($_['pid'])  |  restarts: $($_['pm2_env']['restart_time'])  |  mem: ${mem}mb"
+            }
+        shell: pwsh

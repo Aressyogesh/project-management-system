@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><title>Test Summary — F-014 My Task Widget</title>
+<style>
+  body{font-family:Arial,sans-serif;margin:32px;color:#1a1a1a}
+  h1{color:#1d4ed8}h2{color:#374151;border-bottom:1px solid #e5e7eb;padding-bottom:6px}
+  table{border-collapse:collapse;width:100%;margin-bottom:24px}
+  th,td{border:1px solid #d1d5db;padding:8px 12px;text-align:left}
+  th{background:#f3f4f6;font-weight:600}
+  .pass{color:#16a34a;font-weight:600}
+  .badge-pass{background:#dcfce7;color:#15803d;padding:2px 8px;border-radius:4px;font-size:13px}
+  .summary-box{background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:16px;margin-bottom:24px}
+</style>
+</head>
+<body>
+<h1>Test Summary Report — F-014: My Task Widget — Live DB Data</h1>
+<p><strong>Date:</strong> 2026-05-26 &nbsp;|&nbsp; <strong>Environment:</strong> Node.js / NestJS / Jest &nbsp;|&nbsp; <strong>Branch:</strong> feature/F-014-my-task-widget</p>
+
+<div class="summary-box">
+  <strong>Overall Result: <span class="pass">ALL PASS</span></strong><br>
+  Unit Tests (Backend): 10 / 10 PASSED (DashboardService) &nbsp;|&nbsp; Unit Tests (Frontend): N/A &nbsp;|&nbsp; E2E Tests: Spec only (manual) &nbsp;|&nbsp; Pass Rate: 100%
+</div>
+
+<h2>Unit Test Results — Backend (DashboardService)</h2>
+<table>
+  <tr><th>Test ID</th><th>Title</th><th>AC</th><th>Result</th></tr>
+  <tr><td>UTC-F014-B-001</td><td>GetStats_AuthenticatedUser_ReturnsLiveStatCards</td><td>AC-1</td><td><span class="badge-pass">PASS</span></td></tr>
+  <tr><td>UTC-F014-B-002</td><td>GetStats_ReturnsMyTasksFromDB</td><td>AC-2</td><td><span class="badge-pass">PASS</span></td></tr>
+  <tr><td>UTC-F014-B-003</td><td>GetStats_ReturnsTasksProgressCounts</td><td>AC-3</td><td><span class="badge-pass">PASS</span></td></tr>
+  <tr><td>UTC-F014-B-004</td><td>GetStats_ActiveProjectsCountIsCorrect</td><td>AC-4</td><td><span class="badge-pass">PASS</span></td></tr>
+  <tr><td>UTC-F014-B-005</td><td>GetStats_TotalTasksCountIsCorrect</td><td>AC-4</td><td><span class="badge-pass">PASS</span></td></tr>
+  <tr><td>UTC-F014-B-006</td><td>GetStats_CompletedTasksCountIsCorrect</td><td>AC-4</td><td><span class="badge-pass">PASS</span></td></tr>
+  <tr><td>UTC-F014-B-007</td><td>GetStats_QueriesRunInParallel_PromiseAll</td><td>AC-5</td><td><span class="badge-pass">PASS</span></td></tr>
+  <tr><td>UTC-F014-B-008</td><td>GetStats_NoTasksAssigned_ReturnsEmptyMyTasks</td><td>AC-2</td><td><span class="badge-pass">PASS</span></td></tr>
+  <tr><td>UTC-F014-B-009</td><td>GetStats_UserHasNoProjects_ReturnsZeroActiveProjects</td><td>AC-4</td><td><span class="badge-pass">PASS</span></td></tr>
+  <tr><td>UTC-F014-B-010</td><td>GetStats_TasksProgressAllStatuses_ReturnsCounts</td><td>AC-3</td><td><span class="badge-pass">PASS</span></td></tr>
+</table>
+
+<h2>Acceptance Criteria Coverage</h2>
+<table>
+  <tr><th>AC</th><th>Description</th><th>Covered By</th><th>Status</th></tr>
+  <tr><td>AC-1</td><td>Dashboard loads live data from DB on every request</td><td>UTC-F014-B-001</td><td><span class="badge-pass">PASS</span></td></tr>
+  <tr><td>AC-2</td><td>myTasks returns tasks assigned to current user</td><td>UTC-F014-B-002, B-008</td><td><span class="badge-pass">PASS</span></td></tr>
+  <tr><td>AC-3</td><td>tasksProgress returns per-status task counts</td><td>UTC-F014-B-003, B-010</td><td><span class="badge-pass">PASS</span></td></tr>
+  <tr><td>AC-4</td><td>Stat cards show live activeProjects, totalTasks, completedTasks</td><td>UTC-F014-B-004, B-005, B-006, B-009</td><td><span class="badge-pass">PASS</span></td></tr>
+  <tr><td>AC-5</td><td>All queries run in parallel via Promise.all</td><td>UTC-F014-B-007</td><td><span class="badge-pass">PASS</span></td></tr>
+</table>
+</body>
+</html>

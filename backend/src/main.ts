@@ -1,10 +1,22 @@
 import { ValidationPipe } from '@nestjs/common';
 import { NestFactory, Reflector } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import * as express from 'express';
+import { mkdirSync } from 'fs';
+import helmet from 'helmet';
+import { join } from 'path';
 import { AppModule } from './app.module';
 
 async function bootstrap(): Promise<void> {
+  const uploadsBase = process.env.UPLOAD_DEST ?? join(process.cwd(), 'uploads');
+  mkdirSync(join(uploadsBase, 'avatars'), { recursive: true });
+  mkdirSync(join(uploadsBase, 'images'), { recursive: true });
+
   const app = await NestFactory.create(AppModule);
+
+  app.use(helmet({ contentSecurityPolicy: false, crossOriginResourcePolicy: { policy: 'cross-origin' } }));
+  app.use(express.json({ limit: '20mb' }));
+  app.use(express.urlencoded({ limit: '20mb', extended: true }));
 
   app.setGlobalPrefix('api/v1');
 

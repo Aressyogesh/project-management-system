@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Security Review Report — F-041 New User Welcome Email &amp; Monthly KPI Digest</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; margin: 0; padding: 0; background: #f3f4f6; color: #111827; }
+  .header { background: #7c3aed; color: #fff; padding: 28px 40px; }
+  .header h1 { margin: 0; font-size: 22px; }
+  .header p { margin: 6px 0 0; opacity: .8; font-size: 14px; }
+  .container { max-width: 900px; margin: 32px auto; padding: 0 24px 48px; }
+  .card { background: #fff; border-radius: 12px; border: 1px solid #e5e7eb; margin-bottom: 24px; overflow: hidden; }
+  .card-header { background: #f9fafb; padding: 14px 24px; border-bottom: 1px solid #e5e7eb; font-weight: 700; font-size: 15px; }
+  .card-body { padding: 20px 24px; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th { background: #f9fafb; padding: 10px 14px; text-align: left; font-weight: 600; border-bottom: 2px solid #e5e7eb; }
+  td { padding: 10px 14px; border-bottom: 1px solid #f3f4f6; vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  .pass { color: #16a34a; font-weight: 700; }
+  .na { color: #6b7280; font-weight: 600; }
+  .verdict { font-size: 18px; font-weight: 700; color: #16a34a; }
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>Security Review Report — F-041 New User Welcome Email &amp; Monthly KPI Digest</h1>
+  <p>OWASP Top 10 &nbsp;|&nbsp; Reviewer: Claude Code &nbsp;|&nbsp; Date: 2026-06-09</p>
+</div>
+<div class="container">
+  <div class="card">
+    <div class="card-header">OWASP Top 10 + Additional Checks</div>
+    <div class="card-body">
+      <table>
+        <thead><tr><th>ID</th><th>Check</th><th>Status</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td>SEC-1</td><td>Broken Access Control</td><td class="na">N/A</td><td>Welcome email is event-driven (post-createUser); cron jobs server-side. No new HTTP endpoints.</td></tr>
+          <tr><td>SEC-2</td><td>Cryptographic Failures</td><td class="pass">PASS</td><td>No passwords sent in welcome email — only login URL and role. SMTP uses TLS (F-038). No credentials stored.</td></tr>
+          <tr><td>SEC-3</td><td>Injection</td><td class="pass">PASS</td><td>All DB queries use Prisma parameterised API. Email content sourced from internal DB only (user fullName, systemRole, KPI metricId, leave totalDays).</td></tr>
+          <tr><td>SEC-4</td><td>Insecure Design</td><td class="pass">PASS</td><td>KPI digest sent only to the employee (not broadcast). Leave report sent only to SUPER_USER/ADMIN. No over-sharing of data.</td></tr>
+          <tr><td>SEC-5</td><td>Security Misconfiguration</td><td class="pass">PASS</td><td>APP_FRONTEND_URL from ConfigService/env vars — not hardcoded. Login URL is safe to include in email.</td></tr>
+          <tr><td>SEC-6</td><td>Vulnerable Components</td><td class="pass">PASS</td><td>No new dependencies. ConfigService is NestJS built-in.</td></tr>
+          <tr><td>SEC-7</td><td>Auth Failures</td><td class="na">N/A</td><td>Welcome email triggered by authenticated admin action (POST /users). Cron jobs server-side.</td></tr>
+          <tr><td>SEC-8</td><td>Data Integrity</td><td class="pass">PASS</td><td>No external data deserialized. No new packages.</td></tr>
+          <tr><td>SEC-9</td><td>Logging &amp; Monitoring</td><td class="pass">PASS</td><td>SMTP failures logged with recipient email and error message. Logger added to UsersService.</td></tr>
+          <tr><td>SEC-10</td><td>SSRF</td><td class="na">N/A</td><td>No outbound HTTP. Login URL is a static env-var string, not fetched.</td></tr>
+          <tr><td>SEC-11</td><td>Email Injection</td><td class="pass">PASS</td><td>Welcome subject uses user.fullName (internal DB field, not user-supplied to this endpoint without authentication). KPI/leave subjects are static strings with month labels. No CRLF injection risk.</td></tr>
+          <tr><td>—</td><td>No password in welcome email</td><td class="pass">PASS</td><td>Spec deliberately excludes password from email — only login URL sent.</td></tr>
+          <tr><td>—</td><td>Leave report access control</td><td class="pass">PASS</td><td>Report restricted to SUPER_USER and ADMIN roles only via DB filter.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-header">Summary</div>
+    <div class="card-body">
+      <table>
+        <thead><tr><th>Category</th><th>Checks</th><th>Pass</th><th>N/A</th><th>Fail</th></tr></thead>
+        <tbody>
+          <tr><td>OWASP + Additional</td><td>13</td><td>9</td><td>4</td><td>0</td></tr>
+        </tbody>
+      </table>
+      <p style="margin-top:16px;font-size:16px;" class="verdict">Verdict: APPROVED — No vulnerabilities. Sensitive data (no passwords) excluded from emails; access scoped to appropriate roles.</p>
+    </div>
+  </div>
+</div>
+</body>
+</html>
