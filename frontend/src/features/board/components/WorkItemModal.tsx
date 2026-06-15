@@ -1972,8 +1972,15 @@ export function CreateWorkItemModal({
     },
   });
 
+  const [assigneeError, setAssigneeError] = useState(false);
+
   function handleSubmit() {
     if (!title.trim()) return;
+    if (type === 'BUG' && !assigneeId) {
+      setAssigneeError(true);
+      return;
+    }
+    setAssigneeError(false);
     createMut.mutate({
       type,
       title: title.trim(),
@@ -2035,7 +2042,7 @@ export function CreateWorkItemModal({
                   return (
                     <button
                       key={t}
-                      onClick={() => { setType(t); setShowTypeMenu(false); }}
+                      onClick={() => { setType(t); setShowTypeMenu(false); setAssigneeError(false); }}
                       className={`flex items-center gap-2.5 w-full px-3 py-2.5 text-sm hover:bg-gray-50 transition ${type === t ? 'font-semibold text-gray-900' : 'text-gray-700'}`}
                     >
                       <span className={`inline-flex items-center justify-center w-5 h-5 rounded ${tcfg.bg} ${tcfg.text}`}>
@@ -2251,11 +2258,19 @@ export function CreateWorkItemModal({
             </div>
             {members.length > 0 && (
               <div>
-                <label className={labelCls}>Assignee</label>
-                <select value={assigneeId} onChange={(e) => setAssigneeId(e.target.value)} className={inputCls}>
+                <label className={labelCls}>
+                  Assignee
+                  {type === 'BUG' && <span className="text-red-500 ml-0.5">*</span>}
+                </label>
+                <select
+                  value={assigneeId}
+                  onChange={(e) => { setAssigneeId(e.target.value); if (e.target.value) setAssigneeError(false); }}
+                  className={`${inputCls} ${assigneeError ? 'border-red-500 focus:ring-red-500' : ''}`}
+                >
                   <option value="">Unassigned</option>
                   {members.map((m) => <option key={m.id} value={m.id}>{m.fullName}</option>)}
                 </select>
+                {assigneeError && <p className="text-xs text-red-500 mt-1">Assignee is required for bugs</p>}
               </div>
             )}
             <div>
