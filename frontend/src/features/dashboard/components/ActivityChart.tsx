@@ -80,8 +80,8 @@ export function ActivityChart({ data, projectId }: ActivityChartProps) {
               iconSize={8}
               wrapperStyle={{ fontSize: '12px', color: '#64748b', paddingTop: '12px' }}
             />
-            <Bar dataKey="high" name="Created"   fill="#f97316" radius={[4, 4, 0, 0]} />
-            <Bar dataKey="low"  name="Completed" fill="#fed7aa" radius={[4, 4, 0, 0]} />
+            <Bar dataKey="high" name="Created"   fill="#f97316" radius={[4, 4, 0, 0]} minPointSize={3} />
+            <Bar dataKey="low"  name="Completed" fill="#fed7aa" radius={[4, 4, 0, 0]} minPointSize={3} />
           </BarChart>
         </ResponsiveContainer>
       )}
