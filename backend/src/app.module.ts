@@ -35,6 +35,7 @@ import { BoardColumnConfigsModule } from './board-column-configs/board-column-co
 import { TestCasesModule } from './test-cases/test-cases.module';
 import { HealthModule } from './health/health.module';
 import { AuditLogsModule } from './audit-logs/audit-logs.module';
+import { AutomationModule } from './automation-services/automation.module';
 
 @Module({
   imports: [
@@ -70,6 +71,7 @@ import { AuditLogsModule } from './audit-logs/audit-logs.module';
     BoardColumnConfigsModule,
     TestCasesModule,
     AuditLogsModule,
+    AutomationModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: GlobalExceptionFilter },

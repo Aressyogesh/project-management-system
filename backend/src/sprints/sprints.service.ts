@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { AuditAction, AuditEntity } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditLogsService } from '../audit-logs/audit-logs.service';
+import { AutomationService } from '../automation-services/automation.service';
 import { CreateSprintDto, UpdateSprintDto } from './dto/sprint.dto';
 
 @Injectable()
@@ -9,6 +10,7 @@ export class SprintsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly auditLogs: AuditLogsService,
+    private readonly automation: AutomationService,
   ) {}
 
   async findByProject(projectId: string) {
@@ -96,6 +98,9 @@ export class SprintsService {
       entityTitle: sprint.name,
       projectId,
     });
+
+    // Scenario 2: email all sprint members via Activepieces when sprint is activated
+    this.automation.notifySprintStarted(id, projectId, userId);
 
     return result;
   }
