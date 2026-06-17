@@ -11,6 +11,7 @@ import { join } from 'path';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { AuditLogsService } from '../audit-logs/audit-logs.service';
+import { AutomationService } from '../automation-services/automation.service';
 import { CreateWorkItemDto, MoveWorkItemDto, UpdateWorkItemDto } from './dto/work-item.dto';
 import { generateWorkItemPrefix } from './work-items.utils';
 
@@ -72,6 +73,7 @@ export class WorkItemsService implements OnModuleInit {
     private readonly prisma: PrismaService,
     private readonly notifications: NotificationsService,
     private readonly auditLogs: AuditLogsService,
+    private readonly automation: AutomationService,
   ) {}
 
   async onModuleInit() {
@@ -194,6 +196,46 @@ export class WorkItemsService implements OnModuleInit {
       });
     }
 
+    // Scenario 1: fire Teams card via Activepieces when a bug is created
+    if (item.type === WorkItemType.BUG) {
+      this.automation.notifyBugCreated({
+        id: item.id,
+        displayId: item.displayId ?? '',
+        title: item.title,
+        type: item.type,
+        severity: item.severity,
+        priority: item.priority,
+        status: item.status,
+        projectId: item.projectId,
+        description: item.description,
+        storyPoints: item.storyPoints,
+        estimatedHours: item.estimatedHours,
+        labels: item.labels as string[],
+        components: item.components as string[],
+        fixVersion: item.fixVersion,
+        bugClassification: item.bugClassification,
+        environment: item.environment,
+        stepsToRepro: item.stepsToRepro,
+        bugReproducibility: item.bugReproducibility,
+        bugStatus: item.bugStatus,
+        bugFlag: item.bugFlag,
+        module: item.module,
+        billingStatus: item.billingStatus,
+        affectedBuildVersion: item.affectedBuildVersion,
+        fixedBuildVersion: item.fixedBuildVersion,
+        startDate: item.startDate,
+        dueDate: item.dueDate,
+        assignee: item.assignee,
+        reporter: item.reporter,
+        responsibleUser: item.responsibleUser,
+        sprint: item.sprint,
+        parent: item.parent,
+        releaseMilestone: item.releaseMilestone,
+        affectedMilestone: item.affectedMilestone,
+        createdAt: item.createdAt,
+      });
+    }
+
     return item;
   }
 
@@ -248,6 +290,20 @@ export class WorkItemsService implements OnModuleInit {
     if (dto.status && dto.status !== item.status) {
       await logWithParent('status_changed', 'status', item.status, dto.status);
       await this.checkAndPromoteParent(item.parentId, userId);
+      // Scenario 6: route notification via Node-RED when status changes
+      this.automation.notifyWorkItemStatusChanged(
+        {
+          id: updated.id,
+          displayId: updated.displayId ?? '',
+          title: updated.title,
+          type: updated.type,
+          status: updated.status,
+          projectId: item.projectId,
+          assignee: updated.assignee,
+        },
+        item.status,
+        userId,
+      );
     }
     if (dto.assigneeId !== undefined && dto.assigneeId !== item.assigneeId) {
       const [oldUser, newUser] = await Promise.all([
