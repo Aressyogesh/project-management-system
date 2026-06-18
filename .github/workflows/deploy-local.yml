@@ -99,7 +99,16 @@ jobs:
             "SMTP_FROM_NAME=$env:SMTP_FROM_NAME",
             "SMTP_FROM_EMAIL=$env:SMTP_FROM_EMAIL",
             "APP_FRONTEND_URL=$env:FRONTEND_URL",
-            "FRONTEND_URL=$env:FRONTEND_URL"
+            "FRONTEND_URL=$env:FRONTEND_URL",
+            "AUTOMATION_AP_BASE=$env:AUTOMATION_AP_BASE",
+            "AP_BUG_WEBHOOK_ID=$env:AP_BUG_WEBHOOK_ID",
+            "AP_SPRINT_WEBHOOK_ID=$env:AP_SPRINT_WEBHOOK_ID",
+            "AUTOMATION_NODERED_WEBHOOK=$env:AUTOMATION_NODERED_WEBHOOK",
+            "AP_TASK_ASSIGNED_WEBHOOK_ID=$env:AP_TASK_ASSIGNED_WEBHOOK_ID",
+            "AP_CRITICAL_BUG_WEBHOOK_ID=$env:AP_CRITICAL_BUG_WEBHOOK_ID",
+            "AP_BUG_REOPENED_WEBHOOK_ID=$env:AP_BUG_REOPENED_WEBHOOK_ID",
+            "AP_ITEM_BLOCKED_WEBHOOK_ID=$env:AP_ITEM_BLOCKED_WEBHOOK_ID",
+            "GITHUB_WEBHOOK_SECRET=$env:GITHUB_WEBHOOK_SECRET"
           ) | Out-File -FilePath ".env" -Encoding UTF8
         shell: pwsh
         env:
@@ -115,6 +124,15 @@ jobs:
           SMTP_FROM_NAME: ${{ secrets.SMTP_FROM_NAME }}
           SMTP_FROM_EMAIL: ${{ secrets.SMTP_FROM_EMAIL }}
           FRONTEND_URL: ${{ secrets.FRONTEND_URL }}
+          AUTOMATION_AP_BASE: ${{ secrets.AUTOMATION_AP_BASE }}
+          AP_BUG_WEBHOOK_ID: ${{ secrets.AP_BUG_WEBHOOK_ID }}
+          AP_SPRINT_WEBHOOK_ID: ${{ secrets.AP_SPRINT_WEBHOOK_ID }}
+          AUTOMATION_NODERED_WEBHOOK: ${{ secrets.AUTOMATION_NODERED_WEBHOOK }}
+          AP_TASK_ASSIGNED_WEBHOOK_ID: ${{ secrets.AP_TASK_ASSIGNED_WEBHOOK_ID }}
+          AP_CRITICAL_BUG_WEBHOOK_ID: ${{ secrets.AP_CRITICAL_BUG_WEBHOOK_ID }}
+          AP_BUG_REOPENED_WEBHOOK_ID: ${{ secrets.AP_BUG_REOPENED_WEBHOOK_ID }}
+          AP_ITEM_BLOCKED_WEBHOOK_ID: ${{ secrets.AP_ITEM_BLOCKED_WEBHOOK_ID }}
+          GITHUB_WEBHOOK_SECRET: ${{ secrets.GITHUB_WEBHOOK_SECRET }}
 
       - name: Install backend dependencies
         working-directory: backend
