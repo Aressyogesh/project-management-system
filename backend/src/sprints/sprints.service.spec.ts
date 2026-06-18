@@ -2,6 +2,7 @@ import { NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditLogsService } from '../audit-logs/audit-logs.service';
+import { AutomationService } from '../automation-services/automation.service';
 import { SprintsService } from './sprints.service';
 
 const mockPrisma = {
@@ -17,6 +18,7 @@ const mockPrisma = {
 };
 
 const mockAuditLogs = { log: jest.fn() };
+const mockAutomation = { notifySprintStarted: jest.fn() };
 
 const baseSprint = {
   id: 's-1',
@@ -41,6 +43,7 @@ describe('SprintsService', () => {
         SprintsService,
         { provide: PrismaService, useValue: mockPrisma },
         { provide: AuditLogsService, useValue: mockAuditLogs },
+        { provide: AutomationService, useValue: mockAutomation },
       ],
     }).compile();
 
