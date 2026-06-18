@@ -33,7 +33,7 @@ describe('KpiRecordsService', () => {
     };
     prisma.kpiRecord.upsert.mockResolvedValue({ ...dto, id: 'rec-1', enteredById: 'admin-1' });
 
-    await service.upsert(dto, 'admin-1');
+    await service.upsert(dto, 'admin-1', 'ADMIN' as any);
 
     expect(prisma.kpiRecord.upsert).toHaveBeenCalledWith(
       expect.objectContaining({

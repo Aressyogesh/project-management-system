@@ -195,6 +195,27 @@ export function WorkItemCard({ item, index, members = [], onClick, onAssigneeCha
                 {commentCount > 0 && (
                   <span className="text-[10px] text-gray-400">💬 {commentCount}</span>
                 )}
+                {item.prUrl && (
+                  <a
+                    href={item.prUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(e) => e.stopPropagation()}
+                    title={`PR #${item.prNumber}${item.prTitle ? ` — ${item.prTitle}` : ''}`}
+                    className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full flex items-center gap-0.5 ${
+                      item.prState === 'merged'
+                        ? 'bg-purple-100 text-purple-700'
+                        : item.prState === 'closed'
+                        ? 'bg-gray-100 text-gray-500'
+                        : 'bg-green-100 text-green-700'
+                    }`}
+                  >
+                    <svg className="w-2.5 h-2.5 shrink-0" fill="currentColor" viewBox="0 0 16 16">
+                      <path d="M7.177 3.073L9.573.677A.25.25 0 0110 .854v4.792a.25.25 0 01-.427.177L7.177 3.427a.25.25 0 010-.354zM3.75 2.5a.75.75 0 100 1.5.75.75 0 000-1.5zm-2.25.75a2.25 2.25 0 113 2.122v5.256a2.251 2.251 0 11-1.5 0V5.372A2.25 2.25 0 011.5 3.25zM11 2.5h-1V4h1a1 1 0 011 1v5.628a2.251 2.251 0 101.5 0V5A2.5 2.5 0 0011 2.5zm1 10.25a.75.75 0 111.5 0 .75.75 0 01-1.5 0zM3.75 12a.75.75 0 100 1.5.75.75 0 000-1.5z"/>
+                    </svg>
+                    PR #{item.prNumber}
+                  </a>
+                )}
               </div>
 
               {/* Assignee trigger */}

@@ -135,8 +135,26 @@ export class AnalyticsService {
       select: { id: true },
     })).map((p) => p.id);
 
+    let userWhere: object = isAdmin ? { isActive: true } : { id: currentUserId, isActive: true };
+
+    if (!isAdmin) {
+      const pmMemberships = await this.prisma.projectMember.findMany({
+        where: { userId: currentUserId, projectRole: 'PROJECT_MANAGER' },
+        select: { projectId: true },
+      });
+      if (pmMemberships.length > 0) {
+        const projectIds = pmMemberships.map((m) => m.projectId);
+        const teamMembers = await this.prisma.projectMember.findMany({
+          where: { projectId: { in: projectIds } },
+          select: { userId: true },
+        });
+        const memberIds = [...new Set([currentUserId, ...teamMembers.map((m) => m.userId)])];
+        userWhere = { id: { in: memberIds }, isActive: true };
+      }
+    }
+
     const users = await this.prisma.user.findMany({
-      where: isAdmin ? { isActive: true } : { id: currentUserId, isActive: true },
+      where: userWhere,
       select: {
         id: true,
         fullName: true,

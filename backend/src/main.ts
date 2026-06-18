@@ -15,8 +15,12 @@ async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule);
 
   app.use(helmet({ contentSecurityPolicy: false, crossOriginResourcePolicy: { policy: 'cross-origin' } }));
-  app.use(express.json({ limit: '20mb' }));
+  app.use(express.json({
+    limit: '20mb',
+    verify: (req: unknown, _res: unknown, buf: Buffer) => { (req as Record<string, unknown>)['rawBody'] = buf; },
+  }));
   app.use(express.urlencoded({ limit: '20mb', extended: true }));
+  app.use('/uploads', express.static(uploadsBase));
 
   app.setGlobalPrefix('api/v1');
 

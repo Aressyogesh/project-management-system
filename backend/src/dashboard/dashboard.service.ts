@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { ForbiddenException, Injectable } from '@nestjs/common';
 import { BoardStatus, LeaveStatus, MilestoneStatus, ProjectRole, ProjectStatus, SystemRole, TaskStatus, WorkItemType } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -288,6 +288,7 @@ export class DashboardService {
   }
 
   async getProjectsProgress(userId: string, role: SystemRole): Promise<ProjectProgress[]> {
+    const isAdmin = role === SystemRole.ADMIN || role === SystemRole.SUPER_USER;
     const memberProjectIds = await this.prisma.projectMember
       .findMany({
         where: {
@@ -299,7 +300,9 @@ export class DashboardService {
       })
       .then((rows) => rows.map((r) => r.projectId));
 
-    const where = memberProjectIds.length > 0
+    if (!isAdmin && memberProjectIds.length === 0) return [];
+
+    const where = (!isAdmin && memberProjectIds.length > 0)
       ? { id: { in: memberProjectIds }, status: ProjectStatus.ACTIVE }
       : { status: ProjectStatus.ACTIVE };
 
@@ -358,7 +361,18 @@ export class DashboardService {
     return Math.round(avg * 10) / 10;
   }
 
-  async getTeamActivity(projectId: string, month: string): Promise<MemberActivity[]> {
+  async getTeamActivity(projectId: string, month: string, requestingUserId?: string, role?: SystemRole): Promise<MemberActivity[]> {
+    const isAdmin = !role || role === SystemRole.ADMIN || role === SystemRole.SUPER_USER;
+    if (!isAdmin && requestingUserId) {
+      const isMember = await this.prisma.projectMember.findFirst({
+        where: {
+          projectId,
+          userId: requestingUserId,
+          projectRole: { in: [ProjectRole.PROJECT_MANAGER, ProjectRole.TEAM_LEAD] },
+        },
+      });
+      if (!isMember) throw new ForbiddenException('Access denied');
+    }
     const [year, monthNum] = month.split('-').map(Number);
     const startDate = new Date(year, monthNum - 1, 1);
     const endDate   = new Date(year, monthNum, 1);

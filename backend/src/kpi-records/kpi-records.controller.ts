@@ -8,12 +8,12 @@ export class KpiRecordsController {
   constructor(private readonly kpiRecordsService: KpiRecordsService) {}
 
   @Post()
-  @Roles(SystemRole.ADMIN, SystemRole.SUPER_USER)
+  @Roles(SystemRole.ADMIN, SystemRole.SUPER_USER, SystemRole.EMPLOYEE)
   upsert(
     @Body() dto: UpsertKpiRecordDto,
-    @Request() req: { user: { id: string } },
+    @Request() req: { user: { id: string; systemRole: SystemRole } },
   ) {
-    return this.kpiRecordsService.upsert(dto, req.user.id);
+    return this.kpiRecordsService.upsert(dto, req.user.id, req.user.systemRole);
   }
 
   @Get()

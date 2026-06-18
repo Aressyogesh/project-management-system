@@ -5,7 +5,7 @@ import {
   NotFoundException,
   OnModuleInit,
 } from '@nestjs/common';
-import { AuditAction, AuditEntity, BoardStatus, ProjectRole, SystemRole, TaskPriority, WorkItemType } from '@prisma/client';
+import { AuditAction, AuditEntity, BoardStatus, BugSeverity, ProjectRole, SystemRole, TaskPriority, WorkItemType } from '@prisma/client';
 import { mkdir, unlink } from 'fs/promises';
 import { join } from 'path';
 import { PrismaService } from '../prisma/prisma.service';
@@ -196,6 +196,16 @@ export class WorkItemsService implements OnModuleInit {
       });
     }
 
+    // Scenario 7: notify assignee on Slack when item is assigned on creation
+    if (dto.assigneeId && dto.assigneeId !== reporterId && item.assignee) {
+      const reporter = await this.prisma.user.findUnique({ where: { id: reporterId }, select: { fullName: true } });
+      this.automation.notifyTaskAssigned(
+        { id: item.id, displayId: item.displayId ?? '', title: item.title, type: item.type, priority: item.priority, dueDate: item.dueDate, projectId: item.projectId },
+        item.assignee,
+        { fullName: reporter?.fullName ?? 'Someone' },
+      );
+    }
+
     // Scenario 1: fire Teams card via Activepieces when a bug is created
     if (item.type === WorkItemType.BUG) {
       this.automation.notifyBugCreated({
@@ -232,6 +242,24 @@ export class WorkItemsService implements OnModuleInit {
         parent: item.parent,
         releaseMilestone: item.releaseMilestone,
         affectedMilestone: item.affectedMilestone,
+        createdAt: item.createdAt,
+      });
+    }
+
+    // Scenario 8: urgent alert when a CRITICAL severity bug is created
+    if (item.type === WorkItemType.BUG && item.severity === BugSeverity.CRITICAL) {
+      this.automation.notifyCriticalBug({
+        id: item.id,
+        displayId: item.displayId ?? '',
+        title: item.title,
+        severity: item.severity,
+        priority: item.priority,
+        projectId: item.projectId,
+        description: item.description,
+        environment: item.environment,
+        stepsToRepro: item.stepsToRepro,
+        assignee: item.assignee,
+        reporter: item.reporter,
         createdAt: item.createdAt,
       });
     }
@@ -290,6 +318,23 @@ export class WorkItemsService implements OnModuleInit {
     if (dto.status && dto.status !== item.status) {
       await logWithParent('status_changed', 'status', item.status, dto.status);
       await this.checkAndPromoteParent(item.parentId, userId);
+
+      // Scenario 10: alert when any item is blocked
+      if (dto.status === BoardStatus.BLOCKED) {
+        this.automation.notifyItemBlocked(
+          { id: updated.id, displayId: updated.displayId ?? '', title: updated.title, type: updated.type, projectId: item.projectId, assignee: updated.assignee },
+          { fullName: actorName },
+        );
+      }
+
+      // Scenario 9: alert reporter when bug is moved back from QA_DONE (reopened)
+      if (item.type === WorkItemType.BUG && item.status === BoardStatus.QA_DONE && dto.status !== BoardStatus.QA_DONE) {
+        this.automation.notifyBugReopened(
+          { id: updated.id, displayId: updated.displayId ?? '', title: updated.title, projectId: item.projectId, reopenCount: item.reopenCount + 1, assignee: updated.assignee, reporter: null },
+          { fullName: actorName },
+        );
+      }
+
       // Scenario 6: route notification via Node-RED when status changes
       this.automation.notifyWorkItemStatusChanged(
         {
@@ -319,6 +364,14 @@ export class WorkItemsService implements OnModuleInit {
           body: `${actorName} assigned "${item.title}" to you`,
           workItemId: id,
         });
+        // Scenario 7: Slack alert to new assignee
+        if (updated.assignee) {
+          this.automation.notifyTaskAssigned(
+            { id: updated.id, displayId: updated.displayId ?? '', title: updated.title, type: updated.type, priority: updated.priority, dueDate: item.dueDate, projectId: item.projectId },
+            updated.assignee,
+            { fullName: actorName },
+          );
+        }
       }
     }
     if (dto.priority && dto.priority !== item.priority) {
@@ -484,6 +537,32 @@ export class WorkItemsService implements OnModuleInit {
         projectId: item.projectId,
         metadata: { from: item.status, to: dto.status },
       });
+
+      const [actor, assignee] = await Promise.all([
+        this.prisma.user.findUnique({ where: { id: userId }, select: { fullName: true } }),
+        item.assigneeId ? this.prisma.user.findUnique({ where: { id: item.assigneeId }, select: { id: true, fullName: true, profilePhoto: true } }) : null,
+      ]);
+      const actorName = actor?.fullName ?? 'Someone';
+
+      if (dto.status === BoardStatus.BLOCKED) {
+        this.automation.notifyItemBlocked(
+          { id: item.id, displayId: item.displayId ?? '', title: item.title, type: item.type, projectId: item.projectId, assignee },
+          { fullName: actorName },
+        );
+      }
+
+      if (item.type === WorkItemType.BUG && item.status === BoardStatus.QA_DONE && dto.status !== BoardStatus.QA_DONE) {
+        this.automation.notifyBugReopened(
+          { id: item.id, displayId: item.displayId ?? '', title: item.title, projectId: item.projectId, reopenCount: item.reopenCount + 1, assignee, reporter: null },
+          { fullName: actorName },
+        );
+      }
+
+      this.automation.notifyWorkItemStatusChanged(
+        { id: item.id, displayId: item.displayId ?? '', title: item.title, type: item.type, status: dto.status, projectId: item.projectId, assignee },
+        item.status,
+        userId,
+      );
     }
 
     return result;

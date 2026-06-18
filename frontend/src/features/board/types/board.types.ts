@@ -134,6 +134,11 @@ export interface WorkItem {
   reminderType?: BugReminderType | null;
   releaseMilestoneId?: string | null;
   affectedMilestoneId?: string | null;
+  // GitHub PR link
+  prUrl?: string | null;
+  prNumber?: number | null;
+  prState?: string | null;
+  prTitle?: string | null;
   // relations
   assignee?: WorkItemUser | null;
   reporter: WorkItemUser;

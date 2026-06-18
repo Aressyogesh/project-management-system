@@ -96,6 +96,110 @@ export class AutomationService {
       .catch((err) => this.logger.warn(`notifySprintStarted lookup failed: ${err.message}`));
   }
 
+  // Scenario 7 — Activepieces: work item assigned to a user
+  notifyTaskAssigned(item: {
+    id: string;
+    displayId: string;
+    title: string;
+    type: string;
+    priority: string;
+    dueDate?: Date | null;
+    projectId: string;
+  }, assignee: { id: string; fullName: string }, assignedBy: { fullName: string }): void {
+    const webhookId = this.config.get<string>('AP_TASK_ASSIGNED_WEBHOOK_ID');
+    if (!webhookId) return;
+    const base = this.config.get<string>('AUTOMATION_AP_BASE', 'http://localhost:19102');
+    this.post(`${base}/api/v1/webhooks/${webhookId}`, {
+      event: 'TASK_ASSIGNED',
+      payload: {
+        id: item.id,
+        displayId: item.displayId,
+        title: item.title,
+        type: item.type,
+        priority: item.priority,
+        dueDate: item.dueDate,
+        projectId: item.projectId,
+        assignee,
+        assignedBy: assignedBy.fullName,
+      },
+    });
+  }
+
+  // Scenario 8 — Activepieces: critical severity bug created
+  notifyCriticalBug(item: {
+    id: string;
+    displayId: string;
+    title: string;
+    severity: string;
+    priority: string;
+    projectId: string;
+    description?: string | null;
+    environment?: string | null;
+    stepsToRepro?: string | null;
+    assignee?: { id: string; fullName: string } | null;
+    reporter?: { id: string; fullName: string } | null;
+    createdAt: Date;
+  }): void {
+    const webhookId = this.config.get<string>('AP_CRITICAL_BUG_WEBHOOK_ID');
+    if (!webhookId) return;
+    const base = this.config.get<string>('AUTOMATION_AP_BASE', 'http://localhost:19102');
+    this.post(`${base}/api/v1/webhooks/${webhookId}`, { event: 'CRITICAL_BUG_CREATED', payload: item });
+  }
+
+  // Scenario 9 — Activepieces: bug reopened (status moved back from QA_DONE)
+  notifyBugReopened(item: {
+    id: string;
+    displayId: string;
+    title: string;
+    projectId: string;
+    reopenCount: number;
+    assignee?: { id: string; fullName: string } | null;
+    reporter?: { id: string; fullName: string } | null;
+  }, reopenedBy: { fullName: string }): void {
+    const webhookId = this.config.get<string>('AP_BUG_REOPENED_WEBHOOK_ID');
+    if (!webhookId) return;
+    const base = this.config.get<string>('AUTOMATION_AP_BASE', 'http://localhost:19102');
+    this.post(`${base}/api/v1/webhooks/${webhookId}`, {
+      event: 'BUG_REOPENED',
+      payload: {
+        id: item.id,
+        displayId: item.displayId,
+        title: item.title,
+        projectId: item.projectId,
+        reopenCount: item.reopenCount,
+        assignee: item.assignee,
+        reporter: item.reporter,
+        reopenedBy: reopenedBy.fullName,
+      },
+    });
+  }
+
+  // Scenario 10 — Activepieces: work item status changed to BLOCKED
+  notifyItemBlocked(item: {
+    id: string;
+    displayId: string;
+    title: string;
+    type: string;
+    projectId: string;
+    assignee?: { id: string; fullName: string } | null;
+  }, blockedBy: { fullName: string }): void {
+    const webhookId = this.config.get<string>('AP_ITEM_BLOCKED_WEBHOOK_ID');
+    if (!webhookId) return;
+    const base = this.config.get<string>('AUTOMATION_AP_BASE', 'http://localhost:19102');
+    this.post(`${base}/api/v1/webhooks/${webhookId}`, {
+      event: 'ITEM_BLOCKED',
+      payload: {
+        id: item.id,
+        displayId: item.displayId,
+        title: item.title,
+        type: item.type,
+        projectId: item.projectId,
+        assignee: item.assignee,
+        blockedBy: blockedBy.fullName,
+      },
+    });
+  }
+
   // Scenario 6 — Node-RED: work item status changed
   notifyWorkItemStatusChanged(
     item: {

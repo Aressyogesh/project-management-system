@@ -5,7 +5,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { LeaveStatus, SystemRole } from '@prisma/client';
+import { LeaveStatus, ProjectRole, SystemRole } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { ApproveLeaveRequestDto, CreateLeaveRequestDto, RejectLeaveRequestDto } from './dto/leave-request.dto';
 
@@ -26,8 +26,12 @@ export class LeaveRequestsService {
       throw new BadRequestException('endDate must be on or after startDate');
     }
 
-    const totalDays =
-      Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+    if (dto.isHalfDay && dto.startDate !== dto.endDate) {
+      throw new BadRequestException('Half-day leave must have the same start and end date');
+    }
+
+    const fullDays = Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+    const totalDays = dto.isHalfDay ? 0.5 : fullDays;
 
     // Check for overlapping pending or approved leaves
     const overlap = await this.prisma.leaveRequest.findFirst({
@@ -64,13 +68,14 @@ export class LeaveRequestsService {
         startDate: start,
         endDate: end,
         totalDays,
+        isHalfDay: dto.isHalfDay ?? false,
         reason: dto.reason ?? null,
       },
       include: LEAVE_INCLUDE,
     });
   }
 
-  findAll(
+  async findAll(
     requestingUserId: string,
     systemRole: SystemRole,
     query: { status?: LeaveStatus; userId?: string },
@@ -83,7 +88,12 @@ export class LeaveRequestsService {
     if (isAdmin) {
       if (query.userId) where['userId'] = query.userId;
     } else {
-      where['userId'] = requestingUserId;
+      const teamMemberIds = await this.getPmTeamMemberIds(requestingUserId);
+      if (teamMemberIds.length > 0) {
+        where['userId'] = { in: [requestingUserId, ...teamMemberIds] };
+      } else {
+        where['userId'] = requestingUserId;
+      }
     }
 
     if (query.status) where['status'] = query.status;
@@ -111,8 +121,8 @@ export class LeaveRequestsService {
     systemRole: SystemRole,
     dto: ApproveLeaveRequestDto,
   ) {
-    this.assertAdmin(systemRole);
     const leave = await this.findOneOrFail(id);
+    await this.assertCanManage(approverId, systemRole, leave.userId);
     if (leave.status !== LeaveStatus.PENDING) {
       throw new BadRequestException('Only PENDING leave requests can be approved');
     }
@@ -134,8 +144,8 @@ export class LeaveRequestsService {
     systemRole: SystemRole,
     dto: RejectLeaveRequestDto,
   ) {
-    this.assertAdmin(systemRole);
     const leave = await this.findOneOrFail(id);
+    await this.assertCanManage(approverId, systemRole, leave.userId);
     if (leave.status === LeaveStatus.CANCELLED) {
       throw new BadRequestException('Cannot reject a cancelled leave request');
     }
@@ -171,13 +181,36 @@ export class LeaveRequestsService {
     });
   }
 
-  private assertAdmin(systemRole: SystemRole) {
-    if (
-      systemRole !== SystemRole.SUPER_USER &&
-      systemRole !== SystemRole.ADMIN
-    ) {
-      throw new ForbiddenException('Only admins can perform this action');
-    }
+  private async assertCanManage(actorId: string, systemRole: SystemRole, targetUserId: string) {
+    const isAdmin = systemRole === SystemRole.SUPER_USER || systemRole === SystemRole.ADMIN;
+    if (isAdmin) return;
+    const isPm = await this.isPmForUser(actorId, targetUserId);
+    if (!isPm) throw new ForbiddenException('Only admins or project managers can perform this action');
+  }
+
+  private async isPmForUser(pmUserId: string, targetUserId: string): Promise<boolean> {
+    const count = await this.prisma.projectMember.count({
+      where: {
+        userId: pmUserId,
+        projectRole: ProjectRole.PROJECT_MANAGER,
+        project: { members: { some: { userId: targetUserId } } },
+      },
+    });
+    return count > 0;
+  }
+
+  private async getPmTeamMemberIds(pmUserId: string): Promise<string[]> {
+    const memberships = await this.prisma.projectMember.findMany({
+      where: { userId: pmUserId, projectRole: ProjectRole.PROJECT_MANAGER },
+      select: { projectId: true },
+    });
+    if (memberships.length === 0) return [];
+    const projectIds = memberships.map((m) => m.projectId);
+    const members = await this.prisma.projectMember.findMany({
+      where: { projectId: { in: projectIds }, userId: { not: pmUserId } },
+      select: { userId: true },
+    });
+    return [...new Set(members.map((m) => m.userId))];
   }
 
   private async findOneOrFail(id: string) {

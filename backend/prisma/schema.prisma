@@ -631,6 +631,11 @@ model WorkItem {
   reminderType         BugReminderType?   @default(NONE)
   releaseMilestoneId   String?
   affectedMilestoneId  String?
+  // GitHub PR link (set automatically via webhook)
+  prUrl                String?            @db.VarChar(500)
+  prNumber             Int?
+  prState              String?            @db.VarChar(20)
+  prTitle              String?            @db.VarChar(200)
   createdAt            DateTime           @default(now())
   updatedAt            DateTime           @updatedAt
 
@@ -786,7 +791,8 @@ model LeaveRequest {
   type         LeaveType
   startDate    DateTime    @db.Date
   endDate      DateTime    @db.Date
-  totalDays    Int
+  totalDays    Float
+  isHalfDay    Boolean     @default(false)
   reason       String?     @db.VarChar(500)
   status       LeaveStatus @default(PENDING)
   approvedById String?

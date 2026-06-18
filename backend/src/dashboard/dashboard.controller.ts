@@ -1,4 +1,4 @@
-import { BadRequestException, Controller, ForbiddenException, Get, Query } from '@nestjs/common';
+import { BadRequestException, Controller, Get, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { SystemRole } from '@prisma/client';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
@@ -36,25 +36,23 @@ export class DashboardController {
   }
 
   @Get('projects-progress')
-  @ApiOperation({ summary: 'Get project-wise team progress (Super User and Admin only)' })
+  @ApiOperation({ summary: 'Get project-wise team progress (Admin+ or Project Manager/Team Lead)' })
   getProjectsProgress(@CurrentUser() user: JwtUser): Promise<ProjectProgress[]> {
-    if (user.role === SystemRole.EMPLOYEE) throw new ForbiddenException('Access denied');
     return this.dashboardService.getProjectsProgress(user.sub, user.role);
   }
 
   @Get('team-activity')
-  @ApiOperation({ summary: 'Get per-member activity for a project and month (Admin+ only)' })
+  @ApiOperation({ summary: 'Get per-member activity for a project and month (Admin+ or PM)' })
   @ApiQuery({ name: 'projectId', required: true })
   @ApiQuery({ name: 'month', required: true, description: 'YYYY-MM' })
-  getTeamActivity(
+  async getTeamActivity(
     @CurrentUser() user: JwtUser,
     @Query('projectId') projectId: string,
     @Query('month') month: string,
   ): Promise<MemberActivity[]> {
-    if (user.role === SystemRole.EMPLOYEE) throw new ForbiddenException('Access denied');
     if (!projectId || !month) throw new BadRequestException('projectId and month are required');
     if (!/^\d{4}-\d{2}$/.test(month)) throw new BadRequestException('month must be in YYYY-MM format');
-    return this.dashboardService.getTeamActivity(projectId, month);
+    return this.dashboardService.getTeamActivity(projectId, month, user.sub, user.role);
   }
 
   @Get('tasks-progress')

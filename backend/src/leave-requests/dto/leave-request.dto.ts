@@ -1,4 +1,4 @@
-import { IsDateString, IsEnum, IsOptional, IsString, MaxLength } from 'class-validator';
+import { IsBoolean, IsDateString, IsEnum, IsOptional, IsString, MaxLength } from 'class-validator';
 import { LeaveType } from '@prisma/client';
 
 export class CreateLeaveRequestDto {
@@ -10,6 +10,10 @@ export class CreateLeaveRequestDto {
 
   @IsDateString()
   endDate: string;
+
+  @IsOptional()
+  @IsBoolean()
+  isHalfDay?: boolean;
 
   @IsOptional()
   @IsString()

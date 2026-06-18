@@ -75,12 +75,13 @@ function ApplyLeaveModal({
   const [type, setType] = useState<LeaveType>('CASUAL');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [isHalfDay, setIsHalfDay] = useState(false);
   const [reason, setReason] = useState('');
   const [error, setError] = useState('');
 
   const mut = useMutation({
     mutationFn: () =>
-      leaveApi.create({ type, startDate, endDate, reason: reason.trim() || undefined }),
+      leaveApi.create({ type, startDate, endDate, isHalfDay, reason: reason.trim() || undefined }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['leave-requests'] });
       onSuccess('Leave request submitted successfully');
@@ -90,7 +91,7 @@ function ApplyLeaveModal({
       setError(e?.response?.data?.message ?? 'Failed to submit leave request'),
   });
 
-  const totalDays =
+  const rawDays =
     startDate && endDate
       ? Math.max(
           0,
@@ -99,6 +100,7 @@ function ApplyLeaveModal({
           ) + 1,
         )
       : 0;
+  const totalDays = isHalfDay ? 0.5 : rawDays;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
@@ -140,7 +142,10 @@ function ApplyLeaveModal({
               <input
                 type="date"
                 value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
+                onChange={(e) => {
+                  setStartDate(e.target.value);
+                  if (isHalfDay) setEndDate(e.target.value);
+                }}
                 required
                 className={inputCls}
               />
@@ -149,13 +154,30 @@ function ApplyLeaveModal({
               <label className={labelCls}>Last Day of Leave</label>
               <input
                 type="date"
-                value={endDate}
+                value={isHalfDay ? startDate : endDate}
                 min={startDate}
                 onChange={(e) => setEndDate(e.target.value)}
                 required
-                className={inputCls}
+                disabled={isHalfDay}
+                className={`${inputCls} ${isHalfDay ? 'opacity-60 cursor-not-allowed' : ''}`}
               />
             </div>
+          </div>
+
+          <div className="flex items-center gap-2 -mt-1">
+            <input
+              id="half-day"
+              type="checkbox"
+              checked={isHalfDay}
+              onChange={(e) => {
+                setIsHalfDay(e.target.checked);
+                if (e.target.checked && startDate) setEndDate(startDate);
+              }}
+              className="w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500 cursor-pointer"
+            />
+            <label htmlFor="half-day" className="text-sm text-gray-600 cursor-pointer select-none">
+              Half-day leave
+            </label>
           </div>
 
           <p className="text-[11px] text-gray-400 -mt-1">
@@ -291,6 +313,7 @@ export function LeavePage() {
   const qc = useQueryClient();
   const isAdmin = user?.systemRole === 'SUPER_USER' || user?.systemRole === 'ADMIN';
   const isSuperUser = user?.systemRole === 'SUPER_USER';
+  const currentUserId = user?.id ?? '';
 
   const [showApply, setShowApply] = useState(false);
   const [rejectTarget, setRejectTarget] = useState<LeaveRequest | null>(null);
@@ -320,6 +343,9 @@ export function LeavePage() {
     onSuccess: () => { invalidate(); setToast('Leave request cancelled'); },
   });
 
+  // PM detection: backend returns team members' leaves if user is a PM
+  const canManageOthers = isAdmin || leaves.some((l) => l.userId !== currentUserId);
+
   // Summary counts
   const pending          = leaves.filter((l) => l.status === 'PENDING').length;
   const approvedAll      = leaves.filter((l) => l.status === 'APPROVED').length;
@@ -340,8 +366,8 @@ export function LeavePage() {
           <div>
             <h1 className="text-base font-semibold text-gray-900">Leave Management</h1>
             <p className="text-xs text-gray-400 mt-0.5">
-              {isAdmin
-                ? 'Review and manage all team leave requests'
+              {canManageOthers
+                ? 'Review and manage team leave requests'
                 : 'Apply for leave and track your request status'}
             </p>
           </div>
@@ -412,7 +438,7 @@ export function LeavePage() {
           <table className="min-w-full divide-y divide-gray-50">
             <thead className="bg-gray-50/60">
               <tr>
-                {isAdmin && (
+                {canManageOthers && (
                   <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Employee
                   </th>
@@ -442,8 +468,8 @@ export function LeavePage() {
                 <LeaveRow
                   key={leave.id}
                   leave={leave}
-                  isAdmin={isAdmin}
-                  currentUserId={user?.id ?? ''}
+                  canManageOthers={canManageOthers}
+                  currentUserId={currentUserId}
                   onApprove={() => approveMut.mutate(leave.id)}
                   onReject={() => setRejectTarget(leave)}
                   onCancel={() => cancelMut.mutate(leave.id)}
@@ -481,7 +507,7 @@ export function LeavePage() {
 
 function LeaveRow({
   leave,
-  isAdmin,
+  canManageOthers,
   currentUserId,
   onApprove,
   onReject,
@@ -490,7 +516,7 @@ function LeaveRow({
   isCancelPending,
 }: {
   leave: LeaveRequest;
-  isAdmin: boolean;
+  canManageOthers: boolean;
   currentUserId: string;
   onApprove: () => void;
   onReject: () => void;
@@ -503,8 +529,8 @@ function LeaveRow({
 
   return (
     <tr className="hover:bg-gray-50 transition">
-      {/* Employee (admin only) */}
-      {isAdmin && (
+      {/* Employee (admin / PM) */}
+      {canManageOthers && (
         <td className="px-5 py-3.5">
           <div className="flex items-center gap-2.5">
             <div className="w-7 h-7 rounded-full bg-primary-600 flex items-center justify-center text-white text-[10px] font-bold shrink-0">
@@ -532,6 +558,9 @@ function LeaveRow({
       <td className="px-5 py-3.5 text-center">
         <span className="text-sm font-semibold text-gray-800">{leave.totalDays}</span>
         <span className="text-xs text-gray-400 ml-0.5">d</span>
+        {leave.isHalfDay && (
+          <span className="block text-[10px] text-primary-600 font-medium mt-0.5">half-day</span>
+        )}
       </td>
 
       {/* Reason */}
@@ -561,7 +590,7 @@ function LeaveRow({
       {/* Actions */}
       <td className="px-5 py-3.5 text-right">
         <div className="flex items-center justify-end gap-2">
-          {isAdmin && leave.status === 'PENDING' && (
+          {canManageOthers && !isOwn && leave.status === 'PENDING' && (
             <>
               <button
                 onClick={onApprove}
@@ -587,7 +616,7 @@ function LeaveRow({
               {isCancelPending ? 'Cancelling…' : 'Cancel'}
             </button>
           )}
-          {leave.status !== 'PENDING' && !isOwn && !isAdmin && (
+          {leave.status !== 'PENDING' && !isOwn && !canManageOthers && (
             <span className="text-xs text-gray-300">—</span>
           )}
         </div>

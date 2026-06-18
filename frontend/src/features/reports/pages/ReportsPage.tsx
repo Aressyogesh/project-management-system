@@ -490,6 +490,33 @@ function ProjectSummaryTab({ period, project }: { period: string; project: strin
 
 // ─── Bug Summary Tab ──────────────────────────────────────────────────────────
 
+const SEVERITY_LABELS: Record<string, string> = {
+  SHOW_STOPPER: 'Show Stopper',
+  BLOCKER: 'Blocker',
+  CRITICAL: 'Critical',
+  MAJOR: 'Major',
+  MINOR: 'Minor',
+  TRIVIAL: 'Trivial',
+};
+
+const CLASSIFICATION_LABELS: Record<string, string> = {
+  SECURITY: 'Security',
+  CRASH_HANG: 'Crash / Hang',
+  DATA_LOSS: 'Data Loss',
+  PERFORMANCE: 'Performance',
+  UI_USABILITY: 'UI / Usability',
+  OTHER_BUG: 'Other Bug',
+  OTHER: 'Other',
+  FEATURE_NEW: 'Feature Request',
+  ENHANCEMENT: 'Enhancement',
+  DESIGN: 'Design',
+  NEW_BUG: 'New Bug',
+  CODE_REVIEW: 'Code Review',
+  UNIT_TESTING: 'Unit Testing',
+  SUGGESTION: 'Suggestion',
+  PROJECT_MANAGEMENT: 'Project Management',
+};
+
 function BugSummaryTab({ period, project }: { period: string; project: string }) {
   const { data, isLoading } = useQuery({
     queryKey: ['reports-bugs', period, project],
@@ -508,8 +535,8 @@ function BugSummaryTab({ period, project }: { period: string; project: string })
     <div className="space-y-6">
       <div className="flex justify-end">
         <CsvButton onClick={() => {
-          const severityRows = data?.severity ?? [];
-          const classRows    = data?.classification ?? [];
+          const severityRows = (data?.severity ?? []).filter((d) => d.count > 0);
+          const classRows    = (data?.classification ?? []).filter((d) => d.count > 0);
           const sevTotal     = severityRows.reduce((s, d) => s + d.count, 0);
           const clsTotal     = classRows.reduce((s, d) => s + d.count, 0);
           const periodLabel  = PERIOD_OPTIONS.find((p) => p.value === period)?.label ?? period;
@@ -518,12 +545,12 @@ function BugSummaryTab({ period, project }: { period: string; project: string })
             ['', '', ''],
             ['=== BUG SEVERITY ===', '', ''],
             ['Severity', 'Count', '% of Total'],
-            ...severityRows.map((d) => [d.severity, String(d.count), sevTotal > 0 ? `${Math.round((d.count / sevTotal) * 100)}%` : '0%']),
+            ...severityRows.map((d) => [SEVERITY_LABELS[d.severity] ?? d.severity, String(d.count), sevTotal > 0 ? `${Math.round((d.count / sevTotal) * 100)}%` : '0%']),
             ['TOTAL', String(sevTotal), '100%'],
             ['', '', ''],
             ['=== BUG CLASSIFICATION ===', '', ''],
             ['Classification', 'Count', '% of Total'],
-            ...classRows.map((d) => [d.classification, String(d.count), clsTotal > 0 ? `${Math.round((d.count / clsTotal) * 100)}%` : '0%']),
+            ...classRows.map((d) => [CLASSIFICATION_LABELS[d.classification] ?? d.classification, String(d.count), clsTotal > 0 ? `${Math.round((d.count / clsTotal) * 100)}%` : '0%']),
             ['TOTAL', String(clsTotal), '100%'],
           ]);
         }} />
@@ -545,7 +572,7 @@ function BugSummaryTab({ period, project }: { period: string; project: string })
                   {severityChartData.map((entry, idx) => <Cell key={idx} fill={entry.color} stroke="none" />)}
                 </Pie>
                 <Tooltip contentStyle={{ borderRadius: 10, fontSize: 12, border: '1px solid #E5E7EB' }}
-                  formatter={(v: number, name: string) => [`${v} bugs`, name]} />
+                  formatter={(v: number, name: string) => [`${v} bugs`, SEVERITY_LABELS[name] ?? name]} />
               </PieChart>
             </ResponsiveContainer>
           )}
@@ -553,7 +580,7 @@ function BugSummaryTab({ period, project }: { period: string; project: string })
             {allSeverityData.map((d) => (
               <div key={d.severity} className="flex items-center gap-2">
                 <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: d.color }} />
-                <span className="text-xs text-gray-500">{d.severity} — <span className="font-semibold text-gray-700">{d.count}</span></span>
+                <span className="text-xs text-gray-500">{SEVERITY_LABELS[d.severity] ?? d.severity} — <span className="font-semibold text-gray-700">{d.count}</span></span>
               </div>
             ))}
           </div>
@@ -570,7 +597,7 @@ function BugSummaryTab({ period, project }: { period: string; project: string })
               {classificationData.map((d) => (
                 <div key={d.classification}>
                   <div className="flex justify-between text-xs mb-1">
-                    <span className="text-gray-600 font-medium">{d.classification}</span>
+                    <span className="text-gray-600 font-medium">{CLASSIFICATION_LABELS[d.classification] ?? d.classification}</span>
                     <span className="text-gray-500">{d.count}</span>
                   </div>
                   <div className="w-full bg-gray-100 rounded-full h-1.5">
@@ -588,7 +615,7 @@ function BugSummaryTab({ period, project }: { period: string; project: string })
         {(data?.severity ?? []).map((d) => (
           <div key={d.severity} className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm text-center">
             <p className="text-2xl font-bold text-gray-800">{d.count}</p>
-            <p className="text-xs text-gray-400 mt-1">{d.severity}</p>
+            <p className="text-xs text-gray-400 mt-1">{SEVERITY_LABELS[d.severity] ?? d.severity}</p>
             <div className="w-6 h-1 rounded-full mx-auto mt-2" style={{ backgroundColor: d.color }} />
           </div>
         ))}
