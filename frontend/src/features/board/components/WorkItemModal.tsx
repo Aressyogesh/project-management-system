@@ -1584,6 +1584,31 @@ export function WorkItemModal({ item, sprints, members, milestones, canDelete = 
                 />
               </SidebarRow>
 
+              {/* GitHub PR link — read-only, set by webhook */}
+              {detail.prUrl && (
+                <SidebarRow label="GitHub PR">
+                  <div className="flex items-center gap-2">
+                    <a
+                      href={detail.prUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs font-medium text-blue-600 hover:underline truncate"
+                    >
+                      #{detail.prNumber} {detail.prTitle}
+                    </a>
+                    <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full shrink-0 ${
+                      detail.prState === 'merged'
+                        ? 'bg-purple-100 text-purple-700'
+                        : detail.prState === 'closed'
+                        ? 'bg-gray-100 text-gray-500'
+                        : 'bg-green-100 text-green-700'
+                    }`}>
+                      {detail.prState}
+                    </span>
+                  </div>
+                </SidebarRow>
+              )}
+
               {/* Release Milestone — all item types */}
               {milestones.length > 0 && (
                 <SidebarRow label="Release Milestone">

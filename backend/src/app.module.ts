@@ -36,6 +36,7 @@ import { TestCasesModule } from './test-cases/test-cases.module';
 import { HealthModule } from './health/health.module';
 import { AuditLogsModule } from './audit-logs/audit-logs.module';
 import { AutomationModule } from './automation-services/automation.module';
+import { GithubWebhookModule } from './github-webhook/github-webhook.module';
 
 @Module({
   imports: [
@@ -72,6 +73,7 @@ import { AutomationModule } from './automation-services/automation.module';
     TestCasesModule,
     AuditLogsModule,
     AutomationModule,
+    GithubWebhookModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: GlobalExceptionFilter },

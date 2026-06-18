@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 import { analyticsApi } from '../../../api/analyticsApi';
+import { selfLogsApi, type InnovationLog, type LearningLog } from '../../../api/selfLogsApi';
 import { useAuthStore } from '../../../store/authStore';
 import type { EmployeeKpiRecord } from '../../../types/kpi.types';
 import { KpiCategoryBarChart } from '../components/KpiCategoryBarChart';
@@ -163,6 +164,197 @@ function KpiScoreEntryPanel({
   );
 }
 
+// ─── Self-Log Section (Learning & Innovation) ─────────────────────────────────
+
+const INNOVATION_TYPES = [
+  { value: 'AI_IMPLEMENTATION', label: 'AI Implementation' },
+  { value: 'PROCESS_IMPROVEMENT', label: 'Process Improvement' },
+  { value: 'TOOL_ADOPTION', label: 'Tool Adoption' },
+  { value: 'AUTOMATION', label: 'Automation' },
+  { value: 'OTHER', label: 'Other' },
+];
+
+function SelfLogSection({ period }: { period: string }) {
+  const qc = useQueryClient();
+
+  const { data: learningLogs = [] } = useQuery<LearningLog[]>({
+    queryKey: ['learning-logs', period],
+    queryFn: () => selfLogsApi.getLearningLogs(period),
+    staleTime: 30_000,
+  });
+
+  const { data: innovationLogs = [] } = useQuery<InnovationLog[]>({
+    queryKey: ['innovation-logs', period],
+    queryFn: () => selfLogsApi.getInnovationLogs(period),
+    staleTime: 30_000,
+  });
+
+  const [showLearningForm, setShowLearningForm] = useState(false);
+  const [showInnovationForm, setShowInnovationForm] = useState(false);
+  const [lTopic, setLTopic] = useState('');
+  const [lHours, setLHours] = useState('');
+  const [lDesc, setLDesc] = useState('');
+  const [iTitle, setITitle] = useState('');
+  const [iImpact, setIImpact] = useState('');
+  const [iType, setIType] = useState('AI_IMPLEMENTATION');
+
+  const addLearning = useMutation({
+    mutationFn: () => selfLogsApi.createLearningLog({ period, topic: lTopic.trim(), hours: Number(lHours), description: lDesc.trim() || undefined }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['learning-logs', period] });
+      setLTopic(''); setLHours(''); setLDesc(''); setShowLearningForm(false);
+    },
+  });
+
+  const addInnovation = useMutation({
+    mutationFn: () => selfLogsApi.createInnovationLog({ period, title: iTitle.trim(), impact: iImpact.trim(), type: iType }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['innovation-logs', period] });
+      setITitle(''); setIImpact(''); setIType('AI_IMPLEMENTATION'); setShowInnovationForm(false);
+    },
+  });
+
+  const delLearning = useMutation({
+    mutationFn: (id: string) => selfLogsApi.deleteLearningLog(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['learning-logs', period] }),
+  });
+
+  const delInnovation = useMutation({
+    mutationFn: (id: string) => selfLogsApi.deleteInnovationLog(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['innovation-logs', period] }),
+  });
+
+  const inputCls = 'w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white';
+
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+      {/* Learning Log */}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h3 className="text-sm font-semibold text-gray-800">Learning Velocity</h3>
+            <p className="text-xs text-gray-400 mt-0.5">Log learning activities for this period</p>
+          </div>
+          <button
+            onClick={() => setShowLearningForm((v) => !v)}
+            className="text-xs font-medium text-white bg-primary-600 hover:bg-primary-700 px-3 py-1.5 rounded-lg transition"
+          >
+            + Add Log
+          </button>
+        </div>
+
+        {showLearningForm && (
+          <form
+            onSubmit={(e) => { e.preventDefault(); addLearning.mutate(); }}
+            className="mb-4 p-4 bg-gray-50 rounded-xl space-y-3"
+          >
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Topic *</label>
+              <input value={lTopic} onChange={(e) => setLTopic(e.target.value)} required placeholder="What did you learn?" className={inputCls} />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Hours spent *</label>
+              <input type="number" value={lHours} onChange={(e) => setLHours(e.target.value)} required min="0.5" step="0.5" placeholder="e.g. 2" className={inputCls} />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Description (optional)</label>
+              <textarea value={lDesc} onChange={(e) => setLDesc(e.target.value)} rows={2} className={`${inputCls} resize-none`} />
+            </div>
+            <div className="flex gap-2 justify-end">
+              <button type="button" onClick={() => setShowLearningForm(false)} className="text-xs px-3 py-1.5 rounded-lg bg-gray-200 text-gray-700 hover:bg-gray-300 transition">Cancel</button>
+              <button type="submit" disabled={addLearning.isPending} className="text-xs px-3 py-1.5 rounded-lg bg-primary-600 text-white hover:bg-primary-700 disabled:opacity-60 transition">
+                {addLearning.isPending ? 'Adding…' : 'Add'}
+              </button>
+            </div>
+          </form>
+        )}
+
+        {learningLogs.length === 0 ? (
+          <p className="text-xs text-gray-400 text-center py-6">No learning logs for this period.</p>
+        ) : (
+          <div className="space-y-2">
+            {learningLogs.map((log) => (
+              <div key={log.id} className="flex items-start justify-between gap-3 p-3 bg-blue-50/50 border border-blue-100 rounded-xl">
+                <div>
+                  <p className="text-xs font-medium text-gray-800">{log.topic}</p>
+                  <p className="text-[10px] text-blue-600 mt-0.5">{log.hours}h</p>
+                  {log.description && <p className="text-[10px] text-gray-500 mt-1">{log.description}</p>}
+                </div>
+                <button onClick={() => delLearning.mutate(log.id)} className="text-gray-300 hover:text-red-500 transition shrink-0">
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Innovation Log */}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h3 className="text-sm font-semibold text-gray-800">Automation & Innovation</h3>
+            <p className="text-xs text-gray-400 mt-0.5">Log innovation and AI activities</p>
+          </div>
+          <button
+            onClick={() => setShowInnovationForm((v) => !v)}
+            className="text-xs font-medium text-white bg-primary-600 hover:bg-primary-700 px-3 py-1.5 rounded-lg transition"
+          >
+            + Add Log
+          </button>
+        </div>
+
+        {showInnovationForm && (
+          <form
+            onSubmit={(e) => { e.preventDefault(); addInnovation.mutate(); }}
+            className="mb-4 p-4 bg-gray-50 rounded-xl space-y-3"
+          >
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Title *</label>
+              <input value={iTitle} onChange={(e) => setITitle(e.target.value)} required placeholder="What did you implement?" className={inputCls} />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Type *</label>
+              <select value={iType} onChange={(e) => setIType(e.target.value)} className={inputCls}>
+                {INNOVATION_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Impact / Details *</label>
+              <textarea value={iImpact} onChange={(e) => setIImpact(e.target.value)} required rows={2} placeholder="Describe the impact…" className={`${inputCls} resize-none`} />
+            </div>
+            <div className="flex gap-2 justify-end">
+              <button type="button" onClick={() => setShowInnovationForm(false)} className="text-xs px-3 py-1.5 rounded-lg bg-gray-200 text-gray-700 hover:bg-gray-300 transition">Cancel</button>
+              <button type="submit" disabled={addInnovation.isPending} className="text-xs px-3 py-1.5 rounded-lg bg-primary-600 text-white hover:bg-primary-700 disabled:opacity-60 transition">
+                {addInnovation.isPending ? 'Adding…' : 'Add'}
+              </button>
+            </div>
+          </form>
+        )}
+
+        {innovationLogs.length === 0 ? (
+          <p className="text-xs text-gray-400 text-center py-6">No innovation logs for this period.</p>
+        ) : (
+          <div className="space-y-2">
+            {innovationLogs.map((log) => (
+              <div key={log.id} className="flex items-start justify-between gap-3 p-3 bg-amber-50/50 border border-amber-100 rounded-xl">
+                <div>
+                  <p className="text-xs font-medium text-gray-800">{log.title}</p>
+                  <p className="text-[10px] text-amber-600 mt-0.5">{INNOVATION_TYPES.find((t) => t.value === log.type)?.label ?? log.type}</p>
+                  <p className="text-[10px] text-gray-500 mt-1">{log.impact}</p>
+                </div>
+                <button onClick={() => delInnovation.mutate(log.id)} className="text-gray-300 hover:text-red-500 transition shrink-0">
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ─── Main KpiPage ─────────────────────────────────────────────────────────────
 
 export function KpiPage() {
@@ -205,8 +397,10 @@ export function KpiPage() {
     [filteredEmployees, selectedPeriod],
   );
 
-  // ── Employee view — own KPI only ─────────────────────────────────────────────
-  if (!isAdminOrSuper) {
+  // ── Employee / PM view ──────────────────────────────────────────────────────
+  const isPm = !isAdminOrSuper && !isLoading && employees.length > 1;
+
+  if (!isAdminOrSuper && !isPm) {
     const ownRecord = employees.find((e) => e.userId === user?.id);
 
     if (isLoading) {
@@ -217,15 +411,6 @@ export function KpiPage() {
       );
     }
 
-    if (!ownRecord) {
-      return (
-        <div className="flex items-center justify-center py-20 text-sm text-gray-400">
-          No KPI data found for this period.
-        </div>
-      );
-    }
-
-    const grade = GRADE_CONFIG[ownRecord.grade];
     return (
       <div className="space-y-6">
         <div className="flex items-center justify-between">
@@ -236,12 +421,8 @@ export function KpiPage() {
             </p>
           </div>
           <div className="flex items-center gap-3">
-            {ownRecord.hasNoActivity ? (
-              <span className="text-sm font-bold px-3 py-1.5 rounded-full bg-gray-100 text-gray-500">
-                N/A — Insufficient Data
-              </span>
-            ) : (
-              <span className={`text-sm font-bold px-3 py-1.5 rounded-full ${grade.bg} ${grade.text}`}>
+            {ownRecord && !ownRecord.hasNoActivity && (
+              <span className={`text-sm font-bold px-3 py-1.5 rounded-full ${GRADE_CONFIG[ownRecord.grade].bg} ${GRADE_CONFIG[ownRecord.grade].text}`}>
                 Grade {ownRecord.grade} — {ownRecord.totalScore} / 100
               </span>
             )}
@@ -256,10 +437,22 @@ export function KpiPage() {
             </select>
           </div>
         </div>
-        <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
-          <KpiRadarChart employee={ownRecord} />
+        {ownRecord ? (
+          <>
+            <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
+              <KpiRadarChart employee={ownRecord} />
+            </div>
+            <KpiEmployeeDetailPanel employee={ownRecord} />
+          </>
+        ) : (
+          <div className="bg-white rounded-2xl border border-gray-100 p-8 shadow-sm text-center text-sm text-gray-400">
+            No KPI data found for this period — auto-computed metrics will appear once work items are logged.
+          </div>
+        )}
+        <div>
+          <h2 className="text-base font-semibold text-gray-800 mb-3">Growth & Innovation Self-Log</h2>
+          <SelfLogSection period={selectedPeriod} />
         </div>
-        <KpiEmployeeDetailPanel employee={ownRecord} />
       </div>
     );
   }
@@ -463,6 +656,13 @@ export function KpiPage() {
             </div>
           </div>
         </>
+      )}
+
+      {isPm && (
+        <div>
+          <h2 className="text-base font-semibold text-gray-800 mb-3">My Growth & Innovation Self-Log</h2>
+          <SelfLogSection period={selectedPeriod} />
+        </div>
       )}
 
       {showScoreEntry && (

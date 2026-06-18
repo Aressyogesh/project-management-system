@@ -10,6 +10,7 @@ export interface LeaveRequest {
   startDate: string;
   endDate: string;
   totalDays: number;
+  isHalfDay: boolean;
   reason: string | null;
   status: LeaveStatus;
   approvedById: string | null;
@@ -25,6 +26,7 @@ export interface CreateLeaveRequestDto {
   type: LeaveType;
   startDate: string;
   endDate: string;
+  isHalfDay?: boolean;
   reason?: string;
 }
 

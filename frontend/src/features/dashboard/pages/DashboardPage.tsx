@@ -60,29 +60,29 @@ export function DashboardPage() {
   const [selectedProject, setSelectedProject] = useState('');
   const [selectedMonth,   setSelectedMonth]   = useState(MONTH_OPTIONS[0]);
 
-  const hasFilter = isAdminOrSuper && !!selectedProject;
-
-  // Projects list for the selector (Admin / Super only)
+  // Projects list — admin sees all, employees see their own projects (for filter dropdown)
   const { data: projects = [], isLoading: projectsLoading } = useQuery({
     queryKey: ['projects-list', 'active'],
     queryFn:  () => projectsApi.list({ status: 'ACTIVE' }),
-    enabled:  isAdminOrSuper,
     staleTime: 120_000,
   });
+
+  // Projects progress — always fetch; non-admin backend returns [] if user is not PM/TL
+  const { data: projectsProgress, isLoading: projectsLoading2 } = useQuery({
+    queryKey: ['dashboard-projects-progress'],
+    queryFn:  dashboardApi.getProjectsProgress,
+    staleTime: 60_000,
+  });
+
+  // PM/TL detection: backend returns project data only for PM/TL roles
+  const isManager = isAdminOrSuper || ((projectsProgress?.length ?? 0) > 0);
+  const hasFilter = isManager && !!selectedProject;
 
   // Dashboard stats — scoped when project+month selected
   const statsParams = hasFilter ? { projectId: selectedProject, month: selectedMonth } : undefined;
   const { data, isLoading, error } = useQuery({
     queryKey: ['dashboard-stats', selectedProject, selectedMonth],
     queryFn:  () => dashboardApi.getStats(statsParams),
-    staleTime: 60_000,
-  });
-
-  // Projects progress — only when no project filter active
-  const { data: projectsProgress, isLoading: projectsLoading2 } = useQuery({
-    queryKey: ['dashboard-projects-progress'],
-    queryFn:  dashboardApi.getProjectsProgress,
-    enabled:  isAdminOrSuper && !hasFilter,
     staleTime: 60_000,
   });
 
@@ -105,8 +105,8 @@ export function DashboardPage() {
   return (
     <div className="space-y-6">
 
-      {/* ── Top filter bar (Admin / Super User) ────────────────────────────── */}
-      {isAdminOrSuper && (
+      {/* ── Top filter bar (Admin / Super User / Project Manager / Team Lead) ─ */}
+      {isManager && (
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm px-5 py-3 flex flex-wrap items-center gap-3">
           {/* Project selector */}
           <div className="flex items-center gap-2 flex-1 min-w-[200px]">
@@ -177,8 +177,8 @@ export function DashboardPage() {
       {/* ── Activity Chart ─────────────────────────────────────────────────── */}
       <ActivityChart data={data.activityData} projectId={selectedProject || undefined} />
 
-      {/* ── Projects Progress (Admin/Super, only when no project filter) ────── */}
-      {isAdminOrSuper && !hasFilter && (
+      {/* ── Projects Progress (Admin/Super/PM/TL, only when no project filter) ─ */}
+      {isManager && !hasFilter && (
         <div>
           {projectsLoading2 ? (
             <div className="animate-pulse">
@@ -195,8 +195,8 @@ export function DashboardPage() {
         </div>
       )}
 
-      {/* ── Team Activity (Admin/Super, only when project is selected) ──────── */}
-      {isAdminOrSuper && hasFilter && (
+      {/* ── Team Activity (Admin/Super/PM, only when project is selected) ───── */}
+      {hasFilter && (
         <TeamActivityPanel projectId={selectedProject} month={selectedMonth} />
       )}
 
