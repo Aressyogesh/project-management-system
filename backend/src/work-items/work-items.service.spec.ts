@@ -4,6 +4,7 @@ import { BoardStatus, ProjectRole, SystemRole, WorkItemType } from '@prisma/clie
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { AuditLogsService } from '../audit-logs/audit-logs.service';
+import { AutomationService } from '../automation-services/automation.service';
 import { WorkItemsService } from './work-items.service';
 
 const mockPrisma = {
@@ -64,6 +65,7 @@ describe('WorkItemsService', () => {
         { provide: PrismaService, useValue: mockPrisma },
         { provide: NotificationsService, useValue: mockNotifications },
         { provide: AuditLogsService, useValue: { log: jest.fn() } },
+        { provide: AutomationService, useValue: { notifyTaskAssigned: jest.fn(), notifyCriticalBug: jest.fn(), notifyBugReopened: jest.fn(), notifyItemBlocked: jest.fn(), notifyWorkItemStatusChanged: jest.fn() } },
       ],
     }).compile();
 
