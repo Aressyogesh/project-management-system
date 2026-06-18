@@ -1,8 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { projectsApi } from '../../../api/projects.api';
-import { clientsApi } from '../../../api/clients.api';
 import { useAuthStore } from '../../../store/authStore';
 import type { Project, ProjectStatus, ProjectType } from '../../../types/projects.types';
 import { ProjectFormModal } from '../components/ProjectFormModal';
@@ -77,10 +76,12 @@ export function ProjectsPage() {
     queryFn: () => projectsApi.summary(),
   });
 
-  const { data: clients = [] } = useQuery({
-    queryKey: ['clients-all'],
-    queryFn: () => clientsApi.list(true),
-  });
+  const clients = useMemo(() => {
+    const seen = new Set<string>();
+    return allProjects
+      .filter((p) => p.client && !seen.has(p.client.id) && seen.add(p.client.id))
+      .map((p) => p.client!);
+  }, [allProjects]);
 
   const isOverdue = (p: Project) =>
     p.status === 'ACTIVE' && p.endDate !== null && new Date(p.endDate) < new Date();

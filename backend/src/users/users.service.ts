@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { AuditAction, AuditEntity } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
+import * as crypto from 'crypto';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditLogsService } from '../audit-logs/audit-logs.service';
@@ -81,7 +82,9 @@ export class UsersService {
     const existing = await this.prisma.user.findUnique({ where: { email: dto.email } });
     if (existing) throw new ConflictException('Email already in use');
 
-    const passwordHash = await bcrypt.hash(dto.password, 10);
+    const tempPassword = crypto.randomBytes(6).toString('hex').toUpperCase().slice(0, 8) +
+      crypto.randomBytes(2).toString('hex').slice(0, 2);
+    const passwordHash = await bcrypt.hash(tempPassword, 10);
 
     const user = await this.prisma.user.create({
       data: {
@@ -107,8 +110,10 @@ export class UsersService {
         <tbody>
           <tr><td style="padding:8px 12px;color:#6b7280;">Role</td><td style="padding:8px 12px;font-weight:600;">${user.systemRole}</td></tr>
           <tr><td style="padding:8px 12px;color:#6b7280;">Email</td><td style="padding:8px 12px;">${user.email}</td></tr>
+          <tr><td style="padding:8px 12px;color:#6b7280;">Temporary Password</td><td style="padding:8px 12px;font-weight:600;font-family:monospace;letter-spacing:2px;">${tempPassword}</td></tr>
         </tbody>
       </table>
+      <p style="margin:0 0 16px;color:#374151;font-size:13px;">This is a system-generated password. Please log in and change it from <strong>Edit Profile</strong> immediately.</p>
       <a href="${loginUrl}/login" style="display:inline-block;background:#4f46e5;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:700;font-size:14px;">
         Log In to PMS
       </a>

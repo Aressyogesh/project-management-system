@@ -179,8 +179,8 @@ function TeamProductivityTab({ currentUserId, period, project }: { currentUserId
     <div className="space-y-6">
       <div className="flex justify-end">
         <CsvButton onClick={() => downloadCsv(`team-productivity-report-${period}.csv`, [
-          ['Name', 'Role', 'Tasks Done', 'Hours Logged', 'On-Time %', 'Score'],
-          ...data.map((r) => [r.name, r.role, String(r.tasksDone), String(r.hoursLogged), `${r.onTimePct}%`, String(r.score)]),
+          ['Name', 'Role', 'Story Completed', 'Story Assigned', 'Hours Logged', 'On-Time %', 'Score'],
+          ...data.map((r) => [r.name, r.role, String(r.tasksDone), String(r.storiesAssigned ?? 0), String(r.hoursLogged), `${r.onTimePct}%`, String(r.score)]),
         ])} />
       </div>
 
@@ -211,7 +211,8 @@ function TeamProductivityTab({ currentUserId, period, project }: { currentUserId
               <tr className="bg-gray-50 text-xs text-gray-500 uppercase tracking-wide">
                 <th className="px-5 py-3 text-left">#</th>
                 <th className="px-5 py-3 text-left">Employee</th>
-                <th className="px-5 py-3 text-right">Tasks</th>
+                <th className="px-5 py-3 text-right">Story Completed</th>
+                <th className="px-5 py-3 text-right">Story Assigned</th>
                 <th className="px-5 py-3 text-right">Hours</th>
                 <th className="px-5 py-3 text-right">On-Time %</th>
                 <th className="px-5 py-3 text-left min-w-[140px]">Score</th>
@@ -219,7 +220,7 @@ function TeamProductivityTab({ currentUserId, period, project }: { currentUserId
             </thead>
             <tbody className="divide-y divide-gray-50">
               {data.length === 0 && (
-                <tr><td colSpan={6} className="text-center py-8 text-sm text-gray-400">No data for this period.</td></tr>
+                <tr><td colSpan={7} className="text-center py-8 text-sm text-gray-400">No data for this period.</td></tr>
               )}
               {paginatedData.map((r, i) => {
                 const isMe = r.userId === currentUserId;
@@ -241,6 +242,7 @@ function TeamProductivityTab({ currentUserId, period, project }: { currentUserId
                       </div>
                     </td>
                     <td className="px-5 py-3 text-right font-semibold text-gray-700">{r.tasksDone}</td>
+                    <td className="px-5 py-3 text-right text-gray-600">{r.storiesAssigned ?? 0}</td>
                     <td className="px-5 py-3 text-right text-gray-600">{r.hoursLogged}h</td>
                     <td className="px-5 py-3 text-right text-gray-600">{r.onTimePct}%</td>
                     <td className="px-5 py-3">
@@ -412,6 +414,14 @@ function KpiAppraisalTab({ currentUserId, period }: { currentUserId?: string; pe
 
 // ─── Project Summary Tab ──────────────────────────────────────────────────────
 
+const TYPE_LABELS: Record<string, string> = {
+  EPIC: 'Epic',
+  USER_STORY: 'Story',
+  TASK: 'Task',
+  SUB_TASK: 'Sub Task',
+  BUG: 'Bug',
+};
+
 function ProjectSummaryTab({ period, project }: { period: string; project: string }) {
   const { data: projects = [], isLoading } = useQuery({
     queryKey: ['reports-projects', period, project],
@@ -431,9 +441,10 @@ function ProjectSummaryTab({ period, project }: { period: string; project: strin
     <div className="space-y-4">
       <div className="flex justify-end">
         <CsvButton onClick={() => downloadCsv(`project-summary-report-${period}.csv`, [
-          ['Project', 'Total Tasks', 'Done', 'Team Size', 'Completion %', 'Status'],
-          ...projects.map((p) => [p.name, String(p.tasks), String(p.done), String(p.teamSize),
-            `${p.tasks > 0 ? Math.round((p.done / p.tasks) * 100) : 0}%`, p.status]),
+          ['Project', 'Type', 'Total', 'Done', 'Complete %', 'Status'],
+          ...projects.flatMap((p) =>
+            (p.breakdown ?? []).map((b) => [p.name, TYPE_LABELS[b.type] ?? b.type, String(b.total), String(b.done), `${b.completePct}%`, p.status])
+          ),
         ])} />
       </div>
 
@@ -461,22 +472,40 @@ function ProjectSummaryTab({ period, project }: { period: string; project: strin
               </div>
               <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${sc.bg} ${sc.text}`}>{proj.status}</span>
             </div>
-            <div className="grid grid-cols-3 gap-4 mb-4">
-              <div className="text-center">
-                <p className="text-xl font-bold text-gray-800">{proj.done}</p>
-                <p className="text-xs text-gray-400">Tasks Done</p>
-              </div>
-              <div className="text-center">
-                <p className="text-xl font-bold text-gray-800">{proj.tasks}</p>
-                <p className="text-xs text-gray-400">Total Tasks</p>
-              </div>
-              <div className="text-center">
-                <p className="text-xl font-bold text-gray-800">{pct}%</p>
-                <p className="text-xs text-gray-400">Complete</p>
-              </div>
+
+            {/* Work Item Type Breakdown */}
+            <div className="overflow-x-auto mb-4">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="bg-gray-50 text-gray-500 uppercase tracking-wide">
+                    <th className="px-3 py-2 text-left">Type</th>
+                    <th className="px-3 py-2 text-right">Total</th>
+                    <th className="px-3 py-2 text-right">Done</th>
+                    <th className="px-3 py-2 text-right">Complete %</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-50">
+                  {(proj.breakdown ?? []).filter((b) => b.total > 0).map((b) => (
+                    <tr key={b.type} className="hover:bg-gray-50/50">
+                      <td className="px-3 py-2 font-medium text-gray-700">{TYPE_LABELS[b.type] ?? b.type}</td>
+                      <td className="px-3 py-2 text-right text-gray-600">{b.total}</td>
+                      <td className="px-3 py-2 text-right text-emerald-600 font-semibold">{b.done}</td>
+                      <td className="px-3 py-2 text-right">
+                        <span className={`font-semibold ${b.completePct === 100 ? 'text-emerald-600' : b.completePct >= 50 ? 'text-amber-600' : 'text-gray-600'}`}>
+                          {b.completePct}%
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                  {(proj.breakdown ?? []).every((b) => b.total === 0) && (
+                    <tr><td colSpan={4} className="px-3 py-4 text-center text-gray-400">No work items in this period.</td></tr>
+                  )}
+                </tbody>
+              </table>
             </div>
+
             <div>
-              <div className="flex justify-between text-xs text-gray-400 mb-1"><span>Progress</span><span>{pct}%</span></div>
+              <div className="flex justify-between text-xs text-gray-400 mb-1"><span>Overall Progress</span><span>{pct}%</span></div>
               <div className="w-full bg-gray-100 rounded-full h-2">
                 <div className="h-2 rounded-full transition-all" style={{ width: `${pct}%`, backgroundColor: proj.color }} />
               </div>
@@ -755,12 +784,6 @@ function TaskAllocationTab({ currentUserId, period, project }: { currentUserId?:
 
 // ─── Timesheet Tab ────────────────────────────────────────────────────────────
 
-const TIMESHEET_STATUS_STYLE: Record<string, { bg: string; text: string }> = {
-  Approved:  { bg: 'bg-emerald-100', text: 'text-emerald-700' },
-  Submitted: { bg: 'bg-blue-100',    text: 'text-blue-700'    },
-  Draft:     { bg: 'bg-gray-100',    text: 'text-gray-600'    },
-};
-
 function TimesheetTab({ currentUserId, period, project }: { currentUserId?: string; period: string; project: string }) {
   const { data = [], isLoading } = useQuery({
     queryKey: ['reports-timesheet', period, project],
@@ -769,9 +792,6 @@ function TimesheetTab({ currentUserId, period, project }: { currentUserId?: stri
   });
 
   const totalHours = data.reduce((s, r) => s + r.hoursLogged, 0);
-  const approvedCount = data.filter((r) => r.status === 'Approved').length;
-  const submittedCount = data.filter((r) => r.status === 'Submitted').length;
-  const draftCount = data.filter((r) => r.status === 'Draft').length;
   const { paginatedData, page, setPage, pageSize, setPageSize, totalPages, totalItems, startIndex, endIndex } = usePagination(data, 'timesheet');
   const periodLabel = PERIOD_OPTIONS.find((p) => p.value === period)?.label ?? period;
 
@@ -781,27 +801,25 @@ function TimesheetTab({ currentUserId, period, project }: { currentUserId?: stri
     <div className="space-y-6">
       <div className="flex justify-end">
         <CsvButton onClick={() => downloadCsv(`timesheet-report-${period}.csv`, [
-          ['Name', 'Role', 'Project', 'Hours Logged', 'Status'],
-          ...data.map((r) => [r.name, r.role, r.project, String(r.hoursLogged), r.status]),
+          ['Name', 'Role', 'Project', 'Hours Logged'],
+          ...data.map((r) => [r.name, r.role, r.project, String(r.hoursLogged)]),
         ])} />
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm text-center">
           <p className="text-2xl font-bold text-gray-800">{totalHours}h</p>
           <p className="text-xs text-gray-400 mt-1">Total Hours Logged</p>
         </div>
-        <div className="bg-white rounded-2xl border border-emerald-100 p-4 shadow-sm text-center">
-          <p className="text-2xl font-bold text-emerald-600">{approvedCount}</p>
-          <p className="text-xs text-gray-400 mt-1">Approved</p>
-        </div>
-        <div className="bg-white rounded-2xl border border-blue-100 p-4 shadow-sm text-center">
-          <p className="text-2xl font-bold text-blue-600">{submittedCount}</p>
-          <p className="text-xs text-gray-400 mt-1">Submitted</p>
+        <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm text-center">
+          <p className="text-2xl font-bold text-gray-700">{data.length}</p>
+          <p className="text-xs text-gray-400 mt-1">Team Members</p>
         </div>
         <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm text-center">
-          <p className="text-2xl font-bold text-gray-500">{draftCount}</p>
-          <p className="text-xs text-gray-400 mt-1">Draft</p>
+          <p className="text-2xl font-bold text-gray-700">
+            {data.length > 0 ? Math.round(totalHours / data.length * 10) / 10 : 0}h
+          </p>
+          <p className="text-xs text-gray-400 mt-1">Avg Hours / Member</p>
         </div>
       </div>
 
@@ -817,16 +835,14 @@ function TimesheetTab({ currentUserId, period, project }: { currentUserId?: stri
                 <th className="px-5 py-3 text-left">Employee</th>
                 <th className="px-5 py-3 text-left">Project</th>
                 <th className="px-5 py-3 text-right">Hours</th>
-                <th className="px-5 py-3 text-center">Status</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
               {data.length === 0 && (
-                <tr><td colSpan={5} className="text-center py-8 text-sm text-gray-400">No timesheet data for this period.</td></tr>
+                <tr><td colSpan={4} className="text-center py-8 text-sm text-gray-400">No timesheet data for this period.</td></tr>
               )}
               {paginatedData.map((r, i) => {
                 const isMe = r.userId === currentUserId;
-                const sc = TIMESHEET_STATUS_STYLE[r.status] ?? TIMESHEET_STATUS_STYLE['Approved'];
                 return (
                   <tr key={r.userId} className={isMe ? 'bg-blue-50' : 'hover:bg-gray-50/50'}>
                     <td className="px-5 py-3 text-gray-400 text-xs">{startIndex + i}</td>
@@ -846,11 +862,6 @@ function TimesheetTab({ currentUserId, period, project }: { currentUserId?: stri
                     </td>
                     <td className="px-5 py-3 text-gray-600 text-xs">{r.project}</td>
                     <td className="px-5 py-3 text-right font-semibold text-gray-700">{r.hoursLogged}h</td>
-                    <td className="px-5 py-3 text-center">
-                      <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${sc.bg} ${sc.text}`}>
-                        {r.status}
-                      </span>
-                    </td>
                   </tr>
                 );
               })}
@@ -1131,12 +1142,8 @@ function MyPerformanceSummary({ userId, userName, period, project }: { userId: s
               <p className="text-sm font-semibold text-gray-800 mt-0.5">{myTs.project}</p>
             </div>
             <div className="text-right">
-              <p className="text-xs text-gray-400">Timesheet Status</p>
-              <span className={`text-xs font-semibold px-2 py-0.5 rounded-full mt-0.5 inline-block
-                ${TIMESHEET_STATUS_STYLE[myTs.status]?.bg ?? 'bg-gray-100'}
-                ${TIMESHEET_STATUS_STYLE[myTs.status]?.text ?? 'text-gray-600'}`}>
-                {myTs.status}
-              </span>
+              <p className="text-xs text-gray-400">Hours Logged</p>
+              <p className="text-sm font-semibold text-gray-800 mt-0.5">{myTs.hoursLogged}h</p>
             </div>
           </div>
         </div>

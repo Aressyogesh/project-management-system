@@ -21,9 +21,17 @@ export interface ProductivityRecord {
   name: string;
   role: string;
   tasksDone: number;
+  storiesAssigned: number;
   hoursLogged: number;
   onTimePct: number;
   score: number;
+}
+
+export interface ProjectBreakdownItem {
+  type: string;
+  total: number;
+  done: number;
+  completePct: number;
 }
 
 export interface ProjectRecord {
@@ -34,6 +42,7 @@ export interface ProjectRecord {
   done: number;
   teamSize: number;
   color: string;
+  breakdown: ProjectBreakdownItem[];
 }
 
 export interface BugsReport {
@@ -56,7 +65,6 @@ export interface TimesheetRecord {
   role: string;
   project: string;
   hoursLogged: number;
-  status: 'Approved' | 'Submitted' | 'Draft';
 }
 
 export interface CapacityCell {

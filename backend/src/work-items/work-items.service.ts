@@ -134,6 +134,10 @@ export class WorkItemsService implements OnModuleInit {
   }
 
   async create(projectId: string, reporterId: string, dto: CreateWorkItemDto) {
+    const requiresParent: WorkItemType[] = [WorkItemType.USER_STORY, WorkItemType.TASK, WorkItemType.SUB_TASK, WorkItemType.BUG];
+    if (requiresParent.includes(dto.type) && !dto.parentId) {
+      throw new BadRequestException(`A parent item is required when creating a ${dto.type.replace(/_/g, ' ').toLowerCase()}.`);
+    }
     if (dto.parentId) await this.validateParentType(dto.type, dto.parentId);
 
     const item = await this.prisma.$transaction(async (tx) => {

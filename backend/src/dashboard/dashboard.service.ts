@@ -165,7 +165,9 @@ export class DashboardService {
           workItems: { where: { status: BoardStatus.QA_DONE }, select: { id: true } },
         },
       }),
-      this.prisma.projectMember.count({ where: { userId, project: { status: ProjectStatus.ACTIVE } } }),
+      (role === SystemRole.SUPER_USER || role === SystemRole.ADMIN)
+        ? this.prisma.project.count()
+        : this.prisma.project.count({ where: { members: { some: { userId } } } }),
     ]);
 
     const myTasks: MyTask[] = rawMyTasks.map((t) => ({
@@ -179,7 +181,12 @@ export class DashboardService {
 
     const totalTaskCount = notStartedCount + inProgressCount + onReviewCount + completedCount + totalWorkItems;
 
-    // EMPLOYEE with no PROJECT_MANAGER role → personal cards; everyone else → management cards
+    // EMPLOYEE with no PM/TL role → personal cards; everyone else → management cards
+    // For management cards: show the user's own allocated project count when they are project members,
+    // otherwise fall back to total active projects (pure super admin with no memberships).
+    const projectCardValue = myProjectCount > 0 ? myProjectCount : activeProjectCount;
+    const projectCardLabel = myProjectCount > 0 ? 'My Projects' : 'Active Projects';
+
     const cards: StatCard[] =
       role === SystemRole.EMPLOYEE && scopedProjectIds === null
         ? [
@@ -189,7 +196,7 @@ export class DashboardService {
             { label: 'Completed',     value: rawMyTasks.filter((t) => t.status === TaskStatus.COMPLETED).length, change: 0, trend: 'up', color: 'rose' },
           ]
         : [
-            { label: 'Active Projects', value: activeProjectCount,                  change: 0, trend: 'up', color: 'green'  },
+            { label: projectCardLabel,  value: projectCardValue,                     change: 0, trend: 'up', color: 'green'  },
             { label: 'Total Tasks',     value: totalTaskCount,                       change: 0, trend: 'up', color: 'blue'   },
             { label: scopedProjectIds !== null ? 'Team Members' : 'Total Users', value: activeUserCount, change: 0, trend: 'up', color: 'purple' },
             { label: 'Completed Tasks', value: completedCount + completedWorkItems,  change: 0, trend: 'up', color: 'rose'   },

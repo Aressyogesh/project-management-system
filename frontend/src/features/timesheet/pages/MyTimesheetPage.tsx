@@ -294,13 +294,12 @@ export function MyTimesheetPage() {
         ) : (
           <div>
             {/* Table header */}
-            <div className="grid grid-cols-[110px_1fr_150px_70px_140px_120px] gap-3 px-5 py-3 bg-gray-50 border-b border-gray-100 text-[11px] font-semibold text-gray-500 uppercase tracking-wider">
+            <div className="grid grid-cols-[110px_1fr_150px_70px_140px] gap-3 px-5 py-3 bg-gray-50 border-b border-gray-100 text-[11px] font-semibold text-gray-500 uppercase tracking-wider">
               <span>Date</span>
               <span>Work Item / Project</span>
               <span>Description</span>
               <span className="text-right">Hours</span>
               <span>Logged By</span>
-              <span>Status</span>
             </div>
 
             {Object.entries(byDate)
@@ -319,7 +318,7 @@ export function MyTimesheetPage() {
                     {dayEntries.map((entry) => (
                       <div
                         key={entry.id}
-                        className="grid grid-cols-[110px_1fr_150px_70px_140px_120px] gap-3 px-5 py-3 border-b border-gray-50 hover:bg-gray-50/50 items-center"
+                        className="grid grid-cols-[110px_1fr_150px_70px_140px] gap-3 px-5 py-3 border-b border-gray-50 hover:bg-gray-50/50 items-center"
                       >
                         <span className="text-xs text-gray-500">{fmtDisplay(entry.date.slice(0, 10))}</span>
 
@@ -349,18 +348,6 @@ export function MyTimesheetPage() {
                             {entry.user.fullName.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2)}
                           </div>
                           <span className="text-xs text-gray-600 truncate">{entry.user.fullName}</span>
-                        </div>
-
-                        <div>
-                          <span className={`inline-block px-2 py-0.5 rounded-full text-[11px] font-semibold ${STATUS_CONFIG[entry.approvalStatus].bg} ${STATUS_CONFIG[entry.approvalStatus].text}`}>
-                            {STATUS_CONFIG[entry.approvalStatus].label}
-                          </span>
-                          {entry.approvalStatus === 'REJECTED' && entry.rejectionNote && (
-                            <p className="text-[10px] text-red-500 mt-0.5 truncate" title={entry.rejectionNote}>{entry.rejectionNote}</p>
-                          )}
-                          {entry.approvalStatus === 'APPROVED' && entry.approvedBy && (
-                            <p className="text-[10px] text-gray-400 mt-0.5">by {entry.approvedBy.fullName}</p>
-                          )}
                         </div>
                       </div>
                     ))}

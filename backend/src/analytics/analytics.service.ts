@@ -392,16 +392,21 @@ export class AnalyticsService {
         id: true,
         fullName: true,
         systemRole: true,
-        projectMembers: { select: { projectRole: true } },
+        projectMembers: {
+          where: { projectId: { in: activeProjectIds } },
+          select: { projectRole: true },
+          take: 1,
+        },
       },
     });
 
     const results = await Promise.all(
       users.map(async (user) => {
-        const [completedItems, timesheetSum, allItems] = await Promise.all([
+        const [storiesCompleted, timesheetSum, allItems, storiesAssigned] = await Promise.all([
           this.prisma.workItem.count({
             where: {
               assigneeId: user.id,
+              type: WorkItemType.USER_STORY,
               status: BoardStatus.QA_DONE,
               completedAt: { gte: start, lt: end },
               projectId: { in: activeProjectIds },
@@ -422,6 +427,13 @@ export class AnalyticsService {
               projectId: { in: activeProjectIds },
             },
           }),
+          this.prisma.workItem.count({
+            where: {
+              assigneeId: user.id,
+              type: WorkItemType.USER_STORY,
+              projectId: { in: activeProjectIds },
+            },
+          }),
         ]);
 
         const onTimeItems = await this.prisma.workItem.count({
@@ -435,15 +447,16 @@ export class AnalyticsService {
 
         const hoursLogged = Math.round(Number(timesheetSum._sum?.hours ?? 0) * 10) / 10;
         const onTimePct = allItems > 0 ? Math.round((onTimeItems / allItems) * 100) : 0;
-        const score = Math.round(
-          ((completedItems * 0.4 + hoursLogged * 0.3 + onTimePct * 0.3) / 100) * 100,
-        );
+        const completedPct = allItems > 0 ? Math.min(Math.round((onTimeItems / allItems) * 100), 100) : 0;
+        const hoursUtilPct = Math.min(Math.round((hoursLogged / 176) * 100), 100);
+        const score = Math.round(completedPct * 0.4 + hoursUtilPct * 0.3 + onTimePct * 0.3);
 
         return {
           userId: user.id,
           name: user.fullName,
-          role: user.projectMembers[0]?.projectRole?.replace('_', ' ') ?? user.systemRole,
-          tasksDone: completedItems,
+          role: user.projectMembers[0]?.projectRole?.replace(/_/g, ' ') ?? user.systemRole,
+          tasksDone: storiesCompleted,
+          storiesAssigned,
           hoursLogged,
           onTimePct,
           score: Math.min(score, 100),
@@ -470,22 +483,34 @@ export class AnalyticsService {
         members: { select: { id: true } },
         workItems: {
           where: { createdAt: { gte: start, lt: end } },
-          select: { status: true },
+          select: { status: true, type: true },
         },
       },
     });
 
     const colors = ['#3B82F6', '#8B5CF6', '#10B981', '#F59E0B', '#EC4899', '#EF4444'];
+    const TYPES = ['EPIC', 'USER_STORY', 'TASK', 'SUB_TASK', 'BUG'] as const;
 
-    return projects.map((p, i) => ({
-      id: p.id,
-      name: p.name,
-      status: p.status === 'ACTIVE' ? 'Active' : p.status === 'ON_HOLD' ? 'On Hold' : 'Archive',
-      tasks: p.workItems.length,
-      done: p.workItems.filter((w) => w.status === BoardStatus.QA_DONE).length,
-      teamSize: p.members.length,
-      color: colors[i % colors.length],
-    }));
+    return projects.map((p, i) => {
+      const breakdown = TYPES.map((type) => {
+        const items = p.workItems.filter((w) => w.type === type);
+        const total = items.length;
+        const done = items.filter((w) => w.status === BoardStatus.QA_DONE).length;
+        return { type, total, done, completePct: total > 0 ? Math.round((done / total) * 100) : 0 };
+      });
+      const totalAll = p.workItems.length;
+      const doneAll = p.workItems.filter((w) => w.status === BoardStatus.QA_DONE).length;
+      return {
+        id: p.id,
+        name: p.name,
+        status: p.status === 'ACTIVE' ? 'Active' : p.status === 'ON_HOLD' ? 'On Hold' : 'Archive',
+        tasks: totalAll,
+        done: doneAll,
+        teamSize: p.members.length,
+        color: colors[i % colors.length],
+        breakdown,
+      };
+    });
   }
 
   async getBugsReport(period: string, projectId?: string) {
@@ -626,7 +651,7 @@ export class AnalyticsService {
         return {
           userId: user.id,
           name: user.fullName,
-          role: user.projectMembers[0]?.projectRole?.replace('_', ' ') ?? user.systemRole,
+          role: user.projectMembers[0]?.projectRole?.replace(/_/g, ' ') ?? user.systemRole,
           tasksAllocated: itemCount,
           hoursAllocated,
           utilisationPct,
@@ -673,12 +698,11 @@ export class AnalyticsService {
         userId: entry.userId,
         name: user?.fullName ?? 'Unknown',
         role:
-          user?.projectMembers[0]?.projectRole?.replace('_', ' ') ??
+          user?.projectMembers[0]?.projectRole?.replace(/_/g, ' ') ??
           user?.systemRole ??
           'N/A',
         project: user?.projectMembers[0]?.project?.name ?? (projectId ? 'N/A' : 'Multiple'),
         hoursLogged: Math.round(Number(entry._sum?.hours ?? 0) * 10) / 10,
-        status: 'Approved' as const,
       };
     });
   }

@@ -12,9 +12,9 @@ import {
 } from './dashboard.service';
 
 interface JwtUser {
-  sub: string;
+  id: string;
   email: string;
-  role: SystemRole;
+  systemRole: SystemRole;
 }
 
 @ApiTags('Dashboard')
@@ -32,13 +32,13 @@ export class DashboardController {
     @Query('projectId') projectId?: string,
     @Query('month')     month?: string,
   ): Promise<DashboardStats> {
-    return this.dashboardService.getStats(user.sub, user.role, projectId, month);
+    return this.dashboardService.getStats(user.id, user.systemRole, projectId, month);
   }
 
   @Get('projects-progress')
   @ApiOperation({ summary: 'Get project-wise team progress (Admin+ or Project Manager/Team Lead)' })
   getProjectsProgress(@CurrentUser() user: JwtUser): Promise<ProjectProgress[]> {
-    return this.dashboardService.getProjectsProgress(user.sub, user.role);
+    return this.dashboardService.getProjectsProgress(user.id, user.systemRole);
   }
 
   @Get('team-activity')
@@ -52,7 +52,7 @@ export class DashboardController {
   ): Promise<MemberActivity[]> {
     if (!projectId || !month) throw new BadRequestException('projectId and month are required');
     if (!/^\d{4}-\d{2}$/.test(month)) throw new BadRequestException('month must be in YYYY-MM format');
-    return this.dashboardService.getTeamActivity(projectId, month, user.sub, user.role);
+    return this.dashboardService.getTeamActivity(projectId, month, user.id, user.systemRole);
   }
 
   @Get('tasks-progress')
@@ -64,7 +64,7 @@ export class DashboardController {
     @Query('projectId') projectId?: string,
     @Query('period')    period: '7d' | '30d' | 'all' = 'all',
   ): Promise<TasksProgress> {
-    return this.dashboardService.getTasksProgress(user.sub, user.role, projectId, period);
+    return this.dashboardService.getTasksProgress(user.id, user.systemRole, projectId, period);
   }
 
   @Get('activity')
@@ -76,7 +76,7 @@ export class DashboardController {
     @Query('projectId') projectId?: string,
     @Query('period')    period: 'monthly' | 'weekly' = 'monthly',
   ) {
-    return this.dashboardService.getActivityData(user.sub, projectId, period);
+    return this.dashboardService.getActivityData(user.id, projectId, period);
   }
 
   @Get('announcements')

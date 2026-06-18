@@ -37,7 +37,6 @@ export interface UsersPage {
 export interface CreateUserPayload {
   fullName: string;
   email: string;
-  password: string;
   systemRole: SystemRole;
   phone?: string;
   joinDate?: string;
