@@ -66,7 +66,6 @@ describe('UsersService', () => {
     const result = await service.createUser({
       fullName: 'Jane Doe',
       email: 'jane@pms.com',
-      password: 'Pass@1234',
       systemRole: 'EMPLOYEE' as any,
     });
 
@@ -79,7 +78,7 @@ describe('UsersService', () => {
     mockPrisma.user.findUnique.mockResolvedValue(mockUser);
 
     await expect(
-      service.createUser({ fullName: 'X', email: 'jane@pms.com', password: 'Pass@1234', systemRole: 'EMPLOYEE' as any }),
+      service.createUser({ fullName: 'X', email: 'jane@pms.com', systemRole: 'EMPLOYEE' as any }),
     ).rejects.toThrow(ConflictException);
 
     expect(mockPrisma.user.create).not.toHaveBeenCalled();
@@ -145,7 +144,6 @@ describe('UsersService', () => {
     await service.createUser({
       fullName: 'Jane Doe',
       email: 'jane@pms.com',
-      password: 'Pass@1234',
       systemRole: 'EMPLOYEE' as any,
     });
 
@@ -165,7 +163,6 @@ describe('UsersService', () => {
     const result = await service.createUser({
       fullName: 'Jane Doe',
       email: 'jane@pms.com',
-      password: 'Pass@1234',
       systemRole: 'EMPLOYEE' as any,
     });
 

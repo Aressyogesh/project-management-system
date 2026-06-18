@@ -44,8 +44,8 @@ it('getStats_SuperUser_ReturnsSystemWideCounts', async () => {
   mockPrisma.user.count.mockResolvedValue(20);
   const service = buildService();
   const result = await service.getStats('user-001', SystemRole.SUPER_USER);
-  const activeProjectCard = result.cards.find((c) => c.label === 'Active Projects');
-  expect(activeProjectCard?.value).toBe(5);
+  const myProjectCard = result.cards.find((c) => c.label === 'My Projects');
+  expect(myProjectCard?.value).toBe(5);
 });
 
 // UTC-F026-B-002
@@ -204,11 +204,12 @@ it('DashboardService_getStats_EmptyMyTasksWhenNoneAssigned', async () => {
 });
 
 it('DashboardService_getStats_AdminCardActiveProjectsIsLive', async () => {
-  // ADMIN with PM/TL role in 7 projects → Active Projects card shows 7
+  // ADMIN → My Projects card shows total project count from project.count()
   const memberships = Array.from({ length: 7 }, (_, i) => ({ projectId: `p${i}` }));
   mockPrisma.projectMember.findMany.mockResolvedValue(memberships);
+  mockPrisma.project.count.mockResolvedValue(5);
   const service = buildService();
   const result = await service.getStats('user-001', SystemRole.ADMIN);
-  const activeProjectCard = result.cards.find((c) => c.label === 'Active Projects');
-  expect(activeProjectCard?.value).toBe(7);
+  const myProjectCard = result.cards.find((c) => c.label === 'My Projects');
+  expect(myProjectCard?.value).toBe(5);
 });

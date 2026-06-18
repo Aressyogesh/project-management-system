@@ -150,20 +150,16 @@ describe('WorkItemsService', () => {
       ).rejects.toThrow(BadRequestException);
     });
 
-    it('creates item without parent when parentId is undefined', async () => {
-      mockPrisma.project.update.mockResolvedValue({ name: 'Test Project', workItemCounter: 10001 });
-      mockPrisma.workItem.create.mockResolvedValue({ ...baseItem });
-      mockPrisma.$transaction.mockImplementation((cb: (tx: typeof mockPrisma) => Promise<unknown>) => cb(mockPrisma));
-
-      await service.create('p-1', 'u-1', {
-        type: WorkItemType.TASK,
-        title: 'Task',
-        priority: 'MEDIUM',
-        labels: [],
-        components: [],
-      } as any);
-
-      expect(mockPrisma.workItem.create).toHaveBeenCalled();
+    it('throws BadRequestException when creating a non-EPIC without parent', async () => {
+      await expect(
+        service.create('p-1', 'u-1', {
+          type: WorkItemType.TASK,
+          title: 'Task',
+          priority: 'MEDIUM',
+          labels: [],
+          components: [],
+        } as any),
+      ).rejects.toThrow(BadRequestException);
     });
   });
 
