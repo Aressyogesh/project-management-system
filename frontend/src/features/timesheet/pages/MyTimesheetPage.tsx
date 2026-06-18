@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { timesheetApi, type TimesheetApprovalStatus, type TimesheetEntryFull } from '../../../api/timesheetApi';
+import { timesheetApi, type TimesheetEntryFull } from '../../../api/timesheetApi';
 import { projectsApi } from '../../../api/projects.api';
 import { useAuthStore } from '../../../store/authStore';
 
@@ -23,13 +23,6 @@ function fmt(d: Date): string {
 function fmtDisplay(iso: string): string {
   return new Date(iso + 'T00:00:00').toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
 }
-
-const STATUS_CONFIG: Record<TimesheetApprovalStatus, { label: string; bg: string; text: string }> = {
-  PENDING:   { label: 'Pending',   bg: 'bg-gray-100',    text: 'text-gray-600' },
-  SUBMITTED: { label: 'Submitted', bg: 'bg-blue-100',    text: 'text-blue-700' },
-  APPROVED:  { label: 'Approved',  bg: 'bg-emerald-100', text: 'text-emerald-700' },
-  REJECTED:  { label: 'Rejected',  bg: 'bg-red-100',     text: 'text-red-700' },
-};
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
