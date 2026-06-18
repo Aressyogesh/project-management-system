@@ -60,14 +60,15 @@ export function DashboardPage() {
   const [selectedProject, setSelectedProject] = useState('');
   const [selectedMonth,   setSelectedMonth]   = useState(MONTH_OPTIONS[0]);
 
-  // Projects list — admin sees all, employees see their own projects (for filter dropdown)
-  const { data: projects = [], isLoading: projectsLoading } = useQuery({
+  // Admin/Super: fetch all active projects for the filter dropdown
+  const { data: adminProjects = [], isLoading: adminProjectsLoading } = useQuery({
     queryKey: ['projects-list', 'active'],
     queryFn:  () => projectsApi.list({ status: 'ACTIVE' }),
+    enabled:  isAdminOrSuper,
     staleTime: 120_000,
   });
 
-  // Projects progress — always fetch; non-admin backend returns [] if user is not PM/TL
+  // Projects progress — always fetch; backend scopes to PM/TL's own projects for non-admins
   const { data: projectsProgress, isLoading: projectsLoading2 } = useQuery({
     queryKey: ['dashboard-projects-progress'],
     queryFn:  dashboardApi.getProjectsProgress,
@@ -76,6 +77,12 @@ export function DashboardPage() {
 
   // PM/TL detection: backend returns project data only for PM/TL roles
   const isManager = isAdminOrSuper || ((projectsProgress?.length ?? 0) > 0);
+
+  // Filter dropdown: admins see all projects; PMs/TLs see only their own (from projectsProgress)
+  const projects = isAdminOrSuper
+    ? adminProjects
+    : (projectsProgress ?? []).map((p) => ({ id: p.id, name: p.name }));
+  const projectsLoading = isAdminOrSuper ? adminProjectsLoading : projectsLoading2;
   const hasFilter = isManager && !!selectedProject;
 
   // Dashboard stats — scoped when project+month selected
