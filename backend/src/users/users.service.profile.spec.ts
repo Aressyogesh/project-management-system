@@ -20,6 +20,9 @@ function makePrisma(): any {
       findUnique: jest.fn(),
       update: jest.fn(),
     },
+    refreshToken: {
+      updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+    },
   };
 }
 
@@ -113,6 +116,10 @@ describe('UsersService — profile methods', () => {
       expect(updateCall.data.passwordHash).toBeDefined();
       const valid = await bcrypt.compare('newpass123', updateCall.data.passwordHash);
       expect(valid).toBe(true);
+      expect(prisma.refreshToken.updateMany).toHaveBeenCalledWith({
+        where: { userId: 'u1' },
+        data: { isRevoked: true },
+      });
     });
   });
 });
