@@ -50,18 +50,23 @@ export class SelfLogsController {
 
   @Post('learning-logs')
   createLearning(
-    @Body() dto: { period: string; topic: string; hours: number; description?: string },
+    @Body() dto: { period: string; topic: string; hours: number; description?: string; targetUserId?: string },
     @Request() req: AuthRequest,
   ) {
-    return this.selfLogsService.createLearningLog(req.user.id, dto);
+    const isPrivileged = req.user.systemRole === SystemRole.ADMIN || req.user.systemRole === SystemRole.SUPER_USER;
+    const userId = isPrivileged && dto.targetUserId ? dto.targetUserId : req.user.id;
+    return this.selfLogsService.createLearningLog(userId, dto);
   }
 
   @Get('learning-logs')
   findLearning(
     @Query('period') period: string | undefined,
+    @Query('targetUserId') targetUserId: string | undefined,
     @Request() req: AuthRequest,
   ) {
-    return this.selfLogsService.findLearningLogs(req.user.id, period);
+    const isPrivileged = req.user.systemRole === SystemRole.ADMIN || req.user.systemRole === SystemRole.SUPER_USER;
+    const userId = isPrivileged && targetUserId ? targetUserId : req.user.id;
+    return this.selfLogsService.findLearningLogs(userId, period);
   }
 
   @Delete('learning-logs/:id')
@@ -77,18 +82,23 @@ export class SelfLogsController {
 
   @Post('innovation-logs')
   createInnovation(
-    @Body() dto: { period: string; title: string; impact: string; type: string },
+    @Body() dto: { period: string; title: string; impact: string; type: string; targetUserId?: string },
     @Request() req: AuthRequest,
   ) {
-    return this.selfLogsService.createInnovationLog(req.user.id, dto);
+    const isPrivileged = req.user.systemRole === SystemRole.ADMIN || req.user.systemRole === SystemRole.SUPER_USER;
+    const userId = isPrivileged && dto.targetUserId ? dto.targetUserId : req.user.id;
+    return this.selfLogsService.createInnovationLog(userId, dto);
   }
 
   @Get('innovation-logs')
   findInnovation(
     @Query('period') period: string | undefined,
+    @Query('targetUserId') targetUserId: string | undefined,
     @Request() req: AuthRequest,
   ) {
-    return this.selfLogsService.findInnovationLogs(req.user.id, period);
+    const isPrivileged = req.user.systemRole === SystemRole.ADMIN || req.user.systemRole === SystemRole.SUPER_USER;
+    const userId = isPrivileged && targetUserId ? targetUserId : req.user.id;
+    return this.selfLogsService.findInnovationLogs(userId, period);
   }
 
   @Delete('innovation-logs/:id')

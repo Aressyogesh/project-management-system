@@ -225,6 +225,13 @@ export class UsersService {
       },
     });
 
+    if (passwordHash) {
+      await this.prisma.refreshToken.updateMany({
+        where: { userId },
+        data: { isRevoked: true },
+      });
+    }
+
     this.auditLogs.log({
       userId,
       action: AuditAction.PROFILE_UPDATED,

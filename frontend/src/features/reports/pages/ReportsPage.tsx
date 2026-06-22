@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   Bar,
   BarChart,
@@ -1159,22 +1159,15 @@ export function ReportsPage() {
   const user = useAuthStore((s) => s.user);
   const [activeTab, setActiveTab] = useState<Tab>('productivity');
   const [period, setPeriod] = useState(DEFAULT_PERIOD);
-  const [project, setProject] = useState('all');
 
   const isAdmin = user?.systemRole === 'ADMIN' || user?.systemRole === 'SUPER_USER';
+  const [project, setProject] = useState(isAdmin ? 'all' : '');
 
   const { data: projectsList = [] } = useQuery({
     queryKey: ['projects-list', 'active'],
     queryFn: () => projectsApi.list({ status: 'ACTIVE' }),
     staleTime: 120_000,
   });
-
-  // Auto-select first project for non-admin users once projects load
-  useEffect(() => {
-    if (!isAdmin && project === 'all' && (projectsList as { id: string }[]).length > 0) {
-      setProject((projectsList as { id: string }[])[0].id);
-    }
-  }, [isAdmin, projectsList]);
 
   // Admin sees "All Projects" option; non-admin must pick one of their assigned projects
   const projectOptions = useMemo(() => {
@@ -1196,10 +1189,9 @@ export function ReportsPage() {
             onChange={(e) => setProject(e.target.value)}
             className="text-sm border border-gray-200 rounded-xl px-3 py-2 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary-300"
           >
-            {!isAdmin && projectOptions.length === 0 && (
-              <option value="">No projects assigned</option>
+            {!isAdmin && (
+              <option value="">{projectOptions.length === 0 ? 'No projects assigned' : '— Select a Project —'}</option>
             )}
-            {!isAdmin && <option value="" disabled>Select a project</option>}
             {projectOptions.map((o) => (
               <option key={o.value} value={o.value}>{o.label}</option>
             ))}

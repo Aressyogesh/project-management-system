@@ -174,18 +174,18 @@ const INNOVATION_TYPES = [
   { value: 'OTHER', label: 'Other' },
 ];
 
-function SelfLogSection({ period }: { period: string }) {
+function SelfLogSection({ period, targetUserId }: { period: string; targetUserId?: string }) {
   const qc = useQueryClient();
 
   const { data: learningLogs = [] } = useQuery<LearningLog[]>({
-    queryKey: ['learning-logs', period],
-    queryFn: () => selfLogsApi.getLearningLogs(period),
+    queryKey: ['learning-logs', period, targetUserId],
+    queryFn: () => selfLogsApi.getLearningLogs(period, targetUserId),
     staleTime: 30_000,
   });
 
   const { data: innovationLogs = [] } = useQuery<InnovationLog[]>({
-    queryKey: ['innovation-logs', period],
-    queryFn: () => selfLogsApi.getInnovationLogs(period),
+    queryKey: ['innovation-logs', period, targetUserId],
+    queryFn: () => selfLogsApi.getInnovationLogs(period, targetUserId),
     staleTime: 30_000,
   });
 
@@ -199,29 +199,29 @@ function SelfLogSection({ period }: { period: string }) {
   const [iType, setIType] = useState('AI_IMPLEMENTATION');
 
   const addLearning = useMutation({
-    mutationFn: () => selfLogsApi.createLearningLog({ period, topic: lTopic.trim(), hours: Number(lHours), description: lDesc.trim() || undefined }),
+    mutationFn: () => selfLogsApi.createLearningLog({ period, topic: lTopic.trim(), hours: Number(lHours), description: lDesc.trim() || undefined, ...(targetUserId && { targetUserId }) }),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['learning-logs', period] });
+      qc.invalidateQueries({ queryKey: ['learning-logs', period, targetUserId] });
       setLTopic(''); setLHours(''); setLDesc(''); setShowLearningForm(false);
     },
   });
 
   const addInnovation = useMutation({
-    mutationFn: () => selfLogsApi.createInnovationLog({ period, title: iTitle.trim(), impact: iImpact.trim(), type: iType }),
+    mutationFn: () => selfLogsApi.createInnovationLog({ period, title: iTitle.trim(), impact: iImpact.trim(), type: iType, ...(targetUserId && { targetUserId }) }),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['innovation-logs', period] });
+      qc.invalidateQueries({ queryKey: ['innovation-logs', period, targetUserId] });
       setITitle(''); setIImpact(''); setIType('AI_IMPLEMENTATION'); setShowInnovationForm(false);
     },
   });
 
   const delLearning = useMutation({
     mutationFn: (id: string) => selfLogsApi.deleteLearningLog(id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['learning-logs', period] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['learning-logs', period, targetUserId] }),
   });
 
   const delInnovation = useMutation({
     mutationFn: (id: string) => selfLogsApi.deleteInnovationLog(id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['innovation-logs', period] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['innovation-logs', period, targetUserId] }),
   });
 
   const inputCls = 'w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white';
@@ -548,6 +548,10 @@ export function KpiPage() {
             <KpiRadarChart employee={selectedEmployee} />
           </div>
           <KpiEmployeeDetailPanel employee={selectedEmployee} />
+          <div>
+            <h2 className="text-base font-semibold text-gray-800 mb-3">Growth & Innovation Self-Log</h2>
+            <SelfLogSection period={selectedPeriod} targetUserId={selectedEmployee.userId} />
+          </div>
         </>
       ) : (
         /* ── Team dashboard view ── */

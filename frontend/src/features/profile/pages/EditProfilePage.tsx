@@ -1,6 +1,8 @@
 import { useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
 import { useAuthStore } from '../../../store/authStore';
+import { authApi } from '../../../api/auth.api';
 import { usersApi } from '../../../api/users.api';
 import { avatarUrl } from '../../../utils/avatarUrl';
 
@@ -21,8 +23,12 @@ function EyeOffIcon() {
 }
 
 export function EditProfilePage() {
+  const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
   const updateUser = useAuthStore((s) => s.updateUser);
+  const clearAuth = useAuthStore((s) => s.clearAuth);
+  const refreshToken = useAuthStore((s) => s.refreshToken);
+  const passwordChangedRef = useRef(false);
 
   const [fullName, setFullName] = useState(user?.fullName ?? '');
   const [email, setEmail] = useState(user?.email ?? '');
@@ -44,6 +50,7 @@ export function EditProfilePage() {
       if (newPassword && newPassword !== confirmPassword) {
         throw new Error('New passwords do not match');
       }
+      passwordChangedRef.current = !!newPassword;
       return usersApi.updateProfile(
         {
           fullName: fullName !== user?.fullName ? fullName : undefined,
@@ -55,6 +62,12 @@ export function EditProfilePage() {
       );
     },
     onSuccess: (updated) => {
+      if (passwordChangedRef.current) {
+        authApi.logout(refreshToken ?? '').catch(() => {});
+        clearAuth();
+        navigate('/login');
+        return;
+      }
       updateUser({ fullName: updated.fullName, email: updated.email, profilePhoto: updated.profilePhoto });
       setSuccessMsg('Profile updated successfully.');
       setErrorMsg('');

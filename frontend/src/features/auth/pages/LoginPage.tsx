@@ -29,7 +29,6 @@ export function LoginPage() {
   });
 
   const onSubmit = async (credentials: LoginCredentials) => {
-    setApiError(null);
     try {
       const response = await authApi.login(credentials);
       if (rememberMe) {
