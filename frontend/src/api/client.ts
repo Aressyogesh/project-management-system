@@ -28,6 +28,11 @@ apiClient.interceptors.response.use(
       return Promise.reject(error);
     }
 
+    // Login endpoint handles its own 401 — never intercept it here
+    if (originalRequest.url?.includes('/auth/login')) {
+      return Promise.reject(error);
+    }
+
     const { refreshToken, setTokens, clearAuth } = useAuthStore.getState();
     if (!refreshToken) {
       clearAuth();
