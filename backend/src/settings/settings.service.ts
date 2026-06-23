@@ -210,6 +210,7 @@ export class SettingsService {
         email: true,
         systemRole: true,
         isActive: true,
+        profilePhoto: true,
         createdAt: true,
       },
       orderBy: { fullName: 'asc' },

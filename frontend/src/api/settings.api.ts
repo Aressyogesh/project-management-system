@@ -56,6 +56,7 @@ export interface SettingsUser {
   email: string;
   systemRole: 'SUPER_USER' | 'ADMIN' | 'EMPLOYEE';
   isActive: boolean;
+  profilePhoto: string | null;
 }
 
 export const settingsApi = {

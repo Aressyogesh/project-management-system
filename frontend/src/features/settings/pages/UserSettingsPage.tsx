@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { Pagination } from '../../../components/shared/Pagination';
+import { UserAvatar } from '../../../components/shared/UserAvatar';
 import { settingsApi } from '../../../api/settings.api';
 
 const PAGE_SIZE = 25;
@@ -15,17 +16,6 @@ const ROLE_LABELS: Record<SystemRole, string> = {
 
 const ROLES: SystemRole[] = ['SUPER_USER', 'ADMIN', 'EMPLOYEE'];
 
-function initials(name: string) {
-  return name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2);
-}
-
-function Avatar({ name }: { name: string }) {
-  return (
-    <div className="w-9 h-9 rounded-full bg-primary-100 text-primary-700 font-semibold text-sm flex items-center justify-center shrink-0">
-      {initials(name)}
-    </div>
-  );
-}
 
 export function UserSettingsPage() {
   const qc = useQueryClient();
@@ -116,7 +106,7 @@ export function UserSettingsPage() {
                     <td className="px-4 py-3 text-gray-500">{(page - 1) * PAGE_SIZE + i + 1}</td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
-                        <Avatar name={user.fullName} />
+                        <UserAvatar name={user.fullName} photo={user.profilePhoto} size="lg" />
                         <div>
                           <p className="font-medium text-gray-800">{user.fullName}</p>
                           <span className={`text-xs px-1.5 py-0.5 rounded-full ${user.isActive ? 'text-green-700 bg-green-50' : 'text-gray-500 bg-gray-100'}`}>
