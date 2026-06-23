@@ -66,8 +66,8 @@ export class AnalyticsController {
   @Get('reports/timesheet')
   getTimesheet(
     @Query('period') period = '2026-05',
-    @Query('projectId') projectId?: string,
     @Request() req: { user: AuthUser },
+    @Query('projectId') projectId?: string,
   ) {
     const isAdmin =
       req.user.systemRole === SystemRole.ADMIN ||
@@ -89,8 +89,8 @@ export class AnalyticsController {
   @Get('reports/planned-vs-actual')
   getPlannedVsActual(
     @Query('period') period = '2026-05',
-    @Query('projectId') projectId?: string,
     @Request() req: { user: AuthUser },
+    @Query('projectId') projectId?: string,
   ) {
     const isAdmin =
       req.user.systemRole === SystemRole.ADMIN ||
