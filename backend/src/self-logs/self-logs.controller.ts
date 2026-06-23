@@ -59,13 +59,18 @@ export class SelfLogsController {
   }
 
   @Get('learning-logs')
-  findLearning(
+  async findLearning(
     @Query('period') period: string | undefined,
     @Query('targetUserId') targetUserId: string | undefined,
     @Request() req: AuthRequest,
   ) {
     const isPrivileged = req.user.systemRole === SystemRole.ADMIN || req.user.systemRole === SystemRole.SUPER_USER;
-    const userId = isPrivileged && targetUserId ? targetUserId : req.user.id;
+    let userId = req.user.id;
+    if (targetUserId && targetUserId !== req.user.id) {
+      if (isPrivileged || await this.selfLogsService.canViewUserLogs(req.user.id, targetUserId)) {
+        userId = targetUserId;
+      }
+    }
     return this.selfLogsService.findLearningLogs(userId, period);
   }
 
@@ -91,13 +96,18 @@ export class SelfLogsController {
   }
 
   @Get('innovation-logs')
-  findInnovation(
+  async findInnovation(
     @Query('period') period: string | undefined,
     @Query('targetUserId') targetUserId: string | undefined,
     @Request() req: AuthRequest,
   ) {
     const isPrivileged = req.user.systemRole === SystemRole.ADMIN || req.user.systemRole === SystemRole.SUPER_USER;
-    const userId = isPrivileged && targetUserId ? targetUserId : req.user.id;
+    let userId = req.user.id;
+    if (targetUserId && targetUserId !== req.user.id) {
+      if (isPrivileged || await this.selfLogsService.canViewUserLogs(req.user.id, targetUserId)) {
+        userId = targetUserId;
+      }
+    }
     return this.selfLogsService.findInnovationLogs(userId, period);
   }
 

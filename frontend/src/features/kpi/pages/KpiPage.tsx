@@ -202,6 +202,7 @@ function SelfLogSection({ period, targetUserId }: { period: string; targetUserId
     mutationFn: () => selfLogsApi.createLearningLog({ period, topic: lTopic.trim(), hours: Number(lHours), description: lDesc.trim() || undefined, ...(targetUserId && { targetUserId }) }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['learning-logs', period, targetUserId] });
+      qc.invalidateQueries({ queryKey: ['kpi-live', period] });
       setLTopic(''); setLHours(''); setLDesc(''); setShowLearningForm(false);
     },
   });
@@ -210,18 +211,25 @@ function SelfLogSection({ period, targetUserId }: { period: string; targetUserId
     mutationFn: () => selfLogsApi.createInnovationLog({ period, title: iTitle.trim(), impact: iImpact.trim(), type: iType, ...(targetUserId && { targetUserId }) }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['innovation-logs', period, targetUserId] });
+      qc.invalidateQueries({ queryKey: ['kpi-live', period] });
       setITitle(''); setIImpact(''); setIType('AI_IMPLEMENTATION'); setShowInnovationForm(false);
     },
   });
 
   const delLearning = useMutation({
     mutationFn: (id: string) => selfLogsApi.deleteLearningLog(id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['learning-logs', period, targetUserId] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['learning-logs', period, targetUserId] });
+      qc.invalidateQueries({ queryKey: ['kpi-live', period] });
+    },
   });
 
   const delInnovation = useMutation({
     mutationFn: (id: string) => selfLogsApi.deleteInnovationLog(id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['innovation-logs', period, targetUserId] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['innovation-logs', period, targetUserId] });
+      qc.invalidateQueries({ queryKey: ['kpi-live', period] });
+    },
   });
 
   const inputCls = 'w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white';

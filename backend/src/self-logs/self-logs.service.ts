@@ -5,11 +5,26 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { SystemRole } from '@prisma/client';
+import { ProjectRole, SystemRole } from '@prisma/client';
 
 @Injectable()
 export class SelfLogsService {
   constructor(private readonly prisma: PrismaService) {}
+
+  // Returns true if requestingUserId is a PM/TL in any project that also contains targetUserId
+  async canViewUserLogs(requestingUserId: string, targetUserId: string): Promise<boolean> {
+    const managedProjects = await this.prisma.projectMember.findMany({
+      where: { userId: requestingUserId, projectRole: { in: [ProjectRole.PROJECT_MANAGER, ProjectRole.TEAM_LEAD] } },
+      select: { projectId: true },
+    });
+    if (managedProjects.length === 0) return false;
+    const projectIds = managedProjects.map((m) => m.projectId);
+    const membership = await this.prisma.projectMember.findFirst({
+      where: { userId: targetUserId, projectId: { in: projectIds } },
+      select: { id: true },
+    });
+    return !!membership;
+  }
 
   // ─── Leave Logs ───────────────────────────────────────────────────────────────
 
