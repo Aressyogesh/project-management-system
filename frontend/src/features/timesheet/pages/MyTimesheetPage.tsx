@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { timesheetApi, type TimesheetEntryFull } from '../../../api/timesheetApi';
 import { projectsApi } from '../../../api/projects.api';
+import { analyticsApi } from '../../../api/analyticsApi';
 import { useAuthStore } from '../../../store/authStore';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -29,8 +30,15 @@ function fmtDisplay(iso: string): string {
 export function MyTimesheetPage() {
   const { user } = useAuthStore();
 
-  // Admins can view and filter by any team member
-  const canViewTeam = user?.systemRole === 'SUPER_USER' || user?.systemRole === 'ADMIN';
+  // Project managers and admins can view and filter by team member
+  const isAdminOrSuper = user?.systemRole === 'SUPER_USER' || user?.systemRole === 'ADMIN';
+  const { data: myProjectRole } = useQuery({
+    queryKey: ['my-project-role'],
+    queryFn: analyticsApi.getMyProjectRole,
+    enabled: !isAdminOrSuper,
+    staleTime: 300_000,
+  });
+  const canViewTeam = isAdminOrSuper || myProjectRole?.isManager === true;
 
   const today = new Date();
   const todayStr = fmt(today);

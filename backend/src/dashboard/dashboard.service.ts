@@ -99,7 +99,6 @@ export class DashboardService {
       where: {
         userId,
         projectRole: { in: [ProjectRole.PROJECT_MANAGER, ProjectRole.TEAM_LEAD] },
-        project: { status: ProjectStatus.ACTIVE },
       },
       select: { projectId: true },
     });
@@ -109,9 +108,9 @@ export class DashboardService {
       ? { id: { in: scopedProjectIds }, status: ProjectStatus.ACTIVE }
       : { status: ProjectStatus.ACTIVE };
 
-    // Scalar project-id filter (avoids Prisma discriminated-union issues with mixed relation+scalar)
+    // Scalar project-id filter — always restrict to ACTIVE projects for counts
     const taskWhere: any = scopedProjectIds !== null
-      ? { projectId: { in: scopedProjectIds } }
+      ? { projectId: { in: scopedProjectIds }, project: { status: ProjectStatus.ACTIVE } }
       : { project: { status: ProjectStatus.ACTIVE } };
 
     const [
@@ -128,10 +127,10 @@ export class DashboardService {
       activeProjects,
       myProjectCount,
     ] = await Promise.all([
-      // Distinct team members across scoped projects for ADMIN; all active users for SUPER_USER
+      // Distinct active team members across scoped active projects; all active users for global admin
       scopedProjectIds !== null
         ? this.prisma.projectMember
-            .findMany({ where: { projectId: { in: scopedProjectIds } }, select: { userId: true }, distinct: ['userId'] })
+            .findMany({ where: { projectId: { in: scopedProjectIds }, project: { status: ProjectStatus.ACTIVE } }, select: { userId: true }, distinct: ['userId'] })
             .then((rows) => rows.length)
         : this.prisma.user.count({ where: { isActive: true } }),
       scopedProjectIds !== null

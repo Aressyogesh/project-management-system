@@ -1963,6 +1963,7 @@ export function CreateWorkItemModal({
   const [assigneeId, setAssigneeId] = useState('');
   const [storyPoints, setStoryPoints] = useState('');
   const [estimatedHours, setEstimatedHours] = useState('');
+  const [startDate, setStartDate] = useState('');
   const [dueDate, setDueDate] = useState('');
   const [selectedParentId, setSelectedParentId] = useState(parentId ?? '');
   // Bug fields
@@ -2036,6 +2037,7 @@ export function CreateWorkItemModal({
 
   const [assigneeError, setAssigneeError] = useState(false);
   const [parentError, setParentError] = useState(false);
+  const [dateError, setDateError] = useState('');
 
   function handleSubmit() {
     if (!title.trim()) return;
@@ -2050,6 +2052,11 @@ export function CreateWorkItemModal({
       return;
     }
     setAssigneeError(false);
+    if (!startDate || !dueDate) {
+      setDateError(!startDate && !dueDate ? 'Start date and due date are required' : !startDate ? 'Start date is required' : 'Due date is required');
+      return;
+    }
+    setDateError('');
     createMut.mutate({
       type,
       title: title.trim(),
@@ -2060,6 +2067,7 @@ export function CreateWorkItemModal({
       parentId: selectedParentId || parentId || undefined,
       storyPoints: storyPoints ? Number(storyPoints) : undefined,
       estimatedHours: estimatedHours ? Number(estimatedHours) : undefined,
+      startDate: startDate || undefined,
       dueDate: dueDate || undefined,
       severity: (severity || undefined) as BugSeverity | undefined,
       bugClassification: (bugClassification || undefined) as BugClassification | undefined,
@@ -2346,9 +2354,18 @@ export function CreateWorkItemModal({
               </div>
             )}
             <div>
-              <label className={labelCls}>Due Date</label>
-              <input type="date" value={dueDate} min={pastDateStr(5)} max={futureDateStr(10)} onChange={(e) => setDueDate(e.target.value)} className={inputCls} />
+              <label className={labelCls}>Start Date <span className="text-red-500">*</span></label>
+              <input type="date" value={startDate} min={pastDateStr(5)} max={futureDateStr(10)} onChange={(e) => { setStartDate(e.target.value); setDateError(''); }} className={`${inputCls} ${dateError && !startDate ? 'border-red-500 focus:ring-red-500' : ''}`} />
             </div>
+            <div>
+              <label className={labelCls}>Due Date <span className="text-red-500">*</span></label>
+              <input type="date" value={dueDate} min={pastDateStr(5)} max={futureDateStr(10)} onChange={(e) => { setDueDate(e.target.value); setDateError(''); }} className={`${inputCls} ${dateError && !dueDate ? 'border-red-500 focus:ring-red-500' : ''}`} />
+            </div>
+            {dateError && (
+              <div className="col-span-2">
+                <p className="text-xs text-red-500">{dateError}</p>
+              </div>
+            )}
             <div>
               <label className={labelCls}>Story Points</label>
               <input type="number" min={0} value={storyPoints} onChange={(e) => setStoryPoints(e.target.value)} className={inputCls} />

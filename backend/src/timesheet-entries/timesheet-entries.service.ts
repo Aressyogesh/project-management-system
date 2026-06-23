@@ -99,7 +99,17 @@ export class TimesheetEntriesService {
     projectId?: string,
   ) {
     const isAdmin = systemRole === SystemRole.SUPER_USER || systemRole === SystemRole.ADMIN;
-    const isManager = projectRole === ProjectRole.PROJECT_MANAGER || projectRole === ProjectRole.TEAM_LEAD;
+    let isManager = projectRole === ProjectRole.PROJECT_MANAGER || projectRole === ProjectRole.TEAM_LEAD;
+
+    // projectRole is not included in the JWT payload, so check the DB for PM/TL memberships
+    if (!isAdmin && !isManager) {
+      const pmMembership = await this.prisma.projectMember.findFirst({
+        where: { userId: requestingUserId, projectRole: { in: [ProjectRole.PROJECT_MANAGER, ProjectRole.TEAM_LEAD] } },
+        select: { id: true },
+      });
+      isManager = !!pmMembership;
+    }
+
     const canViewAll = isAdmin || isManager;
 
     // Build where clause

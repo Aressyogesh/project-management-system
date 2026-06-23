@@ -102,7 +102,7 @@ export function ProjectDetailPage() {
   const { id: projectId } = useParams<{ id: string }>();
   const qc = useQueryClient();
   const user = useAuthStore((s) => s.user);
-  const canEdit = user?.systemRole === 'SUPER_USER' || user?.systemRole === 'ADMIN';
+  const isAdminOrSuper = user?.systemRole === 'SUPER_USER' || user?.systemRole === 'ADMIN';
 
   const [showAddMember, setShowAddMember] = useState(false);
   const [editingRole, setEditingRole] = useState<{ userId: string; role: ProjectRole } | null>(null);
@@ -129,6 +129,9 @@ export function ProjectDetailPage() {
     queryFn: () => projectsApi.listMembers(projectId!),
     enabled: !!projectId,
   });
+
+  const isUserPM = members.some((m) => m.user.id === user?.id && m.projectRole === 'PROJECT_MANAGER');
+  const canEdit = isAdminOrSuper || isUserPM;
 
   const { data: milestones = [], isLoading: milestonesLoading } = useQuery({
     queryKey: ['milestones', projectId],

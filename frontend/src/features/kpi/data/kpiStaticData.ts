@@ -161,10 +161,11 @@ export function computeGrade(totalScore: number): KpiGrade {
 export function computeCategoryScores(metrics: KpiMetricScore[]): KpiCategoryScore[] {
   return KPI_CATEGORIES.map((cat) => {
     const catMetrics = KPI_METRICS.filter((m) => m.category === cat.name);
-    const earned = catMetrics.reduce((sum, m) => {
+    const rawEarned = catMetrics.reduce((sum, m) => {
       const score = metrics.find((s) => s.metricId === m.id);
       return sum + (score?.points ?? 0);
     }, 0);
+    const earned = Math.round(rawEarned * 100) / 100;
     return {
       category: cat.name,
       earned,

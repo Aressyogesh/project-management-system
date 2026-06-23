@@ -183,6 +183,21 @@ export function WorkItemCard({ item, index, members = [], onClick, onAssigneeCha
               </div>
             )}
 
+            {/* Dates */}
+            {(item.startDate || item.dueDate) && (
+              <div className="flex items-center gap-2 mb-2 text-[10px] text-gray-400">
+                {item.startDate && (
+                  <span>{new Date(item.startDate + 'T00:00:00').toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}</span>
+                )}
+                {item.startDate && item.dueDate && <span>→</span>}
+                {item.dueDate && (
+                  <span className={new Date(item.dueDate) < new Date() && item.status !== 'QA_DONE' ? 'text-red-500 font-medium' : ''}>
+                    {new Date(item.dueDate + 'T00:00:00').toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}
+                  </span>
+                )}
+              </div>
+            )}
+
             {/* Footer: logged hours, children count, assignee */}
             <div className="flex items-center justify-between gap-2 mt-2">
               <div className="flex items-center gap-2">

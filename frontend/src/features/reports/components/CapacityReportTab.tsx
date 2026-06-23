@@ -83,6 +83,8 @@ interface TooltipState {
   month: number;
   year: number;
   cell: CapacityCell;
+  x: number;
+  y: number;
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -185,7 +187,7 @@ export function CapacityReportTab() {
               className="text-xs border-collapse"
               style={{ minWidth: `${180 + data.daysInMonth * 32}px` }}
             >
-              <thead>
+              <thead className="sticky top-0 z-30 bg-white">
                 <tr>
                   <th className="sticky left-0 z-20 bg-white px-3 py-2 text-left font-semibold text-gray-700 w-44 min-w-[11rem] border-r border-gray-100">
                     Employee
@@ -229,9 +231,10 @@ export function CapacityReportTab() {
                         <td
                           key={cell.day}
                           className="px-0.5 py-1 border-l border-gray-50 border-t border-gray-50 text-center cursor-default"
-                          onMouseEnter={() =>
-                            setTooltip({ employeeName: emp.name, day: cell.day, month, year, cell })
-                          }
+                          onMouseEnter={(e) => {
+                            const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                            setTooltip({ employeeName: emp.name, day: cell.day, month, year, cell, x: rect.left + rect.width / 2, y: rect.top });
+                          }}
                           onMouseLeave={() => setTooltip(null)}
                         >
                           <div
@@ -271,11 +274,11 @@ export function CapacityReportTab() {
         )}
       </div>
 
-      {/* Tooltip */}
+      {/* Tooltip — positioned above the hovered cell */}
       {tooltip && (
         <div
-          className="fixed z-50 pointer-events-none bg-white border border-gray-200 rounded-xl shadow-lg px-3 py-2 text-xs"
-          style={{ top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }}
+          className="fixed z-50 pointer-events-none bg-white border border-gray-200 rounded-xl shadow-lg px-3 py-2 text-xs min-w-[160px]"
+          style={{ top: tooltip.y - 8, left: tooltip.x, transform: 'translate(-50%, -100%)' }}
         >
           <p className="font-semibold text-gray-800">{tooltip.employeeName}</p>
           <p className="text-gray-500">
@@ -288,8 +291,20 @@ export function CapacityReportTab() {
             </span>
           </p>
           {tooltip.cell.hours > 0 && (
+            <>
+              <p className="text-gray-600">
+                Hours logged: <span className="font-medium">{tooltip.cell.hours}h</span>
+              </p>
+              {(tooltip.cell.status === 'occupied' || tooltip.cell.status === 'partial') && (
+                <p className="text-gray-600">
+                  Hours available: <span className="font-medium">{Math.max(0, 8 - tooltip.cell.hours)}h</span>
+                </p>
+              )}
+            </>
+          )}
+          {tooltip.cell.status === 'available' && (
             <p className="text-gray-600">
-              Hours logged: <span className="font-medium">{tooltip.cell.hours}h</span>
+              Hours available: <span className="font-medium">8h</span>
             </p>
           )}
           {tooltip.cell.hasWorkItem && (
