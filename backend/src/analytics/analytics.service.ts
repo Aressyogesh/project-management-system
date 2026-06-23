@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { BoardStatus, BugSeverity, LeaveStatus, WorkItemType } from '@prisma/client';
+import { BoardStatus, BugSeverity, LeaveStatus, ProjectRole, WorkItemType } from '@prisma/client';
 
 // ─── KPI Computation Helpers ──────────────────────────────────────────────────
 
@@ -662,12 +662,35 @@ export class AnalyticsService {
     return results.sort((a, b) => b.hoursAllocated - a.hoursAllocated);
   }
 
-  async getTimesheetReport(period: string, projectId?: string) {
+  async getManagedProjectIds(userId: string): Promise<string[]> {
+    const memberships = await this.prisma.projectMember.findMany({
+      where: {
+        userId,
+        projectRole: { in: [ProjectRole.PROJECT_MANAGER, ProjectRole.TEAM_LEAD] },
+      },
+      select: { projectId: true },
+    });
+    return memberships.map((m) => m.projectId);
+  }
+
+  async getTimesheetReport(period: string, projectId?: string, requestingUserId?: string, isAdmin = true) {
     const { start, end } = periodToRange(period);
 
-    const activeProjectIds = projectId
-      ? [projectId]
-      : (await this.prisma.project.findMany({ where: { status: 'ACTIVE' }, select: { id: true } })).map((p) => p.id);
+    let activeProjectIds: string[];
+    if (!isAdmin && requestingUserId) {
+      const managedIds = await this.getManagedProjectIds(requestingUserId);
+      if (managedIds.length > 0) {
+        activeProjectIds = projectId ? managedIds.filter((id) => id === projectId) : managedIds;
+      } else {
+        activeProjectIds = projectId
+          ? [projectId]
+          : (await this.prisma.project.findMany({ where: { status: 'ACTIVE' }, select: { id: true } })).map((p) => p.id);
+      }
+    } else {
+      activeProjectIds = projectId
+        ? [projectId]
+        : (await this.prisma.project.findMany({ where: { status: 'ACTIVE' }, select: { id: true } })).map((p) => p.id);
+    }
 
     const entries = await this.prisma.timesheetEntry.groupBy({
       by: ['userId'],
@@ -707,14 +730,23 @@ export class AnalyticsService {
     });
   }
 
-  async getPlannedVsActualReport(period: string, projectId?: string) {
+  async getPlannedVsActualReport(period: string, projectId?: string, requestingUserId?: string, isAdmin = true) {
     const { start, end } = periodToRange(period);
 
+    let scopedProjectIds: string[] | undefined;
+    if (!isAdmin && requestingUserId) {
+      const managedIds = await this.getManagedProjectIds(requestingUserId);
+      if (managedIds.length > 0) {
+        scopedProjectIds = projectId ? managedIds.filter((id) => id === projectId) : managedIds;
+      }
+    }
+
+    const projectMemberFilter = scopedProjectIds !== undefined
+      ? { projectMembers: { some: { projectId: { in: scopedProjectIds } } } }
+      : projectId ? { projectMembers: { some: { projectId } } } : {};
+
     const users = await this.prisma.user.findMany({
-      where: {
-        isActive: true,
-        ...(projectId ? { projectMembers: { some: { projectId } } } : {}),
-      },
+      where: { isActive: true, ...projectMemberFilter },
       select: {
         id: true,
         fullName: true,
@@ -723,6 +755,14 @@ export class AnalyticsService {
       },
     });
 
+    const workItemProjectFilter = scopedProjectIds !== undefined
+      ? { projectId: { in: scopedProjectIds } }
+      : projectId ? { projectId } : {};
+
+    const timesheetProjectFilter = scopedProjectIds !== undefined
+      ? { workItem: { projectId: { in: scopedProjectIds } } }
+      : projectId ? { workItem: { projectId } } : {};
+
     const results = await Promise.all(
       users.map(async (user) => {
         const [estimatedAgg, actualAgg] = await Promise.all([
@@ -730,7 +770,7 @@ export class AnalyticsService {
             where: {
               assigneeId: user.id,
               createdAt: { gte: start, lt: end },
-              ...(projectId ? { projectId } : {}),
+              ...workItemProjectFilter,
             },
             _sum: { estimatedHours: true },
             _count: { id: true },
@@ -739,7 +779,7 @@ export class AnalyticsService {
             where: {
               userId: user.id,
               date: { gte: start, lt: end },
-              ...(projectId ? { workItem: { projectId } } : {}),
+              ...timesheetProjectFilter,
             },
             _sum: { hours: true },
           }),
@@ -769,12 +809,22 @@ export class AnalyticsService {
       .sort((a, b) => Math.abs(b.variancePct) - Math.abs(a.variancePct));
   }
 
-  async getCapacityReport(period: string) {
+  async getCapacityReport(period: string, requestingUserId?: string, isAdmin = true) {
     const { start, end } = periodToRange(period);
     const [year, month] = period.split('-').map(Number);
 
     const daysInMonth = new Date(year, month, 0).getDate();
     const days = Array.from({ length: daysInMonth }, (_, i) => i + 1);
+
+    let scopedProjectIds: string[] | undefined;
+    if (!isAdmin && requestingUserId) {
+      const managedIds = await this.getManagedProjectIds(requestingUserId);
+      if (managedIds.length > 0) scopedProjectIds = managedIds;
+    }
+
+    const userWhere = scopedProjectIds !== undefined
+      ? { isActive: true, projectMembers: { some: { projectId: { in: scopedProjectIds } } } }
+      : { isActive: true };
 
     const [portalConfig, holidays, users, leaveRequests, timesheetEntries, workItems] =
       await Promise.all([
@@ -784,7 +834,7 @@ export class AnalyticsService {
           select: { date: true, name: true },
         }),
         this.prisma.user.findMany({
-          where: { isActive: true },
+          where: userWhere,
           select: {
             id: true,
             fullName: true,
@@ -803,7 +853,10 @@ export class AnalyticsService {
           select: { userId: true, startDate: true, endDate: true },
         }),
         this.prisma.timesheetEntry.findMany({
-          where: { date: { gte: start, lt: end } },
+          where: {
+            date: { gte: start, lt: end },
+            ...(scopedProjectIds !== undefined ? { workItem: { projectId: { in: scopedProjectIds } } } : {}),
+          },
           select: { userId: true, date: true, hours: true },
         }),
         // Active work items (user stories, tasks, bugs) assigned within this month
@@ -811,6 +864,7 @@ export class AnalyticsService {
           where: {
             assigneeId: { not: null },
             status: { not: BoardStatus.QA_DONE },
+            ...(scopedProjectIds !== undefined ? { projectId: { in: scopedProjectIds } } : {}),
             OR: [
               { startDate: { lte: end, gte: start } },
               { dueDate: { lte: end, gte: start } },

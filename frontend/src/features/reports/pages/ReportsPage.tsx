@@ -1163,6 +1163,13 @@ export function ReportsPage() {
   const isAdmin = user?.systemRole === 'ADMIN' || user?.systemRole === 'SUPER_USER';
   const [project, setProject] = useState(isAdmin ? 'all' : '');
 
+  const { data: projectRoleData } = useQuery({
+    queryKey: ['my-project-role'],
+    queryFn: analyticsApi.getMyProjectRole,
+    staleTime: 300_000,
+  });
+  const isManager = isAdmin || (projectRoleData?.isManager ?? false);
+
   const { data: projectsList = [] } = useQuery({
     queryKey: ['projects-list', 'active'],
     queryFn: () => projectsApi.list({ status: 'ACTIVE' }),
@@ -1215,7 +1222,7 @@ export function ReportsPage() {
 
       {/* Full report tabs — available to all roles */}
       <div className="flex flex-wrap gap-1 bg-gray-100/70 p-1 rounded-2xl w-fit">
-        {TABS.filter((tab) => isAdmin || tab.id !== 'capacity').map((tab) => (
+        {TABS.filter((tab) => isManager || tab.id !== 'capacity').map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
@@ -1237,7 +1244,7 @@ export function ReportsPage() {
       {activeTab === 'allocation'   && <TaskAllocationTab  key={`alloc-${period}-${project}`}  currentUserId={user?.id} period={period} project={project} />}
       {activeTab === 'timesheet'    && <TimesheetTab       key={`ts-${period}-${project}`}      currentUserId={user?.id} period={period} project={project} />}
       {activeTab === 'planned-actual' && <PlannedVsActualTab key={`pva-${period}-${project}`}  currentUserId={user?.id} period={period} project={project} />}
-      {activeTab === 'capacity' && isAdmin && <CapacityReportTab />}
+      {activeTab === 'capacity' && isManager && <CapacityReportTab />}
     </div>
   );
 }

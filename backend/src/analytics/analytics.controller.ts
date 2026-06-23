@@ -2,6 +2,8 @@ import { Controller, Get, Query, Request } from '@nestjs/common';
 import { AnalyticsService } from './analytics.service';
 import { SystemRole } from '@prisma/client';
 
+type AuthUser = { id: string; systemRole: SystemRole };
+
 @Controller('analytics')
 export class AnalyticsController {
   constructor(private readonly analyticsService: AnalyticsService) {}
@@ -51,24 +53,48 @@ export class AnalyticsController {
     return this.analyticsService.getAllocationReport(period, projectId);
   }
 
+  @Get('my-project-role')
+  async getMyProjectRole(@Request() req: { user: AuthUser }) {
+    const isAdmin =
+      req.user.systemRole === SystemRole.ADMIN ||
+      req.user.systemRole === SystemRole.SUPER_USER;
+    if (isAdmin) return { isManager: true };
+    const ids = await this.analyticsService.getManagedProjectIds(req.user.id);
+    return { isManager: ids.length > 0 };
+  }
+
   @Get('reports/timesheet')
   getTimesheet(
     @Query('period') period = '2026-05',
     @Query('projectId') projectId?: string,
+    @Request() req: { user: AuthUser },
   ) {
-    return this.analyticsService.getTimesheetReport(period, projectId);
+    const isAdmin =
+      req.user.systemRole === SystemRole.ADMIN ||
+      req.user.systemRole === SystemRole.SUPER_USER;
+    return this.analyticsService.getTimesheetReport(period, projectId, req.user.id, isAdmin);
   }
 
   @Get('reports/capacity')
-  getCapacity(@Query('period') period = '2026-05') {
-    return this.analyticsService.getCapacityReport(period);
+  getCapacity(
+    @Query('period') period = '2026-05',
+    @Request() req: { user: AuthUser },
+  ) {
+    const isAdmin =
+      req.user.systemRole === SystemRole.ADMIN ||
+      req.user.systemRole === SystemRole.SUPER_USER;
+    return this.analyticsService.getCapacityReport(period, req.user.id, isAdmin);
   }
 
   @Get('reports/planned-vs-actual')
   getPlannedVsActual(
     @Query('period') period = '2026-05',
     @Query('projectId') projectId?: string,
+    @Request() req: { user: AuthUser },
   ) {
-    return this.analyticsService.getPlannedVsActualReport(period, projectId);
+    const isAdmin =
+      req.user.systemRole === SystemRole.ADMIN ||
+      req.user.systemRole === SystemRole.SUPER_USER;
+    return this.analyticsService.getPlannedVsActualReport(period, projectId, req.user.id, isAdmin);
   }
 }

@@ -125,6 +125,9 @@ export interface KpiRecord {
 }
 
 export const analyticsApi = {
+  getMyProjectRole: (): Promise<{ isManager: boolean }> =>
+    apiClient.get<{ isManager: boolean }>('/analytics/my-project-role').then((r) => r.data),
+
   getKpi: (period: string, userId?: string) =>
     apiClient
       .get<LiveEmployeeKpiRecord[]>('/analytics/kpi', { params: { period, userId } })
