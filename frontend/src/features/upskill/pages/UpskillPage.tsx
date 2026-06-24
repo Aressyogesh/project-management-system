@@ -1,8 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRef, useState } from 'react';
 import { upskillApi, type CreateAssignmentDto, type UpskillAssignment, type UpskillStatus, type UpskillType } from '../../../api/upskillApi';
-import { usersApi } from '../../../api/users.api';
-import type { User } from '../../../types/users.types';
 import { useAuthStore } from '../../../store/authStore';
 
 // ─── Status Badge ─────────────────────────────────────────────────────────────
@@ -28,12 +26,11 @@ function StatusBadge({ status }: { status: UpskillStatus }) {
 
 function CreateAssignmentModal({ type, onClose }: { type: UpskillType; onClose: () => void }) {
   const qc = useQueryClient();
-  const { data: usersPage } = useQuery({
-    queryKey: ['users-list'],
-    queryFn: () => usersApi.list({ limit: 200 }),
+  const { data: users = [] } = useQuery({
+    queryKey: ['upskill-assignable-users'],
+    queryFn: () => upskillApi.assignableUsers(),
     staleTime: 60_000,
   });
-  const users = usersPage?.data ?? [];
 
   const [form, setForm] = useState<Partial<CreateAssignmentDto>>({ type });
   const [error, setError] = useState('');
@@ -87,7 +84,7 @@ function CreateAssignmentModal({ type, onClose }: { type: UpskillType; onClose: 
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">Assign Resource *</label>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Assign Resource <span className="text-red-500">*</span></label>
             <select
               required
               value={form.assignedToId ?? ''}
@@ -95,7 +92,7 @@ function CreateAssignmentModal({ type, onClose }: { type: UpskillType; onClose: 
               className={inputCls}
             >
               <option value="">Select a resource…</option>
-              {users.map((u: User) => (
+              {users.map((u) => (
                 <option key={u.id} value={u.id}>{u.fullName}</option>
               ))}
             </select>
@@ -103,7 +100,7 @@ function CreateAssignmentModal({ type, onClose }: { type: UpskillType; onClose: 
 
           {type === 'AUTOMATION' && (
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Tool / Script Name *</label>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Tool / Script Name <span className="text-red-500">*</span></label>
               <input
                 required
                 value={form.toolScript ?? ''}
@@ -116,7 +113,7 @@ function CreateAssignmentModal({ type, onClose }: { type: UpskillType; onClose: 
 
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">
-              {type === 'LEARNING' ? 'What to learn' : 'What to automate'} *
+              {type === 'LEARNING' ? 'What to learn' : 'What to automate'} <span className="text-red-500">*</span>
             </label>
             <textarea
               required
@@ -130,7 +127,7 @@ function CreateAssignmentModal({ type, onClose }: { type: UpskillType; onClose: 
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Start Date *</label>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Start Date <span className="text-red-500">*</span></label>
               <input
                 type="date"
                 required
@@ -140,7 +137,7 @@ function CreateAssignmentModal({ type, onClose }: { type: UpskillType; onClose: 
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">End Date *</label>
+              <label className="block text-xs font-medium text-gray-600 mb-1">End Date <span className="text-red-500">*</span></label>
               <input
                 type="date"
                 required

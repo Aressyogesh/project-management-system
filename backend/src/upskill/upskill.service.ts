@@ -35,6 +35,14 @@ export class UpskillService {
     return !!pm;
   }
 
+  async assignableUsers() {
+    return this.prisma.user.findMany({
+      where: { isActive: true },
+      select: { id: true, fullName: true, systemRole: true, department: { select: { name: true } } },
+      orderBy: { fullName: 'asc' },
+    });
+  }
+
   async createAssignment(callerId: string, dto: CreateAssignmentDto) {
     const { type, assignedToId, description, toolScript, startDate, endDate } = dto;
 

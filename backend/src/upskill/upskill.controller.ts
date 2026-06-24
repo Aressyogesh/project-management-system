@@ -52,6 +52,13 @@ export class UpskillController {
     return { isManager };
   }
 
+  // ─── List users that can be assigned (any authenticated user) ────────────
+
+  @Get('assignable-users')
+  assignableUsers() {
+    return this.upskillService.assignableUsers();
+  }
+
   // ─── Create Assignment (Manager/Admin only) ───────────────────────────────
 
   @Post('assignments')

@@ -45,9 +45,19 @@ export interface CreateAssignmentDto {
   endDate: string;
 }
 
+export interface AssignableUser {
+  id: string;
+  fullName: string;
+  systemRole: string;
+  department: { name: string } | null;
+}
+
 export const upskillApi = {
   isManager: (): Promise<{ isManager: boolean }> =>
     apiClient.get('/upskill/is-manager').then((r) => r.data),
+
+  assignableUsers: (): Promise<AssignableUser[]> =>
+    apiClient.get('/upskill/assignable-users').then((r) => r.data),
 
   listAssignments: (params?: {
     mine?: boolean;
