@@ -108,7 +108,7 @@ export const KPI_METRICS: KpiMetricDefinition[] = [
     category: 'Growth & Innovation',
     maxPoints: 5,
     scoringType: 'stepped',
-    scoringDescription: 'Completed monthly pathway=5, partial=3, no activity=0',
+    scoringDescription: 'Approved upskill (Learning)=5, no activity=0',
   },
   {
     id: 'automation_innovation',
@@ -117,7 +117,7 @@ export const KPI_METRICS: KpiMetricDefinition[] = [
     category: 'Growth & Innovation',
     maxPoints: 5,
     scoringType: 'stepped',
-    scoringDescription: 'AI implementation=5, drafted improvements=3, zero inputs=0',
+    scoringDescription: 'Approved upskill (Automation)=5, zero inputs=0',
   },
   {
     id: 'attendance',
