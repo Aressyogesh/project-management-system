@@ -219,11 +219,11 @@ describe('AnalyticsService — KPI computation', () => {
     expect(metric.points).toBe(5);
   });
 
-  it('Innovation: AI_IMPLEMENTATION log returns 5', async () => {
+  it('Innovation: self-log alone returns 0 (only approved AUTOMATION upskill counts)', async () => {
     setupUserKpiMocks({ innovationLogs: [{ type: 'AI_IMPLEMENTATION' }] });
     const [result] = await service.getKpi('2026-05', 'user-1', true);
     const metric = result.metrics.find((m) => m.metricId === 'automation_innovation')!;
-    expect(metric.points).toBe(5);
+    expect(metric.points).toBe(0);
   });
 
   it('totalScore is sum of all metric points', async () => {

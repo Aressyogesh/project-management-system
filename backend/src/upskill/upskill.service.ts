@@ -80,6 +80,16 @@ export class UpskillService {
     const target = await this.prisma.user.findUnique({ where: { id: assignedToId }, select: { id: true } });
     if (!target) throw new NotFoundException('Assigned user not found');
 
+    const conflict = await this.prisma.upskillAssignment.findFirst({
+      where: { assignedToId, startDate: { lte: end }, endDate: { gte: start } },
+      select: { startDate: true, endDate: true },
+    });
+    if (conflict) {
+      throw new ConflictException(
+        `This resource already has an upskill assignment from ${conflict.startDate.toISOString().split('T')[0]} to ${conflict.endDate.toISOString().split('T')[0]}. Date ranges cannot overlap.`,
+      );
+    }
+
     return this.prisma.upskillAssignment.create({
       data: {
         type,
@@ -116,6 +126,17 @@ export class UpskillService {
 
     if (assignment.type === UpskillType.AUTOMATION && dto.toolScript !== undefined && !dto.toolScript?.trim()) {
       throw new BadRequestException('toolScript is required for AUTOMATION type');
+    }
+
+    const assignedToId = dto.assignedToId ?? assignment.assignedToId;
+    const conflict = await this.prisma.upskillAssignment.findFirst({
+      where: { assignedToId, startDate: { lte: end }, endDate: { gte: start }, id: { not: assignmentId } },
+      select: { startDate: true, endDate: true },
+    });
+    if (conflict) {
+      throw new ConflictException(
+        `This resource already has an upskill assignment from ${conflict.startDate.toISOString().split('T')[0]} to ${conflict.endDate.toISOString().split('T')[0]}. Date ranges cannot overlap.`,
+      );
     }
 
     return this.prisma.upskillAssignment.update({
