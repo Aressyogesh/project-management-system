@@ -90,12 +90,17 @@ export class UpskillController {
     @Request() req: AuthRequest,
   ) {
     const isEmployee = req.user.systemRole === SystemRole.EMPLOYEE;
-    const isMine = mine === 'true' || isEmployee;
 
     if (isEmployee && mine !== 'true') {
+      // PMs should see assignments they created; regular employees see only their own
+      const isManager = await this.upskillService.isManager(req.user.id, req.user.systemRole);
+      if (isManager) {
+        return this.upskillService.findAll(req.user.id, req.user.systemRole, { mine: false, status, assignedToId, period });
+      }
       return this.upskillService.findAll(req.user.id, req.user.systemRole, { mine: true, status, period });
     }
 
+    const isMine = mine === 'true';
     return this.upskillService.findAll(req.user.id, req.user.systemRole, { mine: isMine, status, assignedToId, period });
   }
 
