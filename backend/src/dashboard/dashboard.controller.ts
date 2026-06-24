@@ -84,9 +84,10 @@ export class DashboardController {
   @ApiQuery({ name: 'projectId', required: false })
   @ApiQuery({ name: 'month',     required: false, description: 'YYYY-MM' })
   getAnnouncements(
+    @CurrentUser() user: JwtUser,
     @Query('projectId') projectId?: string,
     @Query('month')     month?: string,
   ): Promise<Announcement[]> {
-    return this.dashboardService.getAnnouncements(projectId, month);
+    return this.dashboardService.getAnnouncements(projectId, month, user.id, user.systemRole);
   }
 }

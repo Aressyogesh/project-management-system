@@ -140,7 +140,6 @@ export class DashboardService {
         where: {
           assigneeId: userId,
           project: { status: ProjectStatus.ACTIVE },
-          type: { in: [WorkItemType.TASK, WorkItemType.SUB_TASK] },
         },
         select: {
           id: true, title: true, priority: true, status: true,
@@ -256,7 +255,7 @@ export class DashboardService {
         orderBy: { dueDate: 'asc' },
       }),
       this.prisma.workItem.findMany({
-        where: { projectId, assigneeId: userId, type: { in: [WorkItemType.TASK, WorkItemType.SUB_TASK] } },
+        where: { projectId, assigneeId: userId },
         select: {
           id: true, title: true, priority: true, status: true,
           project: { select: { name: true } },
@@ -533,7 +532,7 @@ export class DashboardService {
     return points;
   }
 
-  async getAnnouncements(projectId?: string, month?: string): Promise<Announcement[]> {
+  async getAnnouncements(projectId?: string, month?: string, userId?: string, role?: SystemRole): Promise<Announcement[]> {
     const items: Announcement[] = [];
 
     // Date range: entire selected month OR last 30 days if no month filter
@@ -550,10 +549,21 @@ export class DashboardService {
 
     const dateUntil = until ?? new Date();
 
+    const isAdmin = !role || role === SystemRole.SUPER_USER || role === SystemRole.ADMIN;
+
     // Scope all queries to active projects only (or the specific project if given)
-    const activeProjectIds = projectId
-      ? [projectId]
-      : (await this.prisma.project.findMany({ where: { status: ProjectStatus.ACTIVE }, select: { id: true } })).map((p) => p.id);
+    // Non-admin users only see announcements for projects they are a member of
+    let activeProjectIds: string[];
+    if (projectId) {
+      activeProjectIds = [projectId];
+    } else if (isAdmin) {
+      activeProjectIds = (await this.prisma.project.findMany({ where: { status: ProjectStatus.ACTIVE }, select: { id: true } })).map((p) => p.id);
+    } else {
+      activeProjectIds = (await this.prisma.projectMember.findMany({
+        where: { userId, project: { status: ProjectStatus.ACTIVE } },
+        select: { projectId: true },
+      })).map((m) => m.projectId);
+    }
 
     const [completedMilestones, activeSprints, newMembers, bugProjects] = await Promise.all([
       this.prisma.milestone.findMany({
