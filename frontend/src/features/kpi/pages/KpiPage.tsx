@@ -504,11 +504,12 @@ function UpskillCard({ asgn, onRefresh }: { asgn: UpskillAssignment; onRefresh: 
 }
 
 function UpskillAssignmentSection({ period }: { period: string }) {
-  const { data: assignments = [], refetch } = useQuery<UpskillAssignment[]>({
+  const { data: result, refetch } = useQuery({
     queryKey: ['upskill-mine', period],
-    queryFn: () => upskillApi.listAssignments({ mine: true, period }),
+    queryFn: () => upskillApi.listAssignments({ mine: true, period, limit: 50 }),
     staleTime: 15_000,
   });
+  const assignments = result?.data ?? [];
 
   if (assignments.length === 0) return null;
 
