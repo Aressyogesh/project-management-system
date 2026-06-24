@@ -207,9 +207,16 @@ function ProgressDrawer({ assignment, onClose }: { assignment: UpskillAssignment
   const fileRef = useRef<HTMLInputElement>(null);
   const [fileErr, setFileErr] = useState('');
 
+  const { data: detail } = useQuery({
+    queryKey: ['upskill-detail', assignment.id],
+    queryFn: () => upskillApi.getAssignment(assignment.id),
+    staleTime: 10_000,
+  });
+
+  const currentStatus = detail?.status ?? assignment.status;
   const isOwner = user?.id === assignment.assignedToId;
-  const canLog = isOwner && assignment.status !== 'APPROVED' && assignment.status !== 'SUBMITTED';
-  const canSubmit = isOwner && (assignment.status === 'ASSIGNED' || assignment.status === 'IN_PROGRESS' || assignment.status === 'REJECTED');
+  const canLog = isOwner && currentStatus !== 'APPROVED' && currentStatus !== 'SUBMITTED';
+  const canSubmit = isOwner && (currentStatus === 'ASSIGNED' || currentStatus === 'IN_PROGRESS' || currentStatus === 'REJECTED');
 
   const logMutation = useMutation({
     mutationFn: () =>
@@ -234,12 +241,6 @@ function ProgressDrawer({ assignment, onClose }: { assignment: UpskillAssignment
       setFileErr('');
     },
     onError: (err: any) => setFileErr(err?.response?.data?.message ?? 'Failed to submit evidence'),
-  });
-
-  const { data: detail } = useQuery({
-    queryKey: ['upskill-detail', assignment.id],
-    queryFn: () => upskillApi.getAssignment(assignment.id),
-    staleTime: 10_000,
   });
 
   const logs = detail?.progressLogs ?? assignment.progressLogs ?? [];
