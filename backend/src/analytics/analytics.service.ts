@@ -195,8 +195,10 @@ export class AnalyticsService {
       leaveRequests,
       learningLogs,
       innovationLogs,
-      upskillApproved,
-      upskillAny,
+      upskillLearningApproved,
+      upskillLearningAny,
+      upskillAutomationApproved,
+      upskillAutomationAny,
     ] = await Promise.all([
       // Sprint items (for Sprint Reliability + Throughput)
       this.prisma.workItem.findMany({
@@ -270,23 +272,24 @@ export class AnalyticsService {
         where: { userId, period },
         select: { type: true },
       }),
-      // Approved upskill assignments overlapping this period
+      // Approved LEARNING upskill assignment overlapping this period
       this.prisma.upskillAssignment.findFirst({
-        where: {
-          assignedToId: userId,
-          status: 'APPROVED',
-          startDate: { lte: end },
-          endDate: { gte: start },
-        },
+        where: { assignedToId: userId, type: 'LEARNING', status: 'APPROVED', startDate: { lte: end }, endDate: { gte: start } },
         select: { id: true },
       }),
-      // Any upskill assignment (any status) overlapping this period
+      // Any LEARNING upskill assignment (any status) overlapping this period
       this.prisma.upskillAssignment.findFirst({
-        where: {
-          assignedToId: userId,
-          startDate: { lte: end },
-          endDate: { gte: start },
-        },
+        where: { assignedToId: userId, type: 'LEARNING', startDate: { lte: end }, endDate: { gte: start } },
+        select: { id: true },
+      }),
+      // Approved AUTOMATION upskill assignment overlapping this period
+      this.prisma.upskillAssignment.findFirst({
+        where: { assignedToId: userId, type: 'AUTOMATION', status: 'APPROVED', startDate: { lte: end }, endDate: { gte: start } },
+        select: { id: true },
+      }),
+      // Any AUTOMATION upskill assignment (any status) overlapping this period
+      this.prisma.upskillAssignment.findFirst({
+        where: { assignedToId: userId, type: 'AUTOMATION', startDate: { lte: end }, endDate: { gte: start } },
         select: { id: true },
       }),
     ]);
@@ -351,16 +354,16 @@ export class AnalyticsService {
 
     // Self-service
     const attendance = computeAttendance(leaveRequests as { status: string; startDate: Date; endDate: Date }[], start, end);
-    // Approved upskill assignment → full 10 pts; pending assignment → 0 (no self-log fallback);
-    // no assignment at all → fall back to self-log based scores
-    const learningVelocity = upskillApproved
+    // LEARNING assignment approved → 5; pending → 0; none → self-log fallback
+    const learningVelocity = upskillLearningApproved
       ? 5
-      : upskillAny
+      : upskillLearningAny
         ? 0
         : computeLearningVelocity(learningLogs.reduce((s, l) => s + l.hours, 0));
-    const automationInnovation = upskillApproved
+    // AUTOMATION assignment approved → 5; pending → 0; none → self-log fallback
+    const automationInnovation = upskillAutomationApproved
       ? 5
-      : upskillAny
+      : upskillAutomationAny
         ? 0
         : computeInnovation(innovationLogs);
 
@@ -370,7 +373,8 @@ export class AnalyticsService {
       manualScores.length === 0 &&
       learningLogs.length === 0 &&
       innovationLogs.length === 0 &&
-      !upskillAny;
+      !upskillLearningAny &&
+      !upskillAutomationAny;
 
     // When the user has no assigned work and no manual scores for this period,
     // zero out all metrics so the radar chart and category scores reflect reality.

@@ -142,7 +142,7 @@ export class UpskillService {
         assignedTo: { select: { id: true, fullName: true } },
         createdBy: { select: { id: true, fullName: true } },
         approvedBy: { select: { id: true, fullName: true } },
-        progressLogs: { orderBy: { createdAt: 'desc' }, take: 1 },
+        progressLogs: { orderBy: { createdAt: 'desc' } },
       },
       orderBy: { createdAt: 'desc' },
     });
