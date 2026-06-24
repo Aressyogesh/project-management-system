@@ -63,7 +63,7 @@ function CreateAssignmentModal({ type, onClose, onCreated }: { type: UpskillType
       onCreated();
       onClose();
     },
-    onError: (e: Error) => setError(e.message),
+    onError: (err: any) => setError(err?.response?.data?.message ?? 'Failed to create assignment'),
   });
 
   const inputCls = 'w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500';
@@ -429,7 +429,7 @@ function EditAssignmentModal({ assignment, onClose }: { assignment: UpskillAssig
       endDate: form.endDate,
     }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['upskill-assignments'] }); onClose(); },
-    onError: (e: Error) => setError(e.message),
+    onError: (err: any) => setError(err?.response?.data?.message ?? 'Failed to update assignment'),
   });
 
   const inputCls = 'w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500';
