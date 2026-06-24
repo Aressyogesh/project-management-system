@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Body,
   Controller,
+  Delete,
   ForbiddenException,
   Get,
   HttpCode,
@@ -87,21 +88,23 @@ export class UpskillController {
     @Query('status') status: UpskillStatus | undefined,
     @Query('assignedToId') assignedToId: string | undefined,
     @Query('period') period: string | undefined,
+    @Query('page') page: string | undefined,
+    @Query('limit') limit: string | undefined,
     @Request() req: AuthRequest,
   ) {
     const isEmployee = req.user.systemRole === SystemRole.EMPLOYEE;
+    const pagination = { page: page ? Number(page) : 1, limit: limit ? Number(limit) : 10 };
 
     if (isEmployee && mine !== 'true') {
-      // PMs should see assignments they created; regular employees see only their own
       const isManager = await this.upskillService.isManager(req.user.id, req.user.systemRole);
       if (isManager) {
-        return this.upskillService.findAll(req.user.id, req.user.systemRole, { mine: false, status, assignedToId, period });
+        return this.upskillService.findAll(req.user.id, req.user.systemRole, { mine: false, status, assignedToId, period, ...pagination });
       }
-      return this.upskillService.findAll(req.user.id, req.user.systemRole, { mine: true, status, period });
+      return this.upskillService.findAll(req.user.id, req.user.systemRole, { mine: true, status, period, ...pagination });
     }
 
     const isMine = mine === 'true';
-    return this.upskillService.findAll(req.user.id, req.user.systemRole, { mine: isMine, status, assignedToId, period });
+    return this.upskillService.findAll(req.user.id, req.user.systemRole, { mine: isMine, status, assignedToId, period, ...pagination });
   }
 
   // ─── Get Assignment Detail ────────────────────────────────────────────────
@@ -173,6 +176,30 @@ export class UpskillController {
     const isManager = await this.upskillService.isManager(req.user.id, req.user.systemRole);
     if (!isManager) throw new ForbiddenException('Only managers and admins can reject assignments');
     return this.upskillService.rejectAssignment(id, req.user.id, body.reason, req.user.systemRole);
+  }
+
+  // ─── Edit Assignment (ASSIGNED status only, manager/creator) ─────────────
+
+  @Patch('assignments/:id')
+  @HttpCode(200)
+  async update(
+    @Param('id') id: string,
+    @Body() body: { assignedToId?: string; description?: string; toolScript?: string; startDate?: string; endDate?: string },
+    @Request() req: AuthRequest,
+  ) {
+    const isManager = await this.upskillService.isManager(req.user.id, req.user.systemRole);
+    if (!isManager) throw new ForbiddenException('Only managers and admins can edit upskill assignments');
+    return this.upskillService.updateAssignment(id, req.user.id, req.user.systemRole, body);
+  }
+
+  // ─── Delete Assignment (ASSIGNED status only, manager/creator) ────────────
+
+  @Delete('assignments/:id')
+  @HttpCode(204)
+  async remove(@Param('id') id: string, @Request() req: AuthRequest) {
+    const isManager = await this.upskillService.isManager(req.user.id, req.user.systemRole);
+    if (!isManager) throw new ForbiddenException('Only managers and admins can delete upskill assignments');
+    await this.upskillService.deleteAssignment(id, req.user.id, req.user.systemRole);
   }
 
   // ─── Download Evidence ────────────────────────────────────────────────────

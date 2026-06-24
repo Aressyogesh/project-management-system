@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRef, useState } from 'react';
 import { upskillApi, type CreateAssignmentDto, type UpskillAssignment, type UpskillStatus, type UpskillType } from '../../../api/upskillApi';
 import { useAuthStore } from '../../../store/authStore';
+import { Pagination } from '../../../components/shared/Pagination';
 
 // ─── Status Badge ─────────────────────────────────────────────────────────────
 
@@ -379,6 +380,100 @@ function ProgressDrawer({ assignment, onClose }: { assignment: UpskillAssignment
   );
 }
 
+// ─── Edit Assignment Modal ────────────────────────────────────────────────────
+
+function EditAssignmentModal({ assignment, onClose }: { assignment: UpskillAssignment; onClose: () => void }) {
+  const qc = useQueryClient();
+  const { data: users = [] } = useQuery({
+    queryKey: ['upskill-assignable-users'],
+    queryFn: () => upskillApi.assignableUsers(),
+    staleTime: 60_000,
+  });
+
+  const [form, setForm] = useState({
+    assignedToId: assignment.assignedToId,
+    description: assignment.description,
+    toolScript: assignment.toolScript ?? '',
+    startDate: assignment.startDate.split('T')[0],
+    endDate: assignment.endDate.split('T')[0],
+  });
+  const [error, setError] = useState('');
+
+  const updateMutation = useMutation({
+    mutationFn: () => upskillApi.updateAssignment(assignment.id, {
+      assignedToId: form.assignedToId,
+      description: form.description,
+      toolScript: form.toolScript || undefined,
+      startDate: form.startDate,
+      endDate: form.endDate,
+    }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['upskill-assignments'] }); onClose(); },
+    onError: (e: Error) => setError(e.message),
+  });
+
+  const inputCls = 'w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500';
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    if (!form.startDate || !form.endDate) { setError('Start date and end date are required'); return; }
+    if (form.endDate <= form.startDate) { setError('End date must be after start date'); return; }
+    updateMutation.mutate();
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6">
+        <div className="flex items-center justify-between mb-5">
+          <h2 className="text-base font-semibold text-gray-900">Edit Assignment</h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Assign Resource <span className="text-red-500">*</span></label>
+            <select value={form.assignedToId} onChange={(e) => setForm((p) => ({ ...p, assignedToId: e.target.value }))} className={inputCls}>
+              {users.map((u) => <option key={u.id} value={u.id}>{u.fullName}</option>)}
+            </select>
+          </div>
+          {assignment.type === 'AUTOMATION' && (
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Tool / Script Name <span className="text-red-500">*</span></label>
+              <input value={form.toolScript} onChange={(e) => setForm((p) => ({ ...p, toolScript: e.target.value }))} className={inputCls} />
+            </div>
+          )}
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Description <span className="text-red-500">*</span></label>
+            <textarea rows={3} value={form.description} onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))} className={`${inputCls} resize-none`} />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Start Date <span className="text-red-500">*</span></label>
+              <input type="date" value={form.startDate} onChange={(e) => setForm((p) => ({ ...p, startDate: e.target.value }))} className={inputCls} />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">End Date <span className="text-red-500">*</span></label>
+              <input type="date" value={form.endDate}
+                min={form.startDate ? (() => { const d = new Date(form.startDate); d.setDate(d.getDate() + 1); return d.toISOString().split('T')[0]; })() : undefined}
+                onChange={(e) => setForm((p) => ({ ...p, endDate: e.target.value }))} className={inputCls} />
+            </div>
+          </div>
+          {error && <p className="text-xs text-red-600">{error}</p>}
+          <div className="flex gap-2 justify-end pt-2">
+            <button type="button" onClick={onClose} className="text-sm px-4 py-2 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 transition">Cancel</button>
+            <button type="submit" disabled={updateMutation.isPending} className="text-sm px-4 py-2 rounded-lg bg-primary-600 text-white hover:bg-primary-700 disabled:opacity-60 transition">
+              {updateMutation.isPending ? 'Saving…' : 'Save Changes'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 // ─── Assignment Row ───────────────────────────────────────────────────────────
 
 function AssignmentRow({
@@ -387,12 +482,16 @@ function AssignmentRow({
   onProgress,
   onApprove,
   onReject,
+  onEdit,
+  onDelete,
 }: {
   asgn: UpskillAssignment;
   isManager: boolean;
   onProgress: (a: UpskillAssignment) => void;
   onApprove: (id: string) => void;
   onReject: (a: UpskillAssignment) => void;
+  onEdit: (a: UpskillAssignment) => void;
+  onDelete: (id: string) => void;
 }) {
   const consolidatedPct = Math.min(
     100,
@@ -428,20 +527,16 @@ function AssignmentRow({
           >
             View
           </button>
+          {isManager && asgn.status === 'ASSIGNED' && (
+            <>
+              <button onClick={() => onEdit(asgn)} className="text-xs px-2.5 py-1 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition">Edit</button>
+              <button onClick={() => onDelete(asgn.id)} className="text-xs px-2.5 py-1 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition">Delete</button>
+            </>
+          )}
           {isManager && asgn.status === 'SUBMITTED' && (
             <>
-              <button
-                onClick={() => onApprove(asgn.id)}
-                className="text-xs px-2.5 py-1 rounded-lg bg-green-100 text-green-700 hover:bg-green-200 transition"
-              >
-                Approve
-              </button>
-              <button
-                onClick={() => onReject(asgn)}
-                className="text-xs px-2.5 py-1 rounded-lg bg-red-100 text-red-700 hover:bg-red-200 transition"
-              >
-                Reject
-              </button>
+              <button onClick={() => onApprove(asgn.id)} className="text-xs px-2.5 py-1 rounded-lg bg-green-100 text-green-700 hover:bg-green-200 transition">Approve</button>
+              <button onClick={() => onReject(asgn)} className="text-xs px-2.5 py-1 rounded-lg bg-red-100 text-red-700 hover:bg-red-200 transition">Reject</button>
             </>
           )}
         </div>
@@ -515,12 +610,16 @@ const STATUS_FILTERS: { value: UpskillStatus | 'ALL'; label: string }[] = [
   { value: 'REJECTED', label: 'Rejected' },
 ];
 
+const PAGE_SIZE = 10;
+
 export function UpskillPage() {
   const qc = useQueryClient();
   const { user } = useAuthStore();
   const [activeTab, setActiveTab] = useState<UpskillType>('LEARNING');
   const [statusFilter, setStatusFilter] = useState<UpskillStatus | 'ALL'>('ALL');
+  const [page, setPage] = useState(1);
   const [showCreate, setShowCreate] = useState(false);
+  const [editFor, setEditFor] = useState<UpskillAssignment | null>(null);
   const [progressFor, setProgressFor] = useState<UpskillAssignment | null>(null);
   const [rejectFor, setRejectFor] = useState<UpskillAssignment | null>(null);
 
@@ -533,19 +632,27 @@ export function UpskillPage() {
   });
   const isManager = isPrivileged || (managerCheck?.isManager ?? false);
 
-  const { data: assignments = [], isLoading } = useQuery({
-    queryKey: ['upskill-assignments', activeTab, statusFilter],
+  const { data: result, isLoading } = useQuery({
+    queryKey: ['upskill-assignments', activeTab, statusFilter, page],
     queryFn: () =>
       upskillApi.listAssignments({
         ...(statusFilter !== 'ALL' ? { status: statusFilter } : {}),
+        page,
+        limit: PAGE_SIZE,
       }),
     staleTime: 15_000,
   });
 
+  const assignments = result?.data ?? [];
   const filtered = assignments.filter((a) => a.type === activeTab);
 
   const approveMutation = useMutation({
     mutationFn: (id: string) => upskillApi.approve(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['upskill-assignments'] }),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => upskillApi.deleteAssignment(id),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['upskill-assignments'] }),
   });
 
@@ -575,7 +682,7 @@ export function UpskillPage() {
         {TABS.map((tab) => (
           <button
             key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
+            onClick={() => { setActiveTab(tab.id); setPage(1); }}
             className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${
               activeTab === tab.id ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
             }`}
@@ -589,14 +696,14 @@ export function UpskillPage() {
       <div className="flex items-center gap-3 mb-4">
         <select
           value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value as UpskillStatus | 'ALL')}
+          onChange={(e) => { setStatusFilter(e.target.value as UpskillStatus | 'ALL'); setPage(1); }}
           className="text-sm px-3 py-1.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white"
         >
           {STATUS_FILTERS.map((f) => (
             <option key={f.value} value={f.value}>{f.label}</option>
           ))}
         </select>
-        <span className="text-xs text-gray-400">{filtered.length} assignment{filtered.length !== 1 ? 's' : ''}</span>
+        <span className="text-xs text-gray-400">{result?.total ?? 0} assignment{(result?.total ?? 0) !== 1 ? 's' : ''}</span>
       </div>
 
       {/* Table */}
@@ -639,6 +746,8 @@ export function UpskillPage() {
                     onProgress={(a) => setProgressFor(a)}
                     onApprove={(id) => approveMutation.mutate(id)}
                     onReject={(a) => setRejectFor(a)}
+                    onEdit={(a) => setEditFor(a)}
+                    onDelete={(id) => { if (confirm('Delete this assignment?')) deleteMutation.mutate(id); }}
                   />
                 ))}
               </tbody>
@@ -647,8 +756,13 @@ export function UpskillPage() {
         )}
       </div>
 
+      {result && result.total > PAGE_SIZE && (
+        <Pagination page={page} pageSize={PAGE_SIZE} total={result.total} onChange={setPage} />
+      )}
+
       {/* Modals */}
       {showCreate && <CreateAssignmentModal type={activeTab} onClose={() => setShowCreate(false)} />}
+      {editFor && <EditAssignmentModal assignment={editFor} onClose={() => setEditFor(null)} />}
       {progressFor && <ProgressDrawer assignment={progressFor} onClose={() => setProgressFor(null)} />}
       {rejectFor && <RejectModal assignment={rejectFor} onClose={() => setRejectFor(null)} />}
     </div>

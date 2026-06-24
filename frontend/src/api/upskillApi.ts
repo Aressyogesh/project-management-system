@@ -52,6 +52,13 @@ export interface AssignableUser {
   department: { name: string } | null;
 }
 
+export interface UpskillPage {
+  data: UpskillAssignment[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
 export const upskillApi = {
   isManager: (): Promise<{ isManager: boolean }> =>
     apiClient.get('/upskill/is-manager').then((r) => r.data),
@@ -64,7 +71,9 @@ export const upskillApi = {
     status?: UpskillStatus;
     assignedToId?: string;
     period?: string;
-  }): Promise<UpskillAssignment[]> =>
+    page?: number;
+    limit?: number;
+  }): Promise<UpskillPage> =>
     apiClient.get('/upskill/assignments', { params }).then((r) => r.data),
 
   getAssignment: (id: string): Promise<UpskillAssignment> =>
@@ -88,6 +97,12 @@ export const upskillApi = {
       })
       .then((r) => r.data);
   },
+
+  updateAssignment: (id: string, dto: Partial<Omit<CreateAssignmentDto, 'type'>>): Promise<UpskillAssignment> =>
+    apiClient.patch(`/upskill/assignments/${id}`, dto).then((r) => r.data),
+
+  deleteAssignment: (id: string): Promise<void> =>
+    apiClient.delete(`/upskill/assignments/${id}`).then((r) => r.data),
 
   approve: (id: string): Promise<UpskillAssignment> =>
     apiClient.patch(`/upskill/assignments/${id}/approve`).then((r) => r.data),

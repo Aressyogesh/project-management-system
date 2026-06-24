@@ -94,6 +94,59 @@ export class UpskillService {
     });
   }
 
+  async updateAssignment(
+    assignmentId: string,
+    callerId: string,
+    systemRole: SystemRole,
+    dto: Partial<Omit<CreateAssignmentDto, 'type'>>,
+  ) {
+    const assignment = await this.prisma.upskillAssignment.findUnique({ where: { id: assignmentId } });
+    if (!assignment) throw new NotFoundException('Assignment not found');
+    if (assignment.status !== UpskillStatus.ASSIGNED) {
+      throw new ConflictException('Only assignments that have not started can be edited');
+    }
+    const isPrivileged = systemRole === SystemRole.ADMIN || systemRole === SystemRole.SUPER_USER;
+    if (!isPrivileged && assignment.createdById !== callerId) {
+      throw new ForbiddenException('You can only edit assignments you created');
+    }
+
+    const start = dto.startDate ? new Date(dto.startDate) : assignment.startDate;
+    const end = dto.endDate ? new Date(dto.endDate) : assignment.endDate;
+    if (end <= start) throw new BadRequestException('endDate must be after startDate');
+
+    if (assignment.type === UpskillType.AUTOMATION && dto.toolScript !== undefined && !dto.toolScript?.trim()) {
+      throw new BadRequestException('toolScript is required for AUTOMATION type');
+    }
+
+    return this.prisma.upskillAssignment.update({
+      where: { id: assignmentId },
+      data: {
+        ...(dto.assignedToId ? { assignedToId: dto.assignedToId } : {}),
+        ...(dto.description ? { description: dto.description } : {}),
+        ...(dto.toolScript !== undefined ? { toolScript: dto.toolScript || null } : {}),
+        startDate: start,
+        endDate: end,
+      },
+      include: {
+        assignedTo: { select: { id: true, fullName: true } },
+        createdBy: { select: { id: true, fullName: true } },
+      },
+    });
+  }
+
+  async deleteAssignment(assignmentId: string, callerId: string, systemRole: SystemRole) {
+    const assignment = await this.prisma.upskillAssignment.findUnique({ where: { id: assignmentId } });
+    if (!assignment) throw new NotFoundException('Assignment not found');
+    if (assignment.status !== UpskillStatus.ASSIGNED) {
+      throw new ConflictException('Only assignments that have not started can be deleted');
+    }
+    const isPrivileged = systemRole === SystemRole.ADMIN || systemRole === SystemRole.SUPER_USER;
+    if (!isPrivileged && assignment.createdById !== callerId) {
+      throw new ForbiddenException('You can only delete assignments you created');
+    }
+    await this.prisma.upskillAssignment.delete({ where: { id: assignmentId } });
+  }
+
   private buildPeriodFilter(period: string) {
     const [year, month] = period.split('-').map(Number);
     const start = new Date(year, month - 1, 1);
@@ -104,49 +157,44 @@ export class UpskillService {
   async findAll(
     callerId: string,
     systemRole: SystemRole,
-    options: { mine?: boolean; status?: UpskillStatus; assignedToId?: string; period?: string },
+    options: { mine?: boolean; status?: UpskillStatus; assignedToId?: string; period?: string; page?: number; limit?: number },
   ) {
     const isPrivileged = systemRole === SystemRole.ADMIN || systemRole === SystemRole.SUPER_USER;
+    const page = Math.max(1, options.page ?? 1);
+    const limit = Math.min(50, Math.max(1, options.limit ?? 10));
+    const skip = (page - 1) * limit;
+
+    const include = {
+      assignedTo: { select: { id: true, fullName: true } },
+      createdBy: { select: { id: true, fullName: true } },
+      approvedBy: { select: { id: true, fullName: true } },
+      progressLogs: { orderBy: { createdAt: 'desc' as const } },
+    };
 
     if (options.mine) {
       const periodFilter = options.period ? this.buildPeriodFilter(options.period) : {};
-      return this.prisma.upskillAssignment.findMany({
-        where: {
-          assignedToId: callerId,
-          ...(options.status ? { status: options.status } : {}),
-          ...periodFilter,
-        },
-        include: {
-          assignedTo: { select: { id: true, fullName: true } },
-          createdBy: { select: { id: true, fullName: true } },
-          progressLogs: { orderBy: { createdAt: 'desc' } },
-        },
-        orderBy: { createdAt: 'desc' },
-      });
-    }
-
-    let assignedToFilter: string | undefined;
-    if (isPrivileged) {
-      assignedToFilter = options.assignedToId;
-    } else {
-      // PM: only assignments they created
-      assignedToFilter = options.assignedToId;
-    }
-
-    return this.prisma.upskillAssignment.findMany({
-      where: {
-        ...(isPrivileged ? {} : { createdById: callerId }),
-        ...(assignedToFilter ? { assignedToId: assignedToFilter } : {}),
+      const where = {
+        assignedToId: callerId,
         ...(options.status ? { status: options.status } : {}),
-      },
-      include: {
-        assignedTo: { select: { id: true, fullName: true } },
-        createdBy: { select: { id: true, fullName: true } },
-        approvedBy: { select: { id: true, fullName: true } },
-        progressLogs: { orderBy: { createdAt: 'desc' } },
-      },
-      orderBy: { createdAt: 'desc' },
-    });
+        ...periodFilter,
+      };
+      const [data, total] = await this.prisma.$transaction([
+        this.prisma.upskillAssignment.findMany({ where, include, orderBy: { createdAt: 'desc' }, skip, take: limit }),
+        this.prisma.upskillAssignment.count({ where }),
+      ]);
+      return { data, total, page, limit };
+    }
+
+    const where = {
+      ...(isPrivileged ? {} : { createdById: callerId }),
+      ...(options.assignedToId ? { assignedToId: options.assignedToId } : {}),
+      ...(options.status ? { status: options.status } : {}),
+    };
+    const [data, total] = await this.prisma.$transaction([
+      this.prisma.upskillAssignment.findMany({ where, include, orderBy: { createdAt: 'desc' }, skip, take: limit }),
+      this.prisma.upskillAssignment.count({ where }),
+    ]);
+    return { data, total, page, limit };
   }
 
   async findOne(id: string, callerId: string, systemRole: SystemRole) {
