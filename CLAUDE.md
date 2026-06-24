@@ -85,9 +85,9 @@ Required / Not required — reason.
 - **Stack:** NestJS (backend) + React 18 + Vite + TypeScript + Tailwind CSS (frontend) + Prisma + PostgreSQL
 - **Auth:** JWT access + refresh tokens; `JwtAuthGuard` global; `RolesGuard` for system roles; `ProjectRoleGuard` for project-level roles
 - **Remote repo:** https://github.com/Aressyogesh/project-management-system.git
-- **Deployed:** Backend on Render (`pms-backend-zhez.onrender.com`), Frontend on Vercel, DB on Supabase
+- **Deployed:** Fully self-hosted on Windows machine (DEVLOPMNET) via PM2 — `pms-backend` on port 3000, `pms-frontend` on port 5173. GitHub Actions self-hosted runner deploys on push to main.
 - **Local DB:** `postgresql://postgres:postgres@localhost:5432/pms_db` (both `DATABASE_URL` and `DIRECT_URL`)
-- **Migration note:** Local — `npx prisma db push`; Production — auto via `npx prisma migrate deploy` on Render deploy
+- **Migration note:** Local — `npx prisma db push`; Production — `npx prisma migrate deploy` runs automatically in the GitHub Actions deploy workflow. **Always create a migration file** (`prisma/migrations/YYYYMMDDHHMMSS_name/migration.sql`) for any schema change — `db push` alone does NOT update production. Mark it applied locally with `prisma migrate resolve --applied <name>` after `db push`.
 
 ## Retroactive Documentation Status
 
