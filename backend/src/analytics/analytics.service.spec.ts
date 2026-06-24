@@ -58,6 +58,7 @@ describe('AnalyticsService — KPI computation', () => {
             innovationLog: { findMany: jest.fn() },
             portalConfig: { findUnique: jest.fn() },
             holiday: { findMany: jest.fn() },
+            upskillAssignment: { findFirst: jest.fn() },
           },
         },
       ],
@@ -99,6 +100,7 @@ describe('AnalyticsService — KPI computation', () => {
     (prisma.leaveRequest.findMany as jest.Mock).mockResolvedValue(leaveRequests);
     (prisma.learningLog.findMany as jest.Mock).mockResolvedValue(learningLogs);
     (prisma.innovationLog.findMany as jest.Mock).mockResolvedValue(innovationLogs);
+    (prisma.upskillAssignment.findFirst as jest.Mock).mockResolvedValue(null);
   }
 
   it('Sprint Reliability: 100% delivery returns 15', async () => {
