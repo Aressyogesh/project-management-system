@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { authApi } from '../../api/auth.api';
 import { upskillApi } from '../../api/upskillApi';
 import { useAuthStore } from '../../store/authStore';
@@ -154,6 +154,7 @@ interface SidebarProps {
 
 export function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { user, refreshToken, clearAuth } = useAuthStore();
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -171,6 +172,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
     if (refreshToken) {
       try { await authApi.logout(refreshToken); } catch { /* ignore — token may already be expired */ }
     }
+    queryClient.clear();
     clearAuth();
     navigate('/login');
   }
@@ -180,7 +182,8 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
   );
 
   const upskillItem: NavItem = { path: '/upskill', label: 'Upskill', Icon: IconUpskill };
-  const visibleNav = managerCheck?.isManager
+  const showUpskill = isPrivilegedRole || managerCheck?.isManager;
+  const visibleNav = showUpskill
     ? [...baseNav.slice(0, baseNav.findIndex((n) => n.path === '/kpi') + 1), upskillItem, ...baseNav.slice(baseNav.findIndex((n) => n.path === '/kpi') + 1)]
     : baseNav;
 
