@@ -157,11 +157,14 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const { user, refreshToken, clearAuth } = useAuthStore();
   const [mobileOpen, setMobileOpen] = useState(false);
 
+  const isPrivilegedRole = user?.systemRole === 'SUPER_USER' || user?.systemRole === 'ADMIN';
+
   const { data: managerCheck } = useQuery({
     queryKey: ['upskill-is-manager'],
     queryFn: () => upskillApi.isManager(),
     staleTime: 5 * 60_000,
-    enabled: !!user,
+    // Only call the API for EMPLOYEE — SUPER_USER/ADMIN are always managers
+    enabled: !!user && !isPrivilegedRole,
   });
 
   async function handleLogout() {

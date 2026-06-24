@@ -52,8 +52,20 @@ function CreateAssignmentModal({ type, onClose }: { type: UpskillType; onClose: 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    if (!form.assignedToId) {
+      setError('Please select a resource');
+      return;
+    }
     if (type === 'AUTOMATION' && !form.toolScript?.trim()) {
       setError('Tool / Script Name is required for Automation type');
+      return;
+    }
+    if (!form.startDate || !form.endDate) {
+      setError('Start date and end date are required');
+      return;
+    }
+    if (form.endDate <= form.startDate) {
+      setError('End date must be after start date');
       return;
     }
     createMutation.mutate();
@@ -132,6 +144,7 @@ function CreateAssignmentModal({ type, onClose }: { type: UpskillType; onClose: 
               <input
                 type="date"
                 required
+                min={form.startDate ? (() => { const d = new Date(form.startDate!); d.setDate(d.getDate() + 1); return d.toISOString().split('T')[0]; })() : undefined}
                 value={form.endDate ?? ''}
                 onChange={(e) => setForm((p) => ({ ...p, endDate: e.target.value }))}
                 className={inputCls}
