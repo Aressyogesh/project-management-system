@@ -329,7 +329,6 @@ export class DashboardService {
           },
         },
         workItems: {
-          where: { parentId: null },
           select: { id: true, status: true, type: true },
         },
       },
