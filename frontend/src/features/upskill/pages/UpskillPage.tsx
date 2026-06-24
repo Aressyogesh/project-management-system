@@ -1,8 +1,28 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { upskillApi, type CreateAssignmentDto, type UpskillAssignment, type UpskillStatus, type UpskillType } from '../../../api/upskillApi';
 import { useAuthStore } from '../../../store/authStore';
 import { Pagination } from '../../../components/shared/Pagination';
+
+// ─── Toast ────────────────────────────────────────────────────────────────────
+
+interface ToastState { message: string; type: 'success' | 'error' }
+
+function Toast({ toast, onClose }: { toast: ToastState; onClose: () => void }) {
+  return (
+    <div className="fixed bottom-6 right-6 z-[100] flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg text-sm font-medium text-white bg-gray-900 min-w-[240px] max-w-xs animate-fade-in">
+      <svg className="w-4 h-4 shrink-0 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+      </svg>
+      <span className="flex-1">{toast.message}</span>
+      <button onClick={onClose} className="text-gray-400 hover:text-white transition ml-1">
+        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+    </div>
+  );
+}
 
 // ─── Status Badge ─────────────────────────────────────────────────────────────
 
@@ -25,7 +45,7 @@ function StatusBadge({ status }: { status: UpskillStatus }) {
 
 // ─── Create Assignment Modal ──────────────────────────────────────────────────
 
-function CreateAssignmentModal({ type, onClose }: { type: UpskillType; onClose: () => void }) {
+function CreateAssignmentModal({ type, onClose, onCreated }: { type: UpskillType; onClose: () => void; onCreated: () => void }) {
   const qc = useQueryClient();
   const { data: users = [] } = useQuery({
     queryKey: ['upskill-assignable-users'],
@@ -40,6 +60,7 @@ function CreateAssignmentModal({ type, onClose }: { type: UpskillType; onClose: 
     mutationFn: () => upskillApi.createAssignment(form as CreateAssignmentDto),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['upskill-assignments'] });
+      onCreated();
       onClose();
     },
     onError: (e: Error) => setError(e.message),
@@ -623,6 +644,13 @@ export function UpskillPage() {
   const [progressFor, setProgressFor] = useState<UpskillAssignment | null>(null);
   const [rejectFor, setRejectFor] = useState<UpskillAssignment | null>(null);
 
+  const [toast, setToast] = useState<ToastState | null>(null);
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(null), 3000);
+    return () => clearTimeout(t);
+  }, [toast]);
+
   const isPrivileged = user?.systemRole === 'SUPER_USER' || user?.systemRole === 'ADMIN';
   const { data: managerCheck } = useQuery({
     queryKey: ['upskill-is-manager'],
@@ -761,10 +789,11 @@ export function UpskillPage() {
       )}
 
       {/* Modals */}
-      {showCreate && <CreateAssignmentModal type={activeTab} onClose={() => setShowCreate(false)} />}
+      {showCreate && <CreateAssignmentModal type={activeTab} onClose={() => setShowCreate(false)} onCreated={() => setToast({ message: 'Assignment created successfully', type: 'success' })} />}
       {editFor && <EditAssignmentModal assignment={editFor} onClose={() => setEditFor(null)} />}
       {progressFor && <ProgressDrawer assignment={progressFor} onClose={() => setProgressFor(null)} />}
       {rejectFor && <RejectModal assignment={rejectFor} onClose={() => setRejectFor(null)} />}
+      {toast && <Toast toast={toast} onClose={() => setToast(null)} />}
     </div>
   );
 }
