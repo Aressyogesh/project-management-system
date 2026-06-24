@@ -117,6 +117,7 @@ export class UpskillService {
           ...periodFilter,
         },
         include: {
+          assignedTo: { select: { id: true, fullName: true } },
           createdBy: { select: { id: true, fullName: true } },
           progressLogs: { orderBy: { createdAt: 'desc' } },
         },
