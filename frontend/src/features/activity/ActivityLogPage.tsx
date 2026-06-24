@@ -21,6 +21,27 @@ const ACTION_LABELS: Record<AuditAction, string> = {
   MEMBER_REMOVED: 'removed member',
   MEMBER_ROLE_CHANGED: 'changed member role',
   PROFILE_UPDATED: 'updated profile',
+  PROJECT_CREATED: 'created project',
+  PROJECT_UPDATED: 'updated project',
+  PROJECT_STATUS_CHANGED: 'changed project status',
+  PROJECT_DELETED: 'deleted project',
+  TASK_CREATED: 'created task',
+  TASK_UPDATED: 'updated task',
+  TASK_DELETED: 'deleted task',
+  MILESTONE_CREATED: 'created milestone',
+  MILESTONE_UPDATED: 'updated milestone',
+  MILESTONE_DELETED: 'deleted milestone',
+  LEAVE_REQUESTED: 'requested leave',
+  LEAVE_APPROVED: 'approved leave',
+  LEAVE_REJECTED: 'rejected leave',
+  LEAVE_CANCELLED: 'cancelled leave',
+  UPSKILL_ASSIGNED: 'assigned upskill',
+  UPSKILL_UPDATED: 'updated upskill',
+  UPSKILL_DELETED: 'deleted upskill',
+  UPSKILL_PROGRESS_LOGGED: 'logged upskill progress',
+  UPSKILL_SUBMITTED: 'submitted upskill evidence',
+  UPSKILL_APPROVED: 'approved upskill',
+  UPSKILL_REJECTED: 'rejected upskill',
 };
 
 const ACTION_COLORS: Record<AuditAction, string> = {
@@ -38,6 +59,27 @@ const ACTION_COLORS: Record<AuditAction, string> = {
   MEMBER_REMOVED: 'bg-red-100 text-red-700',
   MEMBER_ROLE_CHANGED: 'bg-violet-100 text-violet-700',
   PROFILE_UPDATED: 'bg-gray-100 text-gray-700',
+  PROJECT_CREATED: 'bg-emerald-100 text-emerald-700',
+  PROJECT_UPDATED: 'bg-amber-100 text-amber-700',
+  PROJECT_STATUS_CHANGED: 'bg-purple-100 text-purple-700',
+  PROJECT_DELETED: 'bg-red-100 text-red-700',
+  TASK_CREATED: 'bg-emerald-100 text-emerald-700',
+  TASK_UPDATED: 'bg-amber-100 text-amber-700',
+  TASK_DELETED: 'bg-red-100 text-red-700',
+  MILESTONE_CREATED: 'bg-emerald-100 text-emerald-700',
+  MILESTONE_UPDATED: 'bg-amber-100 text-amber-700',
+  MILESTONE_DELETED: 'bg-red-100 text-red-700',
+  LEAVE_REQUESTED: 'bg-sky-100 text-sky-700',
+  LEAVE_APPROVED: 'bg-green-100 text-green-700',
+  LEAVE_REJECTED: 'bg-red-100 text-red-700',
+  LEAVE_CANCELLED: 'bg-gray-100 text-gray-700',
+  UPSKILL_ASSIGNED: 'bg-indigo-100 text-indigo-700',
+  UPSKILL_UPDATED: 'bg-amber-100 text-amber-700',
+  UPSKILL_DELETED: 'bg-red-100 text-red-700',
+  UPSKILL_PROGRESS_LOGGED: 'bg-sky-100 text-sky-700',
+  UPSKILL_SUBMITTED: 'bg-purple-100 text-purple-700',
+  UPSKILL_APPROVED: 'bg-green-100 text-green-700',
+  UPSKILL_REJECTED: 'bg-red-100 text-red-700',
 };
 
 function fmtTimestamp(iso: string): string {
@@ -127,9 +169,14 @@ export function ActivityLogPage() {
             >
               <option value="">All Entities</option>
               <option value="AUTH">Auth</option>
+              <option value="PROJECT">Project</option>
               <option value="WORK_ITEM">Work Item</option>
               <option value="SPRINT">Sprint</option>
               <option value="PROJECT_MEMBER">Member</option>
+              <option value="TASK">Task</option>
+              <option value="MILESTONE">Milestone</option>
+              <option value="LEAVE_REQUEST">Leave Request</option>
+              <option value="UPSKILL_ASSIGNMENT">Upskill</option>
               <option value="USER_PROFILE">Profile</option>
             </select>
 
