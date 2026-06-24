@@ -303,10 +303,10 @@ function UpskillCard({ asgn, onRefresh }: { asgn: UpskillAssignment; onRefresh: 
   );
 }
 
-function UpskillAssignmentSection({ period }: { period: string }) {
+function UpskillAssignmentSection() {
   const { data: result, refetch } = useQuery({
-    queryKey: ['upskill-mine', period],
-    queryFn: () => upskillApi.listAssignments({ mine: true, period, limit: 50 }),
+    queryKey: ['upskill-mine-all'],
+    queryFn: () => upskillApi.listAssignments({ mine: true, limit: 50 }),
     staleTime: 15_000,
   });
   const assignments = result?.data ?? [];
@@ -419,7 +419,7 @@ export function KpiPage() {
             No KPI data found for this period — auto-computed metrics will appear once work items are logged.
           </div>
         )}
-        <UpskillAssignmentSection period={selectedPeriod} />
+        <UpskillAssignmentSection />
       </div>
     );
   }
@@ -626,7 +626,7 @@ export function KpiPage() {
       )}
 
       {isPm && (
-        <UpskillAssignmentSection period={selectedPeriod} />
+        <UpskillAssignmentSection />
       )}
 
       {showScoreEntry && (
