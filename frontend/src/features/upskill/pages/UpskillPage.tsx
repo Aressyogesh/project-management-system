@@ -394,7 +394,10 @@ function AssignmentRow({
   onApprove: (id: string) => void;
   onReject: (a: UpskillAssignment) => void;
 }) {
-  const latestPct = asgn.progressLogs?.[0]?.percentComplete ?? 0;
+  const consolidatedPct = Math.min(
+    100,
+    asgn.progressLogs?.reduce((s, l) => s + l.percentComplete, 0) ?? 0,
+  );
   const totalHours = asgn.progressLogs?.reduce((s, l) => s + l.hoursSpent, 0) ?? 0;
 
   return (
@@ -411,7 +414,7 @@ function AssignmentRow({
         {new Date(asgn.startDate).toLocaleDateString()} –<br />{new Date(asgn.endDate).toLocaleDateString()}
       </td>
       <td className="px-4 py-3 text-xs text-gray-500">
-        <span className="font-medium">{latestPct}%</span>
+        <span className="font-medium">{consolidatedPct}%</span>
         {totalHours > 0 && <span className="text-gray-400"> · {totalHours}h</span>}
       </td>
       <td className="px-4 py-3">
