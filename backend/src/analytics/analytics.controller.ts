@@ -24,9 +24,13 @@ export class AnalyticsController {
   @Get('reports/productivity')
   getProductivity(
     @Query('period') period = '2026-05',
+    @Request() req: { user: AuthUser },
     @Query('projectId') projectId?: string,
   ) {
-    return this.analyticsService.getProductivityReport(period, projectId);
+    const isAdmin =
+      req.user.systemRole === SystemRole.ADMIN ||
+      req.user.systemRole === SystemRole.SUPER_USER;
+    return this.analyticsService.getProductivityReport(period, projectId, req.user.id, isAdmin);
   }
 
   @Get('reports/projects')
@@ -48,9 +52,13 @@ export class AnalyticsController {
   @Get('reports/allocation')
   getAllocation(
     @Query('period') period = '2026-05',
+    @Request() req: { user: AuthUser },
     @Query('projectId') projectId?: string,
   ) {
-    return this.analyticsService.getAllocationReport(period, projectId);
+    const isAdmin =
+      req.user.systemRole === SystemRole.ADMIN ||
+      req.user.systemRole === SystemRole.SUPER_USER;
+    return this.analyticsService.getAllocationReport(period, projectId, req.user.id, isAdmin);
   }
 
   @Get('my-project-role')

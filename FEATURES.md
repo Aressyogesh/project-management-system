@@ -227,3 +227,33 @@
 - **F-052 — Project Wiki / Notes** — Per-project wiki at `/projects/:id/wiki`; pages with title + rich-text body; create/edit/delete (PM+ write, all members read); `WikiPage` Prisma model (`id`, `projectId`, `title`, `content`, `createdById`, `updatedAt`); `GET/POST/PUT/DELETE /projects/:id/wiki`
 
 - **F-053 — Global Search** — Omnisearch bar in topbar (Ctrl+K / Cmd+K); searches work items (by display ID or title), bugs, projects, users in one query; results grouped by type; click navigates to detail page or board; `GET /search?q=&types[]=` with RBAC filtering; debounced 300 ms; uses existing `ILIKE` queries — no new Prisma model
+
+---
+
+## QA Enhancements — Recommended
+
+> Feasible with existing data model. No schema redesign required.
+
+- **F-055 — QA Health Dashboard Card** — Dedicated card on dashboard showing: Open Critical Bugs, Open Major Bugs, Ready for QA count, Pending Retest count, Blocked Items, Release Readiness %; single aggregated API call; visible to QA role and above
+- **F-056 — My Tasks Tabs (QA View)** — Replace flat task list with tabbed view: Open Tasks / Ready for QA / Pending Retest / Completed Testing; tabs filter by board status groups (`READY_FOR_QA`, `IN_QA`, `QA_DONE`); assignee-scoped; replaces current single-stage task list
+- **F-057 — Current Tasks Table Enhancements** — Add Due Date, Sprint, Testing Status, and Defect Count columns to the My Tasks table on the dashboard overview; all fields already available in DB
+- **F-058 — Bug Raised Report** — Report showing bugs raised per QA by severity (Critical / Major / Minor / Total); table + horizontal bar chart; filterable by project and date range; `GET /analytics/reports/bugs-raised`
+- **F-059 — Bugs Verified Report** — Report showing bugs verified, reopened, and closed per QA; highlights reopen rate; filterable by project and period; `GET /analytics/reports/bugs-verified`
+- **F-060 — Defect Trend Graph** — Weekly bug count chart showing number of bugs reported over time; line or bar chart; project and date range filter; `GET /analytics/reports/defect-trend`
+- **F-061 — Ready for QA Aging Report** — Table listing work items currently in `READY_FOR_QA` status with days waiting; highlights items waiting beyond threshold (e.g. 5 days); helps managers identify QA bottlenecks; `GET /analytics/reports/qa-aging`
+- **F-062 — Team Activity Feed Filters** — Add filter buttons (Tasks / Bugs / Test Cases) to the Team Activity Summary widget on dashboard; currently shows all activity types with no separation; gives QA quality-focused view
+
+---
+
+## QA Enhancements — Deferred
+
+> Higher effort, schema changes, or dependent on future features. Revisit after Recommended set is complete.
+
+- **F-063 — Reopen Column on Kanban Board** — Add dedicated `REOPENED` column to the Kanban board for bugs sent back by QA; requires board column config update and status enum addition
+- **F-064 — Dev Estimate + QA Verification Estimate on Bug Card** — Two separate effort fields on bug work items: Development Estimate and QA Verification Estimate; avoids creating a separate verification task; requires schema change on `work_items`
+- **F-065 — Test Cases on User Story + Excel Import** — Move test case association from Epic to User Story level; add bulk import of test cases from Excel/CSV file; requires test case model update and file parsing logic
+- **F-066 — Jira-style Activity Stream** — Rich activity feed showing: task moved to Ready for QA, bug assigned, bug fixed by developer, sprint started/ended, release deployed; requires structured event log (similar to audit log but surfaced in UI)
+- **F-067 — Task Progress Toggle (My vs Team)** — Toggle on Tasks Progress donut chart between personal progress and team progress; requires per-user progress breakdown in analytics endpoint
+- **F-068 — Project Selector on My Projects Overview** — Dropdown to select which project's data to show on the overview; useful for QA working across multiple projects simultaneously
+- **F-069 — QA Effort Report** — Report showing Story Testing vs Bug Verification hours per QA; requires timesheet entries to carry a work-type tag (testing / verification / preparation) — not currently tracked
+- **F-070 — Timesheet Category Labels** — Replace "Development / Bug Fixing" labels in timesheet with "Testing / Bug Verification / Test Case Preparation"; requires new work-type field on `timesheet_entries` schema

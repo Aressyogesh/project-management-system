@@ -274,7 +274,8 @@ function KpiAppraisalTab({ currentUserId, period }: { currentUserId?: string; pe
   });
 
   const kpiData = useMemo(() => liveData.map(transformLiveKpi), [liveData]);
-  const summary = kpiData.length > 0 ? buildTeamSummary(kpiData, period) : null;
+  const isSelfOnly = kpiData.length === 1 && kpiData[0].userId === currentUserId;
+  const summary = !isSelfOnly && kpiData.length > 0 ? buildTeamSummary(kpiData, period) : null;
 
   const pieData = summary ? [
     { name: 'Grade A', value: summary.gradeACcount, color: '#10B981' },
@@ -290,6 +291,48 @@ function KpiAppraisalTab({ currentUserId, period }: { currentUserId?: string; pe
   const gradeConfig = summary ? GRADE_CONFIG[summary.teamGrade] : GRADE_CONFIG['C'];
 
   if (isLoading) return <TabSpinner />;
+
+  // Personal view — shown when the backend returns only the requesting user's own data
+  if (isSelfOnly) {
+    const me = kpiData[0];
+    const gc = GRADE_CONFIG[me.grade];
+    return (
+      <div className="space-y-6">
+        <div className="flex justify-end">
+          <CsvButton onClick={() => downloadCsv(`kpi-appraisal-report-${period}.csv`, [
+            ['Name', 'Role', 'Department', 'Total Score', 'Grade'],
+            [me.name, me.role, me.department, String(me.totalScore), me.grade],
+          ])} />
+        </div>
+        <div className="bg-blue-50 border border-blue-100 rounded-2xl p-5 shadow-sm flex items-center gap-5">
+          <div className={`w-20 h-20 shrink-0 rounded-full flex flex-col items-center justify-center border-4 ${gc.border}`}>
+            <span className="text-2xl font-bold text-gray-800">{me.totalScore}</span>
+            <span className={`text-sm font-bold ${gc.text}`}>{me.grade}</span>
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-gray-800">{me.name}</p>
+            <p className="text-xs text-gray-400 mt-0.5">{me.role} · {me.department}</p>
+            <span className={`text-xs font-bold px-2.5 py-1 rounded-full mt-2 inline-block ${gc.bg} ${gc.text}`}>
+              {gc.label} — {periodLabel}
+            </span>
+          </div>
+        </div>
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+          <div className="px-5 py-4 border-b border-gray-50">
+            <h3 className="text-sm font-semibold text-gray-800">Metric Breakdown</h3>
+          </div>
+          <div className="divide-y divide-gray-50">
+            {me.metrics.map((m) => (
+              <div key={m.metricId} className="px-5 py-3 flex items-center justify-between">
+                <span className="text-xs text-gray-600 font-medium">{m.metricId.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}</span>
+                <span className="text-xs font-semibold text-gray-800">{m.points}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

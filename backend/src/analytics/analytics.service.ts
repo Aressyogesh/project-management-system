@@ -139,7 +139,7 @@ export class AnalyticsService {
 
     if (!isAdmin) {
       const pmMemberships = await this.prisma.projectMember.findMany({
-        where: { userId: currentUserId, projectRole: 'PROJECT_MANAGER' },
+        where: { userId: currentUserId, projectRole: { in: ['PROJECT_MANAGER', 'TEAM_LEAD'] } },
         select: { projectId: true },
       });
       if (pmMemberships.length > 0) {
@@ -401,12 +401,24 @@ export class AnalyticsService {
 
   // ─── Reports ─────────────────────────────────────────────────────────────────
 
-  async getProductivityReport(period: string, projectId?: string) {
+  async getProductivityReport(period: string, projectId?: string, requestingUserId?: string, isAdmin = true) {
     const { start, end } = periodToRange(period);
 
-    const activeProjectIds = projectId
-      ? [projectId]
-      : (await this.prisma.project.findMany({ where: { status: 'ACTIVE' }, select: { id: true } })).map((p) => p.id);
+    let activeProjectIds: string[];
+    if (isAdmin || !requestingUserId) {
+      activeProjectIds = projectId
+        ? [projectId]
+        : (await this.prisma.project.findMany({ where: { status: 'ACTIVE' }, select: { id: true } })).map((p) => p.id);
+    } else {
+      const managedIds = await this.getManagedProjectIds(requestingUserId);
+      if (managedIds.length > 0) {
+        activeProjectIds = projectId ? managedIds.filter((id) => id === projectId) : managedIds;
+      } else {
+        const memberIds = await this.getMemberProjectIds(requestingUserId);
+        activeProjectIds = projectId ? memberIds.filter((id) => id === projectId) : memberIds;
+        if (activeProjectIds.length === 0) return [];
+      }
+    }
 
     const users = await this.prisma.user.findMany({
       where: {
@@ -629,12 +641,24 @@ export class AnalyticsService {
     };
   }
 
-  async getAllocationReport(period: string, projectId?: string) {
+  async getAllocationReport(period: string, projectId?: string, requestingUserId?: string, isAdmin = true) {
     const { start, end } = periodToRange(period);
 
-    const activeProjectIds = projectId
-      ? [projectId]
-      : (await this.prisma.project.findMany({ where: { status: 'ACTIVE' }, select: { id: true } })).map((p) => p.id);
+    let activeProjectIds: string[];
+    if (isAdmin || !requestingUserId) {
+      activeProjectIds = projectId
+        ? [projectId]
+        : (await this.prisma.project.findMany({ where: { status: 'ACTIVE' }, select: { id: true } })).map((p) => p.id);
+    } else {
+      const managedIds = await this.getManagedProjectIds(requestingUserId);
+      if (managedIds.length > 0) {
+        activeProjectIds = projectId ? managedIds.filter((id) => id === projectId) : managedIds;
+      } else {
+        const memberIds = await this.getMemberProjectIds(requestingUserId);
+        activeProjectIds = projectId ? memberIds.filter((id) => id === projectId) : memberIds;
+        if (activeProjectIds.length === 0) return [];
+      }
+    }
 
     const users = await this.prisma.user.findMany({
       where: {
@@ -698,6 +722,14 @@ export class AnalyticsService {
     return memberships.map((m) => m.projectId);
   }
 
+  async getMemberProjectIds(userId: string): Promise<string[]> {
+    const memberships = await this.prisma.projectMember.findMany({
+      where: { userId },
+      select: { projectId: true },
+    });
+    return memberships.map((m) => m.projectId);
+  }
+
   async getTimesheetReport(period: string, projectId?: string, requestingUserId?: string, isAdmin = true) {
     const { start, end } = periodToRange(period);
 
@@ -707,9 +739,9 @@ export class AnalyticsService {
       if (managedIds.length > 0) {
         activeProjectIds = projectId ? managedIds.filter((id) => id === projectId) : managedIds;
       } else {
-        activeProjectIds = projectId
-          ? [projectId]
-          : (await this.prisma.project.findMany({ where: { status: 'ACTIVE' }, select: { id: true } })).map((p) => p.id);
+        const memberIds = await this.getMemberProjectIds(requestingUserId);
+        activeProjectIds = projectId ? memberIds.filter((id) => id === projectId) : memberIds;
+        if (activeProjectIds.length === 0) return [];
       }
     } else {
       activeProjectIds = projectId
@@ -763,6 +795,10 @@ export class AnalyticsService {
       const managedIds = await this.getManagedProjectIds(requestingUserId);
       if (managedIds.length > 0) {
         scopedProjectIds = projectId ? managedIds.filter((id) => id === projectId) : managedIds;
+      } else {
+        const memberIds = await this.getMemberProjectIds(requestingUserId);
+        scopedProjectIds = projectId ? memberIds.filter((id) => id === projectId) : memberIds;
+        if (scopedProjectIds.length === 0) return [];
       }
     }
 
