@@ -29,6 +29,10 @@ import { UpskillService } from './upskill.service';
 const EVIDENCE_MIME_TYPES: Record<string, string> = {
   'application/pdf': '.pdf',
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document': '.docx',
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation': '.pptx',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': '.xlsx',
+  'application/zip': '.zip',
+  'application/x-zip-compressed': '.zip',
   'image/png': '.png',
   'image/jpeg': '.jpg',
 };
@@ -138,7 +142,7 @@ export class UpskillController {
         if (file.mimetype in EVIDENCE_MIME_TYPES) {
           cb(null, true);
         } else {
-          cb(new Error('File type not allowed. Accepted: PDF, DOCX, PNG, JPG'), false);
+          cb(new Error('File type not allowed. Accepted: PDF, DOCX, PPTX, XLSX, ZIP, PNG, JPG'), false);
         }
       },
       limits: { fileSize: MAX_EVIDENCE_SIZE },

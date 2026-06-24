@@ -371,11 +371,11 @@ function ProgressDrawer({ assignment, onClose }: { assignment: UpskillAssignment
           {canSubmit && (
             <div className="border-t border-gray-100 pt-4">
               <h3 className="text-xs font-semibold text-gray-700 mb-1">Final Submission</h3>
-              <p className="text-xs text-gray-400 mb-3">Attach certificate or evidence (PDF, DOCX, PNG, JPG — max 10 MB)</p>
+              <p className="text-xs text-gray-400 mb-3">Attach certificate or evidence (PDF, DOCX, PNG, JPG, PPTX, XLSX, ZIP — max 10 MB)</p>
               <input
                 ref={fileRef}
                 type="file"
-                accept=".pdf,.docx,.png,.jpg,.jpeg"
+                accept=".pdf,.docx,.png,.jpg,.jpeg,.pptx,.xlsx,.zip"
                 className="hidden"
                 onChange={handleFileSelect}
               />
@@ -390,11 +390,29 @@ function ProgressDrawer({ assignment, onClose }: { assignment: UpskillAssignment
             </div>
           )}
 
-          {(detail?.status ?? assignment.status) === 'SUBMITTED' && !isOwner && (
-            <p className="text-xs text-amber-600 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
-              Evidence submitted — awaiting your approval.
-            </p>
-          )}
+          {!isOwner && (() => {
+            const status = detail?.status ?? assignment.status;
+            const fileName = detail?.evidenceFileName ?? assignment.evidenceFileName;
+            if (!fileName) return null;
+            return (
+              <div className="border-t border-gray-100 pt-4 space-y-2">
+                {status === 'SUBMITTED' && (
+                  <p className="text-xs text-amber-600 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
+                    Evidence submitted — awaiting your approval.
+                  </p>
+                )}
+                <button
+                  onClick={() => upskillApi.downloadEvidence(assignment.id, fileName)}
+                  className="w-full text-sm py-2 rounded-lg bg-gray-50 border border-gray-200 text-gray-700 hover:bg-gray-100 transition flex items-center justify-center gap-2"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                  </svg>
+                  Download Evidence — {fileName}
+                </button>
+              </div>
+            );
+          })()}
         </div>
       </div>
     </div>

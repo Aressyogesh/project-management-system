@@ -110,6 +110,13 @@ export const upskillApi = {
   reject: (id: string, reason: string): Promise<UpskillAssignment> =>
     apiClient.patch(`/upskill/assignments/${id}/reject`, { reason }).then((r) => r.data),
 
-  evidenceUrl: (id: string): string =>
-    `/upskill/assignments/${id}/evidence`,
+  downloadEvidence: async (id: string, fileName: string): Promise<void> => {
+    const response = await apiClient.get(`/upskill/assignments/${id}/evidence`, { responseType: 'blob' });
+    const url = URL.createObjectURL(response.data as Blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = fileName;
+    a.click();
+    URL.revokeObjectURL(url);
+  },
 };
