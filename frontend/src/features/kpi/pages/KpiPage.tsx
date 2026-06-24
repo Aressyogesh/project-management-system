@@ -1,7 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useMemo, useState } from 'react';
+import { useRef, useMemo, useState } from 'react';
 import { analyticsApi } from '../../../api/analyticsApi';
 import { selfLogsApi, type InnovationLog, type LearningLog } from '../../../api/selfLogsApi';
+import { upskillApi, type UpskillAssignment, type UpskillStatus } from '../../../api/upskillApi';
 import { useAuthStore } from '../../../store/authStore';
 import type { EmployeeKpiRecord } from '../../../types/kpi.types';
 import { KpiCategoryBarChart } from '../components/KpiCategoryBarChart';
@@ -363,6 +364,166 @@ function SelfLogSection({ period, targetUserId }: { period: string; targetUserId
   );
 }
 
+// ─── Upskill Assignments Section (KPI view for employees) ─────────────────────
+
+const UPSKILL_STATUS_CFG: Record<UpskillStatus, { label: string; cls: string }> = {
+  ASSIGNED:    { label: 'Assigned',    cls: 'bg-gray-100 text-gray-600' },
+  IN_PROGRESS: { label: 'In Progress', cls: 'bg-blue-100 text-blue-700' },
+  SUBMITTED:   { label: 'Submitted',   cls: 'bg-amber-100 text-amber-700' },
+  APPROVED:    { label: 'Approved',    cls: 'bg-green-100 text-green-700' },
+  REJECTED:    { label: 'Rejected',    cls: 'bg-red-100 text-red-700' },
+};
+
+function UpskillCard({ asgn, onRefresh }: { asgn: UpskillAssignment; onRefresh: () => void }) {
+  const [showProgress, setShowProgress] = useState(false);
+  const [pct, setPct] = useState('');
+  const [hrs, setHrs] = useState('');
+  const [notes, setNotes] = useState('');
+  const [formErr, setFormErr] = useState('');
+  const [fileErr, setFileErr] = useState('');
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const canLog = asgn.status !== 'APPROVED' && asgn.status !== 'SUBMITTED';
+  const canSubmit = asgn.status === 'ASSIGNED' || asgn.status === 'IN_PROGRESS' || asgn.status === 'REJECTED';
+
+  const logMutation = useMutation({
+    mutationFn: () => upskillApi.logProgress(asgn.id, {
+      percentComplete: Number(pct), hoursSpent: Number(hrs), notes: notes.trim() || undefined,
+    }),
+    onSuccess: () => {
+      onRefresh();
+      setPct(''); setHrs(''); setNotes(''); setShowProgress(false); setFormErr('');
+    },
+    onError: (e: Error) => setFormErr(e.message),
+  });
+
+  const submitMutation = useMutation({
+    mutationFn: (file: File) => upskillApi.submitEvidence(asgn.id, file),
+    onSuccess: () => { onRefresh(); setFileErr(''); },
+    onError: (e: Error) => setFileErr(e.message),
+  });
+
+  const latestPct = asgn.progressLogs?.[0]?.percentComplete ?? 0;
+  const cfg = UPSKILL_STATUS_CFG[asgn.status];
+  const inputCls = 'w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500';
+
+  return (
+    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
+      <div className="flex items-start justify-between gap-3 mb-3">
+        <div>
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-[10px] font-semibold uppercase tracking-wide text-primary-600 bg-primary-50 px-2 py-0.5 rounded-full">
+              Upskill — {asgn.type === 'LEARNING' ? 'Learning' : 'Automation'}
+            </span>
+            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold ${cfg.cls}`}>{cfg.label}</span>
+          </div>
+          <p className="text-sm font-medium text-gray-800 line-clamp-2">{asgn.description}</p>
+          {asgn.toolScript && <p className="text-[10px] text-gray-400 mt-0.5">Tool: {asgn.toolScript}</p>}
+        </div>
+        <div className="text-right shrink-0">
+          <p className="text-lg font-bold text-primary-600">{latestPct}%</p>
+          <p className="text-[10px] text-gray-400">complete</p>
+        </div>
+      </div>
+
+      {/* Rejection banner */}
+      {asgn.status === 'REJECTED' && asgn.rejectionReason && (
+        <div className="mb-3 px-3 py-2 bg-red-50 border border-red-100 rounded-lg text-xs text-red-600">
+          Rejected: {asgn.rejectionReason}
+        </div>
+      )}
+
+      <p className="text-[10px] text-gray-400 mb-3">
+        {new Date(asgn.startDate).toLocaleDateString()} – {new Date(asgn.endDate).toLocaleDateString()}
+        {' · '}by {asgn.createdBy?.fullName}
+      </p>
+
+      <div className="flex gap-2">
+        {canLog && (
+          <button
+            onClick={() => setShowProgress((v) => !v)}
+            className="text-xs px-3 py-1.5 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 transition"
+          >
+            Log Progress
+          </button>
+        )}
+        {canSubmit && (
+          <>
+            <input ref={fileRef} type="file" accept=".pdf,.docx,.png,.jpg,.jpeg" className="hidden" onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (!file) return;
+              if (file.size > 10 * 1024 * 1024) { setFileErr('File size must not exceed 10 MB'); return; }
+              setFileErr('');
+              submitMutation.mutate(file);
+            }} />
+            <button
+              onClick={() => fileRef.current?.click()}
+              disabled={submitMutation.isPending}
+              className="text-xs px-3 py-1.5 rounded-lg bg-green-50 text-green-700 hover:bg-green-100 disabled:opacity-60 transition"
+            >
+              {submitMutation.isPending ? 'Uploading…' : 'Submit Evidence'}
+            </button>
+          </>
+        )}
+      </div>
+
+      {fileErr && <p className="text-xs text-red-600 mt-1">{fileErr}</p>}
+
+      {showProgress && canLog && (
+        <div className="mt-3 p-3 bg-gray-50 rounded-xl space-y-2">
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="block text-[10px] font-medium text-gray-600 mb-1">% Complete *</label>
+              <input type="number" min={0} max={100} value={pct} onChange={(e) => setPct(e.target.value)} placeholder="0–100" className={inputCls} />
+            </div>
+            <div>
+              <label className="block text-[10px] font-medium text-gray-600 mb-1">Hours Spent *</label>
+              <input type="number" min={0.5} step={0.5} value={hrs} onChange={(e) => setHrs(e.target.value)} placeholder="e.g. 2" className={inputCls} />
+            </div>
+          </div>
+          <textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Notes (optional)" className={`${inputCls} resize-none`} />
+          {formErr && <p className="text-[10px] text-red-600">{formErr}</p>}
+          <div className="flex gap-2 justify-end">
+            <button onClick={() => setShowProgress(false)} className="text-xs px-3 py-1.5 rounded-lg bg-gray-200 text-gray-600 hover:bg-gray-300">Cancel</button>
+            <button
+              onClick={() => {
+                if (!pct || !hrs) { setFormErr('Both fields required'); return; }
+                if (Number(pct) < 0 || Number(pct) > 100) { setFormErr('Must be between 0 and 100'); return; }
+                logMutation.mutate();
+              }}
+              disabled={logMutation.isPending}
+              className="text-xs px-3 py-1.5 rounded-lg bg-primary-600 text-white hover:bg-primary-700 disabled:opacity-60"
+            >
+              {logMutation.isPending ? 'Saving…' : 'Save'}
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function UpskillAssignmentSection({ period }: { period: string }) {
+  const { data: assignments = [], refetch } = useQuery<UpskillAssignment[]>({
+    queryKey: ['upskill-mine', period],
+    queryFn: () => upskillApi.listAssignments({ mine: true, period }),
+    staleTime: 15_000,
+  });
+
+  if (assignments.length === 0) return null;
+
+  return (
+    <div>
+      <h2 className="text-base font-semibold text-gray-800 mb-3">Upskill Assignments</h2>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {assignments.map((a) => (
+          <UpskillCard key={a.id} asgn={a} onRefresh={() => refetch()} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ─── Main KpiPage ─────────────────────────────────────────────────────────────
 
 export function KpiPage() {
@@ -461,6 +622,7 @@ export function KpiPage() {
           <h2 className="text-base font-semibold text-gray-800 mb-3">Growth & Innovation Self-Log</h2>
           <SelfLogSection period={selectedPeriod} />
         </div>
+        <UpskillAssignmentSection period={selectedPeriod} />
       </div>
     );
   }
@@ -671,10 +833,13 @@ export function KpiPage() {
       )}
 
       {isPm && (
-        <div>
-          <h2 className="text-base font-semibold text-gray-800 mb-3">My Growth & Innovation Self-Log</h2>
-          <SelfLogSection period={selectedPeriod} />
-        </div>
+        <>
+          <div>
+            <h2 className="text-base font-semibold text-gray-800 mb-3">My Growth & Innovation Self-Log</h2>
+            <SelfLogSection period={selectedPeriod} />
+          </div>
+          <UpskillAssignmentSection period={selectedPeriod} />
+        </>
       )}
 
       {showScoreEntry && (

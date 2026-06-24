@@ -23,6 +23,7 @@ import { MyTimesheetPage } from './features/timesheet/pages/MyTimesheetPage';
 import { LeavePage } from './features/leave/pages/LeavePage';
 import { EditProfilePage } from './features/profile/pages/EditProfilePage';
 import { ActivityLogPage } from './features/activity/ActivityLogPage';
+import { UpskillPage } from './features/upskill/pages/UpskillPage';
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 30_000 } },
@@ -85,6 +86,9 @@ export default function App() {
 
               {/* Activity Log */}
               <Route path="/activity" element={<ActivityLogPage />} />
+
+              {/* Upskill */}
+              <Route path="/upskill" element={<UpskillPage />} />
             </Route>
           </Route>
 

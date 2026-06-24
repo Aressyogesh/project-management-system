@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { authApi } from '../../api/auth.api';
+import { upskillApi } from '../../api/upskillApi';
 import { useAuthStore } from '../../store/authStore';
 import { SystemRole } from '../../types/auth.types';
 import { UserAvatar } from '../shared/UserAvatar';
@@ -107,6 +109,14 @@ function IconChevronRight() {
     </svg>
   );
 }
+function IconUpskill() {
+  return (
+    <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+        d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+    </svg>
+  );
+}
 function IconActivity() {
   return (
     <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -147,6 +157,13 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const { user, refreshToken, clearAuth } = useAuthStore();
   const [mobileOpen, setMobileOpen] = useState(false);
 
+  const { data: managerCheck } = useQuery({
+    queryKey: ['upskill-is-manager'],
+    queryFn: () => upskillApi.isManager(),
+    staleTime: 5 * 60_000,
+    enabled: !!user,
+  });
+
   async function handleLogout() {
     if (refreshToken) {
       try { await authApi.logout(refreshToken); } catch { /* ignore — token may already be expired */ }
@@ -155,9 +172,14 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
     navigate('/login');
   }
 
-  const visibleNav = navItems.filter(
+  const baseNav = navItems.filter(
     (item) => !item.roles || item.roles.includes(user?.systemRole as SystemRole),
   );
+
+  const upskillItem: NavItem = { path: '/upskill', label: 'Upskill', Icon: IconUpskill };
+  const visibleNav = managerCheck?.isManager
+    ? [...baseNav.slice(0, baseNav.findIndex((n) => n.path === '/kpi') + 1), upskillItem, ...baseNav.slice(baseNav.findIndex((n) => n.path === '/kpi') + 1)]
+    : baseNav;
 
   const sidebarContent = (
     <aside
