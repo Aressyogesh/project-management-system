@@ -249,7 +249,7 @@ function UpskillCard({ asgn, onRefresh }: { asgn: UpskillAssignment; onRefresh: 
         )}
         {canSubmit && (
           <>
-            <input ref={fileRef} type="file" accept=".pdf,.docx,.png,.jpg,.jpeg" className="hidden" onChange={(e) => {
+            <input ref={fileRef} type="file" accept=".pdf,.docx,.png,.jpg,.jpeg,.pptx,.xlsx,.zip" className="hidden" onChange={(e) => {
               const file = e.target.files?.[0];
               if (!file) return;
               if (file.size > 10 * 1024 * 1024) { setFileErr('File size must not exceed 10 MB'); return; }
@@ -268,6 +268,7 @@ function UpskillCard({ asgn, onRefresh }: { asgn: UpskillAssignment; onRefresh: 
       </div>
 
       {fileErr && <p className="text-xs text-red-600 mt-1">{fileErr}</p>}
+      {canSubmit && <p className="text-[10px] text-gray-400 mt-1">Supported: PDF, DOCX, PPTX, XLSX, ZIP, PNG, JPG · max 10 MB</p>}
 
       {showProgress && canLog && (
         <div className="mt-3 p-3 bg-gray-50 rounded-xl space-y-2">
