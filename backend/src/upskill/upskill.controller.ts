@@ -52,11 +52,11 @@ export class UpskillController {
     return { isManager };
   }
 
-  // ─── List users that can be assigned (any authenticated user) ────────────
+  // ─── List users that can be assigned (scoped by caller role) ────────────
 
   @Get('assignable-users')
-  assignableUsers() {
-    return this.upskillService.assignableUsers();
+  assignableUsers(@Request() req: AuthRequest) {
+    return this.upskillService.assignableUsers(req.user.id, req.user.systemRole);
   }
 
   // ─── Create Assignment (Manager/Admin only) ───────────────────────────────

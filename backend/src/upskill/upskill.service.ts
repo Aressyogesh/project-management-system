@@ -35,12 +35,33 @@ export class UpskillService {
     return !!pm;
   }
 
-  async assignableUsers() {
-    return this.prisma.user.findMany({
-      where: { isActive: true },
-      select: { id: true, fullName: true, systemRole: true, department: { select: { name: true } } },
-      orderBy: { fullName: 'asc' },
+  async assignableUsers(callerId: string, systemRole: SystemRole) {
+    const isPrivileged = systemRole === SystemRole.ADMIN || systemRole === SystemRole.SUPER_USER;
+    if (isPrivileged) {
+      return this.prisma.user.findMany({
+        where: { isActive: true },
+        select: { id: true, fullName: true, systemRole: true, department: { select: { name: true } } },
+        orderBy: { fullName: 'asc' },
+      });
+    }
+
+    // For PM: return members of projects they manage
+    const managedProjects = await this.prisma.projectMember.findMany({
+      where: { userId: callerId, projectRole: ProjectRole.PROJECT_MANAGER },
+      select: { projectId: true },
     });
+    const projectIds = managedProjects.map((p) => p.projectId);
+    if (projectIds.length === 0) return [];
+
+    const members = await this.prisma.projectMember.findMany({
+      where: { projectId: { in: projectIds } },
+      select: { user: { select: { id: true, fullName: true, systemRole: true, department: { select: { name: true } } } } },
+      distinct: ['userId'],
+    });
+    return members
+      .map((m) => m.user)
+      .filter((u) => u !== null)
+      .sort((a, b) => a.fullName.localeCompare(b.fullName));
   }
 
   async createAssignment(callerId: string, dto: CreateAssignmentDto) {
