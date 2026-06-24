@@ -136,11 +136,15 @@ export class DashboardService {
       scopedProjectIds !== null
         ? Promise.resolve(scopedProjectIds.length)
         : this.prisma.project.count({ where: { status: ProjectStatus.ACTIVE } }),
-      this.prisma.task.findMany({
-        where: { assignedToId: userId, project: { status: ProjectStatus.ACTIVE } },
+      this.prisma.workItem.findMany({
+        where: {
+          assigneeId: userId,
+          project: { status: ProjectStatus.ACTIVE },
+          type: { in: [WorkItemType.TASK, WorkItemType.SUB_TASK] },
+        },
         select: {
           id: true, title: true, priority: true, status: true,
-          assignedTo: { select: { fullName: true } },
+          assignee: { select: { fullName: true } },
           project: { select: { name: true } },
         },
         orderBy: { createdAt: 'desc' },
@@ -173,9 +177,9 @@ export class DashboardService {
       id: t.id,
       projectName: t.project.name,
       taskName: t.title,
-      assignee: t.assignedTo?.fullName ?? '—',
-      priority: t.priority,
-      status: t.status,
+      assignee: t.assignee?.fullName ?? '—',
+      priority: t.priority as MyTask['priority'],
+      status: this.boardStatusToMyTaskStatus(t.status as BoardStatus),
     }));
 
     const totalTaskCount = notStartedCount + inProgressCount + onReviewCount + completedCount + totalWorkItems;
@@ -192,7 +196,7 @@ export class DashboardService {
             { label: 'My Projects',   value: myProjectCount,         change: 0, trend: 'up', color: 'green'  },
             { label: 'My Tasks',      value: rawMyTasks.length,      change: 0, trend: 'up', color: 'blue'   },
             { label: 'Assigned To Me',value: rawMyTasks.length,      change: 0, trend: 'up', color: 'purple' },
-            { label: 'Completed',     value: rawMyTasks.filter((t) => t.status === TaskStatus.COMPLETED).length, change: 0, trend: 'up', color: 'rose' },
+            { label: 'Completed',     value: rawMyTasks.filter((t) => t.status === BoardStatus.QA_DONE).length, change: 0, trend: 'up', color: 'rose' },
           ]
         : [
             { label: projectCardLabel,  value: projectCardValue,                     change: 0, trend: 'up', color: 'green'  },
@@ -629,6 +633,13 @@ export class DashboardService {
       });
 
     return items.slice(0, 8);
+  }
+
+  private boardStatusToMyTaskStatus(s: BoardStatus): MyTask['status'] {
+    if (s === BoardStatus.QA_DONE) return 'COMPLETED';
+    if (s === BoardStatus.IN_REVIEW || s === BoardStatus.READY_FOR_QA || s === BoardStatus.IN_QA) return 'ON_REVIEW';
+    if (s === BoardStatus.IN_PROGRESS || s === BoardStatus.BLOCKED) return 'IN_PROGRESS';
+    return 'NOT_STARTED';
   }
 
   private async buildActivityData(projectId?: string, scopedIds?: string[]): Promise<ActivityPoint[]> {

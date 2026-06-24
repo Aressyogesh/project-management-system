@@ -1,11 +1,11 @@
-import { BoardStatus, ProjectRole, ProjectStatus, SystemRole, TaskStatus } from '@prisma/client';
+import { BoardStatus, ProjectRole, ProjectStatus, SystemRole } from '@prisma/client';
 import { DashboardService } from '../dashboard.service';
 
 const mockPrisma = {
   user: { count: jest.fn() },
   project: { count: jest.fn(), findMany: jest.fn() },
-  task: { count: jest.fn(), findMany: jest.fn() },
-  workItem: { count: jest.fn(), findFirst: jest.fn() },
+  task: { count: jest.fn() },
+  workItem: { count: jest.fn(), findFirst: jest.fn(), findMany: jest.fn() },
   projectMember: { count: jest.fn(), findMany: jest.fn() },
 };
 
@@ -17,8 +17,8 @@ const TASK_ROW = {
   id: 'task-001',
   title: 'Fix login bug',
   priority: 'HIGH' as const,
-  status: TaskStatus.IN_PROGRESS,
-  assignedTo: { fullName: 'Alice Smith' },
+  status: BoardStatus.IN_PROGRESS,
+  assignee: { fullName: 'Alice Smith' },
   project: { name: 'Alpha Project' },
 };
 
@@ -28,9 +28,9 @@ beforeEach(() => {
   mockPrisma.project.count.mockResolvedValue(3);
   mockPrisma.project.findMany.mockResolvedValue([]);
   mockPrisma.task.count.mockResolvedValue(10);
-  mockPrisma.task.findMany.mockResolvedValue([]);
   mockPrisma.workItem.count.mockResolvedValue(0);
   mockPrisma.workItem.findFirst.mockResolvedValue(null);
+  mockPrisma.workItem.findMany.mockResolvedValue([]);
   mockPrisma.projectMember.count.mockResolvedValue(0);
   mockPrisma.projectMember.findMany.mockResolvedValue([]);
 });
@@ -40,7 +40,7 @@ beforeEach(() => {
 // UTC-F026-B-001
 it('getStats_SuperUser_ReturnsSystemWideCounts', async () => {
   mockPrisma.project.count.mockResolvedValue(5);
-  mockPrisma.task.findMany.mockResolvedValue([]);
+  mockPrisma.workItem.findMany.mockResolvedValue([]);
   mockPrisma.user.count.mockResolvedValue(20);
   const service = buildService();
   const result = await service.getStats('user-001', SystemRole.SUPER_USER);
@@ -50,7 +50,7 @@ it('getStats_SuperUser_ReturnsSystemWideCounts', async () => {
 
 // UTC-F026-B-002
 it('getStats_Employee_ReturnsOwnTaskCounts', async () => {
-  mockPrisma.task.findMany.mockResolvedValue([TASK_ROW, TASK_ROW, TASK_ROW]);
+  mockPrisma.workItem.findMany.mockResolvedValue([TASK_ROW, TASK_ROW, TASK_ROW]);
   const service = buildService();
   const result = await service.getStats('user-001', SystemRole.EMPLOYEE);
   const myTaskCard = result.cards.find((c) => c.label === 'My Tasks');
@@ -188,7 +188,7 @@ it('getStats_TeamPerformance_CalculatesAvgCompletionRatio', async () => {
 // ─── Backward-compat tests ────────────────────────────────────────────────────
 
 it('DashboardService_getStats_ReturnsMyTasksForUser', async () => {
-  mockPrisma.task.findMany.mockResolvedValue([TASK_ROW]);
+  mockPrisma.workItem.findMany.mockResolvedValue([TASK_ROW]);
   const service = buildService();
   const result = await service.getStats('user-001', SystemRole.ADMIN);
   expect(result.myTasks).toHaveLength(1);
@@ -197,7 +197,7 @@ it('DashboardService_getStats_ReturnsMyTasksForUser', async () => {
 });
 
 it('DashboardService_getStats_EmptyMyTasksWhenNoneAssigned', async () => {
-  mockPrisma.task.findMany.mockResolvedValue([]);
+  mockPrisma.workItem.findMany.mockResolvedValue([]);
   const service = buildService();
   const result = await service.getStats('user-999', SystemRole.EMPLOYEE);
   expect(result.myTasks).toHaveLength(0);
