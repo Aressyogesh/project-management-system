@@ -195,6 +195,7 @@ export class AnalyticsService {
       leaveRequests,
       learningLogs,
       innovationLogs,
+      upskillApproved,
     ] = await Promise.all([
       // Sprint items (for Sprint Reliability + Throughput)
       this.prisma.workItem.findMany({
@@ -268,6 +269,16 @@ export class AnalyticsService {
         where: { userId, period },
         select: { type: true },
       }),
+      // Approved upskill assignments overlapping this period
+      this.prisma.upskillAssignment.findFirst({
+        where: {
+          assignedToId: userId,
+          status: 'APPROVED',
+          startDate: { lte: end },
+          endDate: { gte: start },
+        },
+        select: { id: true },
+      }),
     ]);
 
     // Timesheet hours scoped to deliveryBase items only (accurate estimation comparison)
@@ -330,16 +341,19 @@ export class AnalyticsService {
 
     // Self-service
     const attendance = computeAttendance(leaveRequests as { status: string; startDate: Date; endDate: Date }[], start, end);
-    const learningHours = learningLogs.reduce((s, l) => s + l.hours, 0);
-    const learningVelocity = computeLearningVelocity(learningHours);
-    const automationInnovation = computeInnovation(innovationLogs);
+    // Approved upskill assignment overrides self-log based Growth & Innovation score (10/10)
+    const learningVelocity = upskillApproved
+      ? 5
+      : computeLearningVelocity(learningLogs.reduce((s, l) => s + l.hours, 0));
+    const automationInnovation = upskillApproved ? 5 : computeInnovation(innovationLogs);
 
     const hasNoActivity =
       sprintItems.length === 0 &&
       allAssignedItems.length === 0 &&
       manualScores.length === 0 &&
       learningLogs.length === 0 &&
-      innovationLogs.length === 0;
+      innovationLogs.length === 0 &&
+      !upskillApproved;
 
     // When the user has no assigned work and no manual scores for this period,
     // zero out all metrics so the radar chart and category scores reflect reality.

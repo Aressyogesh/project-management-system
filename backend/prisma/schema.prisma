@@ -267,6 +267,10 @@ model User {
   innovationLogs        InnovationLog[]      @relation("InnovationLogs")
   createdTestCases      TestCase[]           @relation("CreatedTestCases")
   auditLogs             AuditLog[]           @relation("UserAuditLogs")
+  upskillAssignments    UpskillAssignment[]  @relation("UpskillAssignments")
+  upskillCreated        UpskillAssignment[]  @relation("UpskillCreated")
+  upskillApprovals      UpskillAssignment[]  @relation("UpskillApprovals")
+  upskillProgressLogs   UpskillProgressLog[] @relation("UpskillProgressLogs")
 
   @@index([email])
   @@map("users")
@@ -901,6 +905,23 @@ model BoardColumnConfig {
 
 // ─── Audit Log ────────────────────────────────────────────────────────────────
 
+// ─── Upskill Enums ───────────────────────────────────────────────────────────
+
+enum UpskillType {
+  LEARNING
+  AUTOMATION
+}
+
+enum UpskillStatus {
+  ASSIGNED
+  IN_PROGRESS
+  SUBMITTED
+  APPROVED
+  REJECTED
+}
+
+// ─── Audit Log ────────────────────────────────────────────────────────────────
+
 enum AuditAction {
   LOGIN
   WORK_ITEM_CREATED
@@ -945,4 +966,52 @@ model AuditLog {
   @@index([projectId])
   @@index([createdAt(sort: Desc)])
   @@map("audit_logs")
+}
+
+// ─── Upskill Assignment ───────────────────────────────────────────────────────
+
+model UpskillAssignment {
+  id               String        @id @default(uuid())
+  type             UpskillType
+  assignedToId     String
+  createdById      String
+  description      String        @db.VarChar(1000)
+  toolScript       String?       @db.VarChar(300)
+  startDate        DateTime
+  endDate          DateTime
+  status           UpskillStatus @default(ASSIGNED)
+  evidenceFilePath String?       @db.VarChar(500)
+  evidenceFileName String?       @db.VarChar(255)
+  rejectionReason  String?       @db.VarChar(500)
+  approvedAt       DateTime?
+  approvedById     String?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  assignedTo   User                 @relation("UpskillAssignments", fields: [assignedToId], references: [id], onDelete: Cascade)
+  createdBy    User                 @relation("UpskillCreated", fields: [createdById], references: [id])
+  approvedBy   User?                @relation("UpskillApprovals", fields: [approvedById], references: [id])
+  progressLogs UpskillProgressLog[]
+
+  @@index([assignedToId])
+  @@index([status])
+  @@map("upskill_assignments")
+}
+
+// ─── Upskill Progress Log ─────────────────────────────────────────────────────
+
+model UpskillProgressLog {
+  id              String   @id @default(uuid())
+  assignmentId    String
+  userId          String
+  percentComplete Int
+  hoursSpent      Float
+  notes           String?  @db.VarChar(1000)
+  createdAt       DateTime @default(now())
+
+  assignment UpskillAssignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  user       User              @relation("UpskillProgressLogs", fields: [userId], references: [id])
+
+  @@index([assignmentId])
+  @@map("upskill_progress_logs")
 }

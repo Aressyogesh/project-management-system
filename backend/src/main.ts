@@ -20,6 +20,11 @@ async function bootstrap(): Promise<void> {
     verify: (req: unknown, _res: unknown, buf: Buffer) => { (req as Record<string, unknown>)['rawBody'] = buf; },
   }));
   app.use(express.urlencoded({ limit: '20mb', extended: true }));
+  // Evidence files under /uploads/upskill are served only via the authenticated
+  // GET /upskill/assignments/:id/evidence endpoint — block raw static access.
+  app.use('/uploads/upskill', (_req: express.Request, res: express.Response) => {
+    res.status(403).json({ statusCode: 403, message: 'Forbidden' });
+  });
   app.use('/uploads', express.static(uploadsBase));
 
   app.setGlobalPrefix('api/v1');
