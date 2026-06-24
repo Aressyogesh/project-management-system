@@ -223,7 +223,7 @@ function ProgressDrawer({ assignment, onClose }: { assignment: UpskillAssignment
       qc.invalidateQueries({ queryKey: ['upskill-detail', assignment.id] });
       setPct(''); setHrs(''); setNotes(''); setFormErr('');
     },
-    onError: (e: Error) => setFormErr(e.message),
+    onError: (err: any) => setFormErr(err?.response?.data?.message ?? 'Failed to log progress'),
   });
 
   const submitMutation = useMutation({
@@ -233,7 +233,7 @@ function ProgressDrawer({ assignment, onClose }: { assignment: UpskillAssignment
       qc.invalidateQueries({ queryKey: ['upskill-detail', assignment.id] });
       setFileErr('');
     },
-    onError: (e: Error) => setFileErr(e.message),
+    onError: (err: any) => setFileErr(err?.response?.data?.message ?? 'Failed to submit evidence'),
   });
 
   const { data: detail } = useQuery({

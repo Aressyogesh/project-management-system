@@ -194,13 +194,13 @@ function UpskillCard({ asgn, onRefresh }: { asgn: UpskillAssignment; onRefresh: 
       onRefresh();
       setPct(''); setHrs(''); setNotes(''); setShowProgress(false); setFormErr('');
     },
-    onError: (e: Error) => setFormErr(e.message),
+    onError: (err: any) => setFormErr(err?.response?.data?.message ?? 'Failed to log progress'),
   });
 
   const submitMutation = useMutation({
     mutationFn: (file: File) => upskillApi.submitEvidence(asgn.id, file),
     onSuccess: () => { onRefresh(); setFileErr(''); },
-    onError: (e: Error) => setFileErr(e.message),
+    onError: (err: any) => setFileErr(err?.response?.data?.message ?? 'Failed to submit evidence'),
   });
 
   const latestPct = Math.min(100, (asgn.progressLogs ?? []).reduce((s, l) => s + l.percentComplete, 0));
