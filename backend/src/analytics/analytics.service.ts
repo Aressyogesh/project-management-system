@@ -196,6 +196,7 @@ export class AnalyticsService {
       learningLogs,
       innovationLogs,
       upskillApproved,
+      upskillAny,
     ] = await Promise.all([
       // Sprint items (for Sprint Reliability + Throughput)
       this.prisma.workItem.findMany({
@@ -279,6 +280,15 @@ export class AnalyticsService {
         },
         select: { id: true },
       }),
+      // Any upskill assignment (any status) overlapping this period
+      this.prisma.upskillAssignment.findFirst({
+        where: {
+          assignedToId: userId,
+          startDate: { lte: end },
+          endDate: { gte: start },
+        },
+        select: { id: true },
+      }),
     ]);
 
     // Timesheet hours scoped to deliveryBase items only (accurate estimation comparison)
@@ -341,11 +351,18 @@ export class AnalyticsService {
 
     // Self-service
     const attendance = computeAttendance(leaveRequests as { status: string; startDate: Date; endDate: Date }[], start, end);
-    // Approved upskill assignment overrides self-log based Growth & Innovation score (10/10)
+    // Approved upskill assignment → full 10 pts; pending assignment → 0 (no self-log fallback);
+    // no assignment at all → fall back to self-log based scores
     const learningVelocity = upskillApproved
       ? 5
-      : computeLearningVelocity(learningLogs.reduce((s, l) => s + l.hours, 0));
-    const automationInnovation = upskillApproved ? 5 : computeInnovation(innovationLogs);
+      : upskillAny
+        ? 0
+        : computeLearningVelocity(learningLogs.reduce((s, l) => s + l.hours, 0));
+    const automationInnovation = upskillApproved
+      ? 5
+      : upskillAny
+        ? 0
+        : computeInnovation(innovationLogs);
 
     const hasNoActivity =
       sprintItems.length === 0 &&
@@ -353,7 +370,7 @@ export class AnalyticsService {
       manualScores.length === 0 &&
       learningLogs.length === 0 &&
       innovationLogs.length === 0 &&
-      !upskillApproved;
+      !upskillAny;
 
     // When the user has no assigned work and no manual scores for this period,
     // zero out all metrics so the radar chart and category scores reflect reality.

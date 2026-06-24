@@ -1,8 +1,7 @@
 import { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
 import { authApi } from '../../api/auth.api';
-import { upskillApi } from '../../api/upskillApi';
 import { useAuthStore } from '../../store/authStore';
 import { SystemRole } from '../../types/auth.types';
 import { UserAvatar } from '../shared/UserAvatar';
@@ -158,16 +157,6 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const { user, refreshToken, clearAuth } = useAuthStore();
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  const isPrivilegedRole = user?.systemRole === 'SUPER_USER' || user?.systemRole === 'ADMIN';
-
-  const { data: managerCheck } = useQuery({
-    queryKey: ['upskill-is-manager'],
-    queryFn: () => upskillApi.isManager(),
-    staleTime: 5 * 60_000,
-    // Only call the API for EMPLOYEE — SUPER_USER/ADMIN are always managers
-    enabled: !!user && !isPrivilegedRole,
-  });
-
   async function handleLogout() {
     if (refreshToken) {
       try { await authApi.logout(refreshToken); } catch { /* ignore — token may already be expired */ }
@@ -182,10 +171,10 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
   );
 
   const upskillItem: NavItem = { path: '/upskill', label: 'Upskill', Icon: IconUpskill };
-  const showUpskill = isPrivilegedRole || managerCheck?.isManager;
-  const visibleNav = showUpskill
-    ? [...baseNav.slice(0, baseNav.findIndex((n) => n.path === '/kpi') + 1), upskillItem, ...baseNav.slice(baseNav.findIndex((n) => n.path === '/kpi') + 1)]
-    : baseNav;
+  const kpiIdx = baseNav.findIndex((n) => n.path === '/kpi');
+  const visibleNav = kpiIdx >= 0
+    ? [...baseNav.slice(0, kpiIdx + 1), upskillItem, ...baseNav.slice(kpiIdx + 1)]
+    : [...baseNav, upskillItem];
 
   const sidebarContent = (
     <aside
