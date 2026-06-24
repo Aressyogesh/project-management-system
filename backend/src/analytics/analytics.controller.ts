@@ -36,9 +36,13 @@ export class AnalyticsController {
   @Get('reports/projects')
   getProjects(
     @Query('period') period = '2026-05',
+    @Request() req: { user: AuthUser },
     @Query('projectId') projectId?: string,
   ) {
-    return this.analyticsService.getProjectsReport(period, projectId);
+    const isAdmin =
+      req.user.systemRole === SystemRole.ADMIN ||
+      req.user.systemRole === SystemRole.SUPER_USER;
+    return this.analyticsService.getProjectsReport(period, projectId, req.user.id, isAdmin);
   }
 
   @Get('reports/bugs')

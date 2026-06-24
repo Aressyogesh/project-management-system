@@ -405,6 +405,7 @@ export class AnalyticsService {
     const { start, end } = periodToRange(period);
 
     let activeProjectIds: string[];
+    let selfOnly = false;
     if (isAdmin || !requestingUserId) {
       activeProjectIds = projectId
         ? [projectId]
@@ -414,6 +415,7 @@ export class AnalyticsService {
       if (managedIds.length > 0) {
         activeProjectIds = projectId ? managedIds.filter((id) => id === projectId) : managedIds;
       } else {
+        selfOnly = true;
         const memberIds = await this.getMemberProjectIds(requestingUserId);
         activeProjectIds = projectId ? memberIds.filter((id) => id === projectId) : memberIds;
         if (activeProjectIds.length === 0) return [];
@@ -424,6 +426,7 @@ export class AnalyticsService {
       where: {
         isActive: true,
         projectMembers: { some: { projectId: { in: activeProjectIds } } },
+        ...(selfOnly ? { id: requestingUserId } : {}),
       },
       select: {
         id: true,
@@ -504,14 +507,27 @@ export class AnalyticsService {
     return results.sort((a, b) => b.score - a.score);
   }
 
-  async getProjectsReport(period: string, projectId?: string) {
+  async getProjectsReport(period: string, projectId?: string, requestingUserId?: string, isAdmin = true) {
     const { start, end } = periodToRange(period);
 
+    let projectWhere: object;
+    if (isAdmin || !requestingUserId) {
+      projectWhere = { status: 'ACTIVE', ...(projectId ? { id: projectId } : {}) };
+    } else {
+      const managedIds = await this.getManagedProjectIds(requestingUserId);
+      if (managedIds.length > 0) {
+        const scoped = projectId ? managedIds.filter((id) => id === projectId) : managedIds;
+        projectWhere = { status: 'ACTIVE', id: { in: scoped } };
+      } else {
+        const memberIds = await this.getMemberProjectIds(requestingUserId);
+        const scoped = projectId ? memberIds.filter((id) => id === projectId) : memberIds;
+        if (scoped.length === 0) return [];
+        projectWhere = { status: 'ACTIVE', id: { in: scoped } };
+      }
+    }
+
     const projects = await this.prisma.project.findMany({
-      where: {
-        status: 'ACTIVE',
-        ...(projectId ? { id: projectId } : {}),
-      },
+      where: projectWhere,
       select: {
         id: true,
         name: true,
@@ -645,6 +661,7 @@ export class AnalyticsService {
     const { start, end } = periodToRange(period);
 
     let activeProjectIds: string[];
+    let selfOnly = false;
     if (isAdmin || !requestingUserId) {
       activeProjectIds = projectId
         ? [projectId]
@@ -654,6 +671,7 @@ export class AnalyticsService {
       if (managedIds.length > 0) {
         activeProjectIds = projectId ? managedIds.filter((id) => id === projectId) : managedIds;
       } else {
+        selfOnly = true;
         const memberIds = await this.getMemberProjectIds(requestingUserId);
         activeProjectIds = projectId ? memberIds.filter((id) => id === projectId) : memberIds;
         if (activeProjectIds.length === 0) return [];
@@ -664,6 +682,7 @@ export class AnalyticsService {
       where: {
         isActive: true,
         projectMembers: { some: { projectId: { in: activeProjectIds } } },
+        ...(selfOnly ? { id: requestingUserId } : {}),
       },
       select: {
         id: true,
@@ -734,11 +753,13 @@ export class AnalyticsService {
     const { start, end } = periodToRange(period);
 
     let activeProjectIds: string[];
+    let selfOnly = false;
     if (!isAdmin && requestingUserId) {
       const managedIds = await this.getManagedProjectIds(requestingUserId);
       if (managedIds.length > 0) {
         activeProjectIds = projectId ? managedIds.filter((id) => id === projectId) : managedIds;
       } else {
+        selfOnly = true;
         const memberIds = await this.getMemberProjectIds(requestingUserId);
         activeProjectIds = projectId ? memberIds.filter((id) => id === projectId) : memberIds;
         if (activeProjectIds.length === 0) return [];
@@ -754,6 +775,7 @@ export class AnalyticsService {
       where: {
         date: { gte: start, lt: end },
         workItem: { projectId: { in: activeProjectIds } },
+        ...(selfOnly ? { userId: requestingUserId } : {}),
       },
       _sum: { hours: true },
     });
@@ -791,11 +813,13 @@ export class AnalyticsService {
     const { start, end } = periodToRange(period);
 
     let scopedProjectIds: string[] | undefined;
+    let selfOnly = false;
     if (!isAdmin && requestingUserId) {
       const managedIds = await this.getManagedProjectIds(requestingUserId);
       if (managedIds.length > 0) {
         scopedProjectIds = projectId ? managedIds.filter((id) => id === projectId) : managedIds;
       } else {
+        selfOnly = true;
         const memberIds = await this.getMemberProjectIds(requestingUserId);
         scopedProjectIds = projectId ? memberIds.filter((id) => id === projectId) : memberIds;
         if (scopedProjectIds.length === 0) return [];
@@ -807,7 +831,7 @@ export class AnalyticsService {
       : projectId ? { projectMembers: { some: { projectId } } } : {};
 
     const users = await this.prisma.user.findMany({
-      where: { isActive: true, ...projectMemberFilter },
+      where: { isActive: true, ...projectMemberFilter, ...(selfOnly ? { id: requestingUserId } : {}) },
       select: {
         id: true,
         fullName: true,
