@@ -187,12 +187,12 @@ export function WorkItemCard({ item, index, members = [], onClick, onAssigneeCha
             {(item.startDate || item.dueDate) && (
               <div className="flex items-center gap-2 mb-2 text-[10px] text-gray-400">
                 {item.startDate && (
-                  <span>{new Date(item.startDate + 'T00:00:00').toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}</span>
+                  <span>{new Date(item.startDate.slice(0, 10) + 'T00:00:00').toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}</span>
                 )}
                 {item.startDate && item.dueDate && <span>→</span>}
                 {item.dueDate && (
-                  <span className={new Date(item.dueDate) < new Date() && item.status !== 'QA_DONE' ? 'text-red-500 font-medium' : ''}>
-                    {new Date(item.dueDate + 'T00:00:00').toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}
+                  <span className={new Date(item.dueDate.slice(0, 10)) < new Date() && item.status !== 'QA_DONE' ? 'text-red-500 font-medium' : ''}>
+                    {new Date(item.dueDate.slice(0, 10) + 'T00:00:00').toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}
                   </span>
                 )}
               </div>
