@@ -49,8 +49,8 @@ export class TasksController {
   @UseGuards(ProjectRoleGuard)
   @ProjectRoles(ProjectRole.PROJECT_MANAGER, ProjectRole.TEAM_LEAD)
   @ProjectIdFrom('task')
-  update(@Param('id') id: string, @Body() dto: UpdateTaskDto) {
-    return this.tasksService.update(id, dto);
+  update(@Param('id') id: string, @Body() dto: UpdateTaskDto, @Request() req: any) {
+    return this.tasksService.update(id, dto, req.user.id);
   }
 
   @Delete('tasks/:id')
@@ -58,7 +58,7 @@ export class TasksController {
   @UseGuards(ProjectRoleGuard)
   @ProjectRoles(ProjectRole.PROJECT_MANAGER, ProjectRole.TEAM_LEAD)
   @ProjectIdFrom('task')
-  remove(@Param('id') id: string) {
-    return this.tasksService.remove(id);
+  remove(@Param('id') id: string, @Request() req: any) {
+    return this.tasksService.remove(id, req.user.id);
   }
 }

@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { ProjectStatus, SystemRole } from '@prisma/client';
+import { AuditAction, AuditEntity, ProjectStatus, SystemRole } from '@prisma/client';
+import { AuditLogsService } from '../audit-logs/audit-logs.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateProjectDto, ProjectsQueryDto, UpdateProjectDto } from './dto/project.dto';
 
@@ -19,7 +20,10 @@ const PROJECT_SELECT = {
 
 @Injectable()
 export class ProjectsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private readonly auditLogs: AuditLogsService,
+  ) {}
 
   findAll(query: ProjectsQueryDto = {}, userId?: string, systemRole?: SystemRole) {
     const isAdmin = systemRole === SystemRole.SUPER_USER || systemRole === SystemRole.ADMIN;
@@ -60,9 +64,9 @@ export class ProjectsService {
     };
   }
 
-  async create(dto: CreateProjectDto) {
+  async create(dto: CreateProjectDto, actorId?: string) {
     this.validateDates(dto.startDate, dto.endDate);
-    return this.prisma.project.create({
+    const project = await this.prisma.project.create({
       data: {
         name: dto.name.trim(),
         projectType: dto.projectType,
@@ -75,9 +79,20 @@ export class ProjectsService {
       },
       select: PROJECT_SELECT,
     });
+    if (actorId) {
+      this.auditLogs.log({
+        userId: actorId,
+        action: AuditAction.PROJECT_CREATED,
+        entity: AuditEntity.PROJECT,
+        entityId: project.id,
+        entityTitle: project.name,
+        projectId: project.id,
+      });
+    }
+    return project;
   }
 
-  async update(id: string, dto: UpdateProjectDto) {
+  async update(id: string, dto: UpdateProjectDto, actorId?: string) {
     const project = await this.prisma.project.findUnique({ where: { id } });
     if (!project) throw new NotFoundException('Project not found');
 
@@ -85,7 +100,7 @@ export class ProjectsService {
     const endDate = dto.endDate !== undefined ? dto.endDate : project.endDate?.toISOString().split('T')[0];
     this.validateDates(startDate, endDate);
 
-    return this.prisma.project.update({
+    const updated = await this.prisma.project.update({
       where: { id },
       data: {
         ...(dto.name !== undefined ? { name: dto.name.trim() } : {}),
@@ -99,21 +114,53 @@ export class ProjectsService {
       },
       select: PROJECT_SELECT,
     });
+    if (actorId) {
+      this.auditLogs.log({
+        userId: actorId,
+        action: AuditAction.PROJECT_UPDATED,
+        entity: AuditEntity.PROJECT,
+        entityId: id,
+        entityTitle: updated.name,
+        projectId: id,
+      });
+    }
+    return updated;
   }
 
-  async setStatus(id: string, status: ProjectStatus) {
+  async setStatus(id: string, status: ProjectStatus, actorId?: string) {
     const project = await this.prisma.project.findUnique({ where: { id } });
     if (!project) throw new NotFoundException('Project not found');
-    return this.prisma.project.update({ where: { id }, data: { status }, select: PROJECT_SELECT });
+    const updated = await this.prisma.project.update({ where: { id }, data: { status }, select: PROJECT_SELECT });
+    if (actorId) {
+      this.auditLogs.log({
+        userId: actorId,
+        action: AuditAction.PROJECT_STATUS_CHANGED,
+        entity: AuditEntity.PROJECT,
+        entityId: id,
+        entityTitle: project.name,
+        projectId: id,
+        metadata: { from: project.status, to: status },
+      });
+    }
+    return updated;
   }
 
-  async delete(id: string): Promise<void> {
+  async delete(id: string, actorId?: string): Promise<void> {
     const project = await this.prisma.project.findUnique({ where: { id } });
     if (!project) throw new NotFoundException('Project not found');
     if (project.status !== ProjectStatus.ARCHIVE) {
       throw new BadRequestException('Only archived projects can be deleted. Archive the project first.');
     }
     await this.prisma.project.delete({ where: { id } });
+    if (actorId) {
+      this.auditLogs.log({
+        userId: actorId,
+        action: AuditAction.PROJECT_DELETED,
+        entity: AuditEntity.PROJECT,
+        entityId: id,
+        entityTitle: project.name,
+      });
+    }
   }
 
   private validateDates(startDate?: string, endDate?: string) {

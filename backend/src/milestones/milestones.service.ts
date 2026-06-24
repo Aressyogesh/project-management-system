@@ -3,9 +3,10 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { AuditAction, AuditEntity } from '@prisma/client';
+import { AuditLogsService } from '../audit-logs/audit-logs.service';
 import { PrismaService } from '../prisma/prisma.service';
-import { CreateMilestoneDto } from './dto/milestone.dto';
-import { UpdateMilestoneDto } from './dto/milestone.dto';
+import { CreateMilestoneDto, UpdateMilestoneDto } from './dto/milestone.dto';
 
 const MILESTONE_SELECT = {
   id: true,
@@ -33,7 +34,10 @@ async function fetchNames(
 
 @Injectable()
 export class MilestonesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly auditLogs: AuditLogsService,
+  ) {}
 
   async findAll(projectId: string) {
     await this.requireProject(projectId);
@@ -85,7 +89,7 @@ export class MilestonesService {
     });
   }
 
-  async create(projectId: string, dto: CreateMilestoneDto) {
+  async create(projectId: string, dto: CreateMilestoneDto, actorId?: string) {
     await this.requireProject(projectId);
     this.validateDates(dto.startDate, dto.dueDate);
 
@@ -106,10 +110,20 @@ export class MilestonesService {
     if (name !== null) {
       await this.prisma.$executeRaw`UPDATE milestones SET name = ${name} WHERE id = ${ms.id}`;
     }
+    if (actorId) {
+      this.auditLogs.log({
+        userId: actorId,
+        action: AuditAction.MILESTONE_CREATED,
+        entity: AuditEntity.MILESTONE,
+        entityId: ms.id,
+        entityTitle: name ?? dto.description.slice(0, 60),
+        projectId,
+      });
+    }
     return { ...ms, name };
   }
 
-  async update(id: string, dto: UpdateMilestoneDto) {
+  async update(id: string, dto: UpdateMilestoneDto, actorId?: string) {
     const milestone = await this.prisma.milestone.findUnique({ where: { id } });
     if (!milestone) throw new NotFoundException('Milestone not found');
 
@@ -138,10 +152,20 @@ export class MilestonesService {
       const nameMap = await fetchNames(this.prisma, [id]);
       name = nameMap.get(id) ?? null;
     }
+    if (actorId) {
+      this.auditLogs.log({
+        userId: actorId,
+        action: AuditAction.MILESTONE_UPDATED,
+        entity: AuditEntity.MILESTONE,
+        entityId: id,
+        entityTitle: name ?? ms.description?.slice(0, 60) ?? 'Milestone',
+        projectId: milestone.projectId,
+      });
+    }
     return { ...ms, name };
   }
 
-  async remove(id: string) {
+  async remove(id: string, actorId?: string) {
     const milestone = await this.prisma.milestone.findUnique({ where: { id } });
     if (!milestone) throw new NotFoundException('Milestone not found');
 
@@ -155,6 +179,16 @@ export class MilestonesService {
     }
 
     await this.prisma.milestone.delete({ where: { id } });
+    if (actorId) {
+      this.auditLogs.log({
+        userId: actorId,
+        action: AuditAction.MILESTONE_DELETED,
+        entity: AuditEntity.MILESTONE,
+        entityId: id,
+        entityTitle: milestone.description?.slice(0, 60) ?? 'Milestone',
+        projectId: milestone.projectId,
+      });
+    }
   }
 
   private validateDates(startDate?: string | null, dueDate?: string | null) {

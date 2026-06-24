@@ -5,7 +5,8 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { LeaveStatus, ProjectRole, SystemRole } from '@prisma/client';
+import { AuditAction, AuditEntity, LeaveStatus, ProjectRole, SystemRole } from '@prisma/client';
+import { AuditLogsService } from '../audit-logs/audit-logs.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { ApproveLeaveRequestDto, CreateLeaveRequestDto, RejectLeaveRequestDto } from './dto/leave-request.dto';
 
@@ -16,7 +17,10 @@ const LEAVE_INCLUDE = {
 
 @Injectable()
 export class LeaveRequestsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly auditLogs: AuditLogsService,
+  ) {}
 
   async create(userId: string, dto: CreateLeaveRequestDto) {
     const start = new Date(dto.startDate);
@@ -61,7 +65,7 @@ export class LeaveRequestsService {
       );
     }
 
-    return this.prisma.leaveRequest.create({
+    const leave = await this.prisma.leaveRequest.create({
       data: {
         userId,
         type: dto.type,
@@ -73,6 +77,15 @@ export class LeaveRequestsService {
       },
       include: LEAVE_INCLUDE,
     });
+    this.auditLogs.log({
+      userId,
+      action: AuditAction.LEAVE_REQUESTED,
+      entity: AuditEntity.LEAVE_REQUEST,
+      entityId: leave.id,
+      entityTitle: `${dto.type} leave (${dto.startDate} — ${dto.endDate})`,
+      metadata: { type: dto.type, totalDays, isHalfDay: dto.isHalfDay ?? false },
+    });
+    return leave;
   }
 
   async findAll(
@@ -126,7 +139,7 @@ export class LeaveRequestsService {
     if (leave.status !== LeaveStatus.PENDING) {
       throw new BadRequestException('Only PENDING leave requests can be approved');
     }
-    return this.prisma.leaveRequest.update({
+    const approved = await this.prisma.leaveRequest.update({
       where: { id },
       data: {
         status: LeaveStatus.APPROVED,
@@ -136,6 +149,15 @@ export class LeaveRequestsService {
       },
       include: LEAVE_INCLUDE,
     });
+    this.auditLogs.log({
+      userId: approverId,
+      action: AuditAction.LEAVE_APPROVED,
+      entity: AuditEntity.LEAVE_REQUEST,
+      entityId: id,
+      entityTitle: `${approved.user.fullName} — ${approved.type} leave`,
+      metadata: { forUserId: approved.user.id },
+    });
+    return approved;
   }
 
   async reject(
@@ -149,7 +171,7 @@ export class LeaveRequestsService {
     if (leave.status === LeaveStatus.CANCELLED) {
       throw new BadRequestException('Cannot reject a cancelled leave request');
     }
-    return this.prisma.leaveRequest.update({
+    const rejected = await this.prisma.leaveRequest.update({
       where: { id },
       data: {
         status: LeaveStatus.REJECTED,
@@ -159,6 +181,15 @@ export class LeaveRequestsService {
       },
       include: LEAVE_INCLUDE,
     });
+    this.auditLogs.log({
+      userId: approverId,
+      action: AuditAction.LEAVE_REJECTED,
+      entity: AuditEntity.LEAVE_REQUEST,
+      entityId: id,
+      entityTitle: `${rejected.user.fullName} — ${rejected.type} leave`,
+      metadata: { forUserId: rejected.user.id },
+    });
+    return rejected;
   }
 
   async cancel(id: string, requestingUserId: string, systemRole: SystemRole) {
@@ -174,11 +205,19 @@ export class LeaveRequestsService {
       throw new BadRequestException('You can only cancel PENDING leave requests');
     }
 
-    return this.prisma.leaveRequest.update({
+    const cancelled = await this.prisma.leaveRequest.update({
       where: { id },
       data: { status: LeaveStatus.CANCELLED },
       include: LEAVE_INCLUDE,
     });
+    this.auditLogs.log({
+      userId: requestingUserId,
+      action: AuditAction.LEAVE_CANCELLED,
+      entity: AuditEntity.LEAVE_REQUEST,
+      entityId: id,
+      entityTitle: `${cancelled.type} leave cancelled`,
+    });
+    return cancelled;
   }
 
   private async assertCanManage(actorId: string, systemRole: SystemRole, targetUserId: string) {

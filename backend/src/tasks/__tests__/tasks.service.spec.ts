@@ -1,8 +1,11 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { TaskPriority, TaskStatus, BillingStatus } from '@prisma/client';
+import { AuditLogsService } from '../../audit-logs/audit-logs.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { TasksService } from '../tasks.service';
+
+const mockAuditLogs = { log: jest.fn() };
 
 const mockProject = { id: 'proj-001' };
 const mockTaskList = { id: 'tl-001', projectId: 'proj-001' };
@@ -50,6 +53,7 @@ describe('TasksService', () => {
       providers: [
         TasksService,
         { provide: PrismaService, useValue: prismaMock },
+        { provide: AuditLogsService, useValue: mockAuditLogs },
       ],
     }).compile();
     service = module.get<TasksService>(TasksService);

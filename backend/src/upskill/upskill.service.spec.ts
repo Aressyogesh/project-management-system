@@ -1,8 +1,11 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { BadRequestException, ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { UpskillService } from './upskill.service';
+import { AuditLogsService } from '../audit-logs/audit-logs.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { ProjectRole, SystemRole, UpskillStatus, UpskillType } from '@prisma/client';
+
+const mockAuditLogs = { log: jest.fn() };
 
 const mockAssignment = (overrides = {}) => ({
   id: 'asgn-001',
@@ -35,13 +38,14 @@ describe('UpskillService', () => {
         {
           provide: PrismaService,
           useValue: {
-            upskillAssignment: { create: jest.fn(), findUnique: jest.fn(), findMany: jest.fn(), findFirst: jest.fn(), update: jest.fn() },
+            upskillAssignment: { create: jest.fn(), findUnique: jest.fn(), findMany: jest.fn(), findFirst: jest.fn(), update: jest.fn(), delete: jest.fn(), count: jest.fn() },
             upskillProgressLog: { create: jest.fn() },
-            projectMember: { findFirst: jest.fn() },
-            user: { findUnique: jest.fn() },
+            projectMember: { findFirst: jest.fn(), findMany: jest.fn() },
+            user: { findUnique: jest.fn(), findMany: jest.fn() },
             $transaction: jest.fn(),
           },
         },
+        { provide: AuditLogsService, useValue: mockAuditLogs },
       ],
     }).compile();
 

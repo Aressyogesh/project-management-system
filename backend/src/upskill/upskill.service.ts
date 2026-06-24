@@ -5,8 +5,9 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { AuditAction, AuditEntity, ProjectRole, SystemRole, UpskillStatus, UpskillType } from '@prisma/client';
+import { AuditLogsService } from '../audit-logs/audit-logs.service';
 import { PrismaService } from '../prisma/prisma.service';
-import { ProjectRole, SystemRole, UpskillStatus, UpskillType } from '@prisma/client';
 
 export interface CreateAssignmentDto {
   type: UpskillType;
@@ -25,7 +26,10 @@ export interface LogProgressDto {
 
 @Injectable()
 export class UpskillService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly auditLogs: AuditLogsService,
+  ) {}
 
   async isManager(userId: string, systemRole: SystemRole): Promise<boolean> {
     if (systemRole === SystemRole.ADMIN || systemRole === SystemRole.SUPER_USER) return true;
@@ -90,7 +94,7 @@ export class UpskillService {
       );
     }
 
-    return this.prisma.upskillAssignment.create({
+    const created = await this.prisma.upskillAssignment.create({
       data: {
         type,
         assignedToId,
@@ -102,6 +106,15 @@ export class UpskillService {
       },
       include: { assignedTo: { select: { id: true, fullName: true } }, createdBy: { select: { id: true, fullName: true } } },
     });
+    this.auditLogs.log({
+      userId: callerId,
+      action: AuditAction.UPSKILL_ASSIGNED,
+      entity: AuditEntity.UPSKILL_ASSIGNMENT,
+      entityId: created.id,
+      entityTitle: `${type} — ${created.assignedTo?.fullName ?? assignedToId}`,
+      metadata: { type, startDate: startDate.slice(0, 10), endDate: endDate.slice(0, 10) },
+    });
+    return created;
   }
 
   async updateAssignment(
@@ -139,7 +152,7 @@ export class UpskillService {
       );
     }
 
-    return this.prisma.upskillAssignment.update({
+    const updated = await this.prisma.upskillAssignment.update({
       where: { id: assignmentId },
       data: {
         ...(dto.assignedToId ? { assignedToId: dto.assignedToId } : {}),
@@ -153,6 +166,14 @@ export class UpskillService {
         createdBy: { select: { id: true, fullName: true } },
       },
     });
+    this.auditLogs.log({
+      userId: callerId,
+      action: AuditAction.UPSKILL_UPDATED,
+      entity: AuditEntity.UPSKILL_ASSIGNMENT,
+      entityId: assignmentId,
+      entityTitle: `${updated.type} — ${updated.assignedTo?.fullName ?? assignmentId}`,
+    });
+    return updated;
   }
 
   async deleteAssignment(assignmentId: string, callerId: string, systemRole: SystemRole) {
@@ -166,6 +187,13 @@ export class UpskillService {
       throw new ForbiddenException('You can only delete assignments you created');
     }
     await this.prisma.upskillAssignment.delete({ where: { id: assignmentId } });
+    this.auditLogs.log({
+      userId: callerId,
+      action: AuditAction.UPSKILL_DELETED,
+      entity: AuditEntity.UPSKILL_ASSIGNMENT,
+      entityId: assignmentId,
+      entityTitle: `${assignment.type} assignment`,
+    });
   }
 
   private buildPeriodFilter(period: string) {
@@ -266,7 +294,13 @@ export class UpskillService {
         ? [this.prisma.upskillAssignment.update({ where: { id: assignmentId }, data: { status: UpskillStatus.IN_PROGRESS } })]
         : []),
     ]);
-
+    this.auditLogs.log({
+      userId: callerId,
+      action: AuditAction.UPSKILL_PROGRESS_LOGGED,
+      entity: AuditEntity.UPSKILL_ASSIGNMENT,
+      entityId: assignmentId,
+      metadata: { percentComplete: dto.percentComplete, hoursSpent: dto.hoursSpent },
+    });
     return log;
   }
 
@@ -287,10 +321,18 @@ export class UpskillService {
       }
     }
 
-    return this.prisma.upskillAssignment.update({
+    const submitted = await this.prisma.upskillAssignment.update({
       where: { id: assignmentId },
       data: { status: UpskillStatus.SUBMITTED, evidenceFilePath: filePath, evidenceFileName: fileName, rejectionReason: null },
     });
+    this.auditLogs.log({
+      userId: callerId,
+      action: AuditAction.UPSKILL_SUBMITTED,
+      entity: AuditEntity.UPSKILL_ASSIGNMENT,
+      entityId: assignmentId,
+      entityTitle: `${submitted.type ?? 'Upskill'} assignment submitted`,
+    });
+    return submitted;
   }
 
   async approveAssignment(assignmentId: string, approverId: string, systemRole: SystemRole) {
@@ -305,10 +347,19 @@ export class UpskillService {
       throw new ForbiddenException('You can only approve assignments you created');
     }
 
-    return this.prisma.upskillAssignment.update({
+    const approved = await this.prisma.upskillAssignment.update({
       where: { id: assignmentId },
       data: { status: UpskillStatus.APPROVED, approvedById: approverId, approvedAt: new Date() },
     });
+    this.auditLogs.log({
+      userId: approverId,
+      action: AuditAction.UPSKILL_APPROVED,
+      entity: AuditEntity.UPSKILL_ASSIGNMENT,
+      entityId: assignmentId,
+      entityTitle: `${approved.type ?? 'Upskill'} assignment approved`,
+      metadata: { assignedToId: approved.assignedToId },
+    });
+    return approved;
   }
 
   async rejectAssignment(assignmentId: string, rejectorId: string, reason: string, systemRole: SystemRole) {
@@ -325,10 +376,19 @@ export class UpskillService {
       throw new ForbiddenException('You can only reject assignments you created');
     }
 
-    return this.prisma.upskillAssignment.update({
+    const rejected = await this.prisma.upskillAssignment.update({
       where: { id: assignmentId },
       data: { status: UpskillStatus.REJECTED, rejectionReason: reason.trim() },
     });
+    this.auditLogs.log({
+      userId: rejectorId,
+      action: AuditAction.UPSKILL_REJECTED,
+      entity: AuditEntity.UPSKILL_ASSIGNMENT,
+      entityId: assignmentId,
+      entityTitle: `${rejected.type ?? 'Upskill'} assignment rejected`,
+      metadata: { assignedToId: rejected.assignedToId, reason: reason.trim() },
+    });
+    return rejected;
   }
 
   async getEvidence(assignmentId: string, callerId: string, systemRole: SystemRole) {

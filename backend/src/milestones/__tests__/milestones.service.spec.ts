@@ -1,7 +1,10 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
+import { AuditLogsService } from '../../audit-logs/audit-logs.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { MilestonesService } from '../milestones.service';
+
+const mockAuditLogs = { log: jest.fn() };
 
 const mockPrisma = {
   project: { findUnique: jest.fn() },
@@ -49,6 +52,7 @@ describe('MilestonesService', () => {
       providers: [
         MilestonesService,
         { provide: PrismaService, useValue: mockPrisma },
+        { provide: AuditLogsService, useValue: mockAuditLogs },
       ],
     }).compile();
     service = module.get<MilestonesService>(MilestonesService);

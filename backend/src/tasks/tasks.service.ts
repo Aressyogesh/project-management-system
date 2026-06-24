@@ -3,6 +3,8 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { AuditAction, AuditEntity } from '@prisma/client';
+import { AuditLogsService } from '../audit-logs/audit-logs.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateTaskDto, UpdateTaskDto } from './dto/task.dto';
 
@@ -25,7 +27,10 @@ const TASK_SELECT = {
 
 @Injectable()
 export class TasksService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly auditLogs: AuditLogsService,
+  ) {}
 
   async findAll(projectId: string) {
     await this.requireProject(projectId);
@@ -50,7 +55,7 @@ export class TasksService {
     await this.requireTaskList(dto.taskListId, projectId);
     if (dto.milestoneId) await this.requireMilestone(dto.milestoneId, projectId);
 
-    return this.prisma.task.create({
+    const task = await this.prisma.task.create({
       data: {
         projectId,
         taskListId: dto.taskListId,
@@ -68,9 +73,18 @@ export class TasksService {
       },
       select: TASK_SELECT,
     });
+    this.auditLogs.log({
+      userId: createdById,
+      action: AuditAction.TASK_CREATED,
+      entity: AuditEntity.TASK,
+      entityId: task.id,
+      entityTitle: task.title,
+      projectId,
+    });
+    return task;
   }
 
-  async update(id: string, dto: UpdateTaskDto, projectId?: string) {
+  async update(id: string, dto: UpdateTaskDto, actorId?: string) {
     const existing = await this.prisma.task.findUnique({ where: { id } });
     if (!existing) throw new NotFoundException('Task not found');
 
@@ -81,7 +95,7 @@ export class TasksService {
       await this.requireMilestone(dto.milestoneId, existing.projectId);
     }
 
-    return this.prisma.task.update({
+    const updated = await this.prisma.task.update({
       where: { id },
       data: {
         ...(dto.title !== undefined && { title: dto.title.trim() }),
@@ -98,12 +112,33 @@ export class TasksService {
       },
       select: TASK_SELECT,
     });
+    if (actorId) {
+      this.auditLogs.log({
+        userId: actorId,
+        action: AuditAction.TASK_UPDATED,
+        entity: AuditEntity.TASK,
+        entityId: id,
+        entityTitle: updated.title,
+        projectId: existing.projectId,
+      });
+    }
+    return updated;
   }
 
-  async remove(id: string) {
+  async remove(id: string, actorId?: string) {
     const existing = await this.prisma.task.findUnique({ where: { id } });
     if (!existing) throw new NotFoundException('Task not found');
     await this.prisma.task.delete({ where: { id } });
+    if (actorId) {
+      this.auditLogs.log({
+        userId: actorId,
+        action: AuditAction.TASK_DELETED,
+        entity: AuditEntity.TASK,
+        entityId: id,
+        entityTitle: existing.title,
+        projectId: existing.projectId,
+      });
+    }
   }
 
   private async requireProject(projectId: string) {

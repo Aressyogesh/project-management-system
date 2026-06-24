@@ -8,6 +8,7 @@ import {
   Param,
   Patch,
   Post,
+  Request,
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
@@ -37,16 +38,17 @@ export class MilestonesController {
   create(
     @Param('projectId') projectId: string,
     @Body() dto: CreateMilestoneDto,
+    @Request() req: any,
   ) {
-    return this.service.create(projectId, dto);
+    return this.service.create(projectId, dto, req.user.id);
   }
 
   @Patch('milestones/:id')
   @UseGuards(ProjectRoleGuard)
   @ProjectRoles(ProjectRole.PROJECT_MANAGER)
   @ProjectIdFrom('milestone')
-  update(@Param('id') id: string, @Body() dto: UpdateMilestoneDto) {
-    return this.service.update(id, dto);
+  update(@Param('id') id: string, @Body() dto: UpdateMilestoneDto, @Request() req: any) {
+    return this.service.update(id, dto, req.user.id);
   }
 
   @Delete('milestones/:id')
@@ -54,7 +56,7 @@ export class MilestonesController {
   @ProjectRoles(ProjectRole.PROJECT_MANAGER)
   @ProjectIdFrom('milestone')
   @HttpCode(HttpStatus.NO_CONTENT)
-  remove(@Param('id') id: string) {
-    return this.service.remove(id);
+  remove(@Param('id') id: string, @Request() req: any) {
+    return this.service.remove(id, req.user.id);
   }
 }
