@@ -383,11 +383,13 @@ function ProgressDrawer({ assignment, onClose }: { assignment: UpskillAssignment
 
 function AssignmentRow({
   asgn,
+  isManager,
   onProgress,
   onApprove,
   onReject,
 }: {
   asgn: UpskillAssignment;
+  isManager: boolean;
   onProgress: (a: UpskillAssignment) => void;
   onApprove: (id: string) => void;
   onReject: (a: UpskillAssignment) => void;
@@ -423,7 +425,7 @@ function AssignmentRow({
           >
             View
           </button>
-          {asgn.status === 'SUBMITTED' && (
+          {isManager && asgn.status === 'SUBMITTED' && (
             <>
               <button
                 onClick={() => onApprove(asgn.id)}
@@ -512,11 +514,21 @@ const STATUS_FILTERS: { value: UpskillStatus | 'ALL'; label: string }[] = [
 
 export function UpskillPage() {
   const qc = useQueryClient();
+  const { user } = useAuthStore();
   const [activeTab, setActiveTab] = useState<UpskillType>('LEARNING');
   const [statusFilter, setStatusFilter] = useState<UpskillStatus | 'ALL'>('ALL');
   const [showCreate, setShowCreate] = useState(false);
   const [progressFor, setProgressFor] = useState<UpskillAssignment | null>(null);
   const [rejectFor, setRejectFor] = useState<UpskillAssignment | null>(null);
+
+  const isPrivileged = user?.systemRole === 'SUPER_USER' || user?.systemRole === 'ADMIN';
+  const { data: managerCheck } = useQuery({
+    queryKey: ['upskill-is-manager'],
+    queryFn: () => upskillApi.isManager(),
+    staleTime: 5 * 60_000,
+    enabled: !!user && !isPrivileged,
+  });
+  const isManager = isPrivileged || (managerCheck?.isManager ?? false);
 
   const { data: assignments = [], isLoading } = useQuery({
     queryKey: ['upskill-assignments', activeTab, statusFilter],
@@ -542,15 +554,17 @@ export function UpskillPage() {
           <h1 className="text-xl font-bold text-gray-900">Upskill</h1>
           <p className="text-sm text-gray-400 mt-0.5">Assign and track learning & automation upskilling for your team</p>
         </div>
-        <button
-          onClick={() => setShowCreate(true)}
-          className="flex items-center gap-2 text-sm px-4 py-2 rounded-xl bg-primary-600 text-white hover:bg-primary-700 transition font-medium"
-        >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
-          Create Assignment
-        </button>
+        {isManager && (
+          <button
+            onClick={() => setShowCreate(true)}
+            className="flex items-center gap-2 text-sm px-4 py-2 rounded-xl bg-primary-600 text-white hover:bg-primary-700 transition font-medium"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            Create Assignment
+          </button>
+        )}
       </div>
 
       {/* Tabs */}
@@ -594,7 +608,9 @@ export function UpskillPage() {
               </svg>
             </div>
             <p className="text-sm font-medium text-gray-600">No {activeTab.toLowerCase()} assignments yet</p>
-            <p className="text-xs text-gray-400 mt-1">Create an assignment to get started</p>
+            <p className="text-xs text-gray-400 mt-1">
+              {isManager ? 'Create an assignment to get started' : 'No assignments have been given to you yet'}
+            </p>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -616,6 +632,7 @@ export function UpskillPage() {
                   <AssignmentRow
                     key={asgn.id}
                     asgn={asgn}
+                    isManager={isManager}
                     onProgress={(a) => setProgressFor(a)}
                     onApprove={(id) => approveMutation.mutate(id)}
                     onReject={(a) => setRejectFor(a)}
