@@ -30,6 +30,7 @@ export interface MyTask {
   assignee: string;
   priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
   status: 'NOT_STARTED' | 'IN_PROGRESS' | 'ON_REVIEW' | 'COMPLETED';
+  dueDate: string | null;
 }
 
 export interface ProjectProgress {
@@ -141,7 +142,7 @@ export class DashboardService {
           ? { projectId: { in: scopedProjectIds }, project: { status: ProjectStatus.ACTIVE }, assigneeId: { not: null }, status: { not: BoardStatus.QA_DONE } }
           : { assigneeId: userId, project: { status: ProjectStatus.ACTIVE }, status: { not: BoardStatus.QA_DONE } },
         select: {
-          id: true, title: true, priority: true, status: true,
+          id: true, title: true, priority: true, status: true, dueDate: true,
           assignee: { select: { fullName: true } },
           project: { select: { name: true } },
         },
@@ -178,6 +179,7 @@ export class DashboardService {
       assignee: t.assignee?.fullName ?? '—',
       priority: t.priority as MyTask['priority'],
       status: this.boardStatusToMyTaskStatus(t.status as BoardStatus),
+      dueDate: t.dueDate ? t.dueDate.toISOString() : null,
     }));
 
     const totalTaskCount = notStartedCount + inProgressCount + onReviewCount + completedCount + totalWorkItems;
@@ -256,7 +258,7 @@ export class DashboardService {
       this.prisma.workItem.findMany({
         where: { projectId, assigneeId: { not: null }, status: { not: BoardStatus.QA_DONE } },
         select: {
-          id: true, title: true, priority: true, status: true,
+          id: true, title: true, priority: true, status: true, dueDate: true,
           project: { select: { name: true } },
           assignee: { select: { fullName: true } },
         },
@@ -281,6 +283,7 @@ export class DashboardService {
       assignee:    wi.assignee?.fullName ?? '—',
       priority:    wi.priority as MyTask['priority'],
       status:      this.boardStatusToMyTaskStatus(wi.status as BoardStatus),
+      dueDate:     wi.dueDate ? wi.dueDate.toISOString() : null,
     }));
 
     return {

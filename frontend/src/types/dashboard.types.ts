@@ -31,6 +31,7 @@ export interface MyTask {
   assignee: string;
   priority: TaskPriority;
   status: TaskStatus;
+  dueDate: string | null;
 }
 
 export interface DashboardStats {
