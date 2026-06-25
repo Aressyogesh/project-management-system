@@ -137,10 +137,9 @@ export class DashboardService {
         ? Promise.resolve(scopedProjectIds.length)
         : this.prisma.project.count({ where: { status: ProjectStatus.ACTIVE } }),
       this.prisma.workItem.findMany({
-        where: {
-          assigneeId: userId,
-          project: { status: ProjectStatus.ACTIVE },
-        },
+        where: scopedProjectIds !== null
+          ? { projectId: { in: scopedProjectIds }, project: { status: ProjectStatus.ACTIVE }, assigneeId: { not: null } }
+          : { assigneeId: userId, project: { status: ProjectStatus.ACTIVE } },
         select: {
           id: true, title: true, priority: true, status: true,
           assignee: { select: { fullName: true } },
@@ -255,7 +254,7 @@ export class DashboardService {
         orderBy: { dueDate: 'asc' },
       }),
       this.prisma.workItem.findMany({
-        where: { projectId, assigneeId: userId },
+        where: { projectId, assigneeId: { not: null } },
         select: {
           id: true, title: true, priority: true, status: true,
           project: { select: { name: true } },
@@ -281,7 +280,7 @@ export class DashboardService {
       taskName:    wi.title,
       assignee:    wi.assignee?.fullName ?? '—',
       priority:    wi.priority as MyTask['priority'],
-      status:      'IN_PROGRESS' as MyTask['status'],
+      status:      this.boardStatusToMyTaskStatus(wi.status as BoardStatus),
     }));
 
     return {
