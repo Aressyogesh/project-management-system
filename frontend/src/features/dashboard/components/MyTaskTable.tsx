@@ -54,7 +54,7 @@ export function MyTaskTable({ tasks }: MyTaskTableProps) {
           <thead>
             <tr className="border-b border-gray-100">
               <th className="text-left pb-3 text-xs font-medium text-gray-400 pr-4">Project Details</th>
-              <th className="text-left pb-3 text-xs font-medium text-gray-400 pr-4">Assign</th>
+              <th className="text-left pb-3 text-xs font-medium text-gray-400 pr-4">Assigned</th>
               <th className="text-left pb-3 text-xs font-medium text-gray-400 pr-4">Priority</th>
               <th className="text-left pb-3 text-xs font-medium text-gray-400">Stage</th>
             </tr>

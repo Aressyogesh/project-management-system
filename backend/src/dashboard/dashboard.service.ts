@@ -404,8 +404,7 @@ export class DashboardService {
             where: {
               projectId,
               assigneeId: uid,
-              type: { in: [WorkItemType.TASK, WorkItemType.SUB_TASK] },
-              createdAt: { gte: startDate, lt: endDate },
+              type: { in: [WorkItemType.TASK, WorkItemType.SUB_TASK, WorkItemType.BUG, WorkItemType.USER_STORY] },
             },
           }),
           this.prisma.workItem.count({
