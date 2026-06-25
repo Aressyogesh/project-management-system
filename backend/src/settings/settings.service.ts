@@ -282,4 +282,22 @@ export class SettingsService {
     if (!holiday) throw new NotFoundException('Holiday not found');
     await this.prisma.holiday.delete({ where: { id } });
   }
+
+  /* ─── Feature Visibility ─────────────────────────────────────────────── */
+
+  async getFeatureVisibility() {
+    return this.prisma.featureVisibility.findMany({
+      select: { feature: true, role: true, visible: true },
+      orderBy: [{ feature: 'asc' }, { role: 'asc' }],
+    });
+  }
+
+  async updateFeatureVisibility(feature: string, role: string, visible: boolean) {
+    return this.prisma.featureVisibility.upsert({
+      where: { feature_role: { feature, role } },
+      update: { visible },
+      create: { feature, role, visible },
+      select: { feature: true, role: true, visible: true },
+    });
+  }
 }

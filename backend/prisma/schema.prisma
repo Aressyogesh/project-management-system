@@ -352,6 +352,16 @@ model Holiday {
   @@map("holidays")
 }
 
+model FeatureVisibility {
+  id      String  @id @default(cuid())
+  feature String  @db.VarChar(50)
+  role    String  @db.VarChar(20)
+  visible Boolean @default(false)
+
+  @@unique([feature, role])
+  @@map("feature_visibility")
+}
+
 // ─── Project ──────────────────────────────────────────────────────────────────
 
 model Project {

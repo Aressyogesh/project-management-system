@@ -10,6 +10,7 @@ import { PortalConfigPage } from './features/settings/pages/PortalConfigPage';
 import { SettingsLayout } from './features/settings/pages/SettingsLayout';
 import { ShiftConfigPage } from './features/settings/pages/ShiftConfigPage';
 import { UserSettingsPage } from './features/settings/pages/UserSettingsPage';
+import { FeatureAccessPage } from './features/settings/pages/FeatureAccessPage';
 import { ClientsPage } from './features/clients/pages/ClientsPage';
 import { DepartmentsPage } from './features/departments/pages/DepartmentsPage';
 import { BusinessUnitsPage } from './features/business-units/pages/BusinessUnitsPage';
@@ -75,7 +76,8 @@ export default function App() {
                 <Route path="company" element={<CompanySettingsPage />} />
                 <Route path="portal"  element={<PortalConfigPage />} />
                 <Route path="users"   element={<UserSettingsPage />} />
-                <Route path="shifts"  element={<ShiftConfigPage />} />
+                <Route path="shifts"         element={<ShiftConfigPage />} />
+                <Route path="feature-access" element={<FeatureAccessPage />} />
               </Route>
 
               {/* Edit Profile */}

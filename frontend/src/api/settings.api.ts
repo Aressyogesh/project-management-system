@@ -59,6 +59,12 @@ export interface SettingsUser {
   profilePhoto: string | null;
 }
 
+export interface FeatureVisibilityEntry {
+  feature: string;
+  role: string;
+  visible: boolean;
+}
+
 export const settingsApi = {
   getCompany: () =>
     apiClient.get<CompanySettings>('/settings/company').then((r) => r.data),
@@ -95,4 +101,12 @@ export const settingsApi = {
 
   deleteHoliday: (id: string) =>
     apiClient.delete(`/settings/holidays/${id}`).then((r) => r.data),
+
+  getFeatureVisibility: () =>
+    apiClient.get<FeatureVisibilityEntry[]>('/settings/feature-visibility').then((r) => r.data),
+
+  updateFeatureVisibility: (feature: string, role: string, visible: boolean) =>
+    apiClient
+      .patch<FeatureVisibilityEntry>('/settings/feature-visibility', { feature, role, visible })
+      .then((r) => r.data),
 };

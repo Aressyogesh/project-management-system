@@ -5,6 +5,7 @@ import { authApi } from '../../api/auth.api';
 import { useAuthStore } from '../../store/authStore';
 import { SystemRole } from '../../types/auth.types';
 import { UserAvatar } from '../shared/UserAvatar';
+import { useFeatureVisibility } from '../../hooks/useFeatureVisibility';
 
 function IconOverview() {
   return (
@@ -156,6 +157,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const queryClient = useQueryClient();
   const { user, refreshToken, clearAuth } = useAuthStore();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { canSee } = useFeatureVisibility();
 
   async function handleLogout() {
     if (refreshToken) {
@@ -166,9 +168,12 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
     navigate('/login');
   }
 
-  const baseNav = navItems.filter(
-    (item) => !item.roles || item.roles.includes(user?.systemRole as SystemRole),
-  );
+  const baseNav = navItems.filter((item) => {
+    if (item.roles && !item.roles.includes(user?.systemRole as SystemRole)) return false;
+    if (item.path === '/kpi')     return canSee('KPI');
+    if (item.path === '/reports') return canSee('REPORTS');
+    return true;
+  });
 
   const upskillItem: NavItem = { path: '/upskill', label: 'Upskill', Icon: IconUpskill };
   const kpiIdx = baseNav.findIndex((n) => n.path === '/kpi');

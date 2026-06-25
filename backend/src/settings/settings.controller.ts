@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, HttpCode, Param, Post, Put, Query } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Put, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { SystemRole } from '@prisma/client';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -114,5 +114,22 @@ export class SettingsController {
   @ApiOperation({ summary: 'Delete a holiday' })
   deleteHoliday(@Param('id') id: string) {
     return this.settingsService.deleteHoliday(id);
+  }
+
+  /* ─── Feature Visibility ─────────────────────────────────────────────── */
+
+  @Get('feature-visibility')
+  @ApiOperation({ summary: 'Get feature visibility settings (all roles)' })
+  getFeatureVisibility() {
+    return this.settingsService.getFeatureVisibility();
+  }
+
+  @Patch('feature-visibility')
+  @Roles(SystemRole.SUPER_USER)
+  @ApiOperation({ summary: 'Update a feature visibility toggle (SUPER_USER only)' })
+  updateFeatureVisibility(
+    @Body() body: { feature: string; role: string; visible: boolean },
+  ) {
+    return this.settingsService.updateFeatureVisibility(body.feature, body.role, body.visible);
   }
 }
