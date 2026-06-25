@@ -10,6 +10,8 @@ import { ProjectProgressPanel } from '../components/ProjectProgressPanel';
 import { StatCard } from '../components/StatCard';
 import { TasksProgressChart } from '../components/TasksProgressChart';
 import { TeamActivityPanel } from '../components/TeamActivityPanel';
+import { ProjectRiskScoreCard } from '../components/ProjectRiskScoreCard';
+import { MemberActivity } from '../../../types/dashboard.types';
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -20,6 +22,10 @@ function toYearMonth(date: Date) {
 function monthLabel(ym: string) {
   const [y, m] = ym.split('-');
   return new Date(Number(y), Number(m) - 1, 1).toLocaleString('default', { month: 'long', year: 'numeric' });
+}
+
+function toTitleCase(str: string) {
+  return str.replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
 function buildMonthOptions() {
@@ -47,6 +53,24 @@ function LoadingSkeleton() {
         <div className="xl:col-span-2 bg-white rounded-2xl h-72 border border-gray-100" />
         <div className="bg-white rounded-2xl h-72 border border-gray-100" />
       </div>
+    </div>
+  );
+}
+
+// ── Team Activity + Risk Score wrapper ─────────────────────────────────────────
+
+function TeamActivitySection({ projectId, month }: { projectId: string; month: string }) {
+  const { data: activity = [] } = useQuery<MemberActivity[]>({
+    queryKey: ['team-activity', projectId, month],
+    queryFn: () => dashboardApi.getTeamActivity(projectId, month),
+    enabled: !!projectId,
+    staleTime: 60_000,
+  });
+
+  return (
+    <div className="space-y-4">
+      <ProjectRiskScoreCard activity={activity} />
+      <TeamActivityPanel projectId={projectId} month={month} />
     </div>
   );
 }
@@ -129,7 +153,7 @@ export function DashboardPage() {
             >
               <option value="">{projectsLoading ? 'Loading…' : 'All Projects'}</option>
               {(projects as any[]).map((p) => (
-                <option key={p.id} value={p.id}>{p.name}</option>
+                <option key={p.id} value={p.id}>{toTitleCase(p.name)}</option>
               ))}
             </select>
           </div>
@@ -204,7 +228,7 @@ export function DashboardPage() {
 
       {/* ── Team Activity (Admin/Super/PM, only when project is selected) ───── */}
       {hasFilter && (
-        <TeamActivityPanel projectId={selectedProject} month={selectedMonth} />
+        <TeamActivitySection projectId={selectedProject} month={selectedMonth} />
       )}
 
       {/* ── My Tasks + Task Progress Chart ─────────────────────────────────── */}

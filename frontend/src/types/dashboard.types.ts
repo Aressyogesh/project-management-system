@@ -63,6 +63,8 @@ export interface MemberActivity {
   tasksAssigned: number;
   tasksCompleted: number;
   hoursLogged: number;
+  billableHours: number;
+  nonBillableHours: number;
   bugsReported: number;
   leaveDays: number;
 }

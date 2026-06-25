@@ -2032,6 +2032,8 @@ export function CreateWorkItemModal({
   const [dateError, setDateError] = useState('');
   const [estHoursError, setEstHoursError] = useState(false);
   const [billingStatusError, setBillingStatusError] = useState(false);
+  const [bugSeverityError, setBugSeverityError] = useState(false);
+  const [bugClassificationError, setBugClassificationError] = useState(false);
   const [bugEnvError, setBugEnvError] = useState(false);
 
   function handleSubmit() {
@@ -2062,6 +2064,16 @@ export function CreateWorkItemModal({
       return;
     }
     setBillingStatusError(false);
+    if (type === 'BUG' && !severity) {
+      setBugSeverityError(true);
+      return;
+    }
+    setBugSeverityError(false);
+    if (type === 'BUG' && !bugClassification) {
+      setBugClassificationError(true);
+      return;
+    }
+    setBugClassificationError(false);
     if (type === 'BUG' && !bugFlag) {
       setBugEnvError(true);
       return;
@@ -2419,17 +2431,26 @@ export function CreateWorkItemModal({
                   </select>
                 </div>
                 <div>
-                  <label className={labelCls}>Severity</label>
-                  <select value={severity} onChange={(e) => setSeverity(e.target.value as BugSeverity)} className={inputCls}>
+                  <label className={labelCls}>Severity <span className="text-red-500">*</span></label>
+                  <select
+                    value={severity}
+                    onChange={(e) => { setSeverity(e.target.value as BugSeverity); if (e.target.value) setBugSeverityError(false); }}
+                    className={`${inputCls} ${bugSeverityError ? 'border-red-500 focus:ring-red-500' : ''}`}
+                  >
                     <option value="">— select —</option>
                     {(['SHOW_STOPPER', 'BLOCKER', 'CRITICAL', 'MAJOR', 'MINOR', 'TRIVIAL'] as BugSeverity[]).map((s) => (
                       <option key={s} value={s}>{s.replace(/_/g, ' ').charAt(0) + s.replace(/_/g, ' ').slice(1).toLowerCase()}</option>
                     ))}
                   </select>
+                  {bugSeverityError && <p className="text-xs text-red-500 mt-1">Severity is required</p>}
                 </div>
                 <div>
-                  <label className={labelCls}>Classification</label>
-                  <select value={bugClassification} onChange={(e) => setBugClassification(e.target.value as BugClassification)} className={inputCls}>
+                  <label className={labelCls}>Classification <span className="text-red-500">*</span></label>
+                  <select
+                    value={bugClassification}
+                    onChange={(e) => { setBugClassification(e.target.value as BugClassification); if (e.target.value) setBugClassificationError(false); }}
+                    className={`${inputCls} ${bugClassificationError ? 'border-red-500 focus:ring-red-500' : ''}`}
+                  >
                     <option value="">— select —</option>
                     <option value="UI_USABILITY">UI / Usability</option>
                     <option value="NEW_BUG">New Bug</option>
@@ -2448,6 +2469,7 @@ export function CreateWorkItemModal({
                     <option value="EXISTING_APPLICATION">Existing Application</option>
                     <option value="OTHER">Other</option>
                   </select>
+                  {bugClassificationError && <p className="text-xs text-red-500 mt-1">Classification is required</p>}
                 </div>
                 <div>
                   <label className={labelCls}>Environment <span className="text-red-500">*</span></label>

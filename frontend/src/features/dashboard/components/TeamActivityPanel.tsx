@@ -21,22 +21,38 @@ const roleColor: Record<string, string> = {
 };
 
 function initials(name: string) {
-  return name
-    .split(' ')
-    .map((n) => n[0])
-    .join('')
-    .toUpperCase()
-    .slice(0, 2);
+  return name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2);
 }
 
-
-function StatCell({ value, label, color }: { value: number; label: string; color: string }) {
+function StatCell({ value, label, color }: { value: number | string; label: string; color: string }) {
   return (
-    <td className="px-4 py-3 text-center">
-      <span className={`inline-flex items-center justify-center w-8 h-8 rounded-full text-xs font-semibold ${color}`}>
+    <td className="px-3 py-3 text-center">
+      <span className={`inline-flex items-center justify-center min-w-[2rem] px-1.5 h-8 rounded-full text-xs font-semibold ${color}`}>
         {value}
       </span>
       <p className="text-[10px] text-gray-400 mt-0.5 hidden sm:block">{label}</p>
+    </td>
+  );
+}
+
+function HoursCell({ billable, nonBillable }: { billable: number; nonBillable: number }) {
+  return (
+    <td className="px-3 py-3 text-center">
+      <div className="flex flex-col items-center gap-0.5">
+        <div className="flex items-center gap-1">
+          <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
+            {billable.toFixed(1)}h
+          </span>
+        </div>
+        <div className="flex items-center gap-1">
+          <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
+            <span className="w-1.5 h-1.5 rounded-full bg-gray-400 shrink-0" />
+            {nonBillable.toFixed(1)}h
+          </span>
+        </div>
+      </div>
+      <p className="text-[10px] text-gray-400 mt-0.5 hidden sm:block">B / NB</p>
     </td>
   );
 }
@@ -53,8 +69,8 @@ function SkeletonRow() {
           </div>
         </div>
       </td>
-      {Array.from({ length: 5 }).map((_, i) => (
-        <td key={i} className="px-4 py-3 text-center">
+      {Array.from({ length: 6 }).map((_, i) => (
+        <td key={i} className="px-3 py-3 text-center">
           <div className="h-8 w-8 bg-gray-100 rounded-full mx-auto" />
         </td>
       ))}
@@ -88,96 +104,72 @@ export function TeamActivityPanel({ projectId, month }: TeamActivityPanelProps) 
     staleTime: 60_000,
   });
 
-  const totalHours     = activity.reduce((s, m) => s + m.hoursLogged, 0);
-  const totalCompleted = activity.reduce((s, m) => s + m.tasksCompleted, 0);
-  const totalBugs      = activity.reduce((s, m) => s + m.bugsReported, 0);
-
   return (
     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-      {/* Header */}
       <div className="px-5 py-4 border-b border-gray-50">
         <h3 className="text-sm font-semibold text-gray-800">Team Activity</h3>
         <p className="text-xs text-gray-400 mt-0.5">Per-member breakdown for the selected project and month</p>
       </div>
 
-      {/* Summary chips */}
-      {!activityLoading && activity.length > 0 && (
-        <div className="px-5 py-3 border-b border-gray-50 flex gap-4 flex-wrap">
-          <div className="text-xs text-gray-500">
-            <span className="font-semibold text-gray-800">{activity.length}</span> members
-          </div>
-          <div className="text-xs text-gray-500">
-            <span className="font-semibold text-emerald-600">{totalCompleted}</span> tasks completed
-          </div>
-          <div className="text-xs text-gray-500">
-            <span className="font-semibold text-blue-600">{totalHours.toFixed(1)}h</span> logged
-          </div>
-          <div className="text-xs text-gray-500">
-            <span className="font-semibold text-rose-600">{totalBugs}</span> bugs reported
-          </div>
-        </div>
-      )}
-
-      {/* Table */}
-      {(
-        <div className="overflow-x-auto">
-          <table className="w-full text-xs">
-            <thead>
-              <tr className="bg-gray-50 text-left">
-                <th className="px-4 py-2.5 font-medium text-gray-500">Member</th>
-                <th className="px-4 py-2.5 font-medium text-gray-500 text-center">Assigned</th>
-                <th className="px-4 py-2.5 font-medium text-gray-500 text-center">Completed</th>
-                <th className="px-4 py-2.5 font-medium text-gray-500 min-w-[110px]">Completion</th>
-                <th className="px-4 py-2.5 font-medium text-gray-500 text-center">Hours</th>
-                <th className="px-4 py-2.5 font-medium text-gray-500 text-center">Bugs</th>
-                <th className="px-4 py-2.5 font-medium text-gray-500 text-center">Leave</th>
+      <div className="overflow-x-auto">
+        <table className="w-full text-xs">
+          <thead>
+            <tr className="bg-gray-50 text-left">
+              <th className="px-4 py-2.5 font-medium text-gray-500">Member</th>
+              <th className="px-3 py-2.5 font-medium text-gray-500 text-center">Assigned</th>
+              <th className="px-3 py-2.5 font-medium text-gray-500 text-center">Completed</th>
+              <th className="px-3 py-2.5 font-medium text-gray-500 min-w-[110px]">Completion</th>
+              <th className="px-3 py-2.5 font-medium text-gray-500 text-center min-w-[100px]">
+                Hours
+                <span className="block text-[10px] font-normal text-gray-400">Billable / Non-Billable</span>
+              </th>
+              <th className="px-3 py-2.5 font-medium text-gray-500 text-center">Bugs</th>
+              <th className="px-3 py-2.5 font-medium text-gray-500 text-center">Leave</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-50">
+            {activityLoading ? (
+              Array.from({ length: 4 }).map((_, i) => <SkeletonRow key={i} />)
+            ) : activity.length === 0 ? (
+              <tr>
+                <td colSpan={7} className="px-4 py-8 text-center text-gray-400">
+                  No team members found for this project.
+                </td>
               </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50">
-              {activityLoading ? (
-                Array.from({ length: 4 }).map((_, i) => <SkeletonRow key={i} />)
-              ) : activity.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="px-4 py-8 text-center text-gray-400">
-                    No team members found for this project.
-                  </td>
-                </tr>
-              ) : (
-                activity.map((m) => (
-                  <tr key={m.userId} className="hover:bg-gray-50/50 transition-colors">
-                    {/* Member */}
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2.5">
-                        <div className="w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center text-xs font-semibold text-primary-700 shrink-0">
-                          {initials(m.name)}
-                        </div>
-                        <div>
-                          <p className="font-medium text-gray-800 leading-tight">{m.name}</p>
-                          <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${roleColor[m.projectRole] ?? 'bg-gray-100 text-gray-600'}`}>
-                            {roleLabel[m.projectRole] ?? m.projectRole}
-                          </span>
-                        </div>
+            ) : (
+              activity.map((m) => (
+                <tr key={m.userId} className="hover:bg-gray-50/50 transition-colors">
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center text-xs font-semibold text-primary-700 shrink-0">
+                        {initials(m.name)}
                       </div>
-                    </td>
+                      <div>
+                        <p className="font-medium text-gray-800 leading-tight">{m.name}</p>
+                        <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${roleColor[m.projectRole] ?? 'bg-gray-100 text-gray-600'}`}>
+                          {roleLabel[m.projectRole] ?? m.projectRole}
+                        </span>
+                      </div>
+                    </div>
+                  </td>
 
-                    <StatCell value={m.tasksAssigned}  label="assigned"   color="bg-blue-50 text-blue-700" />
-                    <StatCell value={m.tasksCompleted} label="completed"  color="bg-emerald-50 text-emerald-700" />
+                  <StatCell value={m.tasksAssigned}  label="assigned"  color="bg-blue-50 text-blue-700" />
+                  <StatCell value={m.tasksCompleted} label="completed" color="bg-emerald-50 text-emerald-700" />
 
-                    {/* Completion bar */}
-                    <td className="px-4 py-3">
-                      <CompletionBar assigned={m.tasksAssigned} completed={m.tasksCompleted} />
-                    </td>
+                  <td className="px-3 py-3">
+                    <CompletionBar assigned={m.tasksAssigned} completed={m.tasksCompleted} />
+                  </td>
 
-                    <StatCell value={m.hoursLogged}  label="hours"  color="bg-indigo-50 text-indigo-700" />
-                    <StatCell value={m.bugsReported} label="bugs"   color="bg-rose-50 text-rose-700" />
-                    <StatCell value={m.leaveDays}    label="days"   color={m.leaveDays > 0 ? 'bg-amber-50 text-amber-700' : 'bg-gray-50 text-gray-400'} />
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      )}
+                  <HoursCell billable={m.billableHours} nonBillable={m.nonBillableHours} />
+
+                  <StatCell value={m.bugsReported} label="bugs"  color="bg-rose-50 text-rose-700" />
+                  <StatCell value={m.leaveDays}    label="days"  color={m.leaveDays > 0 ? 'bg-amber-50 text-amber-700' : 'bg-gray-50 text-gray-400'} />
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

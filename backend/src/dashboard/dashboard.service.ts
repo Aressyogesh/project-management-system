@@ -1,5 +1,5 @@
 import { ForbiddenException, Injectable } from '@nestjs/common';
-import { BoardStatus, LeaveStatus, MilestoneStatus, ProjectRole, ProjectStatus, SystemRole, TaskStatus, WorkItemType } from '@prisma/client';
+import { BillingStatus, BoardStatus, LeaveStatus, MilestoneStatus, ProjectRole, ProjectStatus, SystemRole, TaskStatus, WorkItemType } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 
 export interface StatCard {
@@ -53,6 +53,8 @@ export interface MemberActivity {
   tasksAssigned: number;
   tasksCompleted: number;
   hoursLogged: number;
+  billableHours: number;
+  nonBillableHours: number;
   bugsReported: number;
   leaveDays: number;
 }
@@ -402,7 +404,7 @@ export class DashboardService {
       members.map(async (m) => {
         const uid = m.user.id;
 
-        const [tasksAssigned, tasksCompleted, timeAgg, bugsReported, leaveAgg] = await Promise.all([
+        const [tasksAssigned, tasksCompleted, billableTimeAgg, nonBillableTimeAgg, bugsReported, leaveAgg] = await Promise.all([
           this.prisma.workItem.count({
             where: {
               projectId,
@@ -421,7 +423,15 @@ export class DashboardService {
           this.prisma.timesheetEntry.aggregate({
             where: {
               userId: uid,
-              workItem: { projectId },
+              workItem: { projectId, billingStatus: BillingStatus.BILLABLE },
+              date: { gte: startDate, lt: endDate },
+            },
+            _sum: { hours: true },
+          }),
+          this.prisma.timesheetEntry.aggregate({
+            where: {
+              userId: uid,
+              workItem: { projectId, billingStatus: BillingStatus.NON_BILLABLE },
               date: { gte: startDate, lt: endDate },
             },
             _sum: { hours: true },
@@ -445,6 +455,9 @@ export class DashboardService {
           }),
         ]);
 
+        const billableHours    = Number(billableTimeAgg._sum.hours ?? 0);
+        const nonBillableHours = Number(nonBillableTimeAgg._sum.hours ?? 0);
+
         return {
           userId:         uid,
           name:           m.user.fullName ?? '—',
@@ -452,7 +465,9 @@ export class DashboardService {
           profilePhoto:   m.user.profilePhoto ?? null,
           tasksAssigned,
           tasksCompleted,
-          hoursLogged:    Number(timeAgg._sum.hours ?? 0),
+          hoursLogged:    billableHours + nonBillableHours,
+          billableHours,
+          nonBillableHours,
           bugsReported,
           leaveDays:      leaveAgg._sum.totalDays ?? 0,
         };
