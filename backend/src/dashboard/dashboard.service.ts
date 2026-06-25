@@ -138,8 +138,8 @@ export class DashboardService {
         : this.prisma.project.count({ where: { status: ProjectStatus.ACTIVE } }),
       this.prisma.workItem.findMany({
         where: scopedProjectIds !== null
-          ? { projectId: { in: scopedProjectIds }, project: { status: ProjectStatus.ACTIVE }, assigneeId: { not: null } }
-          : { assigneeId: userId, project: { status: ProjectStatus.ACTIVE } },
+          ? { projectId: { in: scopedProjectIds }, project: { status: ProjectStatus.ACTIVE }, assigneeId: { not: null }, status: { not: BoardStatus.QA_DONE } }
+          : { assigneeId: userId, project: { status: ProjectStatus.ACTIVE }, status: { not: BoardStatus.QA_DONE } },
         select: {
           id: true, title: true, priority: true, status: true,
           assignee: { select: { fullName: true } },
@@ -254,7 +254,7 @@ export class DashboardService {
         orderBy: { dueDate: 'asc' },
       }),
       this.prisma.workItem.findMany({
-        where: { projectId, assigneeId: { not: null } },
+        where: { projectId, assigneeId: { not: null }, status: { not: BoardStatus.QA_DONE } },
         select: {
           id: true, title: true, priority: true, status: true,
           project: { select: { name: true } },
