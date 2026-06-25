@@ -33,7 +33,7 @@ export function ActivityChart({ data, projectId }: ActivityChartProps) {
   return (
     <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
       <div className="flex items-center justify-between mb-5">
-        <h2 className="font-semibold text-gray-800 text-base">Team Activity Summary</h2>
+        <h2 className="font-semibold text-gray-800 text-base">Work Item Activity</h2>
         <select
           value={period}
           onChange={(e) => setPeriod(e.target.value as 'monthly' | 'weekly')}

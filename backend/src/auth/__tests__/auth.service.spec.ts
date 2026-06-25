@@ -35,6 +35,9 @@ const mockPrisma = {
     update: jest.fn(),
     updateMany: jest.fn(),
   },
+  projectMember: {
+    count: jest.fn().mockResolvedValue(0),
+  },
 };
 
 const mockJwt = { sign: jest.fn().mockReturnValue('fake-access-token') };
@@ -106,6 +109,7 @@ describe('AuthService', () => {
       expect(result.refreshToken.length).toBeGreaterThan(0);
       expect(result.user.email).toBe('superadmin@pms.com');
       expect(result.user.systemRole).toBe(SystemRole.SUPER_USER);
+      expect(result.user.hasManagementRole).toBe(false);
       expect((result.user as any).passwordHash).toBeUndefined();
       expect(mockPrisma.refreshToken.create).toHaveBeenCalledTimes(1);
       expect(mockPrisma.user.update).toHaveBeenCalledWith({
