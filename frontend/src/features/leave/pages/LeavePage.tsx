@@ -67,21 +67,37 @@ function Toast({ message, onClose }: { message: string; onClose: () => void }) {
 function ApplyLeaveModal({
   onClose,
   onSuccess,
+  canManageOthers,
+  teamMembers,
+  currentUserId,
 }: {
   onClose: () => void;
   onSuccess: (msg: string) => void;
+  canManageOthers: boolean;
+  teamMembers: Array<{ id: string; fullName: string }>;
+  currentUserId: string;
 }) {
   const qc = useQueryClient();
   const [type, setType] = useState<LeaveType>('CASUAL');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [isHalfDay, setIsHalfDay] = useState(false);
+  const [isPlanned, setIsPlanned] = useState(true);
+  const [targetUserId, setTargetUserId] = useState(currentUserId);
   const [reason, setReason] = useState('');
   const [error, setError] = useState('');
 
   const mut = useMutation({
     mutationFn: () =>
-      leaveApi.create({ type, startDate, endDate, isHalfDay, reason: reason.trim() || undefined }),
+      leaveApi.create({
+        type,
+        startDate,
+        endDate,
+        isHalfDay,
+        isPlanned,
+        targetUserId: targetUserId !== currentUserId ? targetUserId : undefined,
+        reason: reason.trim() || undefined,
+      }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['leave-requests'] });
       onSuccess('Leave request submitted successfully');
@@ -123,6 +139,25 @@ function ApplyLeaveModal({
           onSubmit={(e) => { e.preventDefault(); setError(''); mut.mutate(); }}
           className="px-6 py-5 space-y-4"
         >
+          {/* Member selector (PM/TL/Admin only) */}
+          {canManageOthers && (
+            <div>
+              <label className={labelCls}>Applying For</label>
+              <select
+                value={targetUserId}
+                onChange={(e) => setTargetUserId(e.target.value)}
+                className={inputCls}
+              >
+                <option value={currentUserId}>Myself</option>
+                {teamMembers
+                  .filter((m) => m.id !== currentUserId)
+                  .map((m) => (
+                    <option key={m.id} value={m.id}>{m.fullName}</option>
+                  ))}
+              </select>
+            </div>
+          )}
+
           <div>
             <label className={labelCls}>Leave Type</label>
             <select
@@ -134,6 +169,35 @@ function ApplyLeaveModal({
                 <option key={t} value={t}>{LEAVE_TYPE_LABELS[t]}</option>
               ))}
             </select>
+          </div>
+
+          {/* Planned / Unplanned */}
+          <div>
+            <label className={labelCls}>Leave Category</label>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setIsPlanned(true)}
+                className={`flex-1 py-2 text-sm rounded-lg border font-medium transition ${
+                  isPlanned
+                    ? 'bg-blue-600 text-white border-blue-600'
+                    : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+                }`}
+              >
+                Planned
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsPlanned(false)}
+                className={`flex-1 py-2 text-sm rounded-lg border font-medium transition ${
+                  !isPlanned
+                    ? 'bg-orange-500 text-white border-orange-500'
+                    : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+                }`}
+              >
+                Unplanned
+              </button>
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
@@ -346,6 +410,11 @@ export function LeavePage() {
   // PM detection: backend returns team members' leaves if user is a PM
   const canManageOthers = isAdmin || leaves.some((l) => l.userId !== currentUserId);
 
+  // Derive unique team members from the leave list for the "on behalf of" selector
+  const teamMembers = Array.from(
+    new Map(leaves.map((l) => [l.userId, { id: l.userId, fullName: l.user.fullName }])).values(),
+  );
+
   // Summary counts
   const pending          = leaves.filter((l) => l.status === 'PENDING').length;
   const approvedAll      = leaves.filter((l) => l.status === 'APPROVED').length;
@@ -487,6 +556,9 @@ export function LeavePage() {
         <ApplyLeaveModal
           onClose={() => setShowApply(false)}
           onSuccess={(msg) => setToast(msg)}
+          canManageOthers={canManageOthers}
+          teamMembers={teamMembers}
+          currentUserId={currentUserId}
         />
       )}
       {rejectTarget && (
@@ -561,6 +633,9 @@ function LeaveRow({
         {leave.isHalfDay && (
           <span className="block text-[10px] text-primary-600 font-medium mt-0.5">half-day</span>
         )}
+        <span className={`block text-[10px] font-medium mt-0.5 ${leave.isPlanned ? 'text-blue-600' : 'text-orange-600'}`}>
+          {leave.isPlanned ? 'Planned' : 'Unplanned'}
+        </span>
       </td>
 
       {/* Reason */}

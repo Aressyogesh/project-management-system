@@ -25,12 +25,12 @@ export function ProjectRiskScoreCard({ activity }: Props) {
 
   const totalAssigned  = activity.reduce((s, m) => s + m.tasksAssigned, 0);
   const totalCompleted = activity.reduce((s, m) => s + m.tasksCompleted, 0);
-  const totalBugs      = activity.reduce((s, m) => s + m.bugsReported, 0);
+  const totalReworked  = activity.reduce((s, m) => s + m.reworked, 0);
   const billableHours  = activity.reduce((s, m) => s + m.billableHours, 0);
   const nonBillable    = activity.reduce((s, m) => s + m.nonBillableHours, 0);
 
   const completionPct = totalAssigned === 0 ? 0 : Math.round((totalCompleted / totalAssigned) * 100);
-  const reworkRatio   = totalCompleted === 0 ? 0 : Math.round((totalBugs / totalCompleted) * 100);
+  const reworkRatio   = totalCompleted === 0 ? 0 : Math.round((totalReworked / totalCompleted) * 100);
   const risk          = riskLevel(completionPct, reworkRatio);
 
   return (
@@ -58,7 +58,7 @@ export function ProjectRiskScoreCard({ activity }: Props) {
         <Metric
           label="Rework Ratio"
           value={`${reworkRatio}%`}
-          sub={`${totalBugs} bugs`}
+          sub={`${totalReworked} items`}
           valueColor={reworkRatio > 30 ? 'text-red-600' : reworkRatio > 15 ? 'text-amber-600' : 'text-emerald-600'}
         />
         <Metric

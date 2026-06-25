@@ -16,6 +16,14 @@ export class CreateLeaveRequestDto {
   isHalfDay?: boolean;
 
   @IsOptional()
+  @IsBoolean()
+  isPlanned?: boolean;
+
+  @IsOptional()
+  @IsString()
+  targetUserId?: string;
+
+  @IsOptional()
   @IsString()
   @MaxLength(500)
   reason?: string;

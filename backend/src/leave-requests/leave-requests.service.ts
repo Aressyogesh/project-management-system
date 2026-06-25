@@ -22,7 +22,13 @@ export class LeaveRequestsService {
     private readonly auditLogs: AuditLogsService,
   ) {}
 
-  async create(userId: string, dto: CreateLeaveRequestDto) {
+  async create(requestingUserId: string, systemRole: SystemRole, dto: CreateLeaveRequestDto) {
+    const targetUserId = dto.targetUserId ?? requestingUserId;
+
+    if (targetUserId !== requestingUserId) {
+      await this.assertCanManage(requestingUserId, systemRole, targetUserId);
+    }
+
     const start = new Date(dto.startDate);
     const end = new Date(dto.endDate);
 
@@ -40,7 +46,7 @@ export class LeaveRequestsService {
     // Check for overlapping pending or approved leaves
     const overlap = await this.prisma.leaveRequest.findFirst({
       where: {
-        userId,
+        userId: targetUserId,
         status: { in: [LeaveStatus.PENDING, LeaveStatus.APPROVED] },
         startDate: { lte: end },
         endDate: { gte: start },
@@ -67,23 +73,24 @@ export class LeaveRequestsService {
 
     const leave = await this.prisma.leaveRequest.create({
       data: {
-        userId,
+        userId: targetUserId,
         type: dto.type,
         startDate: start,
         endDate: end,
         totalDays,
         isHalfDay: dto.isHalfDay ?? false,
+        isPlanned: dto.isPlanned ?? true,
         reason: dto.reason ?? null,
       },
       include: LEAVE_INCLUDE,
     });
     this.auditLogs.log({
-      userId,
+      userId: requestingUserId,
       action: AuditAction.LEAVE_REQUESTED,
       entity: AuditEntity.LEAVE_REQUEST,
       entityId: leave.id,
       entityTitle: `${dto.type} leave (${dto.startDate} — ${dto.endDate})`,
-      metadata: { type: dto.type, totalDays, isHalfDay: dto.isHalfDay ?? false },
+      metadata: { type: dto.type, totalDays, isHalfDay: dto.isHalfDay ?? false, isPlanned: dto.isPlanned ?? true, onBehalfOf: targetUserId !== requestingUserId ? targetUserId : undefined },
     });
     return leave;
   }

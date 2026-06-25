@@ -25,7 +25,7 @@ export class LeaveRequestsController {
   @Post()
   @ApiOperation({ summary: 'Apply for leave' })
   create(@Body() dto: CreateLeaveRequestDto, @Request() req: any) {
-    return this.leaveRequestsService.create(req.user.id, dto);
+    return this.leaveRequestsService.create(req.user.id, req.user.systemRole, dto);
   }
 
   @Get()

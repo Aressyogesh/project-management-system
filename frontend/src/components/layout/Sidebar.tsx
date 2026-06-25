@@ -170,8 +170,9 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
 
   const baseNav = navItems.filter((item) => {
     if (item.roles && !item.roles.includes(user?.systemRole as SystemRole)) return false;
-    if (item.path === '/kpi')     return canSee('KPI');
-    if (item.path === '/reports') return canSee('REPORTS');
+    if (item.path === '/kpi')        return canSee('KPI');
+    if (item.path === '/reports')    return canSee('REPORTS');
+    if (item.path === '/leave-logs') return user?.systemRole !== 'EMPLOYEE' || user?.hasManagementRole === true;
     return true;
   });
 

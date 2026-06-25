@@ -57,6 +57,48 @@ function HoursCell({ billable, nonBillable }: { billable: number; nonBillable: n
   );
 }
 
+function CompletedCell({ delivered, reworked, bugsFixed }: { delivered: number; reworked: number; bugsFixed: number }) {
+  return (
+    <td className="px-3 py-3 text-center">
+      <div className="flex flex-col items-center gap-0.5">
+        <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
+          {delivered}
+        </span>
+        <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full">
+          <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
+          {reworked}
+        </span>
+        <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-rose-700 bg-rose-50 px-2 py-0.5 rounded-full">
+          <span className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0" />
+          {bugsFixed}
+        </span>
+      </div>
+      <p className="text-[10px] text-gray-400 mt-0.5 hidden sm:block">D / R / B</p>
+    </td>
+  );
+}
+
+function LeaveCell({ planned, unplanned }: { planned: number; unplanned: number }) {
+  const total = planned + unplanned;
+  return (
+    <td className="px-3 py-3 text-center">
+      <div className="flex flex-col items-center gap-0.5">
+        <span className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full ${planned > 0 ? 'text-blue-700 bg-blue-50' : 'text-gray-400 bg-gray-50'}`}>
+          <span className={`w-1.5 h-1.5 rounded-full ${planned > 0 ? 'bg-blue-500' : 'bg-gray-300'} shrink-0`} />
+          {planned}d
+        </span>
+        <span className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full ${unplanned > 0 ? 'text-orange-700 bg-orange-50' : 'text-gray-400 bg-gray-50'}`}>
+          <span className={`w-1.5 h-1.5 rounded-full ${unplanned > 0 ? 'bg-orange-500' : 'bg-gray-300'} shrink-0`} />
+          {unplanned}d
+        </span>
+      </div>
+      <p className="text-[10px] text-gray-400 mt-0.5 hidden sm:block">P / U</p>
+      {total === 0 && <p className="text-[10px] text-gray-300 mt-0.5">—</p>}
+    </td>
+  );
+}
+
 function SkeletonRow() {
   return (
     <tr className="animate-pulse border-b border-gray-50">
@@ -69,7 +111,7 @@ function SkeletonRow() {
           </div>
         </div>
       </td>
-      {Array.from({ length: 6 }).map((_, i) => (
+      {Array.from({ length: 7 }).map((_, i) => (
         <td key={i} className="px-3 py-3 text-center">
           <div className="h-8 w-8 bg-gray-100 rounded-full mx-auto" />
         </td>
@@ -117,14 +159,20 @@ export function TeamActivityPanel({ projectId, month }: TeamActivityPanelProps) 
             <tr className="bg-gray-50 text-left">
               <th className="px-4 py-2.5 font-medium text-gray-500">Member</th>
               <th className="px-3 py-2.5 font-medium text-gray-500 text-center">Assigned</th>
-              <th className="px-3 py-2.5 font-medium text-gray-500 text-center">Completed</th>
+              <th className="px-3 py-2.5 font-medium text-gray-500 text-center min-w-[90px]">
+                Completed
+                <span className="block text-[10px] font-normal text-gray-400">Delivered / Rework / Bug</span>
+              </th>
               <th className="px-3 py-2.5 font-medium text-gray-500 min-w-[110px]">Completion</th>
               <th className="px-3 py-2.5 font-medium text-gray-500 text-center min-w-[100px]">
                 Hours
                 <span className="block text-[10px] font-normal text-gray-400">Billable / Non-Billable</span>
               </th>
-              <th className="px-3 py-2.5 font-medium text-gray-500 text-center">Bugs</th>
-              <th className="px-3 py-2.5 font-medium text-gray-500 text-center">Leave</th>
+              <th className="px-3 py-2.5 font-medium text-gray-500 text-center">Bugs Reported</th>
+              <th className="px-3 py-2.5 font-medium text-gray-500 text-center min-w-[80px]">
+                Leave
+                <span className="block text-[10px] font-normal text-gray-400">Planned / Unplanned</span>
+              </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-50">
@@ -132,7 +180,7 @@ export function TeamActivityPanel({ projectId, month }: TeamActivityPanelProps) 
               Array.from({ length: 4 }).map((_, i) => <SkeletonRow key={i} />)
             ) : activity.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-gray-400">
+                <td colSpan={8} className="px-4 py-8 text-center text-gray-400">
                   No team members found for this project.
                 </td>
               </tr>
@@ -153,8 +201,9 @@ export function TeamActivityPanel({ projectId, month }: TeamActivityPanelProps) 
                     </div>
                   </td>
 
-                  <StatCell value={m.tasksAssigned}  label="assigned"  color="bg-blue-50 text-blue-700" />
-                  <StatCell value={m.tasksCompleted} label="completed" color="bg-emerald-50 text-emerald-700" />
+                  <StatCell value={m.tasksAssigned} label="assigned" color="bg-blue-50 text-blue-700" />
+
+                  <CompletedCell delivered={m.delivered} reworked={m.reworked} bugsFixed={m.bugsFixed} />
 
                   <td className="px-3 py-3">
                     <CompletionBar assigned={m.tasksAssigned} completed={m.tasksCompleted} />
@@ -162,8 +211,9 @@ export function TeamActivityPanel({ projectId, month }: TeamActivityPanelProps) 
 
                   <HoursCell billable={m.billableHours} nonBillable={m.nonBillableHours} />
 
-                  <StatCell value={m.bugsReported} label="bugs"  color="bg-rose-50 text-rose-700" />
-                  <StatCell value={m.leaveDays}    label="days"  color={m.leaveDays > 0 ? 'bg-amber-50 text-amber-700' : 'bg-gray-50 text-gray-400'} />
+                  <StatCell value={m.bugsReported} label="reported" color="bg-rose-50 text-rose-700" />
+
+                  <LeaveCell planned={m.plannedLeaveDays} unplanned={m.unplannedLeaveDays} />
                 </tr>
               ))
             )}

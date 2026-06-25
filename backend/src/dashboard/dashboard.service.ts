@@ -52,11 +52,16 @@ export interface MemberActivity {
   profilePhoto: string | null;
   tasksAssigned: number;
   tasksCompleted: number;
+  delivered: number;
+  reworked: number;
+  bugsFixed: number;
   hoursLogged: number;
   billableHours: number;
   nonBillableHours: number;
   bugsReported: number;
   leaveDays: number;
+  plannedLeaveDays: number;
+  unplannedLeaveDays: number;
 }
 
 export interface Announcement {
@@ -400,11 +405,25 @@ export class DashboardService {
 
     if (members.length === 0) return [];
 
+    const STATUS_ORDER: Record<string, number> = {
+      TODO: 0, IN_PROGRESS: 1, IN_REVIEW: 2, READY_FOR_QA: 3, IN_QA: 4, QA_DONE: 5,
+    };
+
     return Promise.all(
       members.map(async (m) => {
         const uid = m.user.id;
 
-        const [tasksAssigned, tasksCompleted, billableTimeAgg, nonBillableTimeAgg, bugsReported, leaveAgg] = await Promise.all([
+        const [
+          tasksAssigned,
+          delivered,
+          bugsFixed,
+          billableTimeAgg,
+          nonBillableTimeAgg,
+          bugsReported,
+          plannedLeaveAgg,
+          unplannedLeaveAgg,
+          reworkActivities,
+        ] = await Promise.all([
           this.prisma.workItem.count({
             where: {
               projectId,
@@ -417,6 +436,16 @@ export class DashboardService {
               projectId,
               assigneeId: uid,
               status: BoardStatus.QA_DONE,
+              type: { in: [WorkItemType.TASK, WorkItemType.SUB_TASK, WorkItemType.USER_STORY] },
+              updatedAt: { gte: startDate, lt: endDate },
+            },
+          }),
+          this.prisma.workItem.count({
+            where: {
+              projectId,
+              assigneeId: uid,
+              status: BoardStatus.QA_DONE,
+              type: WorkItemType.BUG,
               updatedAt: { gte: startDate, lt: endDate },
             },
           }),
@@ -448,28 +477,67 @@ export class DashboardService {
             where: {
               userId: uid,
               status: LeaveStatus.APPROVED,
+              isPlanned: true,
               startDate: { lt: endDate },
               endDate:   { gte: startDate },
             },
             _sum: { totalDays: true },
           }),
+          this.prisma.leaveRequest.aggregate({
+            where: {
+              userId: uid,
+              status: LeaveStatus.APPROVED,
+              isPlanned: false,
+              startDate: { lt: endDate },
+              endDate:   { gte: startDate },
+            },
+            _sum: { totalDays: true },
+          }),
+          this.prisma.workItemActivity.findMany({
+            where: {
+              workItem: { projectId, assigneeId: uid },
+              action: 'status_changed',
+              createdAt: { gte: startDate, lt: endDate },
+              oldValue: { not: 'BLOCKED' },
+              newValue: { not: 'BLOCKED' },
+            },
+            select: { workItemId: true, oldValue: true, newValue: true },
+          }),
         ]);
+
+        const reworkedItems = new Set(
+          reworkActivities
+            .filter((a) => {
+              const oldOrder = STATUS_ORDER[a.oldValue ?? ''];
+              const newOrder = STATUS_ORDER[a.newValue ?? ''];
+              return oldOrder !== undefined && newOrder !== undefined && newOrder < oldOrder;
+            })
+            .map((a) => a.workItemId),
+        );
 
         const billableHours    = Number(billableTimeAgg._sum.hours ?? 0);
         const nonBillableHours = Number(nonBillableTimeAgg._sum.hours ?? 0);
+        const tasksCompleted   = delivered + bugsFixed;
+        const plannedLeaveDays   = Number(plannedLeaveAgg._sum.totalDays ?? 0);
+        const unplannedLeaveDays = Number(unplannedLeaveAgg._sum.totalDays ?? 0);
 
         return {
-          userId:         uid,
-          name:           m.user.fullName ?? '—',
-          projectRole:    m.projectRole,
-          profilePhoto:   m.user.profilePhoto ?? null,
+          userId:            uid,
+          name:              m.user.fullName ?? '—',
+          projectRole:       m.projectRole,
+          profilePhoto:      m.user.profilePhoto ?? null,
           tasksAssigned,
           tasksCompleted,
-          hoursLogged:    billableHours + nonBillableHours,
+          delivered,
+          reworked:          reworkedItems.size,
+          bugsFixed,
+          hoursLogged:       billableHours + nonBillableHours,
           billableHours,
           nonBillableHours,
           bugsReported,
-          leaveDays:      leaveAgg._sum.totalDays ?? 0,
+          leaveDays:         plannedLeaveDays + unplannedLeaveDays,
+          plannedLeaveDays,
+          unplannedLeaveDays,
         };
       }),
     );

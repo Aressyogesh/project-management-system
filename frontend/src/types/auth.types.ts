@@ -6,6 +6,7 @@ export interface AuthUser {
   email: string;
   systemRole: SystemRole;
   profilePhoto?: string | null;
+  hasManagementRole?: boolean;
 }
 
 export interface AuthResponse {

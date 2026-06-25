@@ -62,11 +62,16 @@ export interface MemberActivity {
   profilePhoto: string | null;
   tasksAssigned: number;
   tasksCompleted: number;
+  delivered: number;
+  reworked: number;
+  bugsFixed: number;
   hoursLogged: number;
   billableHours: number;
   nonBillableHours: number;
   bugsReported: number;
   leaveDays: number;
+  plannedLeaveDays: number;
+  unplannedLeaveDays: number;
 }
 
 export interface Announcement {

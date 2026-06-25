@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
-import { AuditAction, AuditEntity, User } from '@prisma/client';
+import { AuditAction, AuditEntity, ProjectRole, User } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
 import * as crypto from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
@@ -34,10 +34,15 @@ export class AuthService {
     const accessToken = this.generateAccessToken(user);
     const refreshToken = await this.createRefreshToken(user.id);
 
-    await this.prisma.user.update({
-      where: { id: user.id },
-      data: { lastLoginAt: new Date() },
-    });
+    const [, hasManagementRole] = await Promise.all([
+      this.prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } }),
+      this.prisma.projectMember.count({
+        where: {
+          userId: user.id,
+          projectRole: { in: [ProjectRole.PROJECT_MANAGER, ProjectRole.TEAM_LEAD] },
+        },
+      }).then((n) => n > 0),
+    ]);
 
     this.auditLogs.log({
       userId: user.id,
@@ -55,6 +60,7 @@ export class AuthService {
         email: user.email,
         systemRole: user.systemRole,
         profilePhoto: user.profilePhoto ?? null,
+        hasManagementRole,
       },
     };
   }
