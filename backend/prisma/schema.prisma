@@ -639,7 +639,7 @@ model WorkItem {
   bugStatus            BugStatus?
   module               String?            @db.VarChar(100)
   responsibleUserId    String?
-  billingStatus        BillingStatus?
+  billingStatus        BillingStatus  @default(BILLABLE)
   affectedBuildVersion String?            @db.VarChar(50)
   fixedBuildVersion    String?            @db.VarChar(50)
   reminderType         BugReminderType?   @default(NONE)

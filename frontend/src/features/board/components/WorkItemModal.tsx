@@ -434,7 +434,7 @@ export function WorkItemModal({ item, sprints, members, milestones, canDelete = 
   const [bugReproducibilityLocal, setBugReproducibilityLocal] = useState<BugReproducibility | ''>((item?.bugReproducibility as BugReproducibility) ?? '');
   const [bugModuleLocal, setBugModuleLocal] = useState(item?.module ?? '');
   const [bugResponsibleUserIdLocal, setBugResponsibleUserIdLocal] = useState(item?.responsibleUserId ?? '');
-  const [bugBillingStatusLocal, setBugBillingStatusLocal] = useState<BillingStatus | ''>((item?.billingStatus as BillingStatus) ?? '');
+  const [billingStatusLocal, setBillingStatusLocal] = useState<BillingStatus | ''>((item?.billingStatus as BillingStatus) ?? '');
   const [bugAffectedBuildLocal, setBugAffectedBuildLocal] = useState(item?.affectedBuildVersion ?? '');
   const [bugFixedBuildLocal, setBugFixedBuildLocal] = useState(item?.fixedBuildVersion ?? '');
   const [bugReminderTypeLocal, setBugReminderTypeLocal] = useState<BugReminderType>((item?.reminderType as BugReminderType) ?? 'NONE');
@@ -483,7 +483,7 @@ export function WorkItemModal({ item, sprints, members, milestones, canDelete = 
       setBugReproducibilityLocal((detail.bugReproducibility as BugReproducibility) ?? '');
       setBugModuleLocal(detail.module ?? '');
       setBugResponsibleUserIdLocal(detail.responsibleUserId ?? '');
-      setBugBillingStatusLocal((detail.billingStatus as BillingStatus) ?? '');
+      setBillingStatusLocal((detail.billingStatus as BillingStatus) ?? '');
       setBugAffectedBuildLocal(detail.affectedBuildVersion ?? '');
       setBugFixedBuildLocal(detail.fixedBuildVersion ?? '');
       setBugReminderTypeLocal((detail.reminderType as BugReminderType) ?? 'NONE');
@@ -518,7 +518,6 @@ export function WorkItemModal({ item, sprints, members, milestones, canDelete = 
       bugReproducibility: (bugReproducibilityLocal || undefined) as BugReproducibility | undefined,
       module: bugModuleLocal || undefined,
       responsibleUserId: bugResponsibleUserIdLocal || undefined,
-      billingStatus: (bugBillingStatusLocal || undefined) as BillingStatus | undefined,
       affectedBuildVersion: bugAffectedBuildLocal || undefined,
       fixedBuildVersion: bugFixedBuildLocal || undefined,
       reminderType: bugReminderTypeLocal,
@@ -1529,6 +1528,22 @@ export function WorkItemModal({ item, sprints, members, milestones, canDelete = 
                 />
               </SidebarRow>
 
+              {/* Billing */}
+              <SidebarRow label={<span>Billing <span className="text-red-500">*</span></span>}>
+                <select
+                  value={billingStatusLocal}
+                  onChange={(e) => {
+                    setBillingStatusLocal(e.target.value as BillingStatus);
+                    updateMut.mutate({ billingStatus: e.target.value as BillingStatus });
+                  }}
+                  className="input-sm w-full text-xs"
+                >
+                  <option value="">— select —</option>
+                  <option value="BILLABLE">Billable</option>
+                  <option value="NON_BILLABLE">Non-Billable</option>
+                </select>
+              </SidebarRow>
+
               {/* Start Date */}
               <SidebarRow label="Start Date">
                 <input
@@ -1820,19 +1835,6 @@ export function WorkItemModal({ item, sprints, members, milestones, canDelete = 
                     </select>
                   </SidebarRow>
 
-                  {/* Billing Status */}
-                  <SidebarRow label="Billing">
-                    <select
-                      value={bugBillingStatusLocal}
-                      onChange={(e) => setBugBillingStatusLocal(e.target.value as BillingStatus)}
-                      className="input-sm w-full text-xs"
-                    >
-                      <option value="">— select —</option>
-                      <option value="BILLABLE">Billable</option>
-                      <option value="NON_BILLABLE">Non-Billable</option>
-                    </select>
-                  </SidebarRow>
-
                   {/* Affected Build Version */}
                   <SidebarRow label="Affected Build">
                     <input
@@ -2029,6 +2031,7 @@ export function CreateWorkItemModal({
   const [parentError, setParentError] = useState(false);
   const [dateError, setDateError] = useState('');
   const [estHoursError, setEstHoursError] = useState(false);
+  const [billingStatusError, setBillingStatusError] = useState(false);
   const [bugEnvError, setBugEnvError] = useState(false);
 
   function handleSubmit() {
@@ -2054,6 +2057,11 @@ export function CreateWorkItemModal({
       return;
     }
     setEstHoursError(false);
+    if (!billingStatus) {
+      setBillingStatusError(true);
+      return;
+    }
+    setBillingStatusError(false);
     if (type === 'BUG' && !bugFlag) {
       setBugEnvError(true);
       return;
@@ -2381,6 +2389,19 @@ export function CreateWorkItemModal({
               />
               {estHoursError && <p className="text-xs text-red-500 mt-1">Estimated hours is required</p>}
             </div>
+            <div>
+              <label className={labelCls}>Billing <span className="text-red-500">*</span></label>
+              <select
+                value={billingStatus}
+                onChange={(e) => { setBillingStatus(e.target.value as BillingStatus); if (e.target.value) setBillingStatusError(false); }}
+                className={`${inputCls} ${billingStatusError ? 'border-red-500 focus:ring-red-500' : ''}`}
+              >
+                <option value="">— select —</option>
+                <option value="BILLABLE">Billable</option>
+                <option value="NON_BILLABLE">Non-Billable</option>
+              </select>
+              {billingStatusError && <p className="text-xs text-red-500 mt-1">Billing is required</p>}
+            </div>
           </div>
 
           {/* Bug-specific fields */}
@@ -2451,14 +2472,6 @@ export function CreateWorkItemModal({
                     <option value="UNABLE">Unable to Reproduce</option>
                     <option value="NEVER_TRIED">Never Tried</option>
                     <option value="NOT_APPLICABLE">Not Applicable</option>
-                  </select>
-                </div>
-                <div>
-                  <label className={labelCls}>Billing</label>
-                  <select value={billingStatus} onChange={(e) => setBillingStatus(e.target.value as BillingStatus)} className={inputCls}>
-                    <option value="">— select —</option>
-                    <option value="BILLABLE">Billable</option>
-                    <option value="NON_BILLABLE">Non-Billable</option>
                   </select>
                 </div>
                 <div>
