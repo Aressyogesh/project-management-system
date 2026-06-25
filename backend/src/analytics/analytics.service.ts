@@ -83,24 +83,14 @@ function computeDependencyAgile(
 }
 
 function computeAttendance(
-  leaveRequests: { status: string; startDate: Date; endDate: Date }[],
-  periodStart: Date,
-  periodEnd: Date,
+  leaveRequests: { status: string; totalDays: number }[],
 ): number {
-  // Rejected leave = absence that was not approved
   const hasRejected = leaveRequests.some((r) => r.status === 'REJECTED');
   if (hasRejected) return 0;
 
-  // Count approved leave days that fall within the KPI period
-  let approvedDays = 0;
-  for (const r of leaveRequests.filter((r) => r.status === 'APPROVED')) {
-    const overlapStart = r.startDate > periodStart ? r.startDate : periodStart;
-    const overlapEnd = r.endDate < periodEnd ? r.endDate : new Date(periodEnd.getTime() - 1);
-    if (overlapStart <= overlapEnd) {
-      approvedDays +=
-        Math.round((overlapEnd.getTime() - overlapStart.getTime()) / (24 * 60 * 60 * 1000)) + 1;
-    }
-  }
+  const approvedDays = leaveRequests
+    .filter((r) => r.status === 'APPROVED')
+    .reduce((s, r) => s + r.totalDays, 0);
 
   if (approvedDays > 1.5) return 0;
   if (approvedDays > 1) return 3;
@@ -259,7 +249,7 @@ export class AnalyticsService {
           startDate: { lte: end },
           endDate: { gte: start },
         },
-        select: { status: true, startDate: true, endDate: true },
+        select: { status: true, totalDays: true },
       }),
       // Learning logs
       this.prisma.learningLog.findMany({
@@ -347,7 +337,7 @@ export class AnalyticsService {
     const positiveBehaviour = getManual('positive_behaviour');
 
     // Self-service
-    const attendance = computeAttendance(leaveRequests as { status: string; startDate: Date; endDate: Date }[], start, end);
+    const attendance = computeAttendance(leaveRequests as { status: string; totalDays: number }[]);
     // LEARNING assignment approved → 5; pending → 0; none → self-log fallback
     const learningVelocity = upskillLearningApproved
       ? 5
