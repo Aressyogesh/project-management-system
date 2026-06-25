@@ -498,7 +498,7 @@ export function WorkItemModal({ item, sprints, members, milestones, canDelete = 
   const dodChanged = dodDraft !== (detail?.definitionOfDone ?? '');
 
   function handleClose() {
-    if (detail?.type === 'BUG' && (!detail?.severity || !detail?.bugClassification)) {
+    if (detail?.type === 'BUG' && (!detail?.severity || !detail?.bugClassification || !detail?.bugFlag)) {
       setShowBugCloseGuard(true);
       return;
     }
@@ -508,6 +508,7 @@ export function WorkItemModal({ item, sprints, members, milestones, canDelete = 
   function saveBugDetails() {
     if (!bugSeverityLocal) { setBugDetailError('Severity is required'); return; }
     if (!bugClassificationLocal) { setBugDetailError('Classification is required'); return; }
+    if (!bugFlagLocal) { setBugDetailError('Environment is required'); return; }
     setBugDetailError('');
     updateMut.mutate({
       severity: bugSeverityLocal as BugSeverity,
@@ -752,7 +753,7 @@ export function WorkItemModal({ item, sprints, members, milestones, canDelete = 
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
               </svg>
               <p className="text-sm text-red-700 font-semibold">
-                Severity and Classification are required. Please fill in both fields and click <span className="underline">Save</span> before closing.
+                Severity, Classification and Environment are required. Please fill in all required fields and click <span className="underline">Save</span> before closing.
               </p>
             </div>
             <button
@@ -1764,16 +1765,16 @@ export function WorkItemModal({ item, sprints, members, milestones, canDelete = 
                     </select>
                   </SidebarRow>
 
-                  {/* Flag */}
-                  <SidebarRow label="Flag">
+                  {/* Environment (formerly Flag) */}
+                  <SidebarRow label={<>Environment <span className="text-red-500">*</span></>}>
                     <select
                       value={bugFlagLocal}
-                      onChange={(e) => setBugFlagLocal(e.target.value as BugFlag)}
-                      className="input-sm w-full text-xs"
+                      onChange={(e) => { setBugFlagLocal(e.target.value as BugFlag); setBugDetailError(''); }}
+                      className={`input-sm w-full text-xs ${!bugFlagLocal ? 'border-red-300' : ''}`}
                     >
                       <option value="">— select —</option>
-                      <option value="INTERNAL">Internal</option>
-                      <option value="EXTERNAL">External</option>
+                      <option value="INTERNAL">Development</option>
+                      <option value="EXTERNAL">Production</option>
                     </select>
                   </SidebarRow>
 
@@ -1869,17 +1870,6 @@ export function WorkItemModal({ item, sprints, members, milestones, canDelete = 
                     </select>
                   </SidebarRow>
 
-                  {/* Environment */}
-                  <SidebarRow label="Environment">
-                    <input
-                      type="text"
-                      value={bugEnvironmentLocal}
-                      onChange={(e) => setBugEnvironmentLocal(e.target.value)}
-                      placeholder="e.g. Production, Chrome 124"
-                      className="input-sm w-full text-xs"
-                    />
-                  </SidebarRow>
-
                   {/* Steps to Reproduce */}
                   <SidebarRow label="Steps to Repro">
                     <textarea
@@ -1969,7 +1959,7 @@ export function CreateWorkItemModal({
   // Bug fields
   const [severity, setSeverity] = useState<BugSeverity | ''>('');
   const [bugClassification, setBugClassification] = useState<BugClassification | ''>('');
-  const [environment, setEnvironment] = useState('');
+  const [environment] = useState('');
   const [stepsToRepro, setStepsToRepro] = useState(prefill?.stepsToRepro ?? '');
   const [bugFlag, setBugFlag] = useState<BugFlag | ''>('');
   const [bugReproducibility, setBugReproducibility] = useState<BugReproducibility | ''>('');
@@ -2038,6 +2028,8 @@ export function CreateWorkItemModal({
   const [assigneeError, setAssigneeError] = useState(false);
   const [parentError, setParentError] = useState(false);
   const [dateError, setDateError] = useState('');
+  const [estHoursError, setEstHoursError] = useState(false);
+  const [bugEnvError, setBugEnvError] = useState(false);
 
   function handleSubmit() {
     if (!title.trim()) return;
@@ -2057,6 +2049,16 @@ export function CreateWorkItemModal({
       return;
     }
     setDateError('');
+    if (!estimatedHours) {
+      setEstHoursError(true);
+      return;
+    }
+    setEstHoursError(false);
+    if (type === 'BUG' && !bugFlag) {
+      setBugEnvError(true);
+      return;
+    }
+    setBugEnvError(false);
     createMut.mutate({
       type,
       title: title.trim(),
@@ -2371,8 +2373,13 @@ export function CreateWorkItemModal({
               <input type="number" min={0} value={storyPoints} onChange={(e) => setStoryPoints(e.target.value)} className={inputCls} />
             </div>
             <div>
-              <label className={labelCls}>Est. Hours</label>
-              <input type="number" min={0} step={0.5} value={estimatedHours} onChange={(e) => setEstimatedHours(e.target.value)} className={inputCls} />
+              <label className={labelCls}>Est. Hours <span className="text-red-500">*</span></label>
+              <input
+                type="number" min={0} step={0.5} value={estimatedHours}
+                onChange={(e) => { setEstimatedHours(e.target.value); if (e.target.value) setEstHoursError(false); }}
+                className={`${inputCls} ${estHoursError ? 'border-red-500 focus:ring-red-500' : ''}`}
+              />
+              {estHoursError && <p className="text-xs text-red-500 mt-1">Estimated hours is required</p>}
             </div>
           </div>
 
@@ -2422,12 +2429,17 @@ export function CreateWorkItemModal({
                   </select>
                 </div>
                 <div>
-                  <label className={labelCls}>Flag</label>
-                  <select value={bugFlag} onChange={(e) => setBugFlag(e.target.value as BugFlag)} className={inputCls}>
+                  <label className={labelCls}>Environment <span className="text-red-500">*</span></label>
+                  <select
+                    value={bugFlag}
+                    onChange={(e) => { setBugFlag(e.target.value as BugFlag); if (e.target.value) setBugEnvError(false); }}
+                    className={`${inputCls} ${bugEnvError ? 'border-red-500 focus:ring-red-500' : ''}`}
+                  >
                     <option value="">— select —</option>
-                    <option value="INTERNAL">Internal</option>
-                    <option value="EXTERNAL">External</option>
+                    <option value="INTERNAL">Development</option>
+                    <option value="EXTERNAL">Production</option>
                   </select>
+                  {bugEnvError && <p className="text-xs text-red-500 mt-1">Environment is required</p>}
                 </div>
                 <div>
                   <label className={labelCls}>Reproducibility</label>
@@ -2489,10 +2501,6 @@ export function CreateWorkItemModal({
               <div>
                 <label className={labelCls}>Module</label>
                 <input type="text" value={module} onChange={(e) => setModule(e.target.value)} placeholder="e.g. Auth, Dashboard" className={inputCls} />
-              </div>
-              <div>
-                <label className={labelCls}>Environment</label>
-                <input type="text" value={environment} onChange={(e) => setEnvironment(e.target.value)} placeholder="e.g. Production, Chrome 124" className={inputCls} />
               </div>
               <div>
                 <label className={labelCls}>Steps to Reproduce</label>

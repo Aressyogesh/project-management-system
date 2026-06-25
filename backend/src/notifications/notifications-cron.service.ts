@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
-import { BoardStatus, LeaveStatus, MilestoneStatus, ProjectRole, ProjectStatus, SystemRole, WorkItemType } from '@prisma/client';
+import { BoardStatus, BugReminderType, LeaveStatus, MilestoneStatus, ProjectRole, ProjectStatus, SystemRole, WorkItemType } from '@prisma/client';
 import { EmailService } from '../email/email.service';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -91,6 +91,84 @@ export class NotificationsCronService {
     }
 
     this.logger.log(`Deadline reminders sent to ${grouped.size} assignee(s)`);
+  }
+
+  @Cron('0 9 * * *', { name: 'bug-reminders' })
+  async handleBugReminders(): Promise<void> {
+    this.logger.log('Running bug reminder cron');
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const addDays = (d: Date, n: number) => { const r = new Date(d); r.setDate(r.getDate() + n); return r; };
+    const isSameDay = (a: Date, b: Date) =>
+      a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+
+    const bugs = await this.prisma.workItem.findMany({
+      where: {
+        type: WorkItemType.BUG,
+        reminderType: { not: BugReminderType.NONE },
+        status: { not: BoardStatus.QA_DONE },
+        assigneeId: { not: null },
+        assignee: { isActive: true },
+      },
+      include: {
+        assignee: { select: { fullName: true, email: true } },
+        project: { select: { name: true } },
+      },
+    });
+
+    let sent = 0;
+    for (const bug of bugs) {
+      if (!bug.assignee?.email) continue;
+
+      const due = bug.dueDate ? new Date(bug.dueDate) : null;
+      const shouldSend =
+        bug.reminderType === BugReminderType.DAILY ||
+        (bug.reminderType === BugReminderType.ONE_DAY   && due && isSameDay(due, addDays(today, 1))) ||
+        (bug.reminderType === BugReminderType.TWO_DAYS  && due && isSameDay(due, addDays(today, 2))) ||
+        (bug.reminderType === BugReminderType.THREE_DAYS && due && isSameDay(due, addDays(today, 3)));
+
+      if (!shouldSend) continue;
+
+      const reminderLabel =
+        bug.reminderType === BugReminderType.DAILY      ? 'Daily reminder' :
+        bug.reminderType === BugReminderType.ONE_DAY    ? '1 day before due date' :
+        bug.reminderType === BugReminderType.TWO_DAYS   ? '2 days before due date' :
+                                                          '3 days before due date';
+
+      const dueStr = due ? due.toISOString().split('T')[0] : '—';
+
+      const body = `
+        <p style="margin:0 0 16px;color:#374151;font-size:15px;">
+          Hi ${bug.assignee.fullName}, this is a <strong>${reminderLabel}</strong> for a bug assigned to you.
+        </p>
+        <table style="width:100%;border-collapse:collapse;font-size:14px;margin-bottom:16px;">
+          <tbody>
+            <tr><td style="padding:8px 12px;border-bottom:1px solid #f3f4f6;color:#6b7280;width:130px;">Bug</td><td style="padding:8px 12px;border-bottom:1px solid #f3f4f6;font-weight:600;">${bug.title}</td></tr>
+            <tr><td style="padding:8px 12px;border-bottom:1px solid #f3f4f6;color:#6b7280;">Project</td><td style="padding:8px 12px;border-bottom:1px solid #f3f4f6;">${bug.project.name}</td></tr>
+            <tr><td style="padding:8px 12px;color:#6b7280;">Due Date</td><td style="padding:8px 12px;color:#dc2626;font-weight:600;">${dueStr}</td></tr>
+          </tbody>
+        </table>
+        <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:14px 16px;">
+          <p style="margin:0;color:#991b1b;font-size:13px;">
+            Please action this bug in PMS to keep the project on track.
+          </p>
+        </div>`;
+
+      try {
+        await this.email.sendEmail(
+          bug.assignee.email,
+          `Bug Reminder: ${bug.title}`,
+          this.email.wrapHtml('Bug Reminder', body),
+        );
+        sent++;
+      } catch (err) {
+        this.logger.error(`Failed to send bug reminder to ${bug.assignee.email}: ${(err as Error).message}`);
+      }
+    }
+
+    this.logger.log(`Bug reminder cron complete — ${sent} email(s) sent`);
   }
 
   @Cron('0 16 * * 5', { name: 'timesheet-reminders' })
