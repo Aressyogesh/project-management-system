@@ -125,6 +125,14 @@ function IconActivity() {
     </svg>
   );
 }
+function IconAnnouncements() {
+  return (
+    <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+        d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" />
+    </svg>
+  );
+}
 
 interface NavItem {
   path: string;
@@ -144,6 +152,7 @@ const navItems: NavItem[] = [
   { path: '/leave-logs',      label: 'Leaves Management', Icon: IconLeave },
   { path: '/kpi',             label: 'KPI',             Icon: IconKpi },
   { path: '/reports',         label: 'Reports',         Icon: IconReports },
+  { path: '/announcements',   label: 'Announcements',   Icon: IconAnnouncements },
   { path: '/activity',        label: 'Activity Log',    Icon: IconActivity,      roles: ['SUPER_USER', 'ADMIN'] },
 ];
 
@@ -172,7 +181,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
     if (item.roles && !item.roles.includes(user?.systemRole as SystemRole)) return false;
     if (item.path === '/kpi')        return canSee('KPI');
     if (item.path === '/reports')    return canSee('REPORTS');
-    if (item.path === '/leave-logs') return user?.systemRole !== 'EMPLOYEE' || user?.hasManagementRole === true;
+    if (item.path === '/leave-logs') return user?.systemRole === 'SUPER_USER' || user?.systemRole === 'ADMIN' || user?.hasPmRole === true;
     return true;
   });
 

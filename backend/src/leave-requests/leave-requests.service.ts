@@ -23,9 +23,18 @@ export class LeaveRequestsService {
   ) {}
 
   async create(requestingUserId: string, systemRole: SystemRole, dto: CreateLeaveRequestDto) {
-    const targetUserId = dto.targetUserId ?? requestingUserId;
+    const isAdmin = systemRole === SystemRole.SUPER_USER || systemRole === SystemRole.ADMIN;
 
-    if (targetUserId !== requestingUserId) {
+    // Only admins and project managers can record leaves
+    if (!isAdmin) {
+      const isPm = await this.isUserAPm(requestingUserId);
+      if (!isPm) throw new ForbiddenException('Only admins and project managers can record leaves');
+    }
+
+    if (!dto.targetUserId) throw new BadRequestException('targetUserId is required');
+    const targetUserId = dto.targetUserId;
+
+    if (!isAdmin) {
       await this.assertCanManage(requestingUserId, systemRole, targetUserId);
     }
 
@@ -43,7 +52,6 @@ export class LeaveRequestsService {
     const fullDays = Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
     const totalDays = dto.isHalfDay ? 0.5 : fullDays;
 
-    // Check for overlapping pending or approved leaves
     const overlap = await this.prisma.leaveRequest.findFirst({
       where: {
         userId: targetUserId,
@@ -59,18 +67,6 @@ export class LeaveRequestsService {
       );
     }
 
-    // Block leave on public holidays
-    const holidays = await this.prisma.holiday.findMany({
-      where: { date: { gte: start, lte: end } },
-      select: { name: true },
-    });
-    if (holidays.length > 0) {
-      const names = holidays.map((h) => h.name).join(', ');
-      throw new BadRequestException(
-        `Leave period includes public holiday(s): ${names}. Leave cannot be applied on holidays.`,
-      );
-    }
-
     const leave = await this.prisma.leaveRequest.create({
       data: {
         userId: targetUserId,
@@ -81,6 +77,9 @@ export class LeaveRequestsService {
         isHalfDay: dto.isHalfDay ?? false,
         isPlanned: dto.isPlanned ?? true,
         reason: dto.reason ?? null,
+        status: LeaveStatus.APPROVED,
+        approvedById: requestingUserId,
+        approvedAt: new Date(),
       },
       include: LEAVE_INCLUDE,
     });
@@ -90,9 +89,30 @@ export class LeaveRequestsService {
       entity: AuditEntity.LEAVE_REQUEST,
       entityId: leave.id,
       entityTitle: `${dto.type} leave (${dto.startDate} — ${dto.endDate})`,
-      metadata: { type: dto.type, totalDays, isHalfDay: dto.isHalfDay ?? false, isPlanned: dto.isPlanned ?? true, onBehalfOf: targetUserId !== requestingUserId ? targetUserId : undefined },
+      metadata: { type: dto.type, totalDays, isHalfDay: dto.isHalfDay ?? false, isPlanned: dto.isPlanned ?? true, recordedFor: targetUserId },
     });
     return leave;
+  }
+
+  async getManageableMembers(requestingUserId: string, systemRole: SystemRole): Promise<{ id: string; fullName: string }[]> {
+    const isAdmin = systemRole === SystemRole.SUPER_USER || systemRole === SystemRole.ADMIN;
+
+    if (isAdmin) {
+      return this.prisma.user.findMany({
+        where: { isActive: true },
+        select: { id: true, fullName: true },
+        orderBy: { fullName: 'asc' },
+      });
+    }
+
+    const teamMemberIds = await this.getPmTeamMemberIds(requestingUserId);
+    if (teamMemberIds.length === 0) return [];
+
+    return this.prisma.user.findMany({
+      where: { id: { in: [requestingUserId, ...teamMemberIds] }, isActive: true },
+      select: { id: true, fullName: true },
+      orderBy: { fullName: 'asc' },
+    });
   }
 
   async findAll(
@@ -225,6 +245,13 @@ export class LeaveRequestsService {
       entityTitle: `${cancelled.type} leave cancelled`,
     });
     return cancelled;
+  }
+
+  private async isUserAPm(userId: string): Promise<boolean> {
+    const count = await this.prisma.projectMember.count({
+      where: { userId, projectRole: ProjectRole.PROJECT_MANAGER },
+    });
+    return count > 0;
   }
 
   private async assertCanManage(actorId: string, systemRole: SystemRole, targetUserId: string) {

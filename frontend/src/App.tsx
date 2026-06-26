@@ -25,6 +25,7 @@ import { LeavePage } from './features/leave/pages/LeavePage';
 import { EditProfilePage } from './features/profile/pages/EditProfilePage';
 import { ActivityLogPage } from './features/activity/ActivityLogPage';
 import { UpskillPage } from './features/upskill/pages/UpskillPage';
+import { AnnouncementsPage } from './features/announcements/pages/AnnouncementsPage';
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 30_000 } },
@@ -91,6 +92,9 @@ export default function App() {
 
               {/* Upskill */}
               <Route path="/upskill" element={<UpskillPage />} />
+
+              {/* Announcements */}
+              <Route path="/announcements" element={<AnnouncementsPage />} />
             </Route>
           </Route>
 

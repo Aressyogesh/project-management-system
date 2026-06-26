@@ -48,7 +48,7 @@ export function ProjectRiskScoreCard({ activity }: Props) {
 
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 pt-1">
         <Metric label="Members"       value={activity.length} />
-        <Metric label="Tasks Assigned" value={totalAssigned} />
+        <Metric label="Work Items Assigned" value={totalAssigned} />
         <Metric
           label="Completion"
           value={`${completionPct}%`}

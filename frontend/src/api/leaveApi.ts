@@ -34,6 +34,9 @@ export interface CreateLeaveRequestDto {
 }
 
 export const leaveApi = {
+  getMembers: (): Promise<{ id: string; fullName: string }[]> =>
+    apiClient.get('/leave-requests/members').then((r) => r.data),
+
   create: (dto: CreateLeaveRequestDto): Promise<LeaveRequest> =>
     apiClient.post('/leave-requests', dto).then((r) => r.data),
 

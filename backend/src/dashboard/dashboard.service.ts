@@ -1,5 +1,5 @@
 import { ForbiddenException, Injectable } from '@nestjs/common';
-import { BillingStatus, BoardStatus, LeaveStatus, MilestoneStatus, ProjectRole, ProjectStatus, SystemRole, TaskStatus, WorkItemType } from '@prisma/client';
+import { BillingStatus, BoardStatus, LeaveStatus, MilestoneStatus, ProjectRole, ProjectStatus, SystemRole, WorkItemType } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 
 export interface StatCard {
@@ -100,54 +100,59 @@ export class DashboardService {
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
 
-    // Scope to projects where the user holds a management role (PM or TL), regardless of SystemRole.
-    // A SUPER_USER/ADMIN who is only a Developer in other projects sees their PM/TL project(s) only.
-    // Anyone with no PM/TL memberships gets global stats (SUPER_USER/ADMIN) or personal stats (EMPLOYEE).
-    const mgmtRows = await this.prisma.projectMember.findMany({
-      where: {
-        userId,
-        projectRole: { in: [ProjectRole.PROJECT_MANAGER, ProjectRole.TEAM_LEAD] },
-      },
-      select: { projectId: true },
-    });
-    const scopedProjectIds: string[] | null = mgmtRows.length > 0 ? mgmtRows.map((r) => r.projectId) : null;
+    // SUPER_USER and ADMIN always see global (unscoped) stats regardless of any project memberships.
+    // EMPLOYEE is scoped to projects where they hold PM or TL role; if they hold no such role they
+    // get a personal (self-only) view.
+    let scopedProjectIds: string[] | null = null;
+    if (role === SystemRole.EMPLOYEE) {
+      const mgmtRows = await this.prisma.projectMember.findMany({
+        where: { userId, projectRole: { in: [ProjectRole.PROJECT_MANAGER, ProjectRole.TEAM_LEAD] } },
+        select: { projectId: true },
+      });
+      scopedProjectIds = mgmtRows.length > 0 ? mgmtRows.map((r) => r.projectId) : null;
+    }
+
+    const isPersonalView = role === SystemRole.EMPLOYEE && scopedProjectIds === null;
 
     const projectActiveWhere = scopedProjectIds !== null
       ? { id: { in: scopedProjectIds }, status: ProjectStatus.ACTIVE }
       : { status: ProjectStatus.ACTIVE };
 
-    // Scalar project-id filter — always restrict to ACTIVE projects for counts
-    const taskWhere: any = scopedProjectIds !== null
+    const workItemWhere: any = scopedProjectIds !== null
       ? { projectId: { in: scopedProjectIds }, project: { status: ProjectStatus.ACTIVE } }
       : { project: { status: ProjectStatus.ACTIVE } };
 
     const [
       activeUserCount,
       activeProjectCount,
+      memberProjectCount,
       rawMyTasks,
-      notStartedCount,
-      inProgressCount,
-      onReviewCount,
-      completedCount,
       totalWorkItems,
       completedWorkItems,
+      todoCount,
+      inProgressCount,
+      inReviewCount,
       todayWorkItem,
       activeProjects,
-      myProjectCount,
     ] = await Promise.all([
-      // Distinct active team members across scoped active projects; all active users for global admin
+      // Active users: distinct team members in scoped projects, or all active users globally
       scopedProjectIds !== null
         ? this.prisma.projectMember
             .findMany({ where: { projectId: { in: scopedProjectIds }, project: { status: ProjectStatus.ACTIVE } }, select: { userId: true }, distinct: ['userId'] })
             .then((rows) => rows.length)
         : this.prisma.user.count({ where: { isActive: true } }),
-      scopedProjectIds !== null
-        ? Promise.resolve(scopedProjectIds.length)
-        : this.prisma.project.count({ where: { status: ProjectStatus.ACTIVE } }),
+
+      // Active project count (respects scoping; SUPER_USER/ADMIN always global active projects)
+      this.prisma.project.count({ where: projectActiveWhere }),
+
+      // Projects the user is a member of — only needed for personal employee view
+      isPersonalView
+        ? this.prisma.project.count({ where: { status: ProjectStatus.ACTIVE, members: { some: { userId } } } })
+        : Promise.resolve(0),
+
+      // Current user's own assigned open work items (used for myTasks response field)
       this.prisma.workItem.findMany({
-        where: scopedProjectIds !== null
-          ? { projectId: { in: scopedProjectIds }, project: { status: ProjectStatus.ACTIVE }, assigneeId: { not: null }, status: { not: BoardStatus.QA_DONE } }
-          : { assigneeId: userId, project: { status: ProjectStatus.ACTIVE }, status: { not: BoardStatus.QA_DONE } },
+        where: { assigneeId: userId, project: { status: ProjectStatus.ACTIVE }, status: { not: BoardStatus.QA_DONE } },
         select: {
           id: true, title: true, priority: true, status: true, dueDate: true,
           assignee: { select: { fullName: true } },
@@ -156,17 +161,26 @@ export class DashboardService {
         orderBy: { createdAt: 'desc' },
         take: 10,
       }),
-      this.prisma.task.count({ where: { status: TaskStatus.NOT_STARTED, ...taskWhere } }),
-      this.prisma.task.count({ where: { status: TaskStatus.IN_PROGRESS, ...taskWhere } }),
-      this.prisma.task.count({ where: { status: TaskStatus.ON_REVIEW, ...taskWhere } }),
-      this.prisma.task.count({ where: { status: TaskStatus.COMPLETED, ...taskWhere } }),
-      this.prisma.workItem.count({ where: { ...taskWhere } }),
-      this.prisma.workItem.count({ where: { status: BoardStatus.QA_DONE, ...taskWhere } }),
+
+      // Total work items across scope (WorkItem model only — source of truth for board tasks)
+      this.prisma.workItem.count({ where: workItemWhere }),
+
+      // Completed work items (QA_DONE) across scope
+      this.prisma.workItem.count({ where: { ...workItemWhere, status: BoardStatus.QA_DONE } }),
+
+      // Tasks progress breakdown (WorkItem statuses)
+      this.prisma.workItem.count({ where: { ...workItemWhere, status: BoardStatus.TODO } }),
+      this.prisma.workItem.count({ where: { ...workItemWhere, status: { in: [BoardStatus.IN_PROGRESS, BoardStatus.BLOCKED] } } }),
+      this.prisma.workItem.count({ where: { ...workItemWhere, status: { in: [BoardStatus.IN_REVIEW, BoardStatus.READY_FOR_QA, BoardStatus.IN_QA] } } }),
+
+      // Today's due work item for the requesting user
       this.prisma.workItem.findFirst({
-        where: { assigneeId: userId, dueDate: { gte: today, lt: tomorrow }, status: { not: BoardStatus.QA_DONE }, ...taskWhere },
+        where: { assigneeId: userId, dueDate: { gte: today, lt: tomorrow }, status: { not: BoardStatus.QA_DONE }, ...workItemWhere },
         select: { title: true, status: true },
         orderBy: { dueDate: 'asc' },
       }),
+
+      // Active projects list for team-performance calculation
       this.prisma.project.findMany({
         where: projectActiveWhere,
         select: {
@@ -174,9 +188,6 @@ export class DashboardService {
           workItems: { where: { status: BoardStatus.QA_DONE }, select: { id: true } },
         },
       }),
-      (role === SystemRole.SUPER_USER || role === SystemRole.ADMIN)
-        ? this.prisma.project.count()
-        : this.prisma.project.count({ where: { members: { some: { userId } } } }),
     ]);
 
     const myTasks: MyTask[] = rawMyTasks.map((t) => ({
@@ -189,33 +200,24 @@ export class DashboardService {
       dueDate: t.dueDate ? t.dueDate.toISOString() : null,
     }));
 
-    const totalTaskCount = notStartedCount + inProgressCount + onReviewCount + completedCount + totalWorkItems;
-
-    // EMPLOYEE with no PM/TL role → personal cards; everyone else → management cards
-    // For management cards: show the user's own allocated project count when they are project members,
-    // otherwise fall back to total active projects (pure super admin with no memberships).
-    const projectCardValue = myProjectCount > 0 ? myProjectCount : activeProjectCount;
-    const projectCardLabel = myProjectCount > 0 ? 'My Projects' : 'Active Projects';
-
-    const cards: StatCard[] =
-      role === SystemRole.EMPLOYEE && scopedProjectIds === null
-        ? [
-            { label: 'My Projects',   value: myProjectCount,         change: 0, trend: 'up', color: 'green'  },
-            { label: 'My Tasks',      value: rawMyTasks.length,      change: 0, trend: 'up', color: 'blue'   },
-            { label: 'Assigned To Me',value: rawMyTasks.length,      change: 0, trend: 'up', color: 'purple' },
-            { label: 'Completed',     value: rawMyTasks.filter((t) => t.status === BoardStatus.QA_DONE).length, change: 0, trend: 'up', color: 'rose' },
-          ]
-        : [
-            { label: projectCardLabel,  value: projectCardValue,                     change: 0, trend: 'up', color: 'green'  },
-            { label: 'Total Tasks',     value: totalTaskCount,                       change: 0, trend: 'up', color: 'blue'   },
-            { label: scopedProjectIds !== null ? 'Team Members' : 'Total Users', value: activeUserCount, change: 0, trend: 'up', color: 'purple' },
-            { label: 'Completed Tasks', value: completedCount + completedWorkItems,  change: 0, trend: 'up', color: 'rose'   },
-          ];
+    const cards: StatCard[] = isPersonalView
+      ? [
+          { label: 'All Projects',   value: memberProjectCount,  change: 0, trend: 'up', color: 'green'  },
+          { label: 'My Tasks',       value: rawMyTasks.length,   change: 0, trend: 'up', color: 'blue'   },
+          { label: 'Assigned To Me', value: rawMyTasks.length,   change: 0, trend: 'up', color: 'purple' },
+          { label: 'Completed',      value: completedWorkItems,  change: 0, trend: 'up', color: 'rose'   },
+        ]
+      : [
+          { label: 'All Projects',   value: activeProjectCount,  change: 0, trend: 'up', color: 'green'  },
+          { label: 'Total Tasks',    value: totalWorkItems,       change: 0, trend: 'up', color: 'blue'   },
+          { label: scopedProjectIds !== null ? 'Team Members' : 'Total Users', value: activeUserCount, change: 0, trend: 'up', color: 'purple' },
+          { label: 'Completed Tasks',value: completedWorkItems,  change: 0, trend: 'up', color: 'rose'   },
+        ];
 
     return {
       cards,
       activityData: await this.buildActivityData(undefined, scopedProjectIds ?? undefined),
-      tasksProgress: { notStarted: notStartedCount, inProgress: inProgressCount, onReview: onReviewCount, completed: completedCount },
+      tasksProgress: { notStarted: todoCount, inProgress: inProgressCount, onReview: inReviewCount, completed: completedWorkItems },
       myTasks,
       todayTask: todayWorkItem
         ? { name: todayWorkItem.title, progress: todayWorkItem.status === BoardStatus.IN_REVIEW || todayWorkItem.status === BoardStatus.READY_FOR_QA || todayWorkItem.status === BoardStatus.IN_QA ? 75 : 50 }
@@ -428,7 +430,6 @@ export class DashboardService {
             where: {
               projectId,
               assigneeId: uid,
-              type: { in: [WorkItemType.TASK, WorkItemType.SUB_TASK, WorkItemType.BUG, WorkItemType.USER_STORY] },
             },
           }),
           this.prisma.workItem.count({
@@ -436,7 +437,7 @@ export class DashboardService {
               projectId,
               assigneeId: uid,
               status: BoardStatus.QA_DONE,
-              type: { in: [WorkItemType.TASK, WorkItemType.SUB_TASK, WorkItemType.USER_STORY] },
+              type: { in: [WorkItemType.EPIC, WorkItemType.TASK, WorkItemType.SUB_TASK, WorkItemType.USER_STORY] },
               updatedAt: { gte: startDate, lt: endDate },
             },
           }),

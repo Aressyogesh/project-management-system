@@ -436,7 +436,6 @@ export class AnalyticsService {
           this.prisma.workItem.count({
             where: {
               assigneeId: user.id,
-              type: WorkItemType.USER_STORY,
               status: BoardStatus.QA_DONE,
               completedAt: { gte: start, lt: end },
               projectId: { in: activeProjectIds },
@@ -460,7 +459,6 @@ export class AnalyticsService {
           this.prisma.workItem.count({
             where: {
               assigneeId: user.id,
-              type: WorkItemType.USER_STORY,
               projectId: { in: activeProjectIds },
             },
           }),

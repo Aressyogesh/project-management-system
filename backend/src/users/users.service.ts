@@ -179,16 +179,24 @@ export class UsersService {
   }
 
   async getProfile(userId: string) {
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-      select: {
-        id: true, fullName: true, email: true,
-        profilePhoto: true, systemRole: true,
-        phone: true, joinDate: true,
-      },
-    });
+    const [user, pmCount, mgmtCount] = await Promise.all([
+      this.prisma.user.findUnique({
+        where: { id: userId },
+        select: {
+          id: true, fullName: true, email: true,
+          profilePhoto: true, systemRole: true,
+          phone: true, joinDate: true,
+        },
+      }),
+      this.prisma.projectMember.count({
+        where: { userId, projectRole: 'PROJECT_MANAGER' },
+      }),
+      this.prisma.projectMember.count({
+        where: { userId, projectRole: { in: ['PROJECT_MANAGER', 'TEAM_LEAD'] } },
+      }),
+    ]);
     if (!user) throw new NotFoundException('User not found');
-    return user;
+    return { ...user, hasPmRole: pmCount > 0, hasManagementRole: mgmtCount > 0 };
   }
 
   async updateProfile(userId: string, dto: UpdateProfileDto, file?: Express.Multer.File) {

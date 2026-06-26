@@ -241,12 +241,19 @@ export function WorkItemCard({ item, index, members = [], onClick, onAssigneeCha
                 className="shrink-0 focus:outline-none"
               >
                 {item.assignee ? (
-                  <div className="ring-2 ring-transparent hover:ring-primary-300 transition rounded-full">
-                    <UserAvatar
-                      name={item.assignee.fullName}
-                      photo={item.assignee.profilePhoto}
-                      size="card"
-                    />
+                  <div className="flex flex-col items-center gap-0.5">
+                    <div className="ring-2 ring-transparent hover:ring-primary-300 transition rounded-full">
+                      <UserAvatar
+                        name={item.assignee.fullName}
+                        photo={item.assignee.profilePhoto}
+                        size="card"
+                      />
+                    </div>
+                    {item.assignee.profilePhoto && (
+                      <span className="text-[8px] text-gray-400 font-medium leading-none">
+                        {getInitials(item.assignee.fullName)}
+                      </span>
+                    )}
                   </div>
                 ) : (
                   <span className="text-[10px] text-gray-400 hover:text-primary-600 transition">
