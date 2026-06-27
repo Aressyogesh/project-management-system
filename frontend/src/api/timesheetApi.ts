@@ -6,6 +6,7 @@ export interface TimesheetWorkItem {
   id: string;
   title: string;
   type: string;
+  billingStatus: 'BILLABLE' | 'NON_BILLABLE';
   estimatedHours: number | null;
   project: { id: string; name: string };
 }
@@ -23,6 +24,8 @@ export interface TimesheetEntryFull {
   rejectionNote: string | null;
   createdAt: string;
   updatedAt: string;
+  isRework: boolean;
+  isBugFix: boolean;
   user: { id: string; fullName: string; profilePhoto: string | null };
   approvedBy: { id: string; fullName: string } | null;
   workItem: TimesheetWorkItem;

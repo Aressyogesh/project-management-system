@@ -1,11 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { usersApi } from '../../../api/users.api';
+import { departmentsApi } from '../../../api/departments.api';
 import { useAuthStore } from '../../../store/authStore';
 import type { User } from '../../../types/users.types';
 import { UserFormModal } from '../components/UserFormModal';
 import { usePageSize } from '../../../hooks/usePageSize';
 import { UserAvatar } from '../../../components/shared/UserAvatar';
+import { FilterCombobox } from '../../../components/shared/FilterCombobox';
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 
@@ -53,6 +55,7 @@ export function UsersPage() {
   const { user: currentUser } = useAuthStore();
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [departmentId, setDepartmentId] = useState('');
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = usePageSize('users');
   const [modalMode, setModalMode] = useState<'create' | 'edit' | null>(null);
@@ -71,9 +74,15 @@ export function UsersPage() {
 
   const showToast = (message: string) => setToast({ message });
 
+  const { data: departments = [], isLoading: deptLoading } = useQuery({
+    queryKey: ['departments-active'],
+    queryFn: () => departmentsApi.list(false),
+    staleTime: 120_000,
+  });
+
   const { data, isLoading, error } = useQuery({
-    queryKey: ['users', page, pageSize, debouncedSearch],
-    queryFn: () => usersApi.list({ page, limit: pageSize, search: debouncedSearch || undefined }),
+    queryKey: ['users', page, pageSize, debouncedSearch, departmentId],
+    queryFn: () => usersApi.list({ page, limit: pageSize, search: debouncedSearch || undefined, departmentId: departmentId || undefined }),
   });
 
   const statusMutation = useMutation({
@@ -89,6 +98,7 @@ export function UsersPage() {
   function closeModal() { setModalMode(null); setEditTarget(undefined); }
 
   function handlePageSizeChange(newSize: number) { setPageSize(newSize); setPage(1); }
+  function handleDeptFilter(id: string) { setDepartmentId(id); setPage(1); }
 
   const total = data?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
@@ -117,8 +127,15 @@ export function UsersPage() {
             </p>
           </div>
 
-          <div className="flex items-center gap-3 w-full sm:w-auto">
-            <div className="relative flex-1 sm:w-64">
+          <div className="flex items-center gap-2 w-full sm:w-auto flex-wrap">
+            <FilterCombobox
+              options={departments.map((d) => ({ id: d.id, name: d.name }))}
+              value={departmentId}
+              onChange={handleDeptFilter}
+              placeholder="All Departments"
+              loading={deptLoading}
+            />
+            <div className="relative flex-1 sm:w-56">
               <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none"
                 fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}

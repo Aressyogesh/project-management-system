@@ -15,7 +15,7 @@ const PROJECT_SELECT = {
   status: true,
   createdAt: true,
   client: { select: { id: true, name: true } },
-  department: { select: { id: true, name: true } },
+  department: { select: { id: true, name: true, businessUnit: { select: { id: true, name: true } } } },
 };
 
 @Injectable()

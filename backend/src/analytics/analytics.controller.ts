@@ -90,12 +90,13 @@ export class AnalyticsController {
   @Get('reports/capacity')
   getCapacity(
     @Query('period') period = '2026-05',
+    @Query('projectId') projectId: string | undefined,
     @Request() req: { user: AuthUser },
   ) {
     const isAdmin =
       req.user.systemRole === SystemRole.ADMIN ||
       req.user.systemRole === SystemRole.SUPER_USER;
-    return this.analyticsService.getCapacityReport(period, req.user.id, isAdmin);
+    return this.analyticsService.getCapacityReport(period, req.user.id, isAdmin, projectId || undefined);
   }
 
   @Get('reports/planned-vs-actual')

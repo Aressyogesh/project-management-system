@@ -9,6 +9,7 @@ export interface ProjectClient {
 export interface ProjectDepartment {
   id: string;
   name: string;
+  businessUnit?: { id: string; name: string } | null;
 }
 
 export interface Project {

@@ -33,11 +33,10 @@ async function main(): Promise<void> {
     { name: 'Night',     shiftType: ShiftType.NIGHT,      startTime: '23:00', endTime: '08:00', workHours: 8 },
   ];
   for (const shift of defaultShifts) {
-    await prisma.shift.upsert({
-      where: { shiftType: shift.shiftType },
-      update: {},
-      create: shift,
-    });
+    const existing = await prisma.shift.findFirst({ where: { shiftType: shift.shiftType } });
+    if (!existing) {
+      await prisma.shift.create({ data: shift });
+    }
   }
 
   // ─── Super Admin ──────────────────────────────────────────────────────────────

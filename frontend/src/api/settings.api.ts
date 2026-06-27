@@ -1,6 +1,6 @@
 import { apiClient } from './client';
 
-export type ShiftType = 'DAY' | 'AFTERNOON' | 'NIGHT';
+export type ShiftType = 'DAY' | 'AFTERNOON' | 'NIGHT' | 'CUSTOM';
 
 export interface Shift {
   id: string;
@@ -92,6 +92,12 @@ export const settingsApi = {
 
   updateShift: (id: string, data: Partial<Omit<Shift, 'id' | 'shiftType'>>) =>
     apiClient.put<Shift>(`/settings/shifts/${id}`, data).then((r) => r.data),
+
+  createShift: (data: { name: string; startTime: string; endTime: string; workHours: number }) =>
+    apiClient.post<Shift>('/settings/shifts', { ...data, shiftType: 'CUSTOM' }).then((r) => r.data),
+
+  deleteShift: (id: string) =>
+    apiClient.delete(`/settings/shifts/${id}`).then((r) => r.data),
 
   getHolidays: (year?: number) =>
     apiClient.get<Holiday[]>('/settings/holidays', { params: year ? { year } : {} }).then((r) => r.data),

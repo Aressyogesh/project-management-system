@@ -92,6 +92,14 @@ export class SettingsController {
     return this.settingsService.updateShift(id, dto);
   }
 
+  @Delete('shifts/:id')
+  @Roles(SystemRole.SUPER_USER, SystemRole.ADMIN)
+  @HttpCode(204)
+  @ApiOperation({ summary: 'Delete a custom shift' })
+  deleteShift(@Param('id') id: string) {
+    return this.settingsService.deleteShift(id);
+  }
+
   /* ─── Holidays ───────────────────────────────────────────────────── */
 
   @Get('holidays')

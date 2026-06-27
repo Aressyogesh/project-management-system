@@ -34,8 +34,10 @@ const mockPrisma = {
   shift: {
     findMany: jest.fn(),
     findUnique: jest.fn(),
+    findFirst: jest.fn(),
     create: jest.fn(),
     update: jest.fn(),
+    delete: jest.fn(),
   },
   holiday: {
     findMany: jest.fn(),
@@ -91,7 +93,7 @@ describe('SettingsService', () => {
 
   describe('createShift', () => {
     it('createShift_ValidInput_ReturnsNewShift', async () => {
-      mockPrisma.shift.findUnique.mockResolvedValue(null);
+      mockPrisma.shift.findFirst.mockResolvedValue(null);
       mockPrisma.shift.create.mockResolvedValue(mockShift);
 
       const result = await service.createShift({
@@ -107,7 +109,7 @@ describe('SettingsService', () => {
     });
 
     it('createShift_DuplicateShiftType_ThrowsConflictException', async () => {
-      mockPrisma.shift.findUnique.mockResolvedValue(mockShift);
+      mockPrisma.shift.findFirst.mockResolvedValue(mockShift);
 
       await expect(
         service.createShift({ name: 'Day', shiftType: ShiftType.DAY, startTime: '10:00', endTime: '19:00' }),
@@ -117,7 +119,7 @@ describe('SettingsService', () => {
     });
 
     it('createShift_NoWorkHours_DefaultsToEight', async () => {
-      mockPrisma.shift.findUnique.mockResolvedValue(null);
+      mockPrisma.shift.findFirst.mockResolvedValue(null);
       mockPrisma.shift.create.mockResolvedValue({ ...mockShift, workHours: 8 });
 
       await service.createShift({ name: 'Day', shiftType: ShiftType.DAY, startTime: '10:00', endTime: '19:00' });
@@ -125,6 +127,44 @@ describe('SettingsService', () => {
       expect(mockPrisma.shift.create).toHaveBeenCalledWith(
         expect.objectContaining({ data: expect.objectContaining({ workHours: 8 }) }),
       );
+    });
+
+    it('createShift_CustomType_AllowsMultiple', async () => {
+      mockPrisma.shift.create.mockResolvedValue({ ...mockShift, shiftType: ShiftType.CUSTOM, name: 'Split' });
+
+      const result = await service.createShift({
+        name: 'Split',
+        shiftType: ShiftType.CUSTOM,
+        startTime: '08:00',
+        endTime: '17:00',
+      });
+
+      expect(result.shiftType).toBe(ShiftType.CUSTOM);
+      expect(mockPrisma.shift.findFirst).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('deleteShift', () => {
+    it('deleteShift_CustomShift_Deletes', async () => {
+      const customShift = { ...mockShift, shiftType: ShiftType.CUSTOM };
+      mockPrisma.shift.findUnique.mockResolvedValue(customShift);
+
+      await service.deleteShift('shift-uuid-1');
+
+      expect(mockPrisma.shift.delete).toHaveBeenCalledWith({ where: { id: 'shift-uuid-1' } });
+    });
+
+    it('deleteShift_NonCustomShift_ThrowsConflictException', async () => {
+      mockPrisma.shift.findUnique.mockResolvedValue(mockShift);
+
+      await expect(service.deleteShift('shift-uuid-1')).rejects.toThrow(ConflictException);
+      expect(mockPrisma.shift.delete).not.toHaveBeenCalled();
+    });
+
+    it('deleteShift_NotFound_ThrowsNotFoundException', async () => {
+      mockPrisma.shift.findUnique.mockResolvedValue(null);
+
+      await expect(service.deleteShift('bad-id')).rejects.toThrow(NotFoundException);
     });
   });
 

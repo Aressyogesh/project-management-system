@@ -842,7 +842,13 @@ export class AnalyticsService {
           this.prisma.workItem.aggregate({
             where: {
               assigneeId: user.id,
-              createdAt: { gte: start, lt: end },
+              // Items due in this month, OR items with no dueDate created in this month.
+              // Using dueDate means "what was planned to be delivered this month" —
+              // which correctly covers tasks created in prior months but due now.
+              OR: [
+                { dueDate: { gte: start, lt: end } },
+                { dueDate: null, createdAt: { gte: start, lt: end } },
+              ],
               ...workItemProjectFilter,
             },
             _sum: { estimatedHours: true },
@@ -882,7 +888,7 @@ export class AnalyticsService {
       .sort((a, b) => Math.abs(b.variancePct) - Math.abs(a.variancePct));
   }
 
-  async getCapacityReport(period: string, requestingUserId?: string, isAdmin = true) {
+  async getCapacityReport(period: string, requestingUserId?: string, isAdmin = true, filterProjectId?: string) {
     const { start, end } = periodToRange(period);
     const [year, month] = period.split('-').map(Number);
 
@@ -890,7 +896,14 @@ export class AnalyticsService {
     const days = Array.from({ length: daysInMonth }, (_, i) => i + 1);
 
     let scopedProjectIds: string[] | undefined;
-    if (!isAdmin && requestingUserId) {
+    if (filterProjectId) {
+      if (!isAdmin && requestingUserId) {
+        const managedIds = await this.getManagedProjectIds(requestingUserId);
+        scopedProjectIds = managedIds.includes(filterProjectId) ? [filterProjectId] : [];
+      } else {
+        scopedProjectIds = [filterProjectId];
+      }
+    } else if (!isAdmin && requestingUserId) {
       const managedIds = await this.getManagedProjectIds(requestingUserId);
       if (managedIds.length > 0) scopedProjectIds = managedIds;
     }
@@ -916,35 +929,39 @@ export class AnalyticsService {
           },
           orderBy: { fullName: 'asc' },
         }),
-        // Approved leave requests overlapping this month
+        // Approved + pending leave requests overlapping this month
         this.prisma.leaveRequest.findMany({
           where: {
-            status: LeaveStatus.APPROVED,
+            status: { in: [LeaveStatus.APPROVED, LeaveStatus.PENDING] },
             startDate: { lte: end },
             endDate: { gte: start },
           },
-          select: { userId: true, startDate: true, endDate: true },
+          select: { userId: true, startDate: true, endDate: true, isPlanned: true, totalDays: true, isHalfDay: true },
         }),
+        // Fetch ALL hours in the period — not scoped by project.
+        // Capacity = total time a person is busy, regardless of which project they logged against.
         this.prisma.timesheetEntry.findMany({
-          where: {
-            date: { gte: start, lt: end },
-            ...(scopedProjectIds !== undefined ? { workItem: { projectId: { in: scopedProjectIds } } } : {}),
-          },
+          where: { date: { gte: start, lt: end } },
           select: { userId: true, date: true, hours: true },
         }),
-        // Active work items (user stories, tasks, bugs) assigned within this month
+        // Active work items assigned to users — interval overlap or no dates set
         this.prisma.workItem.findMany({
           where: {
             assigneeId: { not: null },
-            status: { not: BoardStatus.QA_DONE },
+            status: { notIn: [BoardStatus.QA_DONE, BoardStatus.CLOSED] },
             ...(scopedProjectIds !== undefined ? { projectId: { in: scopedProjectIds } } : {}),
             OR: [
-              { startDate: { lte: end, gte: start } },
-              { dueDate: { lte: end, gte: start } },
-              { startDate: { lte: start }, dueDate: { gte: end } },
+              // Both dates set and overlap with the period
+              { startDate: { lte: end }, dueDate: { gte: start } },
+              // Started before period end, no due date (open-ended)
+              { startDate: { lte: end }, dueDate: null },
+              // Due after period start, no start date
+              { startDate: null, dueDate: { gte: start } },
+              // No dates at all — always include as open assignment
+              { AND: [{ startDate: null }, { dueDate: null }] },
             ],
           },
-          select: { assigneeId: true, startDate: true, dueDate: true, title: true, type: true },
+          select: { assigneeId: true, startDate: true, dueDate: true, title: true, type: true, estimatedHours: true },
         }),
       ]);
 
@@ -958,16 +975,24 @@ export class AnalyticsService {
     const holidayDates = new Set(holidays.map((h) => new Date(h.date).getDate()));
     const holidayNames = new Map(holidays.map((h) => [new Date(h.date).getDate(), h.name]));
 
-    // Build per-user leave-day sets from approved LeaveRequests
-    const leaveMap = new Map<string, Set<number>>();
+    // Build per-user leave-day sets (planned and unplanned separately)
+    const plannedLeaveMap   = new Map<string, Set<number>>();
+    const unplannedLeaveMap = new Map<string, Set<number>>();
+    // Half-day leave sets (day numbers where the leave is a half-day)
+    const halfDayLeaveMap   = new Map<string, Set<number>>();
     for (const leave of leaveRequests) {
+      const targetMap = leave.isPlanned ? plannedLeaveMap : unplannedLeaveMap;
       const leaveStart = new Date(leave.startDate);
-      const leaveEnd = new Date(leave.endDate);
+      const leaveEnd   = new Date(leave.endDate);
       for (let d = new Date(leaveStart); d <= leaveEnd; d.setDate(d.getDate() + 1)) {
         if (d.getFullYear() === year && d.getMonth() + 1 === month) {
           const day = d.getDate();
-          if (!leaveMap.has(leave.userId)) leaveMap.set(leave.userId, new Set());
-          leaveMap.get(leave.userId)!.add(day);
+          if (!targetMap.has(leave.userId)) targetMap.set(leave.userId, new Set());
+          targetMap.get(leave.userId)!.add(day);
+          if (leave.isHalfDay) {
+            if (!halfDayLeaveMap.has(leave.userId)) halfDayLeaveMap.set(leave.userId, new Set());
+            halfDayLeaveMap.get(leave.userId)!.add(day);
+          }
         }
       }
     }
@@ -981,48 +1006,73 @@ export class AnalyticsService {
       hoursMap.get(entry.userId)!.set(day, existing + Number(entry.hours));
     }
 
-    // Build per-user assigned-work-item day sets
-    const workItemDayMap = new Map<string, Set<number>>();
+    // Build per-user assigned-work-item day sets + estimated hours per day
+    const workItemDayMap          = new Map<string, Set<number>>();
+    const workItemEstHoursMap     = new Map<string, Map<number, number>>();
     for (const wi of workItems) {
       if (!wi.assigneeId) continue;
       const wiStart = wi.startDate ? new Date(wi.startDate) : start;
-      const wiEnd = wi.dueDate ? new Date(wi.dueDate) : end;
+      const wiEnd   = wi.dueDate   ? new Date(wi.dueDate)   : end;
+      const estHrs  = Number(wi.estimatedHours ?? 0);
       for (let d = new Date(wiStart); d <= wiEnd; d.setDate(d.getDate() + 1)) {
         if (d.getFullYear() === year && d.getMonth() + 1 === month) {
           const day = d.getDate();
           if (!workItemDayMap.has(wi.assigneeId)) workItemDayMap.set(wi.assigneeId, new Set());
           workItemDayMap.get(wi.assigneeId)!.add(day);
+          if (estHrs > 0) {
+            if (!workItemEstHoursMap.has(wi.assigneeId)) workItemEstHoursMap.set(wi.assigneeId, new Map());
+            const prev = workItemEstHoursMap.get(wi.assigneeId)!.get(day) ?? 0;
+            workItemEstHoursMap.get(wi.assigneeId)!.set(day, prev + estHrs);
+          }
         }
       }
     }
 
     const employeeRows = users.map((user) => {
-      const userLeaves = leaveMap.get(user.id) ?? new Set<number>();
-      const userHours = hoursMap.get(user.id) ?? new Map<number, number>();
-      const userWorkDays = workItemDayMap.get(user.id) ?? new Set<number>();
+      const userPlannedLeaves   = plannedLeaveMap.get(user.id)       ?? new Set<number>();
+      const userUnplannedLeaves = unplannedLeaveMap.get(user.id)   ?? new Set<number>();
+      const userHalfDayLeaves   = halfDayLeaveMap.get(user.id)     ?? new Set<number>();
+      const userHours           = hoursMap.get(user.id)            ?? new Map<number, number>();
+      const userWorkDays        = workItemDayMap.get(user.id)      ?? new Set<number>();
+      const userWorkItemEstHrs  = workItemEstHoursMap.get(user.id) ?? new Map<number, number>();
 
       const cells = days.map((day) => {
-        const date = new Date(year, month - 1, day);
+        const date    = new Date(year, month - 1, day);
         const dayName = dayNames[date.getDay()];
-        const isWeeklyOff = !workingDaysCfg[dayName];
-        const isHoliday = holidayDates.has(day);
-        const isOnLeave = userLeaves.has(day);
-        const hours = userHours.get(day) ?? 0;
-        const hasWorkItem = userWorkDays.has(day);
+        const isWeeklyOff        = !workingDaysCfg[dayName];
+        const isHoliday          = holidayDates.has(day);
+        const isOnPlannedLeave   = userPlannedLeaves.has(day);
+        const isOnUnplannedLeave = userUnplannedLeaves.has(day);
+        const isOnLeave          = isOnPlannedLeave || isOnUnplannedLeave;
+        const isHalfDay          = userHalfDayLeaves.has(day);
+        const hours          = userHours.get(day) ?? 0;
+        const hasWorkItem    = userWorkDays.has(day);
+        const workItemHours  = userWorkItemEstHrs.get(day) ?? 0;
 
         let status: string;
-        if (isHoliday) status = 'holiday';
-        else if (isWeeklyOff) status = 'weekly_off';
-        else if (isOnLeave) status = 'leave';
-        else if (hours >= 8) status = 'occupied';
-        else if (hours >= 1) status = 'partial';
-        else if (hasWorkItem) status = 'partial'; // assigned but no hours logged yet
+        if (isHoliday)           status = 'holiday';
+        else if (isWeeklyOff)    status = 'weekly_off';
+        else if (isOnUnplannedLeave) status = 'unplanned_leave';
+        else if (isOnPlannedLeave)   status = 'planned_leave';
+        else if (hours >= 8)     status = 'occupied';
+        else if (hours >= 1 || hasWorkItem) status = 'partial';
         else status = 'available';
+
+        // For half-day leave, compute what the "rest of day" looks like
+        let restOfDayStatus: string | undefined;
+        if (isHalfDay && isOnLeave) {
+          if (hours >= 4)      restOfDayStatus = 'occupied';
+          else if (hours >= 1 || hasWorkItem) restOfDayStatus = 'partial';
+          else                 restOfDayStatus = 'available';
+        }
 
         return {
           day,
           status,
           hours,
+          workItemHours: !isHoliday && !isWeeklyOff ? workItemHours : 0,
+          isHalfDay: isHalfDay && isOnLeave,
+          restOfDayStatus,
           hasWorkItem: !isHoliday && !isWeeklyOff && !isOnLeave && hasWorkItem,
           holidayName: holidayNames.get(day),
           dayOfWeek: dayName,
@@ -1032,11 +1082,23 @@ export class AnalyticsService {
       const workingDayCount = cells.filter(
         (c) => c.status !== 'holiday' && c.status !== 'weekly_off',
       ).length;
-      const occupiedDays = cells.filter(
-        (c) => c.status === 'occupied' || c.status === 'partial',
-      ).length;
-      const leaveDays = cells.filter((c) => c.status === 'leave').length;
-      const availableDays = cells.filter((c) => c.status === 'available').length;
+      // Half-day leave cells contribute 0.5 to occupied/available counts
+      const occupiedDays = cells.reduce((sum, c) => {
+        if (c.status === 'occupied' || c.status === 'partial') return sum + 1;
+        if (c.isHalfDay && (c.restOfDayStatus === 'occupied' || c.restOfDayStatus === 'partial')) return sum + 0.5;
+        return sum;
+      }, 0);
+      // Count leave days from the per-month day sets — this is always scoped to the
+      // current month even when the leave request spans multiple months.
+      // Each half-day counts as 0.5; full days count as 1.
+      const userHalfDayCount = userHalfDayLeaves.size;
+      const leaveDays =
+        (userPlannedLeaves.size + userUnplannedLeaves.size) - userHalfDayCount * 0.5;
+      const availableDays = cells.reduce((sum, c) => {
+        if (c.status === 'available') return sum + 1;
+        if (c.isHalfDay && c.restOfDayStatus === 'available') return sum + 0.5;
+        return sum;
+      }, 0);
 
       return {
         userId: user.id,

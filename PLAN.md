@@ -1120,3 +1120,134 @@ npm run dev                       # React app on http://localhost:5173
 ---
 
 *Plan version: 6.0 — Updated: 2026-06-09 | Backend: NestJS + Prisma + PostgreSQL | 53 features tracked (F-001–F-041 complete, F-042–F-053 planned) | Email: Company SMTP (Nodemailer) — Brevo removed*
+
+---
+
+## Deployment Environments — QA & Production
+
+### Overview
+
+Two independent instances run on the **same Windows machine** (DEVLOPMNET), each on separate ports with separate databases and separate PM2 process names. Deploying to QA never affects production and vice versa.
+
+| | QA | Production |
+|---|---|---|
+| **Purpose** | Internal testing — validate features before releasing to team | Team-facing release instance |
+| **Branch** | `main` | `production` |
+| **Workflow file** | `.github/workflows/deploy-local.yml` | `.github/workflows/deploy-production.yml` |
+| **Backend port** | `3000` | `3001` |
+| **Frontend port** | `5173` | `5174` |
+| **Backend files** | `D:\PMS\pms-backend\` | `D:\PMS\pms-prod-backend\` |
+| **Frontend files** | `D:\PMS\pms-frontend\` | `D:\PMS\pms-prod-frontend\` |
+| **Uploads** | `D:\PMS\pms-uploads\` | `D:\PMS\pms-prod-uploads\` |
+
+| **Database** | `pms_db` | `pms_prod_db` |
+| **PM2 backend** | `pms-backend` | `pms-prod-backend` |
+| **PM2 frontend** | `pms-frontend` | `pms-prod-frontend` |
+| **URL** | http://203.193.165.229:5173 | http://203.193.165.229:5174 |
+
+### Deployment Flow
+
+```
+feature/F-XXX branch
+        │
+        ▼  (PR merge)
+      main  ──── GitHub Actions ────► QA auto-deploys
+        │
+        ▼  (QA validated, merge main → production)
+  production ──── GitHub Actions ────► Production auto-deploys
+```
+
+**Promoting to production:**
+```bash
+git checkout production
+git merge main
+git push origin production
+```
+
+### Why backend runs from a fixed directory (not the workspace)
+
+If the backend ran from the GitHub Actions workspace directory (`_work/.../backend/dist/`), any subsequent workflow checkout would overwrite those files — crashing the process on the next restart. By copying build artifacts to a fixed location (`D:\pms-backend\` or `D:\pms-prod-backend\`) the workspace is freely reusable by both workflows without cross-contamination.
+
+All artifacts live under a single parent `D:\PMS\` for easy management:
+
+```
+D:\PMS\
+├── pms-backend\          ← QA backend (dist + node_modules + prisma + .env)
+├── pms-frontend\         ← QA frontend (built static files, served on :5173)
+├── pms-uploads\          ← QA file uploads
+├── pms-prod-backend\     ← Production backend
+├── pms-prod-frontend\    ← Production frontend (served on :5174)
+└── pms-prod-uploads\     ← Production file uploads
+```
+
+Build artifacts copied per deploy:
+- `backend/dist/` → `D:\PMS\pms-backend\dist\` (or prod equivalent)
+- `backend/node_modules/` → `D:\PMS\pms-backend\node_modules\` (via `robocopy /MIR` — only changed files)
+- `backend/prisma/` → `D:\PMS\pms-backend\prisma\`
+- `backend/.env` → `D:\PMS\pms-backend\.env`
+
+PM2 is started with `--cwd D:\PMS\pms-backend` (or prod equivalent) so NestJS picks up the correct `.env`.
+
+### GitHub Secrets Required
+
+#### Shared (used by both workflows)
+| Secret | Purpose |
+|---|---|
+| `GROQ_API_KEY` | AI features |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM_NAME`, `SMTP_FROM_EMAIL` | Email |
+| `AUTOMATION_AP_BASE`, `AP_BUG_WEBHOOK_ID`, `AP_SPRINT_WEBHOOK_ID`, `AUTOMATION_NODERED_WEBHOOK`, `AP_TASK_ASSIGNED_WEBHOOK_ID`, `AP_CRITICAL_BUG_WEBHOOK_ID`, `AP_BUG_REOPENED_WEBHOOK_ID`, `AP_ITEM_BLOCKED_WEBHOOK_ID` | Automation webhooks |
+| `GITHUB_WEBHOOK_SECRET` | GitHub webhook |
+
+#### QA-specific (already exist)
+| Secret | Value |
+|---|---|
+| `DATABASE_URL` | `postgresql://postgres:postgres@localhost:5432/pms_db` |
+| `DIRECT_URL` | same |
+| `JWT_SECRET` | QA JWT secret |
+| `JWT_REFRESH_SECRET` | QA refresh secret |
+| `FRONTEND_URL` | `http://203.193.165.229:5173` |
+| `VITE_API_BASE_URL` | `http://203.193.165.229:3000` |
+
+#### Production-specific (must be added)
+| Secret | Value |
+|---|---|
+| `PROD_DATABASE_URL` | `postgresql://postgres:postgres@localhost:5432/pms_prod_db` |
+| `PROD_DIRECT_URL` | same |
+| `PROD_JWT_SECRET` | new secure random string (different from QA) |
+| `PROD_JWT_REFRESH_SECRET` | new secure random string (different from QA) |
+| `PROD_FRONTEND_URL` | `http://203.193.165.229:5174` |
+| `PROD_VITE_API_BASE_URL` | `http://203.193.165.229:3001` |
+
+### One-Time Manual Setup Steps
+
+Run once on the DEVLOPMNET machine before the first production deploy:
+
+**1. Create the `D:\PMS\` parent directory** on the DEVLOPMNET machine:
+```powershell
+New-Item -ItemType Directory -Force -Path "D:\PMS"
+```
+
+> **Note — QA path migration:** Existing QA artifacts live at `D:\pms-frontend\`, `D:\pms-uploads\`, etc. (root of D:). The updated QA workflow will write to `D:\PMS\pms-frontend\`, `D:\PMS\pms-backend\`, etc. After the first successful deploy under the new workflow, the old `D:\pms-*` directories at the root can be deleted manually and the old `D:\pms-frontend.config.js` PM2 config file can be removed.
+
+**2. Create production database:**
+```sql
+-- connect to PostgreSQL as postgres
+CREATE DATABASE pms_prod_db;
+```
+
+**3. Create the production branch:**
+```bash
+git checkout -b production
+git push origin production
+```
+
+**4. Add the 6 PROD_* secrets** in GitHub → repository Settings → Secrets and variables → Actions.
+
+**5. Trigger first deploy** — push to `production` branch or trigger `.github/workflows/deploy-production.yml` via `workflow_dispatch` in GitHub Actions.
+
+### Files To Create / Modify
+
+| File | Action | Description |
+|---|---|---|
+| `.github/workflows/deploy-local.yml` | Modify | Add artifact copy step; start pms-backend from `D:\pms-backend\`; remove stop-PM2 from test job |
+| `.github/workflows/deploy-production.yml` | Create | Full production deploy workflow |

@@ -23,6 +23,7 @@ const USER_SELECT = {
   email: true,
   systemRole: true,
   phone: true,
+  employeeId: true,
   joinDate: true,
   profilePhoto: true,
   isActive: true,
@@ -43,17 +44,17 @@ export class UsersService {
   ) {}
 
   async findAll(query: UsersQueryDto) {
-    const { page = 1, limit = 25, search } = query;
+    const { page = 1, limit = 25, search, departmentId } = query;
     const skip = (page - 1) * limit;
 
-    const where = search
-      ? {
-          OR: [
-            { fullName: { contains: search, mode: 'insensitive' as const } },
-            { email: { contains: search, mode: 'insensitive' as const } },
-          ],
-        }
-      : {};
+    const where: Record<string, unknown> = {};
+    if (departmentId) where.departmentId = departmentId;
+    if (search) {
+      where.OR = [
+        { fullName: { contains: search, mode: 'insensitive' as const } },
+        { email: { contains: search, mode: 'insensitive' as const } },
+      ];
+    }
 
     const [data, total] = await Promise.all([
       this.prisma.user.findMany({
@@ -78,7 +79,7 @@ export class UsersService {
     return user;
   }
 
-  async createUser(dto: CreateUserDto) {
+  async createUser(dto: CreateUserDto, adminUserId?: string) {
     const existing = await this.prisma.user.findUnique({ where: { email: dto.email } });
     if (existing) throw new ConflictException('Email already in use');
 
@@ -93,6 +94,7 @@ export class UsersService {
         passwordHash,
         systemRole: dto.systemRole,
         phone: dto.phone,
+        employeeId: dto.employeeId || undefined,
         joinDate: dto.joinDate ? new Date(dto.joinDate) : undefined,
         departmentId: dto.departmentId || undefined,
         shiftId: dto.shiftId || undefined,
@@ -133,10 +135,21 @@ export class UsersService {
       );
     }
 
+    if (adminUserId) {
+      this.auditLogs.log({
+        userId: adminUserId,
+        action: AuditAction.USER_CREATED,
+        entity: AuditEntity.USER,
+        entityId: user.id,
+        entityTitle: `${user.fullName} (${user.email})`,
+        metadata: { systemRole: user.systemRole },
+      });
+    }
+
     return user;
   }
 
-  async updateUser(id: string, dto: UpdateUserDto) {
+  async updateUser(id: string, dto: UpdateUserDto, adminUserId?: string) {
     await this.findOne(id);
 
     if (dto.email) {
@@ -144,7 +157,7 @@ export class UsersService {
       if (conflict && conflict.id !== id) throw new ConflictException('Email already in use');
     }
 
-    return this.prisma.user.update({
+    const result = await this.prisma.user.update({
       where: { id },
       data: {
         ...dto,
@@ -155,18 +168,39 @@ export class UsersService {
       },
       select: USER_SELECT,
     });
+
+    if (adminUserId) {
+      this.auditLogs.log({
+        userId: adminUserId,
+        action: AuditAction.USER_UPDATED,
+        entity: AuditEntity.USER,
+        entityId: id,
+        entityTitle: result.fullName,
+      });
+    }
+
+    return result;
   }
 
   async setUserStatus(id: string, isActive: boolean, currentUserId: string) {
     if (id === currentUserId) {
       throw new BadRequestException('Cannot deactivate your own account');
     }
-    await this.findOne(id);
-    return this.prisma.user.update({
+    const target = await this.findOne(id);
+    const result = await this.prisma.user.update({
       where: { id },
       data: { isActive },
       select: USER_SELECT,
     });
+    this.auditLogs.log({
+      userId: currentUserId,
+      action: AuditAction.USER_STATUS_CHANGED,
+      entity: AuditEntity.USER,
+      entityId: id,
+      entityTitle: target.fullName,
+      metadata: { isActive },
+    });
+    return result;
   }
 
   async updateProfilePhoto(id: string, filePath: string) {

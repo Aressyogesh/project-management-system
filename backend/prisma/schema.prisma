@@ -20,6 +20,7 @@ enum ShiftType {
   DAY
   AFTERNOON
   NIGHT
+  CUSTOM
 }
 
 enum ProjectType {
@@ -117,6 +118,7 @@ enum BoardStatus {
   READY_FOR_QA
   IN_QA
   QA_DONE
+  CLOSED
   QA
 }
 
@@ -146,6 +148,8 @@ enum BugClassification {
   SUGGESTION
   PROJECT_MANAGEMENT
   EXISTING_APPLICATION
+  TECHNICAL
+  FUNCTIONAL
 }
 
 enum BugFlag {
@@ -230,6 +234,7 @@ model User {
   passwordHash String
   systemRole   SystemRole @default(EMPLOYEE)
   phone        String?    @db.VarChar(20)
+  employeeId   String?    @db.VarChar(50)
   joinDate     DateTime?  @db.Date
   profilePhoto String?
   departmentId String?
@@ -329,7 +334,7 @@ model PortalConfig {
 model Shift {
   id        String    @id @default(uuid())
   name      String    @db.VarChar(50)
-  shiftType ShiftType @unique
+  shiftType ShiftType
   startTime String    @db.VarChar(8)
   endTime   String    @db.VarChar(8)
   workHours Int       @default(8)
@@ -390,6 +395,7 @@ model Project {
   workItems  WorkItem[]
   boardColumnConfigs BoardColumnConfig[]
   auditLogs          AuditLog[]          @relation("ProjectAuditLogs")
+  announcements      Announcement[]
 
   @@index([status])
   @@index([projectType])
@@ -552,13 +558,15 @@ model Client {
   id             String   @id @default(uuid())
   name           String   @unique @db.VarChar(150)
   contactPerson  String   @db.VarChar(100)
+  designation    String?  @db.VarChar(100)
   email          String   @db.VarChar(255)
   phone          String?  @db.VarChar(20)
-  address        String?  @db.VarChar(300)
-  businessUnitId String?
-  isActive       Boolean  @default(true)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  address        String?  @db.Text
+  businessUnitId     String?
+  additionalContacts Json     @default("[]")
+  isActive           Boolean  @default(true)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 
   businessUnit BusinessUnit? @relation(fields: [businessUnitId], references: [id], onDelete: SetNull)
   projects     Project[]
@@ -970,6 +978,21 @@ enum AuditAction {
   UPSKILL_SUBMITTED
   UPSKILL_APPROVED
   UPSKILL_REJECTED
+  ANNOUNCEMENT_CREATED
+  ANNOUNCEMENT_DELETED
+  CLIENT_CREATED
+  CLIENT_UPDATED
+  CLIENT_DELETED
+  SETTINGS_UPDATED
+  USER_CREATED
+  USER_UPDATED
+  USER_STATUS_CHANGED
+  COMMENT_ADDED
+  COMMENT_DELETED
+  ATTACHMENT_ADDED
+  ATTACHMENT_DELETED
+  TIMESHEET_LOGGED
+  TIMESHEET_DELETED
 }
 
 enum AuditEntity {
@@ -983,6 +1006,13 @@ enum AuditEntity {
   MILESTONE
   LEAVE_REQUEST
   UPSKILL_ASSIGNMENT
+  ANNOUNCEMENT
+  CLIENT
+  SETTINGS
+  USER
+  COMMENT
+  ATTACHMENT
+  TIMESHEET
 }
 
 model AuditLog {
@@ -1056,14 +1086,22 @@ model UpskillProgressLog {
 
 // ─── Announcements ────────────────────────────────────────────────────────────
 
-model Announcement {
-  id          String   @id @default(uuid())
-  title       String   @db.VarChar(200)
-  content     String   @db.Text
-  createdById String
-  createdAt   DateTime @default(now())
+enum AnnouncementScope {
+  GLOBAL
+  PROJECT
+}
 
-  createdBy User @relation("CreatedAnnouncements", fields: [createdById], references: [id])
+model Announcement {
+  id          String            @id @default(uuid())
+  title       String            @db.VarChar(200)
+  content     String            @db.Text
+  scope       AnnouncementScope @default(GLOBAL)
+  projectId   String?
+  createdById String
+  createdAt   DateTime          @default(now())
+
+  project   Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  createdBy User     @relation("CreatedAnnouncements", fields: [createdById], references: [id])
 
   @@index([createdAt(sort: Desc)])
   @@map("announcements")

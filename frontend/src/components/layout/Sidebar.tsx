@@ -133,6 +133,14 @@ function IconAnnouncements() {
     </svg>
   );
 }
+function IconOrgStructure() {
+  return (
+    <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+        d="M3 5a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H5a2 2 0 01-2-2V5zm8 8a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2zm-4 4a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H9a2 2 0 01-2-2v-2zM7 7h2m4 0h2M9 9v4m6-4v4m-3 0v2" />
+    </svg>
+  );
+}
 
 interface NavItem {
   path: string;
@@ -143,9 +151,10 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { path: '/dashboard',       label: 'Overview',        Icon: IconOverview },
-  { path: '/business-units',  label: 'Business Units',  Icon: IconBusinessUnit,  roles: ['SUPER_USER', 'ADMIN'] },
-  { path: '/departments',     label: 'Departments',     Icon: IconDepartments,   roles: ['SUPER_USER', 'ADMIN'] },
-  { path: '/clients',         label: 'Clients',         Icon: IconClients,       roles: ['SUPER_USER', 'ADMIN'] },
+  { path: '/business-units',  label: 'Business Units',  Icon: IconBusinessUnit,   roles: ['SUPER_USER', 'ADMIN'] },
+  { path: '/departments',     label: 'Departments',     Icon: IconDepartments,    roles: ['SUPER_USER', 'ADMIN'] },
+  { path: '/clients',         label: 'Clients',         Icon: IconClients,        roles: ['SUPER_USER', 'ADMIN'] },
+  { path: '/org-structure',   label: 'Org Structure',   Icon: IconOrgStructure,   roles: ['SUPER_USER', 'ADMIN'] },
   { path: '/users',           label: 'Users',           Icon: IconUsers,         roles: ['SUPER_USER', 'ADMIN'] },
   { path: '/projects',        label: 'Projects',        Icon: IconProjects },
   { path: '/timesheet',       label: 'Timesheet',       Icon: IconTimesheet },
@@ -181,7 +190,8 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
     if (item.roles && !item.roles.includes(user?.systemRole as SystemRole)) return false;
     if (item.path === '/kpi')        return canSee('KPI');
     if (item.path === '/reports')    return canSee('REPORTS');
-    if (item.path === '/leave-logs') return user?.systemRole === 'SUPER_USER' || user?.systemRole === 'ADMIN' || user?.hasPmRole === true;
+    if (item.path === '/leave-logs')    return user?.systemRole === 'SUPER_USER' || user?.systemRole === 'ADMIN' || user?.hasPmRole === true;
+    if (item.path === '/announcements') return user?.systemRole === 'SUPER_USER' || user?.systemRole === 'ADMIN' || user?.hasPmRole === true;
     return true;
   });
 

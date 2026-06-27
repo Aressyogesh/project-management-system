@@ -1,7 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { businessUnitsApi } from '../../../api/businessUnits.api';
 import { projectsApi } from '../../../api/projects.api';
+import { FilterCombobox } from '../../../components/shared/FilterCombobox';
 import { useAuthStore } from '../../../store/authStore';
 import type { Project, ProjectStatus, ProjectType } from '../../../types/projects.types';
 import { ProjectFormModal } from '../components/ProjectFormModal';
@@ -50,11 +52,13 @@ export function ProjectsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const user = useAuthStore((s) => s.user);
   const canEdit = user?.systemRole === 'SUPER_USER' || user?.systemRole === 'ADMIN';
+  const isAdminOrSuper = canEdit;
 
   const [showForm, setShowForm] = useState(false);
   const [editTarget, setEditTarget] = useState<Project | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Project | null>(null);
   const [quickFilter, setQuickFilter] = useState<QuickFilter>('');
+  const [buFilter, setBuFilter] = useState('');
   const [clientFilter, setClientFilter] = useState(searchParams.get('clientId') ?? '');
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = usePageSize('projects');
@@ -76,17 +80,27 @@ export function ProjectsPage() {
     queryFn: () => projectsApi.summary(),
   });
 
+  const { data: businessUnits = [] } = useQuery({
+    queryKey: ['business-units-active'],
+    queryFn: () => businessUnitsApi.list(false),
+    enabled: isAdminOrSuper,
+  });
+
   const clients = useMemo(() => {
     const seen = new Set<string>();
-    return allProjects
+    const source = buFilter
+      ? allProjects.filter((p) => p.department?.businessUnit?.id === buFilter)
+      : allProjects;
+    return source
       .filter((p) => p.client && !seen.has(p.client.id) && seen.add(p.client.id))
       .map((p) => p.client!);
-  }, [allProjects]);
+  }, [allProjects, buFilter]);
 
   const isOverdue = (p: Project) =>
     p.status === 'ACTIVE' && p.endDate !== null && new Date(p.endDate) < new Date();
 
   const filtered = allProjects.filter((p) => {
+    if (buFilter && p.department?.businessUnit?.id !== buFilter) return false;
     if (clientFilter && p.client?.id !== clientFilter) return false;
     if (!quickFilter) return p.status !== 'ARCHIVE';
     if (quickFilter === 'ACTIVE') return p.status === 'ACTIVE';
@@ -107,6 +121,12 @@ export function ProjectsPage() {
 
   function handleFilterChange(f: QuickFilter) { setQuickFilter(quickFilter === f ? '' : f); setPage(1); }
   function handlePageSizeChange(newSize: number) { setPageSize(newSize); setPage(1); }
+  function handleBuFilter(id: string) {
+    setBuFilter(id);
+    setClientFilter('');
+    setSearchParams({});
+    setPage(1);
+  }
   function handleClientFilter(id: string) {
     setClientFilter(id);
     setPage(1);
@@ -154,25 +174,30 @@ export function ProjectsPage() {
             <h1 className="text-base font-semibold text-gray-900">Projects</h1>
             <p className="text-xs text-gray-400 mt-0.5">
               {filtered.length} project{filtered.length !== 1 ? 's' : ''}
-              {(quickFilter || clientFilter) && (
-                <button onClick={() => { setQuickFilter(''); handleClientFilter(''); }} className="ml-2 text-primary-600 hover:underline">
+              {(quickFilter || buFilter || clientFilter) && (
+                <button onClick={() => { setQuickFilter(''); setBuFilter(''); handleClientFilter(''); }} className="ml-2 text-primary-600 hover:underline">
                   Clear filters
                 </button>
               )}
             </p>
           </div>
           <div className="flex items-center gap-3">
+            {/* Business Unit filter — admin/superadmin only */}
+            {isAdminOrSuper && (
+              <FilterCombobox
+                options={businessUnits}
+                value={buFilter}
+                onChange={handleBuFilter}
+                placeholder="All Business Units"
+              />
+            )}
             {/* Client filter */}
-            <select
+            <FilterCombobox
+              options={clients}
               value={clientFilter}
-              onChange={(e) => handleClientFilter(e.target.value)}
-              className="text-xs border border-gray-200 rounded-lg px-2.5 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 text-gray-700"
-            >
-              <option value="">All Clients</option>
-              {clients.map((c) => (
-                <option key={c.id} value={c.id}>{c.name}</option>
-              ))}
-            </select>
+              onChange={handleClientFilter}
+              placeholder="All Clients"
+            />
             {!quickFilter && archivedCount > 0 && (
               <button onClick={() => handleFilterChange('ARCHIVE')}
                 className="flex items-center gap-1.5 text-xs font-medium px-3 py-2 rounded-lg border border-gray-200 text-gray-500 hover:border-gray-400 transition">
@@ -238,7 +263,7 @@ export function ProjectsPage() {
             {paged.map((project) => (
               <div key={project.id}
                 className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
-                onClick={() => navigate(`/projects/${project.id}/board`)}>
+                onClick={() => navigate(isAdminOrSuper ? `/dashboard?projectId=${project.id}` : `/projects/${project.id}/board`)}>
                 <div className="px-5 pt-5 pb-3">
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">

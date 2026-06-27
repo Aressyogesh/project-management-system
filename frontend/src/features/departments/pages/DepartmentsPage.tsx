@@ -4,6 +4,7 @@ import { businessUnitsApi } from '../../../api/businessUnits.api';
 import { departmentsApi } from '../../../api/departments.api';
 import type { Department } from '../../../types/users.types';
 import { usePageSize } from '../../../hooks/usePageSize';
+import { FilterCombobox } from '../../../components/shared/FilterCombobox';
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 
@@ -140,9 +141,16 @@ function DepartmentFormModal({ dept, onClose, onSuccess }: FormModalProps) {
 export function DepartmentsPage() {
   const qc = useQueryClient();
   const [modalTarget, setModalTarget] = useState<Department | null | 'create'>(null);
+  const [filterBuId, setFilterBuId] = useState('');
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = usePageSize('departments');
   const [toast, setToast] = useState<string | null>(null);
+
+  const { data: businessUnits = [], isLoading: buLoading } = useQuery({
+    queryKey: ['business-units-active'],
+    queryFn: () => businessUnitsApi.list(false),
+    staleTime: 120_000,
+  });
 
   useEffect(() => {
     if (!toast) return;
@@ -164,12 +172,17 @@ export function DepartmentsPage() {
     },
   });
 
+  const filtered = filterBuId
+    ? departments.filter((d) => d.businessUnit?.id === filterBuId)
+    : departments;
+
   const active = departments.filter((d) => d.isActive).length;
-  const totalPages = Math.max(1, Math.ceil(departments.length / pageSize));
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const safePage = Math.min(page, totalPages);
-  const paged = departments.slice((safePage - 1) * pageSize, safePage * pageSize);
+  const paged = filtered.slice((safePage - 1) * pageSize, safePage * pageSize);
 
   function handlePageSizeChange(newSize: number) { setPageSize(newSize); setPage(1); }
+  function handleBuFilter(id: string) { setFilterBuId(id); setPage(1); }
 
   const pageNumbers: (number | '…')[] = [];
   if (totalPages <= 7) {
@@ -186,22 +199,32 @@ export function DepartmentsPage() {
     <div className="space-y-4">
       {/* Header */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
             <h1 className="text-base font-semibold text-gray-900">Department Management</h1>
             <p className="text-xs text-gray-400 mt-0.5">
               {active} active · {departments.length - active} inactive
+              {filterBuId && filtered.length !== departments.length && ` · ${filtered.length} shown`}
             </p>
           </div>
-          <button
-            onClick={() => setModalTarget('create')}
-            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-lg transition"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            Add Department
-          </button>
+          <div className="flex items-center gap-2 flex-wrap">
+            <FilterCombobox
+              options={businessUnits.map((bu) => ({ id: bu.id, name: bu.name }))}
+              value={filterBuId}
+              onChange={handleBuFilter}
+              placeholder="All Business Units"
+              loading={buLoading}
+            />
+            <button
+              onClick={() => setModalTarget('create')}
+              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-lg transition shrink-0"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              Add Department
+            </button>
+          </div>
         </div>
       </div>
 
@@ -299,7 +322,7 @@ export function DepartmentsPage() {
                   {PAGE_SIZE_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
                 </select>
                 <span className="ml-1">
-                  {departments.length === 0 ? '0' : `${(safePage - 1) * pageSize + 1}–${Math.min(safePage * pageSize, departments.length)}`} of {departments.length}
+                  {filtered.length === 0 ? '0' : `${(safePage - 1) * pageSize + 1}–${Math.min(safePage * pageSize, filtered.length)}`} of {filtered.length}
                 </span>
               </div>
               <div className="flex items-center gap-1">

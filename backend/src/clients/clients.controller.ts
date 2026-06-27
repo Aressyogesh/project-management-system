@@ -1,6 +1,7 @@
 import { Body, Controller, Get, HttpCode, Param, Patch, Post, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { SystemRole } from '@prisma/client';
+import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
 import { ClientsService } from './clients.service';
 import { CreateClientDto, SetClientStatusDto, UpdateClientDto } from './dto/client.dto';
@@ -21,20 +22,20 @@ export class ClientsController {
 
   @Post()
   @ApiOperation({ summary: 'Create a client' })
-  create(@Body() dto: CreateClientDto) {
-    return this.clientsService.create(dto);
+  create(@Body() dto: CreateClientDto, @CurrentUser() user: { id: string }) {
+    return this.clientsService.create(dto, user.id);
   }
 
   @Patch(':id')
   @ApiOperation({ summary: 'Update client details' })
-  update(@Param('id') id: string, @Body() dto: UpdateClientDto) {
-    return this.clientsService.update(id, dto);
+  update(@Param('id') id: string, @Body() dto: UpdateClientDto, @CurrentUser() user: { id: string }) {
+    return this.clientsService.update(id, dto, user.id);
   }
 
   @Patch(':id/status')
   @HttpCode(200)
   @ApiOperation({ summary: 'Toggle client active/inactive' })
-  setStatus(@Param('id') id: string, @Body() dto: SetClientStatusDto) {
-    return this.clientsService.setStatus(id, dto.isActive);
+  setStatus(@Param('id') id: string, @Body() dto: SetClientStatusDto, @CurrentUser() user: { id: string }) {
+    return this.clientsService.setStatus(id, dto.isActive, user.id);
   }
 }

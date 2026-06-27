@@ -1,7 +1,12 @@
 import { ConflictException, NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { PrismaService } from '../../prisma/prisma.service';
+import { AuditLogsService } from '../../audit-logs/audit-logs.service';
 import { ClientsService } from '../clients.service';
+
+const ADMIN_USER_ID = 'admin-001';
+
+const mockAuditLogs = { log: jest.fn() };
 
 const mockPrisma = {
   client: {
@@ -23,6 +28,7 @@ const mockClient = {
   email: 'jane@acme.com',
   phone: null,
   address: null,
+  additionalContacts: [],
   isActive: true,
   createdAt: new Date(),
 };
@@ -35,6 +41,7 @@ describe('ClientsService', () => {
       providers: [
         ClientsService,
         { provide: PrismaService, useValue: mockPrisma },
+        { provide: AuditLogsService, useValue: mockAuditLogs },
       ],
     }).compile();
     service = module.get<ClientsService>(ClientsService);
@@ -46,7 +53,7 @@ describe('ClientsService', () => {
     mockPrisma.client.findFirst.mockResolvedValue(null);
     mockPrisma.client.create.mockResolvedValue({ ...mockClient, name: 'Acme Corp' });
 
-    const result = await service.create({ name: 'Acme Corp', contactPerson: 'Jane', email: 'jane@acme.com' });
+    const result = await service.create({ name: 'Acme Corp', contactPerson: 'Jane', email: 'jane@acme.com' }, ADMIN_USER_ID);
 
     expect(result.name).toBe('Acme Corp');
     expect(mockPrisma.client.create).toHaveBeenCalledTimes(1);
@@ -56,7 +63,7 @@ describe('ClientsService', () => {
   it('CreateClient_DuplicateName_ThrowsConflictException', async () => {
     mockPrisma.client.findFirst.mockResolvedValue(mockClient);
 
-    await expect(service.create({ name: 'Acme Corp', contactPerson: 'X', email: 'x@x.com' }))
+    await expect(service.create({ name: 'Acme Corp', contactPerson: 'X', email: 'x@x.com' }, ADMIN_USER_ID))
       .rejects.toThrow(ConflictException);
     expect(mockPrisma.client.create).not.toHaveBeenCalled();
   });
@@ -67,7 +74,7 @@ describe('ClientsService', () => {
     mockPrisma.client.findFirst.mockResolvedValue(null);
     mockPrisma.client.update.mockResolvedValue({ ...mockClient, name: 'Beta Inc' });
 
-    const result = await service.update('client-001', { name: 'Beta Inc' });
+    const result = await service.update('client-001', { name: 'Beta Inc' }, ADMIN_USER_ID);
     expect(result.name).toBe('Beta Inc');
   });
 
@@ -75,7 +82,7 @@ describe('ClientsService', () => {
   it('UpdateClient_NotFound_ThrowsNotFoundException', async () => {
     mockPrisma.client.findUnique.mockResolvedValue(null);
 
-    await expect(service.update('bad-id', { name: 'X' })).rejects.toThrow(NotFoundException);
+    await expect(service.update('bad-id', { name: 'X' }, ADMIN_USER_ID)).rejects.toThrow(NotFoundException);
   });
 
   // UTC-F-006-B-005
@@ -83,7 +90,7 @@ describe('ClientsService', () => {
     mockPrisma.client.findUnique.mockResolvedValue(mockClient);
     mockPrisma.client.findFirst.mockResolvedValue({ ...mockClient, id: 'client-002', name: 'Taken Name' });
 
-    await expect(service.update('client-001', { name: 'Taken Name' })).rejects.toThrow(ConflictException);
+    await expect(service.update('client-001', { name: 'Taken Name' }, ADMIN_USER_ID)).rejects.toThrow(ConflictException);
   });
 
   // UTC-F-006-B-006
@@ -92,7 +99,7 @@ describe('ClientsService', () => {
     mockPrisma.project.count.mockResolvedValue(0);
     mockPrisma.client.update.mockResolvedValue({ ...mockClient, isActive: false });
 
-    const result = await service.setStatus('client-001', false);
+    const result = await service.setStatus('client-001', false, ADMIN_USER_ID);
 
     expect(result.isActive).toBe(false);
     expect(mockPrisma.client.update).toHaveBeenCalledWith(
@@ -105,7 +112,7 @@ describe('ClientsService', () => {
     mockPrisma.client.findUnique.mockResolvedValue(mockClient);
     mockPrisma.project.count.mockResolvedValue(2);
 
-    await expect(service.setStatus('client-001', false)).rejects.toThrow(ConflictException);
+    await expect(service.setStatus('client-001', false, ADMIN_USER_ID)).rejects.toThrow(ConflictException);
     expect(mockPrisma.client.update).not.toHaveBeenCalled();
   });
 

@@ -1,5 +1,13 @@
 import { PartialType } from '@nestjs/swagger';
-import { IsBoolean, IsEmail, IsNotEmpty, IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
+import { IsArray, IsBoolean, IsEmail, IsNotEmpty, IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
+
+export interface AdditionalContact {
+  contactPerson: string;
+  designation?: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+}
 
 export class CreateClientDto {
   @IsString() @IsNotEmpty() @MaxLength(150)
@@ -7,6 +15,9 @@ export class CreateClientDto {
 
   @IsString() @IsNotEmpty() @MaxLength(100)
   contactPerson: string;
+
+  @IsOptional() @IsString() @MaxLength(100)
+  designation?: string;
 
   @IsEmail() @IsNotEmpty()
   email: string;
@@ -19,6 +30,9 @@ export class CreateClientDto {
 
   @IsOptional() @IsUUID()
   businessUnitId?: string;
+
+  @IsOptional() @IsArray()
+  additionalContacts?: AdditionalContact[];
 }
 
 export class UpdateClientDto extends PartialType(CreateClientDto) {}

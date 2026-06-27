@@ -38,6 +38,7 @@ export function UserFormModal({ mode, user, onClose, onSuccess }: Props) {
   const [email, setEmail] = useState(user?.email ?? '');
   const [systemRole, setSystemRole] = useState<SystemRole>(user?.systemRole ?? 'EMPLOYEE');
   const [phone, setPhone] = useState(user?.phone ?? '');
+  const [employeeId, setEmployeeId] = useState(user?.employeeId ?? '');
   const [joinDate, setJoinDate] = useState(user?.joinDate ? user.joinDate.substring(0, 10) : '');
   const [businessUnitId, setBusinessUnitId] = useState('');
   const [departmentId, setDepartmentId] = useState(user?.department?.id ?? '');
@@ -137,6 +138,7 @@ export function UserFormModal({ mode, user, onClose, onSuccess }: Props) {
         email: email.trim(),
         systemRole,
         phone: phone || undefined,
+        employeeId: employeeId.trim() || undefined,
         joinDate: joinDate || undefined,
         departmentId,
         shiftId,
@@ -147,6 +149,7 @@ export function UserFormModal({ mode, user, onClose, onSuccess }: Props) {
         email: email.trim(),
         systemRole,
         phone: phone || undefined,
+        employeeId: employeeId.trim() || undefined,
         joinDate: joinDate || undefined,
         departmentId,
         shiftId,
@@ -265,8 +268,20 @@ export function UserFormModal({ mode, user, onClose, onSuccess }: Props) {
             {fieldErrors.shiftId && <p className="mt-1 text-xs text-red-500">{fieldErrors.shiftId}</p>}
           </div>
 
-          {/* Phone + Join Date (row) */}
+          {/* Employee ID + Phone (row) */}
           <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className={labelCls}>Employee ID</label>
+              <input
+                type="text"
+                value={employeeId}
+                onChange={(e) => setEmployeeId(e.target.value)}
+                placeholder="e.g. EMP001"
+                maxLength={50}
+                autoComplete="off"
+                className={inputCls}
+              />
+            </div>
             <div>
               <label className={labelCls}>Phone</label>
               <input
@@ -279,17 +294,19 @@ export function UserFormModal({ mode, user, onClose, onSuccess }: Props) {
                 className={inputCls}
               />
             </div>
-            <div>
-              <label className={labelCls}>Join Date</label>
-              <input
-                type="date"
-                value={joinDate}
-                min={pastDateStr(30)}
-                max={futureDateStr(2)}
-                onChange={(e) => setJoinDate(e.target.value)}
-                className={inputCls}
-              />
-            </div>
+          </div>
+
+          {/* Join Date */}
+          <div>
+            <label className={labelCls}>Join Date</label>
+            <input
+              type="date"
+              value={joinDate}
+              min={pastDateStr(30)}
+              max={futureDateStr(2)}
+              onChange={(e) => setJoinDate(e.target.value)}
+              className={inputCls}
+            />
           </div>
 
           <div className="flex justify-end gap-3 pt-2">

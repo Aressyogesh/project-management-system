@@ -239,11 +239,13 @@ export class SettingsService {
   }
 
   async createShift(dto: CreateShiftDto) {
-    const existing = await this.prisma.shift.findUnique({
-      where: { shiftType: dto.shiftType },
-    });
-    if (existing) {
-      throw new ConflictException(`Shift type ${dto.shiftType} already exists`);
+    if (dto.shiftType !== ShiftType.CUSTOM) {
+      const existing = await this.prisma.shift.findFirst({
+        where: { shiftType: dto.shiftType },
+      });
+      if (existing) {
+        throw new ConflictException(`Shift type ${dto.shiftType} already exists`);
+      }
     }
     return this.prisma.shift.create({ data: { ...dto, workHours: dto.workHours ?? 8 } });
   }
@@ -252,6 +254,15 @@ export class SettingsService {
     const shift = await this.prisma.shift.findUnique({ where: { id } });
     if (!shift) throw new NotFoundException('Shift not found');
     return this.prisma.shift.update({ where: { id }, data: dto });
+  }
+
+  async deleteShift(id: string) {
+    const shift = await this.prisma.shift.findUnique({ where: { id } });
+    if (!shift) throw new NotFoundException('Shift not found');
+    if (shift.shiftType !== ShiftType.CUSTOM) {
+      throw new ConflictException('Only custom shifts can be deleted');
+    }
+    await this.prisma.shift.delete({ where: { id } });
   }
 
   /* ─── Holidays ────────────────────────────────────────────────────── */

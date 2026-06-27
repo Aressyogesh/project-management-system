@@ -4,8 +4,9 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { ProjectRole, SystemRole, TimesheetApprovalStatus } from '@prisma/client';
+import { AuditAction, AuditEntity, ProjectRole, SystemRole, TimesheetApprovalStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { AuditLogsService } from '../audit-logs/audit-logs.service';
 import { CreateTimesheetEntryDto, RejectTimesheetEntryDto, UpdateTimesheetEntryDto } from './dto/timesheet-entry.dto';
 
 const ENTRY_INCLUDE = {
@@ -16,15 +17,20 @@ const ENTRY_INCLUDE = {
       id: true,
       title: true,
       type: true,
+      billingStatus: true,
       estimatedHours: true,
       project: { select: { id: true, name: true } },
     },
   },
 };
 
+
 @Injectable()
 export class TimesheetEntriesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly auditLogs: AuditLogsService,
+  ) {}
 
   async create(workItemId: string, userId: string, systemRole: SystemRole, dto: CreateTimesheetEntryDto) {
     const item = await this.prisma.workItem.findUnique({
@@ -77,6 +83,14 @@ export class TimesheetEntriesService {
     }
 
     await Promise.all(activities);
+
+    this.auditLogs.log({
+      userId,
+      action: AuditAction.TIMESHEET_LOGGED,
+      entity: AuditEntity.TIMESHEET,
+      entityId: entry.workItemId,
+      entityTitle: `${dto.hours}h on ${date} — ${item.title}`,
+    });
 
     return entry;
   }
@@ -140,10 +154,60 @@ export class TimesheetEntriesService {
       where['workItemId'] = { in: projectWorkItems.map((w) => w.id) };
     }
 
-    return this.prisma.timesheetEntry.findMany({
+    const entries = await this.prisma.timesheetEntry.findMany({
       where,
       include: ENTRY_INCLUDE,
       orderBy: [{ date: 'desc' }, { createdAt: 'desc' }],
+    });
+
+    // Classify BUG entries as rework (code-review phase) or bug-fix (QA phase).
+    // Non-BUG entries are always billable — QA regression history on the task is not penalised.
+    const bugWorkItemIds = [...new Set(
+      entries.filter(e => e.workItem.type === 'BUG').map(e => e.workItemId),
+    )];
+
+    const bugClassMap = new Map<string, { isRework: boolean; isBugFix: boolean }>();
+
+    if (bugWorkItemIds.length > 0) {
+      const bugItems = await this.prisma.workItem.findMany({
+        where: { id: { in: bugWorkItemIds } },
+        select: { id: true, parentId: true, createdAt: true },
+      });
+
+      const bugsWithParent = bugItems.filter(b => b.parentId !== null);
+      const parentIds = [...new Set(bugsWithParent.map(b => b.parentId!))];
+
+      const parentStatusActivities = parentIds.length > 0
+        ? await this.prisma.workItemActivity.findMany({
+            where: { workItemId: { in: parentIds }, field: 'status' },
+            select: { workItemId: true, newValue: true, createdAt: true },
+            orderBy: { createdAt: 'asc' },
+          })
+        : [];
+
+      for (const bug of bugItems) {
+        if (!bug.parentId) {
+          bugClassMap.set(bug.id, { isRework: false, isBugFix: true });
+          continue;
+        }
+        // Parent's most recent status at or before this bug was created
+        const prior = parentStatusActivities.filter(
+          a => a.workItemId === bug.parentId && a.createdAt <= bug.createdAt,
+        );
+        const lastStatus = prior.length > 0 ? prior[prior.length - 1].newValue : null;
+        bugClassMap.set(bug.id, lastStatus === 'IN_REVIEW'
+          ? { isRework: true,  isBugFix: false }
+          : { isRework: false, isBugFix: true  },
+        );
+      }
+    }
+
+    return entries.map((e) => {
+      if (e.workItem.type !== 'BUG') {
+        return { ...e, isRework: false, isBugFix: false };
+      }
+      const cls = bugClassMap.get(e.workItemId) ?? { isRework: false, isBugFix: true };
+      return { ...e, ...cls };
     });
   }
 
@@ -171,7 +235,55 @@ export class TimesheetEntriesService {
     if (entry.approvalStatus === TimesheetApprovalStatus.APPROVED && !isAdmin) {
       throw new BadRequestException('Cannot delete an approved timesheet entry');
     }
-    return this.prisma.timesheetEntry.delete({ where: { id } });
+
+    const workItem = await this.prisma.workItem.findUnique({
+      where: { id: entry.workItemId },
+      select: { title: true, parentId: true },
+    });
+
+    const result = await this.prisma.timesheetEntry.delete({ where: { id } });
+
+    const logSummary = `${entry.hours}h on ${entry.date.toISOString().split('T')[0]}`;
+
+    const activityWrites: Promise<unknown>[] = [
+      this.prisma.workItemActivity.create({
+        data: {
+          workItemId: entry.workItemId,
+          userId,
+          action: 'time_deleted',
+          field: 'time',
+          oldValue: logSummary,
+          newValue: null,
+        },
+      }),
+    ];
+
+    if (workItem?.parentId) {
+      activityWrites.push(
+        this.prisma.workItemActivity.create({
+          data: {
+            workItemId: workItem.parentId,
+            userId,
+            action: 'child_time_deleted',
+            field: 'time',
+            oldValue: workItem.title,
+            newValue: logSummary,
+          },
+        }),
+      );
+    }
+
+    await Promise.all(activityWrites);
+
+    this.auditLogs.log({
+      userId,
+      action: AuditAction.TIMESHEET_DELETED,
+      entity: AuditEntity.TIMESHEET,
+      entityId: entry.workItemId,
+      entityTitle: `${logSummary} — ${workItem?.title ?? entry.workItemId}`,
+    });
+
+    return result;
   }
 
   async submit(id: string, userId: string) {

@@ -19,7 +19,7 @@ export const usersApi = {
   },
 
 
-  list: (params: { page?: number; limit?: number; search?: string }) =>
+  list: (params: { page?: number; limit?: number; search?: string; departmentId?: string }) =>
     apiClient.get<UsersPage>('/users', { params }).then((r) => r.data),
 
   getById: (id: string) =>

@@ -154,7 +154,12 @@ function RecordLeaveModal({
               </button>
               <button
                 type="button"
-                onClick={() => setIsPlanned(false)}
+                onClick={() => {
+                  setIsPlanned(false);
+                  const today = new Date().toISOString().split('T')[0];
+                  if (startDate > today) { setStartDate(''); setEndDate(''); }
+                  if (endDate > today) setEndDate('');
+                }}
                 className={`flex-1 py-2 text-sm rounded-lg border font-medium transition ${
                   !isPlanned
                     ? 'bg-orange-500 text-white border-orange-500'
@@ -187,6 +192,7 @@ function RecordLeaveModal({
               <input
                 type="date"
                 value={startDate}
+                max={!isPlanned ? new Date().toISOString().split('T')[0] : undefined}
                 onChange={(e) => {
                   setStartDate(e.target.value);
                   if (isHalfDay) setEndDate(e.target.value);

@@ -23,6 +23,12 @@ export class CreateUserDto {
   @MaxLength(20)
   phone?: string;
 
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(50)
+  employeeId?: string;
+
   @ApiPropertyOptional({ description: 'ISO date string e.g. 2024-01-15' })
   @IsOptional()
   @IsString()

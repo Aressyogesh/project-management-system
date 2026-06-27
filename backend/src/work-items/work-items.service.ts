@@ -28,7 +28,10 @@ const STATUS_ORDER: BoardStatus[] = [
   BoardStatus.READY_FOR_QA,
   BoardStatus.IN_QA,
   BoardStatus.QA_DONE,
+  BoardStatus.CLOSED,
 ];
+
+const TERMINAL_STATUSES = new Set<BoardStatus>([BoardStatus.QA_DONE, BoardStatus.CLOSED]);
 
 const VALID_PARENT_TYPES: Partial<Record<WorkItemType, WorkItemType[]>> = {
   [WorkItemType.USER_STORY]: [WorkItemType.EPIC],
@@ -276,17 +279,38 @@ export class WorkItemsService implements OnModuleInit {
 
     const isAdmin = userSystemRole === SystemRole.SUPER_USER || userSystemRole === SystemRole.ADMIN;
     const isPmOrTl = userProjectRole === ProjectRole.PROJECT_MANAGER || userProjectRole === ProjectRole.TEAM_LEAD;
+    const isPm = userProjectRole === ProjectRole.PROJECT_MANAGER;
     const isOwner = item.assigneeId === userId || item.reporterId === userId;
 
     if (!isAdmin && !isPmOrTl && !isOwner) {
       throw new ForbiddenException('You can only edit items assigned to or reported by you');
     }
 
+    if (dto.billingStatus !== undefined && dto.billingStatus !== item.billingStatus) {
+      if (!isAdmin) {
+        const membership = await this.prisma.projectMember.findUnique({
+          where: { projectId_userId: { projectId: item.projectId, userId } },
+          select: { projectRole: true },
+        });
+        if (membership?.projectRole !== ProjectRole.PROJECT_MANAGER) {
+          throw new ForbiddenException('Only the Project Manager can change the billing status');
+        }
+      }
+    }
+
     if (dto.parentId) await this.validateParentType(dto.type ?? item.type, dto.parentId);
 
+    if (dto.status && dto.status !== item.status) {
+      const toIdx = STATUS_ORDER.indexOf(dto.status);
+      const inReviewIdx = STATUS_ORDER.indexOf(BoardStatus.IN_REVIEW);
+      if (item.status === BoardStatus.IN_PROGRESS && toIdx >= inReviewIdx) {
+        await this.requireTimeLogForForwardMove(id, item.type);
+      }
+    }
+
     const { startDate, dueDate, ...restDto } = dto;
-    const isCompletingViaEdit = dto.status === BoardStatus.QA_DONE && item.status !== BoardStatus.QA_DONE;
-    const isUncompletingViaEdit = item.status === BoardStatus.QA_DONE && !!dto.status && dto.status !== BoardStatus.QA_DONE;
+    const isCompletingViaEdit = !!dto.status && TERMINAL_STATUSES.has(dto.status) && !TERMINAL_STATUSES.has(item.status);
+    const isUncompletingViaEdit = TERMINAL_STATUSES.has(item.status) && !!dto.status && !TERMINAL_STATUSES.has(dto.status);
     const updated = await this.prisma.workItem.update({
       where: { id },
       data: {
@@ -331,8 +355,8 @@ export class WorkItemsService implements OnModuleInit {
         );
       }
 
-      // Scenario 9: alert reporter when bug is moved back from QA_DONE (reopened)
-      if (item.type === WorkItemType.BUG && item.status === BoardStatus.QA_DONE && dto.status !== BoardStatus.QA_DONE) {
+      // Scenario 9: alert reporter when bug is moved back from a terminal status (reopened)
+      if (item.type === WorkItemType.BUG && TERMINAL_STATUSES.has(item.status) && !!dto.status && !TERMINAL_STATUSES.has(dto.status)) {
         this.automation.notifyBugReopened(
           { id: updated.id, displayId: updated.displayId ?? '', title: updated.title, projectId: item.projectId, reopenCount: item.reopenCount + 1, assignee: updated.assignee, reporter: null },
           { fullName: actorName },
@@ -506,6 +530,15 @@ export class WorkItemsService implements OnModuleInit {
         oldParent?.title ?? 'None', newParent?.title ?? 'None');
     }
 
+    this.auditLogs.log({
+      userId,
+      action: AuditAction.WORK_ITEM_UPDATED,
+      entity: AuditEntity.WORK_ITEM,
+      entityId: id,
+      entityTitle: `${item.displayId ?? ''} — ${item.title}`.trim().replace(/^—\s*/, ''),
+      projectId: item.projectId,
+    });
+
     return updated;
   }
 
@@ -514,8 +547,13 @@ export class WorkItemsService implements OnModuleInit {
     const fromIdx = STATUS_ORDER.indexOf(item.status);
     const toIdx = STATUS_ORDER.indexOf(dto.status);
     const isBackward = toIdx < fromIdx;
-    const isCompletingNow = dto.status === BoardStatus.QA_DONE && item.status !== BoardStatus.QA_DONE;
-    const isUncompletingNow = item.status === BoardStatus.QA_DONE && dto.status !== BoardStatus.QA_DONE;
+    const isCompletingNow = TERMINAL_STATUSES.has(dto.status) && !TERMINAL_STATUSES.has(item.status);
+    const isUncompletingNow = TERMINAL_STATUSES.has(item.status) && !TERMINAL_STATUSES.has(dto.status);
+
+    const inReviewIdx = STATUS_ORDER.indexOf(BoardStatus.IN_REVIEW);
+    if (item.status === BoardStatus.IN_PROGRESS && toIdx >= inReviewIdx) {
+      await this.requireTimeLogForForwardMove(id, item.type);
+    }
 
     const result = await this.prisma.workItem.update({
       where: { id },
@@ -555,7 +593,7 @@ export class WorkItemsService implements OnModuleInit {
         );
       }
 
-      if (item.type === WorkItemType.BUG && item.status === BoardStatus.QA_DONE && dto.status !== BoardStatus.QA_DONE) {
+      if (item.type === WorkItemType.BUG && TERMINAL_STATUSES.has(item.status) && !TERMINAL_STATUSES.has(dto.status)) {
         this.automation.notifyBugReopened(
           { id: item.id, displayId: item.displayId ?? '', title: item.title, projectId: item.projectId, reopenCount: item.reopenCount + 1, assignee, reporter: null },
           { fullName: actorName },
@@ -591,7 +629,7 @@ export class WorkItemsService implements OnModuleInit {
   }
 
   async addComment(workItemId: string, authorId: string, content: string, mentions: string[] = []) {
-    await this.findOneOrFail(workItemId);
+    const workItem = await this.findOneOrFail(workItemId);
 
     const comment = await this.prisma.workItemComment.create({
       data: { workItemId, authorId, content, mentions },
@@ -599,6 +637,15 @@ export class WorkItemsService implements OnModuleInit {
     });
 
     await this.logActivity(workItemId, authorId, 'commented', undefined, undefined, content.slice(0, 100));
+
+    this.auditLogs.log({
+      userId: authorId,
+      action: AuditAction.COMMENT_ADDED,
+      entity: AuditEntity.COMMENT,
+      entityId: comment.id,
+      entityTitle: workItem.title,
+      projectId: workItem.projectId,
+    });
 
     // Notify mentioned users
     if (mentions.length > 0) {
@@ -625,16 +672,44 @@ export class WorkItemsService implements OnModuleInit {
     if (comment.authorId !== userId && !isAdmin) {
       throw new ForbiddenException('You can only delete your own comments');
     }
-    return this.prisma.workItemComment.delete({ where: { id: commentId } });
+
+    const workItem = await this.prisma.workItem.findUnique({
+      where: { id: comment.workItemId },
+      select: { id: true, title: true, projectId: true },
+    });
+
+    const result = await this.prisma.workItemComment.delete({ where: { id: commentId } });
+
+    if (workItem) {
+      await this.logActivity(workItem.id, userId, 'comment_deleted', undefined, comment.content.slice(0, 100), null);
+      this.auditLogs.log({
+        userId,
+        action: AuditAction.COMMENT_DELETED,
+        entity: AuditEntity.COMMENT,
+        entityId: commentId,
+        entityTitle: workItem.title,
+        projectId: workItem.projectId,
+      });
+    }
+
+    return result;
   }
 
   async addAttachment(workItemId: string, file: Express.Multer.File, uploadedById: string) {
-    await this.findOneOrFail(workItemId);
+    const workItem = await this.findOneOrFail(workItemId);
     const attachment = await this.prisma.workItemAttachment.create({
       data: { workItemId, filename: file.filename, originalName: file.originalname, mimeType: file.mimetype, size: file.size, uploadedById },
       include: { uploadedBy: { select: { id: true, fullName: true } } },
     });
     await this.logActivity(workItemId, uploadedById, 'attachment_added', undefined, undefined, file.originalname);
+    this.auditLogs.log({
+      userId: uploadedById,
+      action: AuditAction.ATTACHMENT_ADDED,
+      entity: AuditEntity.ATTACHMENT,
+      entityId: attachment.id,
+      entityTitle: `${file.originalname} on "${workItem.title}"`,
+      projectId: workItem.projectId,
+    });
     return attachment;
   }
 
@@ -644,10 +719,26 @@ export class WorkItemsService implements OnModuleInit {
     return a;
   }
 
-  async removeAttachment(id: string) {
+  async removeAttachment(id: string, userId?: string) {
     const a = await this.getAttachment(id);
     try { await unlink(join(UPLOAD_DIR, a.filename)); } catch (e: any) { if (e.code !== 'ENOENT') throw e; }
     await this.prisma.workItemAttachment.delete({ where: { id } });
+
+    if (userId) {
+      const workItem = await this.prisma.workItem.findUnique({
+        where: { id: a.workItemId },
+        select: { title: true, projectId: true },
+      });
+      await this.logActivity(a.workItemId, userId, 'attachment_deleted', undefined, a.originalName, null);
+      this.auditLogs.log({
+        userId,
+        action: AuditAction.ATTACHMENT_DELETED,
+        entity: AuditEntity.ATTACHMENT,
+        entityId: id,
+        entityTitle: `${a.originalName} on "${workItem?.title ?? a.workItemId}"`,
+        projectId: workItem?.projectId,
+      });
+    }
   }
 
   getActivities(workItemId: string) {
@@ -666,19 +757,44 @@ export class WorkItemsService implements OnModuleInit {
       select: { status: true },
     });
     if (siblings.length === 0) return;
-    const allDone = siblings.every((s) => s.status === BoardStatus.QA_DONE);
+    const allDone = siblings.every((s) => TERMINAL_STATUSES.has(s.status));
     if (!allDone) return;
     const parent = await this.prisma.workItem.findUnique({
       where: { id: parentId },
       select: { status: true },
     });
-    if (!parent || parent.status === BoardStatus.QA_DONE) return;
+    if (!parent || TERMINAL_STATUSES.has(parent.status)) return;
     await this.prisma.workItem.update({
       where: { id: parentId },
       data: { status: BoardStatus.QA_DONE, completedAt: new Date() },
     });
     await this.logActivity(parentId, userId, 'status_changed', 'status',
       parent.status, BoardStatus.QA_DONE);
+  }
+
+  private async requireTimeLogForForwardMove(id: string, type: WorkItemType): Promise<void> {
+    let count: number;
+
+    if (type === WorkItemType.USER_STORY || type === WorkItemType.EPIC) {
+      const children = await this.prisma.workItem.findMany({
+        where: { parentId: id },
+        select: { id: true },
+      });
+      const childIds = children.map(c => c.id);
+      count = await this.prisma.timesheetEntry.count({
+        where: { workItemId: { in: [id, ...childIds] } },
+      });
+    } else {
+      count = await this.prisma.timesheetEntry.count({
+        where: { workItemId: id },
+      });
+    }
+
+    if (count === 0) {
+      throw new BadRequestException(
+        'Log time against this item before moving it forward',
+      );
+    }
   }
 
   private async logActivity(

@@ -133,8 +133,8 @@ export class WorkItemsController {
 
   @Delete('work-items/attachments/:id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  removeAttachment(@Param('id') id: string) {
-    return this.workItemsService.removeAttachment(id);
+  removeAttachment(@Param('id') id: string, @Request() req: { user: { id: string } }) {
+    return this.workItemsService.removeAttachment(id, req.user.id);
   }
 
   @Post('work-items/:id/comments')

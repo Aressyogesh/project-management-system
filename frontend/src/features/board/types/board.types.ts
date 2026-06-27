@@ -1,5 +1,5 @@
 export type WorkItemType = 'EPIC' | 'USER_STORY' | 'TASK' | 'SUB_TASK' | 'BUG';
-export type BoardStatus = 'TODO' | 'IN_PROGRESS' | 'BLOCKED' | 'IN_REVIEW' | 'READY_FOR_QA' | 'IN_QA' | 'QA_DONE' | 'QA';
+export type BoardStatus = 'TODO' | 'IN_PROGRESS' | 'BLOCKED' | 'IN_REVIEW' | 'READY_FOR_QA' | 'IN_QA' | 'QA_DONE' | 'CLOSED' | 'QA';
 export type BugSeverity = 'SHOW_STOPPER' | 'BLOCKER' | 'CRITICAL' | 'MAJOR' | 'MINOR' | 'TRIVIAL';
 export type BugClassification =
   | 'SECURITY' | 'CRASH_HANG' | 'DATA_LOSS' | 'PERFORMANCE' | 'UI_USABILITY'
@@ -177,6 +177,7 @@ export const DEFAULT_BOARD_COLUMNS: { status: BoardStatus; label: string; color:
   { status: 'READY_FOR_QA', label: 'Ready for QA',  color: '#8b5cf6', headerClass: 'bg-purple-100 text-purple-700' },
   { status: 'IN_QA',        label: 'In QA',          color: '#6366f1', headerClass: 'bg-indigo-100 text-indigo-700' },
   { status: 'QA_DONE',      label: 'QA Done',        color: '#10b981', headerClass: 'bg-emerald-100 text-emerald-700' },
+  { status: 'CLOSED',       label: 'Closed',          color: '#64748b', headerClass: 'bg-slate-100 text-slate-700' },
 ];
 
 /** @deprecated Use DEFAULT_BOARD_COLUMNS */

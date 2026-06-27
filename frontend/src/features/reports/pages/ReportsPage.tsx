@@ -1,11 +1,12 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQueries, useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 import {
   Bar,
   BarChart,
   CartesianGrid,
   Cell,
-  Legend,
+  Line,
+  LineChart,
   Pie,
   PieChart,
   ResponsiveContainer,
@@ -13,24 +14,27 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { analyticsApi } from '../../../api/analyticsApi';
+// Legend intentionally omitted — not used after PvA redesign
+import * as XLSX from 'xlsx-js-style';
+import { analyticsApi, PlannedVsActualRecord } from '../../../api/analyticsApi';
 import { projectsApi } from '../../../api/projects.api';
 import { usePageSize } from '../../../hooks/usePageSize';
 import { useAuthStore } from '../../../store/authStore';
-import { GRADE_CONFIG, buildTeamSummary, transformLiveKpi } from '../../kpi/data/kpiStaticData';
 import { CapacityReportTab } from '../components/CapacityReportTab';
+import { BillingReportPage } from './BillingReportPage';
+import { transformLiveKpi } from '../../kpi/data/kpiStaticData';
 
-type Tab = 'productivity' | 'kpi' | 'projects' | 'bugs' | 'allocation' | 'timesheet' | 'planned-actual' | 'capacity';
+type Tab = 'productivity' | 'projects' | 'bugs' | 'allocation' | 'timesheet' | 'planned-actual' | 'capacity' | 'billing';
 
 const TABS: { id: Tab; label: string }[] = [
   { id: 'productivity',   label: 'Team Productivity'  },
-  { id: 'kpi',            label: 'KPI Appraisal'      },
   { id: 'projects',       label: 'Project Summary'    },
   { id: 'bugs',           label: 'Bug Summary'         },
   { id: 'allocation',     label: 'Task Allocation'    },
   { id: 'timesheet',      label: 'Timesheet'          },
   { id: 'planned-actual', label: 'Planned vs Actual'  },
   { id: 'capacity',       label: 'Capacity'            },
+  { id: 'billing',        label: 'Billing'             },
 ];
 
 // ─── Period helpers ────────────────────────────────────────────────────────────
@@ -247,197 +251,6 @@ function TeamProductivityTab({ currentUserId, period, project }: { currentUserId
                     <td className="px-5 py-3 text-right text-gray-600">{r.onTimePct}%</td>
                     <td className="px-5 py-3">
                       <ScoreBar value={r.score} color={r.score >= 80 ? '#10B981' : r.score >= 60 ? '#F59E0B' : '#EF4444'} />
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-        {totalItems > 0 && (
-          <PaginationBar page={page} totalPages={totalPages} totalItems={totalItems}
-            startIndex={startIndex} endIndex={endIndex} pageSize={pageSize}
-            onPageChange={setPage} onPageSizeChange={setPageSize} />
-        )}
-      </div>
-    </div>
-  );
-}
-
-// ─── KPI Appraisal Tab ────────────────────────────────────────────────────────
-
-function KpiAppraisalTab({ currentUserId, period }: { currentUserId?: string; period: string }) {
-  const { data: liveData = [], isLoading } = useQuery({
-    queryKey: ['kpi-live', period],
-    queryFn: () => analyticsApi.getKpi(period),
-    staleTime: 60_000,
-  });
-
-  const kpiData = useMemo(() => liveData.map(transformLiveKpi), [liveData]);
-  const isSelfOnly = kpiData.length === 1 && kpiData[0].userId === currentUserId;
-  const summary = !isSelfOnly && kpiData.length > 0 ? buildTeamSummary(kpiData, period) : null;
-
-  const pieData = summary ? [
-    { name: 'Grade A', value: summary.gradeACcount, color: '#10B981' },
-    { name: 'Grade B', value: summary.gradeBCount,  color: '#3B82F6' },
-    { name: 'Grade C', value: summary.gradeCCount,  color: '#F59E0B' },
-    { name: 'Grade D', value: summary.gradeDCount,  color: '#EF4444' },
-  ].filter((d) => d.value > 0) : [];
-
-  const topPerformers = [...kpiData].sort((a, b) => b.totalScore - a.totalScore).slice(0, 3);
-  const sortedKpi = [...kpiData].sort((a, b) => b.totalScore - a.totalScore);
-  const { paginatedData, page, setPage, pageSize, setPageSize, totalPages, totalItems, startIndex, endIndex } = usePagination(sortedKpi, 'kpi');
-  const periodLabel = PERIOD_OPTIONS.find((p) => p.value === period)?.label ?? period;
-  const gradeConfig = summary ? GRADE_CONFIG[summary.teamGrade] : GRADE_CONFIG['C'];
-
-  if (isLoading) return <TabSpinner />;
-
-  // Personal view — shown when the backend returns only the requesting user's own data
-  if (isSelfOnly) {
-    const me = kpiData[0];
-    const gc = GRADE_CONFIG[me.grade];
-    return (
-      <div className="space-y-6">
-        <div className="flex justify-end">
-          <CsvButton onClick={() => downloadCsv(`kpi-appraisal-report-${period}.csv`, [
-            ['Name', 'Role', 'Department', 'Total Score', 'Grade'],
-            [me.name, me.role, me.department, String(me.totalScore), me.grade],
-          ])} />
-        </div>
-        <div className="bg-blue-50 border border-blue-100 rounded-2xl p-5 shadow-sm flex items-center gap-5">
-          <div className={`w-20 h-20 shrink-0 rounded-full flex flex-col items-center justify-center border-4 ${gc.border}`}>
-            <span className="text-2xl font-bold text-gray-800">{me.totalScore}</span>
-            <span className={`text-sm font-bold ${gc.text}`}>{me.grade}</span>
-          </div>
-          <div>
-            <p className="text-sm font-semibold text-gray-800">{me.name}</p>
-            <p className="text-xs text-gray-400 mt-0.5">{me.role} · {me.department}</p>
-            <span className={`text-xs font-bold px-2.5 py-1 rounded-full mt-2 inline-block ${gc.bg} ${gc.text}`}>
-              {gc.label} — {periodLabel}
-            </span>
-          </div>
-        </div>
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-          <div className="px-5 py-4 border-b border-gray-50">
-            <h3 className="text-sm font-semibold text-gray-800">Metric Breakdown</h3>
-          </div>
-          <div className="divide-y divide-gray-50">
-            {me.metrics.map((m) => (
-              <div key={m.metricId} className="px-5 py-3 flex items-center justify-between">
-                <span className="text-xs text-gray-600 font-medium">{m.metricId.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}</span>
-                <span className="text-xs font-semibold text-gray-800">{m.points}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-6">
-      <div className="flex justify-end">
-        <CsvButton onClick={() => downloadCsv(`kpi-appraisal-report-${period}.csv`, [
-          ['Name', 'Role', 'Department', 'Total Score', 'Grade'],
-          ...sortedKpi.map((e) => [e.name, e.role, e.department, String(e.totalScore), e.grade]),
-        ])} />
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
-          <h3 className="text-sm font-semibold text-gray-800 mb-1">Grade Distribution</h3>
-          <p className="text-xs text-gray-400 mb-3">{kpiData.length} employees this period</p>
-          <ResponsiveContainer width="100%" height={140}>
-            <PieChart>
-              <Pie data={pieData} cx="50%" cy="50%" innerRadius={40} outerRadius={60} paddingAngle={3} dataKey="value">
-                {pieData.map((entry, idx) => <Cell key={idx} fill={entry.color} stroke="none" />)}
-              </Pie>
-              <Tooltip contentStyle={{ borderRadius: 10, fontSize: 12, border: '1px solid #E5E7EB' }}
-                formatter={(v: number, name: string) => [`${v} employee${v !== 1 ? 's' : ''}`, name]} />
-            </PieChart>
-          </ResponsiveContainer>
-          <div className="grid grid-cols-2 gap-1 mt-2">
-            {pieData.map((d) => (
-              <div key={d.name} className="flex items-center gap-1.5">
-                <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: d.color }} />
-                <span className="text-xs text-gray-500">{d.name} — <span className="font-semibold text-gray-700">{d.value}</span></span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm flex flex-col items-center justify-center">
-          <p className="text-xs text-gray-400 mb-2">Team Average Score</p>
-          <div className={`w-20 h-20 rounded-full flex flex-col items-center justify-center border-4 ${gradeConfig.border}`}>
-            <span className="text-2xl font-bold text-gray-800">{summary?.teamAverage ?? 0}</span>
-            <span className={`text-sm font-bold ${gradeConfig.text}`}>{summary?.teamGrade ?? '—'}</span>
-          </div>
-          <p className={`mt-3 text-xs font-semibold px-3 py-1 rounded-full ${gradeConfig.bg} ${gradeConfig.text}`}>
-            {gradeConfig.label}
-          </p>
-        </div>
-
-        <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
-          <h3 className="text-sm font-semibold text-gray-800 mb-3">Top Performers</h3>
-          <div className="space-y-3">
-            {topPerformers.length === 0 && <p className="text-xs text-gray-400">No data for this period.</p>}
-            {topPerformers.map((e, i) => {
-              const gc = GRADE_CONFIG[e.grade];
-              return (
-                <div key={e.userId} className="flex items-center gap-3">
-                  <span className="w-5 h-5 rounded-full bg-gray-100 flex items-center justify-center text-xs font-bold text-gray-500 shrink-0">{i + 1}</span>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-semibold text-gray-800 truncate">{e.name}</p>
-                    <p className="text-xs text-gray-400">{e.role}</p>
-                  </div>
-                  <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${gc.bg} ${gc.text}`}>{e.totalScore}</span>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </div>
-
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-        <div className="px-5 py-4 border-b border-gray-50">
-          <h3 className="text-sm font-semibold text-gray-800">Employee KPI Details — {periodLabel}</h3>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="bg-gray-50 text-xs text-gray-500 uppercase tracking-wide">
-                <th className="px-5 py-3 text-left">Employee</th>
-                <th className="px-5 py-3 text-left">Role</th>
-                <th className="px-5 py-3 text-right">Score</th>
-                <th className="px-5 py-3 text-center">Grade</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50">
-              {paginatedData.length === 0 && (
-                <tr><td colSpan={4} className="text-center py-8 text-sm text-gray-400">No KPI data for this period.</td></tr>
-              )}
-              {paginatedData.map((e) => {
-                const gc = GRADE_CONFIG[e.grade];
-                const isMe = e.userId === currentUserId;
-                return (
-                  <tr key={e.userId} className={isMe ? 'bg-blue-50' : 'hover:bg-gray-50/50'}>
-                    <td className="px-5 py-3">
-                      <div className="flex items-center gap-2">
-                        <div className="w-7 h-7 rounded-full bg-primary-100 flex items-center justify-center shrink-0">
-                          <span className="text-xs font-semibold text-primary-700">
-                            {e.name.split(' ').map((n) => n[0]).join('').slice(0, 2)}
-                          </span>
-                        </div>
-                        <span className="font-medium text-gray-800 text-xs">{e.name}</span>
-                        {isMe && <span className="ml-1 text-xs bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-full font-medium">You</span>}
-                      </div>
-                    </td>
-                    <td className="px-5 py-3 text-gray-500 text-xs">{e.role}</td>
-                    <td className="px-5 py-3 text-right font-semibold text-gray-700">{e.totalScore}</td>
-                    <td className="px-5 py-3 text-center">
-                      <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${gc.bg} ${gc.text}`}>
-                        {e.grade} — {gc.label}
-                      </span>
                     </td>
                   </tr>
                 );
@@ -921,98 +734,400 @@ function TimesheetTab({ currentUserId, period, project }: { currentUserId?: stri
   );
 }
 
-// ─── Planned vs Actual Tab ────────────────────────────────────────────────────
+// ─── Planned vs Actual — helpers ─────────────────────────────────────────────
 
-function PlannedVsActualTab({ currentUserId, period, project }: { currentUserId?: string; period: string; project: string }) {
-  const { data = [], isLoading } = useQuery({
-    queryKey: ['reports-planned-actual', period, project],
-    queryFn: () => analyticsApi.getPlannedVsActual(period, project),
-    staleTime: 60_000,
+const PVA_MONTHS = [
+  { v: 1, l: 'Jan' }, { v: 2, l: 'Feb' }, { v: 3, l: 'Mar' },
+  { v: 4, l: 'Apr' }, { v: 5, l: 'May' }, { v: 6, l: 'Jun' },
+  { v: 7, l: 'Jul' }, { v: 8, l: 'Aug' }, { v: 9, l: 'Sep' },
+  { v: 10, l: 'Oct' }, { v: 11, l: 'Nov' }, { v: 12, l: 'Dec' },
+];
+const PVA_MONTH_FULL = ['', 'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December'];
+
+function pvaYears() {
+  const y = new Date().getFullYear();
+  return Array.from({ length: y - 2023 }, (_, i) => y - i);
+}
+function pvaPeriod(y: number, m: number) {
+  return `${y}-${String(m).padStart(2, '0')}`;
+}
+
+type PvaStatus = 'over' | 'under' | 'ontrack';
+
+function pvaStatusCfg(s: PvaStatus) {
+  if (s === 'over')  return { bg: 'bg-red-100',     text: 'text-red-700',     label: 'Over Budget', color: '#EF4444', rgb: 'FEE2E2', fontRgb: 'DC2626' };
+  if (s === 'under') return { bg: 'bg-amber-100',   text: 'text-amber-700',   label: 'Under',       color: '#F59E0B', rgb: 'FEF3C7', fontRgb: 'D97706' };
+  return               { bg: 'bg-emerald-100', text: 'text-emerald-700', label: 'On Track',    color: '#10B981', rgb: 'D1FAE5', fontRgb: '059669' };
+}
+function effStatus(eff: number): PvaStatus { return eff > 110 ? 'over' : eff < 80 ? 'under' : 'ontrack'; }
+
+interface ConsolidatedPva {
+  userId: string; name: string; role: string;
+  monthData: Map<number, PlannedVsActualRecord>;
+  totalPlanned: number; totalActual: number; totalTasks: number;
+  totalVariance: number; efficiency: number; status: PvaStatus;
+}
+
+// Bullet bar: track = planned, fill = actual, overflow = red when over
+function BulletBar({ planned, actual }: { planned: number; actual: number }) {
+  if (planned === 0 && actual === 0) return <span className="text-xs text-gray-300">—</span>;
+  const eff      = planned > 0 ? (actual / planned) * 100 : 100;
+  const isOver   = eff > 100;
+  const barColor = eff > 110 ? '#EF4444' : eff >= 80 ? '#10B981' : '#F59E0B';
+  const trackBg  = eff > 110 ? '#FEE2E2' : eff >= 80 ? '#ECFDF5' : '#FFFBEB';
+  // When over: bar width = 100% (actual), planned marker at (planned/actual)*100
+  // When under: bar width = (actual/planned)*100, planned marker at 100%
+  const fillPct   = isOver ? 100 : (actual / planned) * 100;
+  const markerPct = isOver ? (planned / actual) * 100 : 100;
+  const effRounded = Math.round(eff);
+
+  return (
+    <div className="flex items-center gap-2 w-full">
+      <div className="flex-1 relative h-5 rounded-full overflow-hidden" style={{ backgroundColor: trackBg }}>
+        <div className="absolute inset-y-0 left-0 rounded-l-full transition-all duration-500"
+          style={{ width: `${fillPct}%`, backgroundColor: barColor, opacity: 0.75 }} />
+        <div className="absolute inset-y-0 w-[2px] z-10"
+          style={{ left: `${markerPct}%`, backgroundColor: '#334155', opacity: 0.45 }} />
+        <span className="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-gray-700 z-20 drop-shadow-sm">
+          {effRounded}% efficiency
+        </span>
+      </div>
+      <div className="shrink-0 text-right w-[90px]">
+        <span className="text-xs font-semibold" style={{ color: barColor }}>{actual}h</span>
+        <span className="text-xs text-gray-400"> / {planned}h</span>
+      </div>
+    </div>
+  );
+}
+
+// Mini efficiency pill used in the multi-month grid
+function EffPill({ planned, actual }: { planned?: number; actual?: number }) {
+  if (!planned && !actual) return <span className="text-xs text-gray-300">—</span>;
+  const p = planned ?? 0; const a = actual ?? 0;
+  const eff = p > 0 ? Math.round((a / p) * 100) : a > 0 ? 100 : 0;
+  const cfg = pvaStatusCfg(effStatus(eff));
+  return (
+    <div className="text-center">
+      <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${cfg.bg} ${cfg.text}`}>{eff}%</span>
+      <div className="text-[9px] text-gray-400 mt-0.5">{a}h / {p}h</div>
+    </div>
+  );
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type XS = Record<string, any>;
+function xc(v: string | number, t: 's' | 'n', s: XS): XLSX.CellObject { return { v, t, s } as XLSX.CellObject; }
+const PVA_HDR: XS = {
+  font: { bold: true, color: { rgb: 'FFFFFF' }, sz: 10 },
+  fill: { patternType: 'solid', fgColor: { rgb: '1E293B' } },
+  alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
+  border: { bottom: { style: 'thin', color: { rgb: '334155' } } },
+};
+function savePvaXlsx(wb: XLSX.WorkBook, fileName: string) {
+  const data = XLSX.write(wb, { bookType: 'xlsx', type: 'array' }) as ArrayBuffer;
+  const blob = new Blob([data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  const url = URL.createObjectURL(blob); const a = document.createElement('a');
+  a.href = url; a.download = fileName;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+}
+
+function exportPvaSingle(rows: PlannedVsActualRecord[], year: number, month: number) {
+  const wb = XLSX.utils.book_new(); const ws: XLSX.WorkSheet = {};
+  const mn = PVA_MONTH_FULL[month];
+  const totalP = rows.reduce((s, r) => s + r.plannedHours, 0);
+  const totalA = rows.reduce((s, r) => s + r.actualHours, 0);
+  const eff = totalP > 0 ? Math.round((totalA / totalP) * 100) : 0;
+
+  ws['A1'] = xc(`Planned vs Actual — ${mn} ${year}`, 's', { font: { bold: true, sz: 14, color: { rgb: '1E293B' } } });
+  ws['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 8 } }];
+
+  // Summary band
+  const sumL = ['Total Planned', 'Total Actual', 'Variance', 'Efficiency', 'Over Budget', 'Under', 'On Track'];
+  const sumV = [
+    `${totalP}h`, `${totalA}h`,
+    `${Math.round((totalA - totalP) * 10) / 10 > 0 ? '+' : ''}${Math.round((totalA - totalP) * 10) / 10}h`,
+    `${eff}%`,
+    String(rows.filter(r => r.status === 'over').length),
+    String(rows.filter(r => r.status === 'under').length),
+    String(rows.filter(r => r.status === 'ontrack').length),
+  ];
+  sumL.forEach((l, i) => {
+    ws[XLSX.utils.encode_cell({ r: 1, c: i })] = xc(l, 's', { font: { sz: 9, color: { rgb: '94A3B8' } }, alignment: { horizontal: 'center' } });
+    ws[XLSX.utils.encode_cell({ r: 2, c: i })] = xc(sumV[i], 's', { font: { bold: true, sz: 13, color: { rgb: '1E293B' } }, alignment: { horizontal: 'center' } });
   });
 
-  const totalPlanned  = data.reduce((s, r) => s + r.plannedHours, 0);
-  const totalActual   = data.reduce((s, r) => s + r.actualHours, 0);
+  // Header row 4
+  ['#', 'Employee', 'Role', 'Tasks', 'Planned (h)', 'Actual (h)', 'Variance (h)', 'Efficiency %', 'Status'].forEach((h, i) =>
+    ws[XLSX.utils.encode_cell({ r: 4, c: i })] = xc(h, 's', PVA_HDR));
+
+  rows.forEach((r, idx) => {
+    const row = 5 + idx;
+    const bg  = idx % 2 === 0 ? 'F8FAFC' : 'FFFFFF';
+    const e   = r.plannedHours > 0 ? Math.round((r.actualHours / r.plannedHours) * 100) : 0;
+    const cfg = pvaStatusCfg(r.status);
+    const fill = (rgb: string): XS => ({ fill: { patternType: 'solid', fgColor: { rgb } } });
+    ws[XLSX.utils.encode_cell({ r: row, c: 0 })] = xc(idx + 1, 'n', { ...fill(bg), font: { sz: 9, color: { rgb: '94A3B8' } }, alignment: { horizontal: 'center' } });
+    ws[XLSX.utils.encode_cell({ r: row, c: 1 })] = xc(r.name, 's', { ...fill(bg), font: { bold: true, sz: 10 } });
+    ws[XLSX.utils.encode_cell({ r: row, c: 2 })] = xc(r.role.replace(/_/g, ' '), 's', { ...fill(bg), font: { sz: 9, color: { rgb: '64748B' } } });
+    ws[XLSX.utils.encode_cell({ r: row, c: 3 })] = xc(r.taskCount, 'n', { ...fill(bg), alignment: { horizontal: 'center' } });
+    ws[XLSX.utils.encode_cell({ r: row, c: 4 })] = xc(r.plannedHours, 'n', { ...fill(bg), font: { bold: true }, alignment: { horizontal: 'center' } });
+    ws[XLSX.utils.encode_cell({ r: row, c: 5 })] = xc(r.actualHours, 'n', { ...fill(bg), font: { bold: true, color: { rgb: cfg.fontRgb } }, alignment: { horizontal: 'center' } });
+    ws[XLSX.utils.encode_cell({ r: row, c: 6 })] = xc(`${r.variance > 0 ? '+' : ''}${r.variance}h`, 's', { ...fill(bg), font: { bold: true, color: { rgb: r.variance > 0 ? 'DC2626' : r.variance < 0 ? 'D97706' : '059669' } }, alignment: { horizontal: 'center' } });
+    ws[XLSX.utils.encode_cell({ r: row, c: 7 })] = xc(`${e}%`, 's', { fill: { patternType: 'solid', fgColor: { rgb: cfg.rgb } }, font: { bold: true, color: { rgb: cfg.fontRgb } }, alignment: { horizontal: 'center' } });
+    ws[XLSX.utils.encode_cell({ r: row, c: 8 })] = xc(cfg.label, 's', { fill: { patternType: 'solid', fgColor: { rgb: cfg.rgb } }, font: { bold: true, color: { rgb: cfg.fontRgb } }, alignment: { horizontal: 'center' } });
+  });
+
+  ws['!cols'] = [{ wch: 5 }, { wch: 22 }, { wch: 18 }, { wch: 8 }, { wch: 12 }, { wch: 12 }, { wch: 13 }, { wch: 13 }, { wch: 12 }];
+  ws['!rows'] = [{ hpt: 22 }, { hpt: 14 }, { hpt: 22 }, { hpt: 6 }, { hpt: 24 }];
+  ws['!ref']  = XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: 5 + rows.length - 1, c: 8 } });
+  ws['!freeze'] = { xSplit: 2, ySplit: 5 };
+  XLSX.utils.book_append_sheet(wb, ws, mn);
+  savePvaXlsx(wb, `PvA_${mn}_${year}.xlsx`);
+}
+
+function exportPvaConsolidated(consolidated: ConsolidatedPva[], months: number[], year: number) {
+  const wb = XLSX.utils.book_new(); const ws: XLSX.WorkSheet = {};
+  ws['A1'] = xc(`Planned vs Actual — Consolidated ${year}`, 's', { font: { bold: true, sz: 14, color: { rgb: '1E293B' } } });
+
+  const hdrRow = 2; let col = 0;
+  ws[XLSX.utils.encode_cell({ r: hdrRow, c: col++ })] = xc('Employee', 's', PVA_HDR);
+  ws[XLSX.utils.encode_cell({ r: hdrRow, c: col++ })] = xc('Role',     's', PVA_HDR);
+  ws[XLSX.utils.encode_cell({ r: hdrRow, c: col++ })] = xc('Tasks',    's', PVA_HDR);
+  months.forEach(m => {
+    const ml = PVA_MONTHS.find(x => x.v === m)?.l ?? '';
+    ws[XLSX.utils.encode_cell({ r: hdrRow, c: col++ })] = xc(`${ml}\nPlanned`, 's', PVA_HDR);
+    ws[XLSX.utils.encode_cell({ r: hdrRow, c: col++ })] = xc(`${ml}\nActual`,  's', PVA_HDR);
+    ws[XLSX.utils.encode_cell({ r: hdrRow, c: col++ })] = xc(`${ml}\nEff%`,    's', PVA_HDR);
+  });
+  const dkHdr = { ...PVA_HDR, fill: { patternType: 'solid', fgColor: { rgb: '334155' } } };
+  ws[XLSX.utils.encode_cell({ r: hdrRow, c: col++ })] = xc('Total\nPlanned', 's', dkHdr);
+  ws[XLSX.utils.encode_cell({ r: hdrRow, c: col++ })] = xc('Total\nActual',  's', dkHdr);
+  ws[XLSX.utils.encode_cell({ r: hdrRow, c: col++ })] = xc('Efficiency',     's', dkHdr);
+  ws[XLSX.utils.encode_cell({ r: hdrRow, c: col++ })] = xc('Status',         's', dkHdr);
+  const totalCols = col;
+
+  consolidated.forEach((emp, empIdx) => {
+    const row = hdrRow + 1 + empIdx;
+    const bg  = empIdx % 2 === 0 ? 'F8FAFC' : 'FFFFFF';
+    const cfg = pvaStatusCfg(emp.status);
+    const fill = (rgb: string): XS => ({ fill: { patternType: 'solid', fgColor: { rgb } } });
+    let c = 0;
+    ws[XLSX.utils.encode_cell({ r: row, c: c++ })] = xc(emp.name, 's', { ...fill(bg), font: { bold: true, sz: 10 } });
+    ws[XLSX.utils.encode_cell({ r: row, c: c++ })] = xc(emp.role.replace(/_/g, ' '), 's', { ...fill(bg), font: { sz: 9, color: { rgb: '64748B' } } });
+    ws[XLSX.utils.encode_cell({ r: row, c: c++ })] = xc(emp.totalTasks, 'n', { ...fill(bg), alignment: { horizontal: 'center' } });
+    months.forEach(m => {
+      const md  = emp.monthData.get(m);
+      const mEff = md && md.plannedHours > 0 ? Math.round((md.actualHours / md.plannedHours) * 100) : 0;
+      const effRgb = !md ? 'F8FAFC' : mEff > 110 ? 'FEE2E2' : mEff >= 80 ? 'D1FAE5' : 'FEF3C7';
+      const effFont = !md ? '94A3B8' : mEff > 110 ? 'DC2626' : mEff >= 80 ? '059669' : 'D97706';
+      ws[XLSX.utils.encode_cell({ r: row, c: c++ })] = xc(md?.plannedHours ?? '-', md ? 'n' : 's', { ...fill(bg), alignment: { horizontal: 'center' } });
+      ws[XLSX.utils.encode_cell({ r: row, c: c++ })] = xc(md?.actualHours  ?? '-', md ? 'n' : 's', { ...fill(bg), alignment: { horizontal: 'center' } });
+      ws[XLSX.utils.encode_cell({ r: row, c: c++ })] = xc(md ? `${mEff}%` : '-', 's', { fill: { patternType: 'solid', fgColor: { rgb: effRgb } }, font: { bold: !!md, color: { rgb: effFont } }, alignment: { horizontal: 'center' } });
+    });
+    ws[XLSX.utils.encode_cell({ r: row, c: c++ })] = xc(emp.totalPlanned, 'n', { ...fill('F1F5F9'), font: { bold: true }, alignment: { horizontal: 'center' } });
+    ws[XLSX.utils.encode_cell({ r: row, c: c++ })] = xc(emp.totalActual,  'n', { fill: { patternType: 'solid', fgColor: { rgb: 'F1F5F9' } }, font: { bold: true, color: { rgb: cfg.fontRgb } }, alignment: { horizontal: 'center' } });
+    ws[XLSX.utils.encode_cell({ r: row, c: c++ })] = xc(`${emp.efficiency}%`, 's', { fill: { patternType: 'solid', fgColor: { rgb: cfg.rgb } }, font: { bold: true, color: { rgb: cfg.fontRgb } }, alignment: { horizontal: 'center' } });
+    ws[XLSX.utils.encode_cell({ r: row, c: c++ })] = xc(cfg.label, 's', { fill: { patternType: 'solid', fgColor: { rgb: cfg.rgb } }, font: { bold: true, color: { rgb: cfg.fontRgb } }, alignment: { horizontal: 'center' } });
+  });
+
+  ws['!cols'] = [{ wch: 22 }, { wch: 16 }, { wch: 7 }, ...months.flatMap(() => [{ wch: 10 }, { wch: 10 }, { wch: 8 }]), { wch: 11 }, { wch: 11 }, { wch: 11 }, { wch: 12 }];
+  ws['!rows'] = [{ hpt: 22 }, { hpt: 28 }];
+  ws['!ref']  = XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: hdrRow + consolidated.length, c: totalCols - 1 } });
+  ws['!freeze'] = { xSplit: 2, ySplit: hdrRow + 1 };
+  XLSX.utils.book_append_sheet(wb, ws, `PvA ${year}`);
+  savePvaXlsx(wb, `PvA_Consolidated_${year}.xlsx`);
+}
+
+// ─── Planned vs Actual Tab ────────────────────────────────────────────────────
+
+function PlannedVsActualTab({ currentUserId, project }: { currentUserId?: string; period: string; project: string }) {
+  const today = new Date();
+  const [year, setYear]             = useState(today.getFullYear());
+  const [selectedMonths, setMonths] = useState<number[]>([today.getMonth() + 1]);
+
+  const sortedMonths = [...selectedMonths].sort((a, b) => a - b);
+  const projectId    = project && project !== 'all' ? project : undefined;
+
+  function toggleMonth(m: number) {
+    setMonths(prev => prev.includes(m) ? (prev.length > 1 ? prev.filter(x => x !== m) : prev) : [...prev, m]);
+  }
+
+  const results = useQueries({
+    queries: sortedMonths.map(m => ({
+      queryKey: ['reports-pva', year, m, projectId],
+      queryFn:  () => analyticsApi.getPlannedVsActual(pvaPeriod(year, m), projectId),
+      staleTime: 60_000,
+    })),
+  });
+
+  const isLoading    = results.some(r => r.isLoading);
+  const allMonthData = results.map(r => r.data ?? []) as PlannedVsActualRecord[][];
+  const isSingle     = sortedMonths.length === 1;
+
+  const consolidated = useMemo((): ConsolidatedPva[] => {
+    const map = new Map<string, ConsolidatedPva>();
+    sortedMonths.forEach((m, idx) => {
+      for (const rec of allMonthData[idx]) {
+        if (!map.has(rec.userId)) map.set(rec.userId, { userId: rec.userId, name: rec.name, role: rec.role, monthData: new Map(), totalPlanned: 0, totalActual: 0, totalTasks: 0, totalVariance: 0, efficiency: 0, status: 'ontrack' });
+        const e = map.get(rec.userId)!;
+        e.monthData.set(m, rec);
+        e.totalPlanned += rec.plannedHours;
+        e.totalActual  += rec.actualHours;
+        e.totalTasks   += rec.taskCount;
+      }
+    });
+    return Array.from(map.values()).map(e => {
+      const eff = e.totalPlanned > 0 ? Math.round((e.totalActual / e.totalPlanned) * 100) : 0;
+      const variance = Math.round((e.totalActual - e.totalPlanned) * 10) / 10;
+      return { ...e, totalVariance: variance, efficiency: eff, status: effStatus(eff) };
+    }).sort((a, b) => Math.abs(b.totalVariance) - Math.abs(a.totalVariance));
+  }, [allMonthData.map(d => d.length).join(','), sortedMonths.join(',')]);
+
+  const displayData: PlannedVsActualRecord[] = isSingle
+    ? (allMonthData[0] ?? [])
+    : consolidated.map(e => ({ userId: e.userId, name: e.name, role: e.role, taskCount: e.totalTasks, plannedHours: e.totalPlanned, actualHours: e.totalActual, variance: e.totalVariance, variancePct: e.efficiency - 100, status: e.status }));
+
+  const totalPlanned  = displayData.reduce((s, r) => s + r.plannedHours, 0);
+  const totalActual   = displayData.reduce((s, r) => s + r.actualHours, 0);
   const totalVariance = Math.round((totalActual - totalPlanned) * 10) / 10;
-  const overCount     = data.filter((r) => r.status === 'over').length;
-  const underCount    = data.filter((r) => r.status === 'under').length;
-  const onTrackCount  = data.filter((r) => r.status === 'ontrack').length;
+  const efficiency    = totalPlanned > 0 ? Math.round((totalActual / totalPlanned) * 100) : 0;
+  const overCount     = displayData.filter(r => r.status === 'over').length;
+  const underCount    = displayData.filter(r => r.status === 'under').length;
+  const onTrackCount  = displayData.filter(r => r.status === 'ontrack').length;
+  const effCfg        = pvaStatusCfg(effStatus(efficiency));
 
-  const chartData = data.slice(0, 10).map((r) => ({
-    name:    r.name.split(' ')[0],
-    Planned: r.plannedHours,
-    Actual:  r.actualHours,
-  }));
+  const barData  = (isSingle ? allMonthData[0] ?? [] : displayData).slice(0, 10).map(r => ({ name: r.name.split(' ')[0], Planned: r.plannedHours, Actual: r.actualHours }));
+  const trendData = sortedMonths.map((m, i) => ({ month: PVA_MONTHS.find(x => x.v === m)?.l ?? '', Planned: Math.round(allMonthData[i].reduce((s, r) => s + r.plannedHours, 0) * 10) / 10, Actual: Math.round(allMonthData[i].reduce((s, r) => s + r.actualHours, 0) * 10) / 10 }));
 
-  const periodLabel = PERIOD_OPTIONS.find((p) => p.value === period)?.label ?? period;
-  const { paginatedData, page, setPage, pageSize, setPageSize, totalPages, totalItems, startIndex, endIndex } = usePagination(data, 'planned-actual');
+  const { paginatedData, page, setPage, pageSize, setPageSize, totalPages, totalItems, startIndex, endIndex } = usePagination(displayData, 'planned-actual');
 
   if (isLoading) return <TabSpinner />;
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-end">
-        <CsvButton onClick={() => downloadCsv(`planned-vs-actual-${period}.csv`, [
-          ['Name', 'Role', 'Tasks', 'Planned (h)', 'Actual (h)', 'Variance (h)', 'Variance %', 'Status'],
-          ...data.map((r) => [r.name, r.role, String(r.taskCount), String(r.plannedHours), String(r.actualHours), String(r.variance), `${r.variancePct}%`, r.status]),
-        ])} />
+    <div className="space-y-5">
+
+      {/* ── Header + selectors ── */}
+      <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
+        <div className="flex flex-wrap items-start gap-4">
+          <div className="shrink-0">
+            <h3 className="text-sm font-semibold text-gray-800">Planned vs Actual</h3>
+            <p className="text-xs text-gray-400 mt-0.5">Estimation accuracy across your team</p>
+          </div>
+          <div className="flex flex-wrap items-center gap-3 ml-auto">
+            <select value={year} onChange={e => setYear(Number(e.target.value))}
+              className="border border-gray-200 rounded-lg px-3 py-1.5 text-xs bg-white focus:outline-none focus:border-indigo-400">
+              {pvaYears().map(y => <option key={y} value={y}>{y}</option>)}
+            </select>
+            <div className="flex flex-wrap gap-1">
+              {PVA_MONTHS.map(m => {
+                const on = selectedMonths.includes(m.v);
+                return (
+                  <label key={m.v} className={`flex items-center px-2 py-1 rounded-lg border text-xs cursor-pointer select-none transition-colors ${on ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-500 border-gray-200 hover:border-gray-400'}`}>
+                    <input type="checkbox" className="hidden" checked={on} onChange={() => toggleMonth(m.v)} />{m.l}
+                  </label>
+                );
+              })}
+            </div>
+            {!isLoading && displayData.length > 0 && (
+              <button
+                onClick={() => isSingle ? exportPvaSingle(displayData, year, sortedMonths[0]) : exportPvaConsolidated(consolidated, sortedMonths, year)}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+                Export Excel
+              </button>
+            )}
+          </div>
+        </div>
       </div>
 
-      {/* Summary cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
+      {/* ── KPI Hero Cards ── */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm text-center">
+          <p className="text-xs text-gray-400 mb-1">Total Planned</p>
           <p className="text-2xl font-bold text-gray-800">{totalPlanned}h</p>
-          <p className="text-xs text-gray-400 mt-1">Total Planned</p>
+          <p className="text-xs text-gray-400 mt-1">{displayData.length} members</p>
         </div>
         <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm text-center">
+          <p className="text-xs text-gray-400 mb-1">Total Actual</p>
           <p className="text-2xl font-bold text-gray-800">{totalActual}h</p>
-          <p className="text-xs text-gray-400 mt-1">Total Actual</p>
+          <p className="text-xs text-gray-400 mt-1">{displayData.reduce((s, r) => s + r.taskCount, 0)} tasks</p>
         </div>
-        <div className={`bg-white rounded-2xl border p-4 shadow-sm text-center ${totalVariance > 0 ? 'border-red-100' : totalVariance < 0 ? 'border-emerald-100' : 'border-gray-100'}`}>
-          <p className={`text-2xl font-bold ${totalVariance > 0 ? 'text-red-600' : totalVariance < 0 ? 'text-emerald-600' : 'text-gray-800'}`}>
+        <div className={`bg-white rounded-2xl border p-4 shadow-sm text-center ${totalVariance > 0 ? 'border-red-100' : totalVariance < 0 ? 'border-amber-100' : 'border-gray-100'}`}>
+          <p className="text-xs text-gray-400 mb-1">Variance</p>
+          <p className={`text-2xl font-bold ${totalVariance > 0 ? 'text-red-600' : totalVariance < 0 ? 'text-amber-600' : 'text-gray-800'}`}>
             {totalVariance > 0 ? '+' : ''}{totalVariance}h
           </p>
-          <p className="text-xs text-gray-400 mt-1">Total Variance</p>
+          <p className="text-xs text-gray-400 mt-1">{totalVariance > 0 ? 'over estimate' : totalVariance < 0 ? 'under estimate' : 'exact'}</p>
+        </div>
+        <div className={`rounded-2xl border-transparent border p-4 shadow-sm text-center ${effCfg.bg}`}>
+          <p className={`text-xs mb-1 opacity-60 ${effCfg.text}`}>Team Efficiency</p>
+          <p className={`text-2xl font-bold ${effCfg.text}`}>{efficiency}%</p>
+          <p className={`text-xs mt-1 opacity-60 ${effCfg.text}`}>actual ÷ planned</p>
         </div>
         <div className="bg-white rounded-2xl border border-red-100 p-4 shadow-sm text-center">
+          <p className="text-xs text-gray-400 mb-1">Over Budget</p>
           <p className="text-2xl font-bold text-red-600">{overCount}</p>
-          <p className="text-xs text-gray-400 mt-1">Over Budget</p>
+          <p className="text-xs text-red-400 mt-1">&gt;110% used</p>
         </div>
         <div className="bg-white rounded-2xl border border-emerald-100 p-4 shadow-sm text-center">
+          <p className="text-xs text-gray-400 mb-1">On Track</p>
           <p className="text-2xl font-bold text-emerald-600">{onTrackCount}</p>
-          <p className="text-xs text-gray-400 mt-1">On Track</p>
+          <p className="text-xs text-emerald-400 mt-1">80–110%</p>
         </div>
       </div>
 
-      {/* Side-by-side bar chart */}
-      {chartData.length > 0 && (
+      {/* ── Chart ── */}
+      {barData.length > 0 && (
         <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
-          <h3 className="text-sm font-semibold text-gray-800 mb-1">Planned vs Actual Hours — {periodLabel}</h3>
-          <p className="text-xs text-gray-400 mb-4">
-            {data.length > 10 ? 'Top 10 members' : `${data.length} members`} sorted by variance
-          </p>
-          <ResponsiveContainer width="100%" height={240}>
-            <BarChart data={chartData} barGap={2} barCategoryGap="30%" margin={{ top: 4, right: 8, bottom: 4, left: -20 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" vertical={false} />
-              <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#9CA3AF' }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fontSize: 11, fill: '#9CA3AF' }} axisLine={false} tickLine={false} />
-              <Tooltip
-                contentStyle={{ borderRadius: 10, fontSize: 12, border: '1px solid #E5E7EB' }}
-                formatter={(v: number, name: string) => [`${v}h`, name]}
-              />
-              <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: '12px', color: '#64748b', paddingTop: '10px' }} />
-              <Bar dataKey="Planned" fill="#94a3b8" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="Actual"  fill="#3b82f6" radius={[4, 4, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="text-sm font-semibold text-gray-800">
+                {isSingle ? `Hours Comparison — ${PVA_MONTH_FULL[sortedMonths[0]]} ${year}` : `Monthly Trend — ${year}`}
+              </h3>
+              <p className="text-xs text-gray-400 mt-0.5">
+                {isSingle ? `Top ${Math.min(10, barData.length)} members by variance` : `${sortedMonths.length} months selected`}
+              </p>
+            </div>
+            <div className="flex items-center gap-4 text-xs text-gray-500">
+              <span className="flex items-center gap-1.5"><span className="w-3 h-2 rounded-sm inline-block bg-slate-400" />Planned</span>
+              <span className="flex items-center gap-1.5"><span className="w-3 h-2 rounded-sm inline-block bg-blue-500" />Actual</span>
+            </div>
+          </div>
+          {isSingle ? (
+            <ResponsiveContainer width="100%" height={220}>
+              <BarChart data={barData} barGap={2} barCategoryGap="30%" margin={{ top: 4, right: 8, bottom: 4, left: -20 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" vertical={false} />
+                <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#9CA3AF' }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 11, fill: '#9CA3AF' }} axisLine={false} tickLine={false} />
+                <Tooltip contentStyle={{ borderRadius: 10, fontSize: 12, border: '1px solid #E5E7EB' }} formatter={(v: number, name: string) => [`${v}h`, name]} />
+                <Bar dataKey="Planned" fill="#94a3b8" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="Actual"  fill="#3b82f6" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <ResponsiveContainer width="100%" height={220}>
+              <LineChart data={trendData} margin={{ top: 4, right: 8, bottom: 4, left: -20 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" vertical={false} />
+                <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#9CA3AF' }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 11, fill: '#9CA3AF' }} axisLine={false} tickLine={false} />
+                <Tooltip contentStyle={{ borderRadius: 10, fontSize: 12, border: '1px solid #E5E7EB' }} formatter={(v: number, name: string) => [`${v}h`, name]} />
+                <Line type="monotone" dataKey="Planned" stroke="#94a3b8" strokeWidth={2} dot={{ r: 4, fill: '#94a3b8' }} />
+                <Line type="monotone" dataKey="Actual"  stroke="#3b82f6" strokeWidth={2} dot={{ r: 4, fill: '#3b82f6' }} />
+              </LineChart>
+            </ResponsiveContainer>
+          )}
         </div>
       )}
 
-      {/* Detail table */}
+      {/* ── Detail Table ── */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
         <div className="px-5 py-4 border-b border-gray-50 flex items-center justify-between">
           <div>
-            <h3 className="text-sm font-semibold text-gray-800">Planned vs Actual Details</h3>
-            <p className="text-xs text-gray-400 mt-0.5">{data.length} members · sorted by highest variance</p>
+            <h3 className="text-sm font-semibold text-gray-800">{isSingle ? 'Member Breakdown' : 'Consolidated Breakdown'}</h3>
+            <p className="text-xs text-gray-400 mt-0.5">{displayData.length} members · sorted by highest variance</p>
           </div>
           <div className="flex items-center gap-2 text-xs">
             <span className="px-2 py-0.5 rounded-full bg-red-100 text-red-700 font-medium">{overCount} Over</span>
@@ -1022,91 +1137,108 @@ function PlannedVsActualTab({ currentUserId, period, project }: { currentUserId?
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="bg-gray-50 text-xs text-gray-500 uppercase tracking-wide">
-                <th className="px-5 py-3 text-left">#</th>
-                <th className="px-5 py-3 text-left">Employee</th>
-                <th className="px-5 py-3 text-right">Tasks</th>
-                <th className="px-5 py-3 text-right">Planned</th>
-                <th className="px-5 py-3 text-right">Actual</th>
-                <th className="px-5 py-3 text-right">Variance</th>
-                <th className="px-5 py-3 text-left min-w-[160px]">Progress</th>
-                <th className="px-5 py-3 text-center">Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50">
-              {data.length === 0 && (
-                <tr><td colSpan={8} className="text-center py-8 text-sm text-gray-400">No data for this period.</td></tr>
-              )}
-              {paginatedData.map((r, i) => {
-                const isMe = r.userId === currentUserId;
-                const isOver  = r.status === 'over';
-                const isUnder = r.status === 'under';
-                const statusCfg = isOver
-                  ? { bg: 'bg-red-100',     text: 'text-red-700',     label: 'Over'     }
-                  : isUnder
-                  ? { bg: 'bg-amber-100',   text: 'text-amber-700',   label: 'Under'    }
-                  : { bg: 'bg-emerald-100', text: 'text-emerald-700', label: 'On Track' };
-
-                const maxBar = Math.max(r.plannedHours, r.actualHours, 1);
-                const plannedPct = Math.round((r.plannedHours / maxBar) * 100);
-                const actualPct  = Math.round((r.actualHours  / maxBar) * 100);
-
-                return (
-                  <tr key={r.userId} className={isMe ? 'bg-blue-50' : 'hover:bg-gray-50/50'}>
-                    <td className="px-5 py-3 text-gray-400 text-xs">{startIndex + i}</td>
-                    <td className="px-5 py-3">
-                      <div className="flex items-center gap-2">
-                        <div className="w-7 h-7 rounded-full bg-indigo-100 flex items-center justify-center shrink-0">
-                          <span className="text-xs font-semibold text-indigo-700">
-                            {r.name.split(' ').map((n) => n[0]).join('').slice(0, 2)}
-                          </span>
-                        </div>
-                        <div>
-                          <p className="font-medium text-gray-800 text-xs">{r.name}</p>
-                          <p className="text-xs text-gray-400">{r.role}</p>
-                        </div>
-                        {isMe && <span className="ml-1 text-xs bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-full font-medium">You</span>}
-                      </div>
-                    </td>
-                    <td className="px-5 py-3 text-right text-gray-600 text-xs">{r.taskCount}</td>
-                    <td className="px-5 py-3 text-right font-semibold text-gray-700">{r.plannedHours}h</td>
-                    <td className="px-5 py-3 text-right font-semibold text-gray-700">{r.actualHours}h</td>
-                    <td className={`px-5 py-3 text-right font-semibold text-xs ${isOver ? 'text-red-600' : isUnder ? 'text-amber-600' : 'text-emerald-600'}`}>
-                      {r.variance > 0 ? '+' : ''}{r.variance}h ({r.variancePct > 0 ? '+' : ''}{r.variancePct}%)
-                    </td>
-                    <td className="px-5 py-3">
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-[10px] text-gray-400 w-10 shrink-0">Plan</span>
-                          <div className="flex-1 bg-gray-100 rounded-full h-1.5">
-                            <div className="h-1.5 rounded-full bg-slate-400" style={{ width: `${plannedPct}%` }} />
+          {isSingle ? (
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-gray-50 text-xs text-gray-500 uppercase tracking-wide">
+                  <th className="px-5 py-3 text-left">#</th>
+                  <th className="px-5 py-3 text-left">Employee</th>
+                  <th className="px-4 py-3 text-right">Tasks</th>
+                  <th className="px-4 py-3 text-center min-w-[280px]">Efficiency (Actual / Planned)</th>
+                  <th className="px-4 py-3 text-right">Variance</th>
+                  <th className="px-4 py-3 text-center">Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {displayData.length === 0 && (
+                  <tr><td colSpan={6} className="text-center py-8 text-sm text-gray-400">No data for this period.</td></tr>
+                )}
+                {paginatedData.map((r, i) => {
+                  const isMe = r.userId === currentUserId;
+                  const cfg  = pvaStatusCfg(r.status);
+                  return (
+                    <tr key={r.userId} className={isMe ? 'bg-blue-50' : 'hover:bg-gray-50/50'}>
+                      <td className="px-5 py-3.5 text-gray-400 text-xs">{startIndex + i}</td>
+                      <td className="px-5 py-3.5">
+                        <div className="flex items-center gap-2">
+                          <div className="w-7 h-7 rounded-full bg-indigo-100 flex items-center justify-center shrink-0">
+                            <span className="text-xs font-semibold text-indigo-700">{r.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2)}</span>
                           </div>
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-[10px] text-gray-400 w-10 shrink-0">Act</span>
-                          <div className="flex-1 bg-gray-100 rounded-full h-1.5">
-                            <div className="h-1.5 rounded-full" style={{
-                              width: `${actualPct}%`,
-                              backgroundColor: isOver ? '#EF4444' : isUnder ? '#F59E0B' : '#10B981',
-                            }} />
+                          <div>
+                            <p className="font-medium text-gray-800 text-xs">{r.name}</p>
+                            <p className="text-[10px] text-gray-400">{r.role.replace(/_/g, ' ')}</p>
                           </div>
+                          {isMe && <span className="ml-1 text-xs bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-full font-medium">You</span>}
                         </div>
-                      </div>
-                    </td>
-                    <td className="px-5 py-3 text-center">
-                      <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${statusCfg.bg} ${statusCfg.text}`}>
-                        {statusCfg.label}
-                      </span>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                      </td>
+                      <td className="px-4 py-3.5 text-right text-gray-600 text-xs font-medium">{r.taskCount}</td>
+                      <td className="px-4 py-3.5"><BulletBar planned={r.plannedHours} actual={r.actualHours} /></td>
+                      <td className={`px-4 py-3.5 text-right font-bold text-xs ${r.variance > 0 ? 'text-red-600' : r.variance < 0 ? 'text-amber-600' : 'text-emerald-600'}`}>
+                        {r.variance > 0 ? '+' : ''}{r.variance}h
+                      </td>
+                      <td className="px-4 py-3.5 text-center">
+                        <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${cfg.bg} ${cfg.text}`}>{cfg.label}</span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          ) : (
+            <table className="w-full text-xs border-collapse">
+              <thead>
+                <tr className="bg-gray-900 text-white">
+                  <th className="sticky left-0 bg-gray-900 px-4 py-3 text-left font-semibold">Employee</th>
+                  <th className="px-3 py-3 text-left font-semibold">Role</th>
+                  {sortedMonths.map(m => (
+                    <th key={m} className="px-3 py-3 text-center font-semibold min-w-[90px]">
+                      {PVA_MONTHS.find(x => x.v === m)?.l}
+                    </th>
+                  ))}
+                  <th className="px-3 py-3 text-center font-semibold bg-gray-700 min-w-[110px]">Total</th>
+                  <th className="px-3 py-3 text-center font-semibold bg-gray-700">Efficiency</th>
+                  <th className="px-3 py-3 text-center font-semibold bg-gray-700">Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {consolidated.length === 0 ? (
+                  <tr><td colSpan={sortedMonths.length + 5} className="text-center py-10 text-gray-400">No data.</td></tr>
+                ) : consolidated.map((emp, idx) => {
+                  const cfg = pvaStatusCfg(emp.status);
+                  return (
+                    <tr key={emp.userId} className={idx % 2 === 0 ? 'bg-white hover:bg-gray-50/50' : 'bg-gray-50/30 hover:bg-gray-50/60'}>
+                      <td className="sticky left-0 bg-inherit px-4 py-3 border-r border-gray-100">
+                        <div className="flex items-center gap-2">
+                          <div className="w-6 h-6 rounded-full bg-indigo-100 flex items-center justify-center shrink-0">
+                            <span className="text-[9px] font-semibold text-indigo-700">{emp.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2)}</span>
+                          </div>
+                          <p className="font-semibold text-gray-800 text-xs truncate max-w-[120px]">{emp.name}</p>
+                        </div>
+                      </td>
+                      <td className="px-3 py-3 text-gray-500 text-[10px]">{emp.role.replace(/_/g, ' ')}</td>
+                      {sortedMonths.map(m => (
+                        <td key={m} className="px-3 py-3 text-center">
+                          <EffPill planned={emp.monthData.get(m)?.plannedHours} actual={emp.monthData.get(m)?.actualHours} />
+                        </td>
+                      ))}
+                      <td className="px-3 py-3 text-center border-l border-gray-100 bg-gray-50/50">
+                        <p className="font-bold text-gray-800 text-xs">{emp.totalActual}h <span className="text-gray-400 font-normal">/ {emp.totalPlanned}h</span></p>
+                        <p className="text-[9px] text-gray-400">{emp.totalTasks} tasks</p>
+                      </td>
+                      <td className="px-3 py-3 text-center border-l border-gray-100">
+                        <span className={`font-bold text-base ${cfg.text}`}>{emp.efficiency}%</span>
+                      </td>
+                      <td className="px-3 py-3 text-center border-l border-gray-100">
+                        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${cfg.bg} ${cfg.text}`}>{cfg.label}</span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
         </div>
-        {totalItems > 0 && (
+        {isSingle && totalItems > 0 && (
           <PaginationBar page={page} totalPages={totalPages} totalItems={totalItems}
             startIndex={startIndex} endIndex={endIndex} pageSize={pageSize}
             onPageChange={setPage} onPageSizeChange={setPageSize} />
@@ -1246,15 +1378,17 @@ export function ReportsPage() {
               <option key={o.value} value={o.value}>{o.label}</option>
             ))}
           </select>
-          <select
-            value={period}
-            onChange={(e) => setPeriod(e.target.value)}
-            className="text-sm border border-gray-200 rounded-xl px-3 py-2 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary-300"
-          >
-            {PERIOD_OPTIONS.map((p) => (
-              <option key={p.value} value={p.value}>{p.label}</option>
-            ))}
-          </select>
+          {activeTab !== 'capacity' && activeTab !== 'billing' && (
+            <select
+              value={period}
+              onChange={(e) => setPeriod(e.target.value)}
+              className="text-sm border border-gray-200 rounded-xl px-3 py-2 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary-300"
+            >
+              {PERIOD_OPTIONS.map((p) => (
+                <option key={p.value} value={p.value}>{p.label}</option>
+              ))}
+            </select>
+          )}
         </div>
       </div>
 
@@ -1281,13 +1415,13 @@ export function ReportsPage() {
       </div>
 
       {activeTab === 'productivity' && <TeamProductivityTab key={`prod-${period}-${project}`} currentUserId={user?.id} period={period} project={project} />}
-      {activeTab === 'kpi'          && <KpiAppraisalTab    key={`kpi-${period}`}               currentUserId={user?.id} period={period} />}
       {activeTab === 'projects'     && <ProjectSummaryTab  key={`proj-${period}-${project}`}   period={period} project={project} />}
       {activeTab === 'bugs'         && <BugSummaryTab      key={`bug-${period}-${project}`}    period={period} project={project} />}
       {activeTab === 'allocation'   && <TaskAllocationTab  key={`alloc-${period}-${project}`}  currentUserId={user?.id} period={period} project={project} />}
       {activeTab === 'timesheet'    && <TimesheetTab       key={`ts-${period}-${project}`}      currentUserId={user?.id} period={period} project={project} />}
       {activeTab === 'planned-actual' && <PlannedVsActualTab key={`pva-${period}-${project}`}  currentUserId={user?.id} period={period} project={project} />}
-      {activeTab === 'capacity' && isManager && <CapacityReportTab />}
+      {activeTab === 'capacity' && isManager && <CapacityReportTab project={project} />}
+      {activeTab === 'billing'      && <BillingReportPage />}
     </div>
   );
 }

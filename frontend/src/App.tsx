@@ -18,7 +18,6 @@ import { ProjectDetailPage } from './features/projects/pages/ProjectDetailPage';
 import { ProjectsPage } from './features/projects/pages/ProjectsPage';
 import { BoardPage } from './features/board/pages/BoardPage';
 import { UsersPage } from './features/users/pages/UsersPage';
-import { KpiPage } from './features/kpi/pages/KpiPage';
 import { ReportsPage } from './features/reports/pages/ReportsPage';
 import { MyTimesheetPage } from './features/timesheet/pages/MyTimesheetPage';
 import { LeavePage } from './features/leave/pages/LeavePage';
@@ -26,6 +25,7 @@ import { EditProfilePage } from './features/profile/pages/EditProfilePage';
 import { ActivityLogPage } from './features/activity/ActivityLogPage';
 import { UpskillPage } from './features/upskill/pages/UpskillPage';
 import { AnnouncementsPage } from './features/announcements/pages/AnnouncementsPage';
+import { OrgStructurePage } from './features/org-structure/pages/OrgStructurePage';
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 30_000 } },
@@ -65,9 +65,6 @@ export default function App() {
               {/* Timesheet */}
               <Route path="/timesheet" element={<MyTimesheetPage />} />
 
-              {/* KPI Store */}
-              <Route path="/kpi" element={<KpiPage />} />
-
               {/* Reports Dashboard */}
               <Route path="/reports" element={<ReportsPage />} />
 
@@ -95,6 +92,9 @@ export default function App() {
 
               {/* Announcements */}
               <Route path="/announcements" element={<AnnouncementsPage />} />
+
+              {/* Org Structure */}
+              <Route path="/org-structure" element={<OrgStructurePage />} />
             </Route>
           </Route>
 

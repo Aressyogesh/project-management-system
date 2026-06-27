@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { dashboardApi } from '../../../api/dashboard.api';
 import { projectsApi } from '../../../api/projects.api';
 import { useAuthStore } from '../../../store/authStore';
@@ -175,8 +176,9 @@ function TeamActivitySection({ projectId, month }: { projectId: string; month: s
 export function DashboardPage() {
   const user = useAuthStore((s) => s.user);
   const isAdminOrSuper = user?.systemRole === 'SUPER_USER' || user?.systemRole === 'ADMIN';
+  const [searchParams] = useSearchParams();
 
-  const [selectedProject, setSelectedProject] = useState('');
+  const [selectedProject, setSelectedProject] = useState(searchParams.get('projectId') ?? '');
   const [selectedMonth,   setSelectedMonth]   = useState(MONTH_OPTIONS[0]);
 
   // Admin/Super: fetch all active projects for the filter dropdown
@@ -269,6 +271,19 @@ export function DashboardPage() {
                 <span className="text-xs bg-primary-50 text-primary-700 border border-primary-100 px-2.5 py-1 rounded-full font-medium">
                   {toTitleCase(selectedProjectName)} — {monthLabel(selectedMonth)}
                 </span>
+                {isAdminOrSuper && (
+                  <Link
+                    to={`/projects/${selectedProject}/board`}
+                    className="flex items-center gap-1 text-xs text-gray-500 hover:text-primary-600 transition-colors"
+                    title="Open project board"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                        d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                    </svg>
+                    Open Board
+                  </Link>
+                )}
                 <button
                   onClick={() => setSelectedProject('')}
                   className="text-xs text-gray-400 hover:text-gray-600 transition-colors"
@@ -313,7 +328,7 @@ export function DashboardPage() {
       )}
 
       {/* ── Announcements ──────────────────────────────────────────────────── */}
-      <AnnouncementsWidget />
+      <AnnouncementsWidget projectId={selectedProject || undefined} month={selectedMonth} />
     </div>
   );
 }

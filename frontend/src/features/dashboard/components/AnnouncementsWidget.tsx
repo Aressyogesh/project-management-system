@@ -1,6 +1,9 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
+import { dashboardApi } from '../../../api/dashboard.api';
 import { announcementsApi, AnnouncementRecord } from '../../../api/announcementsApi';
+import { useAuthStore } from '../../../store/authStore';
+import { Announcement } from '../../../types/dashboard.types';
 
 function timeAgo(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
@@ -14,12 +17,37 @@ function timeAgo(iso: string): string {
   return new Date(iso).toLocaleDateString();
 }
 
-function AnnouncementRow({ item }: { item: AnnouncementRecord }) {
+function SystemRow({ item }: { item: Announcement }) {
+  const colorMap: Record<string, string> = {
+    info: 'bg-blue-400',
+    success: 'bg-green-400',
+    warning: 'bg-amber-400',
+  };
+  return (
+    <div className="flex gap-3 px-5 py-4 bg-slate-50 hover:bg-slate-100/60 transition-colors">
+      <span className={`mt-1.5 w-2 h-2 rounded-full shrink-0 ${colorMap[item.type] ?? 'bg-gray-400'}`} />
+      <div className="min-w-0 flex-1">
+        <p className="text-xs font-semibold text-slate-700 leading-snug">{item.title}</p>
+        <p className="text-xs text-gray-500 mt-0.5 leading-relaxed line-clamp-2">{item.body}</p>
+        <span className="text-[10px] text-gray-400 mt-1 block">{timeAgo(item.date)}</span>
+      </div>
+    </div>
+  );
+}
+
+function ManualRow({ item }: { item: AnnouncementRecord }) {
   return (
     <div className="flex gap-3 px-5 py-4 bg-blue-50 hover:bg-blue-100/60 transition-colors">
       <span className="mt-1.5 w-2 h-2 rounded-full shrink-0 bg-blue-400" />
       <div className="min-w-0 flex-1">
-        <p className="text-xs font-semibold text-blue-700 leading-snug">{item.title}</p>
+        <div className="flex items-center gap-1.5">
+          <p className="text-xs font-semibold text-blue-700 leading-snug">{item.title}</p>
+          {item.scope === 'PROJECT' && item.project && (
+            <span className="text-[9px] bg-blue-100 text-blue-600 px-1.5 py-0.5 rounded-full font-medium shrink-0">
+              {item.project.name}
+            </span>
+          )}
+        </div>
         <p className="text-xs text-gray-600 mt-0.5 leading-relaxed line-clamp-2">{item.content}</p>
         <div className="flex items-center gap-1.5 mt-1">
           <span className="text-[10px] text-gray-400">{item.createdBy.fullName}</span>
@@ -31,28 +59,42 @@ function AnnouncementRow({ item }: { item: AnnouncementRecord }) {
   );
 }
 
-export function AnnouncementsWidget() {
-  const { data, isLoading } = useQuery({
+export function AnnouncementsWidget({ projectId, month }: { projectId?: string; month?: string }) {
+  const user = useAuthStore((s) => s.user);
+  const isManagement = user?.systemRole === 'SUPER_USER' || user?.systemRole === 'ADMIN' || user?.hasPmRole;
+
+  const { data: manualData, isLoading: manualLoading } = useQuery({
     queryKey: ['announcements', 'latest'],
     queryFn: () => announcementsApi.list({ latest: true }),
     staleTime: 60_000,
   });
 
-  const items = data?.data ?? [];
+  const { data: systemItems = [], isLoading: systemLoading } = useQuery({
+    queryKey: ['dashboard-announcements', projectId, month],
+    queryFn: () => dashboardApi.getAnnouncements({ projectId, month }),
+    enabled: !!projectId,
+    staleTime: 60_000,
+  });
+
+  const manualItems = manualData?.data ?? [];
+  const isLoading = manualLoading || (!!projectId && systemLoading);
+  const hasAny = systemItems.length > 0 || manualItems.length > 0;
 
   return (
     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
       <div className="px-5 py-4 border-b border-gray-50 flex items-center justify-between">
         <div>
           <h3 className="text-sm font-semibold text-gray-800">Announcements</h3>
-          <p className="text-xs text-gray-400 mt-0.5">Latest notices from management</p>
+          <p className="text-xs text-gray-400 mt-0.5">Latest notices &amp; project activity</p>
         </div>
-        <Link
-          to="/announcements"
-          className="text-xs text-primary-600 hover:text-primary-800 font-medium transition-colors"
-        >
-          View all
-        </Link>
+        {isManagement && (
+          <Link
+            to="/announcements"
+            className="text-xs text-primary-600 hover:text-primary-800 font-medium transition-colors"
+          >
+            View all
+          </Link>
+        )}
       </div>
 
       {isLoading ? (
@@ -68,13 +110,18 @@ export function AnnouncementsWidget() {
             </div>
           ))}
         </div>
-      ) : items.length === 0 ? (
+      ) : !hasAny ? (
         <div className="px-5 py-8 text-center text-xs text-gray-400">
           No announcements yet.
         </div>
       ) : (
         <div className="divide-y divide-gray-50">
-          {items.map((item: AnnouncementRecord) => <AnnouncementRow key={item.id} item={item} />)}
+          {manualItems.map((item: AnnouncementRecord) => (
+            <ManualRow key={item.id} item={item} />
+          ))}
+          {systemItems.map((item: Announcement) => (
+            <SystemRow key={item.id} item={item} />
+          ))}
         </div>
       )}
     </div>

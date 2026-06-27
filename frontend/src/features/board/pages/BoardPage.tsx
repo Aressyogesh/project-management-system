@@ -167,20 +167,12 @@ export function BoardPage() {
   const myProjectRole = members.find((m) => m.user.id === user?.id)?.projectRole;
   const isAdminOrSuper = systemRole === 'SUPER_USER' || systemRole === 'ADMIN';
 
-  const canManageSprints =
-    isAdminOrSuper ||
-    myProjectRole === 'PROJECT_MANAGER' ||
-    myProjectRole === 'TEAM_LEAD';
+  const isMgmt = myProjectRole === 'PROJECT_MANAGER' || myProjectRole === 'TEAM_LEAD' || user?.hasManagementRole === true;
 
-  const canDeleteWorkItem =
-    isAdminOrSuper ||
-    myProjectRole === 'PROJECT_MANAGER' ||
-    myProjectRole === 'TEAM_LEAD';
-
-  const canEditColumns =
-    isAdminOrSuper ||
-    myProjectRole === 'PROJECT_MANAGER' ||
-    myProjectRole === 'TEAM_LEAD';
+  const canManageSprints  = isAdminOrSuper || isMgmt;
+  const canDeleteWorkItem = isAdminOrSuper || isMgmt;
+  const canChangeBilling  = isAdminOrSuper || myProjectRole === 'PROJECT_MANAGER';
+  const canEditColumns    = isAdminOrSuper || isMgmt;
 
   useEffect(() => {
     if (!toast) return;
@@ -193,13 +185,18 @@ export function BoardPage() {
     setSelectedItem(child);
   }
 
-  function handleDragEnd(result: DropResult) {
+  async function handleDragEnd(result: DropResult) {
     const { destination, source, draggableId } = result;
     if (!destination) return;
     if (destination.droppableId === source.droppableId && destination.index === source.index) return;
 
     const newStatus = destination.droppableId as BoardStatus;
-    move.mutate({ id: draggableId, status: newStatus, position: destination.index });
+    try {
+      await move.mutateAsync({ id: draggableId, status: newStatus, position: destination.index });
+    } catch (err: any) {
+      const msg = err?.response?.data?.message ?? 'Failed to move item';
+      setToast(msg);
+    }
   }
 
   const memberOptions = members.map((m) => ({ id: m.user.id, fullName: m.user.fullName, profilePhoto: m.user.profilePhoto }));
@@ -245,6 +242,7 @@ export function BoardPage() {
                 Columns
               </button>
             )}
+
             <Link
               to={`/projects/${projectId}`}
               className="text-xs text-gray-500 hover:text-primary-600 transition flex items-center gap-1"
@@ -302,6 +300,7 @@ export function BoardPage() {
           members={memberOptions}
           milestones={milestones}
           canDelete={canDeleteWorkItem}
+          canChangeBilling={canChangeBilling}
           onClose={() => setSelectedItem(null)}
           onSaved={() => setSelectedItem(null)}
           onSuccess={setToast}

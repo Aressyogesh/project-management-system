@@ -1,0 +1,2 @@
+ALTER TYPE "BugClassification" ADD VALUE 'TECHNICAL';
+ALTER TYPE "BugClassification" ADD VALUE 'FUNCTIONAL';

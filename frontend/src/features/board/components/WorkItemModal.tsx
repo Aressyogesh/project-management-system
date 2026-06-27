@@ -38,6 +38,7 @@ interface Props {
   members: MemberOption[];
   milestones: Milestone[];
   canDelete?: boolean;
+  canChangeBilling?: boolean;
   onClose: () => void;
   onSaved: () => void;
   onSuccess?: (msg: string) => void;
@@ -89,7 +90,8 @@ function fmtRelTime(iso: string) {
 
 const STATUS_LABEL: Record<string, string> = {
   TODO: 'To Do', IN_PROGRESS: 'In Progress', BLOCKED: 'Blocked',
-  IN_REVIEW: 'In Review', QA: 'QA', QA_DONE: 'QA Done',
+  IN_REVIEW: 'In Review', READY_FOR_QA: 'Ready for QA', IN_QA: 'In QA',
+  QA_DONE: 'QA Done', CLOSED: 'Closed', QA: 'QA',
 };
 const PRIORITY_LABEL: Record<string, string> = {
   LOW: 'Low', MEDIUM: 'Medium', HIGH: 'High', CRITICAL: 'Critical',
@@ -112,6 +114,8 @@ function activityLabel(action: string, field?: string | null, oldVal?: string | 
     return <span>added a comment{preview ? <span className="italic text-gray-400"> — "{preview}{(newVal ?? '').length > 80 ? '…' : ''}"</span> : ''}</span>;
   }
   if (action === 'attachment_added') return <span>attached <span className="font-medium text-gray-700">"{newVal ?? 'a file'}"</span></span>;
+  if (action === 'attachment_deleted') return <span>removed attachment <span className="font-medium text-red-600 line-through">"{oldVal ?? 'a file'}"</span></span>;
+  if (action === 'comment_deleted') return <span>deleted a comment{oldVal ? <span className="italic text-gray-400"> — "{oldVal.slice(0, 60)}{oldVal.length > 60 ? '…' : ''}"</span> : ''}</span>;
   if (action === 'status_changed') return (
     <span>moved from <span className="font-medium text-gray-700">{fmt(oldVal, STATUS_LABEL)}</span> → <span className="font-medium text-gray-700">{fmt(newVal, STATUS_LABEL)}</span></span>
   );
@@ -134,6 +138,9 @@ function activityLabel(action: string, field?: string | null, oldVal?: string | 
   if (action === 'description_updated') return 'updated the description';
   if (action === 'time_logged') return (
     <span>logged time <span className="font-medium text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded text-[10px]">{newVal}</span></span>
+  );
+  if (action === 'time_deleted') return (
+    <span>deleted time log <span className="font-medium text-red-600 bg-red-50 px-1.5 py-0.5 rounded text-[10px] line-through">{oldVal}</span></span>
   );
   if (action === 'label_added') return (
     <span>added label <span className="font-medium text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded-full border border-indigo-200 text-[10px]">{newVal}</span></span>
@@ -404,7 +411,7 @@ function TestCasesPanel({ workItemId, projectId: _projectId, onCreateBug }: Test
 
 // ─── WorkItemModal (edit existing) ───────────────────────────────────────────
 
-export function WorkItemModal({ item, sprints, members, milestones, canDelete = true, onClose, onSaved: _onSaved, onSuccess, onOpenChild }: Props) {
+export function WorkItemModal({ item, sprints, members, milestones, canDelete = true, canChangeBilling = false, onClose, onSaved: _onSaved, onSuccess, onOpenChild }: Props) {
   const { user } = useAuthStore();
   const qc = useQueryClient();
 
@@ -1530,18 +1537,31 @@ export function WorkItemModal({ item, sprints, members, milestones, canDelete = 
 
               {/* Billing */}
               <SidebarRow label={<span>Billing <span className="text-red-500">*</span></span>}>
-                <select
-                  value={billingStatusLocal}
-                  onChange={(e) => {
-                    setBillingStatusLocal(e.target.value as BillingStatus);
-                    updateMut.mutate({ billingStatus: e.target.value as BillingStatus });
-                  }}
-                  className="input-sm w-full text-xs"
-                >
-                  <option value="">— select —</option>
-                  <option value="BILLABLE">Billable</option>
-                  <option value="NON_BILLABLE">Non-Billable</option>
-                </select>
+                {canChangeBilling ? (
+                  <select
+                    value={billingStatusLocal}
+                    onChange={(e) => {
+                      setBillingStatusLocal(e.target.value as BillingStatus);
+                      updateMut.mutate({ billingStatus: e.target.value as BillingStatus });
+                    }}
+                    className="input-sm w-full text-xs"
+                  >
+                    <option value="">— select —</option>
+                    <option value="BILLABLE">Billable</option>
+                    <option value="NON_BILLABLE">Non-Billable</option>
+                  </select>
+                ) : (
+                  <div className="flex items-center gap-1.5">
+                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+                      billingStatusLocal === 'BILLABLE'
+                        ? 'bg-green-50 text-green-700'
+                        : 'bg-orange-50 text-orange-600'
+                    }`}>
+                      {billingStatusLocal === 'BILLABLE' ? 'Billable' : billingStatusLocal === 'NON_BILLABLE' ? 'Non-Billable' : '—'}
+                    </span>
+                    <span className="text-[10px] text-gray-400">(PM only)</span>
+                  </div>
+                )}
               </SidebarRow>
 
               {/* Start Date */}
@@ -1776,6 +1796,8 @@ export function WorkItemModal({ item, sprints, members, milestones, canDelete = 
                       <option value="SUGGESTION">Suggestion</option>
                       <option value="PROJECT_MANAGEMENT">Project Management</option>
                       <option value="EXISTING_APPLICATION">Existing Application</option>
+                      <option value="TECHNICAL">Technical</option>
+                      <option value="FUNCTIONAL">Functional</option>
                       <option value="OTHER">Other</option>
                     </select>
                   </SidebarRow>
@@ -2467,6 +2489,8 @@ export function CreateWorkItemModal({
                     <option value="SUGGESTION">Suggestion</option>
                     <option value="PROJECT_MANAGEMENT">Project Management</option>
                     <option value="EXISTING_APPLICATION">Existing Application</option>
+                    <option value="TECHNICAL">Technical</option>
+                    <option value="FUNCTIONAL">Functional</option>
                     <option value="OTHER">Other</option>
                   </select>
                   {bugClassificationError && <p className="text-xs text-red-500 mt-1">Classification is required</p>}

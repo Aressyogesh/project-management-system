@@ -7,31 +7,79 @@ import { useAuthStore } from '../../../store/authStore';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function startOfWeek(d: Date): Date {
-  const day = d.getDay();
-  const diff = d.getDate() - day + (day === 0 ? -6 : 1);
-  return new Date(d.getFullYear(), d.getMonth(), diff);
-}
-
-function addDays(d: Date, n: number): Date {
-  return new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
-}
-
 function fmt(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
-function fmtDisplay(iso: string): string {
-  return new Date(iso + 'T00:00:00').toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+function buildYearOptions(): number[] {
+  const cur = new Date().getFullYear();
+  const years: number[] = [];
+  for (let y = cur; y >= 2024; y--) years.push(y);
+  return years;
+}
+
+const MONTHS = [
+  { value: 1,  label: 'January'   },
+  { value: 2,  label: 'February'  },
+  { value: 3,  label: 'March'     },
+  { value: 4,  label: 'April'     },
+  { value: 5,  label: 'May'       },
+  { value: 6,  label: 'June'      },
+  { value: 7,  label: 'July'      },
+  { value: 8,  label: 'August'    },
+  { value: 9,  label: 'September' },
+  { value: 10, label: 'October'   },
+  { value: 11, label: 'November'  },
+  { value: 12, label: 'December'  },
+];
+
+const DOW_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+function getCalendarDays(year: number, month: number): (number | null)[] {
+  const firstDow = new Date(year, month - 1, 1).getDay(); // 0=Sun
+  const leadingBlanks = firstDow === 0 ? 6 : firstDow - 1;
+  const daysInMonth = new Date(year, month, 0).getDate();
+  const days: (number | null)[] = Array(leadingBlanks).fill(null);
+  for (let d = 1; d <= daysInMonth; d++) days.push(d);
+  while (days.length % 7 !== 0) days.push(null);
+  return days;
+}
+
+interface DayMetrics {
+  total: number;
+  billable: number;
+  nonBillable: number;
+  rework: number;
+  bugFix: number;
+}
+
+function computeMetrics(entries: TimesheetEntryFull[]): DayMetrics {
+  const m: DayMetrics = { total: 0, billable: 0, nonBillable: 0, rework: 0, bugFix: 0 };
+  for (const e of entries) {
+    const h = Number(e.hours);
+    m.total += h;
+
+    if (e.isRework) {
+      m.nonBillable += h;
+      m.rework += h;
+    } else if (e.isBugFix) {
+      m.nonBillable += h;
+      m.bugFix += h;
+    } else if (e.workItem.billingStatus === 'BILLABLE') {
+      m.billable += h;
+    } else {
+      m.nonBillable += h;
+    }
+  }
+  return m;
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export function MyTimesheetPage() {
   const { user } = useAuthStore();
-
-  // Project managers and admins can view and filter by team member
   const isAdminOrSuper = user?.systemRole === 'SUPER_USER' || user?.systemRole === 'ADMIN';
+
   const { data: myProjectRole } = useQuery({
     queryKey: ['my-project-role'],
     queryFn: analyticsApi.getMyProjectRole,
@@ -40,130 +88,99 @@ export function MyTimesheetPage() {
   });
   const canViewTeam = isAdminOrSuper || myProjectRole?.isManager === true;
 
-  const today = new Date();
-  const todayStr = fmt(today);
+  const now = new Date();
+  const [year,              setYear]              = useState(now.getFullYear());
+  const [month,             setMonth]             = useState(now.getMonth() + 1);
+  const [selectedProjectId, setSelectedProjectId] = useState('');
+  const [selectedUserId,    setSelectedUserId]    = useState('');
 
-  // viewMode: 'today' shows only today; 'week' shows the selected week
-  const [viewMode, setViewMode] = useState<'today' | 'week'>('week');
-  const [weekStart, setWeekStart] = useState<Date>(() => startOfWeek(today));
-  const [selectedProjectId, setSelectedProjectId] = useState<string>('');
-  const [selectedUserId, setSelectedUserId] = useState<string>('');
+  const yearOptions = buildYearOptions();
 
-  const weekEnd = addDays(weekStart, 6);
+  const from = `${year}-${String(month).padStart(2, '0')}-01`;
+  const to   = `${year}-${String(month).padStart(2, '0')}-${String(new Date(year, month, 0).getDate()).padStart(2, '0')}`;
 
-  // Date range sent to API
-  const fromStr = viewMode === 'today' ? todayStr : fmt(weekStart);
-  const toStr   = viewMode === 'today' ? todayStr : fmt(weekEnd);
-
-  // When a specific member is selected show all-time entries (no date filter)
-  const useDateFilter = !selectedUserId;
-
-  const prevWeek = () => { setViewMode('week'); setWeekStart(addDays(weekStart, -7)); };
-  const nextWeek = () => { setViewMode('week'); setWeekStart(addDays(weekStart, 7)); };
-  const goToday  = () => { setViewMode('today'); setWeekStart(startOfWeek(today)); };
-
-  // Projects list — exclude archived
   const { data: allProjects = [] } = useQuery({
     queryKey: ['projects'],
     queryFn: () => projectsApi.list(),
   });
   const projects = allProjects.filter((p) => p.status !== 'ARCHIVE');
 
-  // Members of selected project
   const { data: members = [] } = useQuery({
     queryKey: ['project-members', selectedProjectId],
     queryFn: () => projectsApi.listMembers(selectedProjectId),
     enabled: !!selectedProjectId,
   });
 
-  // Timesheet entries
   const { data: entries = [], isLoading } = useQuery({
-    queryKey: ['timesheet', useDateFilter ? fromStr : 'all', useDateFilter ? toStr : 'all', selectedProjectId, selectedUserId],
+    queryKey: ['timesheet', from, to, selectedProjectId, selectedUserId],
     queryFn: () => timesheetApi.getMyEntries({
-      ...(useDateFilter && { from: fromStr, to: toStr }),
+      from,
+      to,
       ...(selectedProjectId && { projectId: selectedProjectId }),
-      ...(selectedUserId && { userId: selectedUserId }),
+      ...(selectedUserId    && { userId:    selectedUserId    }),
     }),
   });
 
-  // Group by date
-  const byDate = entries.reduce<Record<string, TimesheetEntryFull[]>>((acc, e) => {
+  const byDay = entries.reduce<Record<string, TimesheetEntryFull[]>>((acc, e) => {
     const d = e.date.slice(0, 10);
-    if (!acc[d]) acc[d] = [];
-    acc[d].push(e);
+    (acc[d] ??= []).push(e);
     return acc;
   }, {});
 
-  const totalHours = entries.reduce((s, e) => s + Number(e.hours), 0);
-  const devHours   = entries.filter((e) => e.workItem.type !== 'BUG').reduce((s, e) => s + Number(e.hours), 0);
-  const bugHours   = entries.filter((e) => e.workItem.type === 'BUG').reduce((s, e) => s + Number(e.hours), 0);
+  const monthMetrics = computeMetrics(entries);
 
-  // Per-member summary (only when project selected, no specific member)
-  const memberSummary = members.map((m) => {
-    const mEntries = entries.filter((e) => e.userId === m.user.id);
-    return {
-      ...m.user,
-      hours: mEntries.reduce((s, e) => s + Number(e.hours), 0),
-    };
-  }).filter((m) => m.hours > 0);
+  const memberSummary = (canViewTeam && selectedProjectId && !selectedUserId)
+    ? members
+        .map((m) => ({ ...m.user, ...computeMetrics(entries.filter((e) => e.userId === m.user.id)) }))
+        .filter((m) => m.total > 0)
+    : [];
 
-  // ── Date range label ──────────────────────────────────────────────────────
-  const dateRangeLabel = (() => {
-    if (selectedUserId) {
-      return `All time — ${members.find((m) => m.user.id === selectedUserId)?.user.fullName ?? ''}`;
-    }
-    if (viewMode === 'today') {
-      return `Today, ${today.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}`;
-    }
-    return `${weekStart.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })} — ${weekEnd.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}`;
-  })();
+  const calendarDays = getCalendarDays(year, month);
+  const todayStr = fmt(now);
+  const isCurrentMonth = year === now.getFullYear() && month === now.getMonth() + 1;
+
+  function dayStr(d: number) {
+    return `${year}-${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+  }
+
+  const monthLabel = MONTHS.find((m) => m.value === month)?.label ?? '';
 
   return (
     <div className="space-y-5">
-      {/* ── Page header ── */}
+
+      {/* ── Header + Filters ── */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm px-6 py-5">
-        <div className="flex items-center justify-between gap-4 flex-wrap">
+        <div className="flex items-center justify-between gap-4 flex-wrap mb-5">
           <div>
             <h1 className="text-lg font-bold text-gray-900">Timesheet</h1>
             <p className="text-xs text-gray-500 mt-0.5">Time logged against project work items</p>
           </div>
-
-          {/* Date navigation — hidden when member selected (all-time mode) */}
-          {!selectedUserId ? (
-            <div className="flex items-center gap-2 shrink-0">
-              <button onClick={prevWeek} className="p-2 rounded-lg border border-gray-200 hover:bg-gray-50 transition">
-                <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                </svg>
-              </button>
-              <button
-                onClick={goToday}
-                className={`px-3 py-1.5 text-xs font-medium rounded-lg border transition ${
-                  viewMode === 'today'
-                    ? 'bg-primary-50 border-primary-300 text-primary-700'
-                    : 'border-gray-200 hover:bg-gray-50 text-gray-600'
-                }`}
-              >
-                Today
-              </button>
-              <span className="text-sm font-semibold text-gray-700 min-w-[200px] text-center">
-                {dateRangeLabel}
-              </span>
-              <button onClick={nextWeek} className="p-2 rounded-lg border border-gray-200 hover:bg-gray-50 transition">
-                <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                </svg>
-              </button>
-            </div>
-          ) : (
-            <span className="text-xs font-medium text-primary-600 bg-primary-50 px-3 py-1.5 rounded-lg border border-primary-100">
-              {dateRangeLabel}
-            </span>
-          )}
         </div>
 
-        {/* ── Filters ── */}
-        <div className="flex items-center gap-3 mt-4 flex-wrap">
+        {/* Filters */}
+        <div className="flex items-center gap-3 flex-wrap">
+          <div className="flex items-center gap-2">
+            <label className="text-xs font-medium text-gray-500 shrink-0">Year</label>
+            <select
+              value={year}
+              onChange={(e) => setYear(Number(e.target.value))}
+              className="input-sm text-sm"
+            >
+              {yearOptions.map((y) => <option key={y} value={y}>{y}</option>)}
+            </select>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <label className="text-xs font-medium text-gray-500 shrink-0">Month</label>
+            <select
+              value={month}
+              onChange={(e) => setMonth(Number(e.target.value))}
+              className="input-sm text-sm"
+            >
+              {MONTHS.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
+            </select>
+          </div>
+
           <div className="flex items-center gap-2 min-w-[220px]">
             <label className="text-xs font-medium text-gray-500 shrink-0">Project</label>
             <select
@@ -172,24 +189,20 @@ export function MyTimesheetPage() {
               className="input-sm flex-1 text-sm"
             >
               <option value="">All Projects</option>
-              {projects.map((p) => (
-                <option key={p.id} value={p.id}>{p.name}</option>
-              ))}
+              {projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
             </select>
           </div>
 
           {selectedProjectId && canViewTeam && (
             <div className="flex items-center gap-2 min-w-[200px]">
-              <label className="text-xs font-medium text-gray-500 shrink-0">Member</label>
+              <label className="text-xs font-medium text-gray-500 shrink-0">Employee</label>
               <select
                 value={selectedUserId}
                 onChange={(e) => setSelectedUserId(e.target.value)}
                 className="input-sm flex-1 text-sm"
               >
                 <option value="">All Members</option>
-                {members.map((m) => (
-                  <option key={m.user.id} value={m.user.id}>{m.user.fullName}</option>
-                ))}
+                {members.map((m) => <option key={m.user.id} value={m.user.id}>{m.user.fullName}</option>)}
               </select>
             </div>
           )}
@@ -204,60 +217,69 @@ export function MyTimesheetPage() {
           )}
         </div>
 
-        {/* ── Total hours card ── */}
+        {/* Summary bar */}
         <div className="mt-5">
-          <div className="inline-flex items-center gap-4 bg-gray-50 rounded-xl px-6 py-4 border border-gray-100">
+          <div className="inline-flex items-center gap-5 bg-gray-50 rounded-xl px-6 py-4 border border-gray-100 flex-wrap">
             <div className="text-center">
-              <p className="text-2xl font-bold text-gray-900">{totalHours.toFixed(1)}h</p>
+              <p className="text-2xl font-bold text-gray-900">{monthMetrics.total.toFixed(1)}h</p>
               <p className="text-xs text-gray-500 mt-0.5">Total Logged</p>
             </div>
-            {totalHours > 0 && (
+            {monthMetrics.total > 0 && (
               <>
                 <div className="w-px h-10 bg-gray-200" />
                 <div className="text-center">
-                  <p className="text-lg font-bold text-primary-700">{devHours.toFixed(1)}h</p>
-                  <p className="text-xs text-primary-500 mt-0.5">Development</p>
+                  <p className="text-lg font-bold text-green-600">{monthMetrics.billable.toFixed(1)}h</p>
+                  <p className="text-xs text-green-500 mt-0.5">Billable</p>
                 </div>
                 <div className="text-center">
-                  <p className="text-lg font-bold text-red-600">{bugHours.toFixed(1)}h</p>
-                  <p className="text-xs text-red-400 mt-0.5">Bug Fixing</p>
+                  <p className="text-lg font-bold text-orange-500">{monthMetrics.nonBillable.toFixed(1)}h</p>
+                  <p className="text-xs text-orange-400 mt-0.5">Non-Billable</p>
+                </div>
+                <div className="w-px h-10 bg-gray-200" />
+                <div className="text-center">
+                  <p className="text-lg font-bold text-purple-600">{monthMetrics.rework.toFixed(1)}h</p>
+                  <p className="text-xs text-purple-400 mt-0.5">Rework</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-lg font-bold text-red-600">{monthMetrics.bugFix.toFixed(1)}h</p>
+                  <p className="text-xs text-red-400 mt-0.5">Bug Fix</p>
                 </div>
               </>
             )}
           </div>
         </div>
 
-        {/* ── Dev vs Bug bar ── */}
-        {totalHours > 0 && (
+        {/* Billable vs Non-Billable bar */}
+        {monthMetrics.total > 0 && (
           <div className="mt-3 flex items-center gap-3">
             <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden flex">
-              {devHours > 0 && (
-                <div className="h-full bg-primary-500" style={{ width: `${(devHours / totalHours) * 100}%` }} />
+              {monthMetrics.billable > 0 && (
+                <div className="h-full bg-green-500 transition-all" style={{ width: `${(monthMetrics.billable / monthMetrics.total) * 100}%` }} />
               )}
-              {bugHours > 0 && (
-                <div className="h-full bg-red-400" style={{ width: `${(bugHours / totalHours) * 100}%` }} />
+              {monthMetrics.nonBillable > 0 && (
+                <div className="h-full bg-orange-400 transition-all" style={{ width: `${(monthMetrics.nonBillable / monthMetrics.total) * 100}%` }} />
               )}
             </div>
             <div className="flex items-center gap-3 text-[11px] shrink-0">
               <span className="flex items-center gap-1 text-gray-500">
-                <span className="w-2 h-2 rounded-sm bg-primary-500" />
-                Dev {Math.round((devHours / totalHours) * 100)}%
+                <span className="w-2 h-2 rounded-sm bg-green-500" />
+                Billable {Math.round((monthMetrics.billable / monthMetrics.total) * 100)}%
               </span>
               <span className="flex items-center gap-1 text-gray-500">
-                <span className="w-2 h-2 rounded-sm bg-red-400" />
-                Bugs {Math.round((bugHours / totalHours) * 100)}%
+                <span className="w-2 h-2 rounded-sm bg-orange-400" />
+                Non-Billable {Math.round((monthMetrics.nonBillable / monthMetrics.total) * 100)}%
               </span>
             </div>
           </div>
         )}
       </div>
 
-      {/* ── Team breakdown (managers only, project selected, no specific member) ── */}
-      {canViewTeam && selectedProjectId && !selectedUserId && memberSummary.length > 0 && (
+      {/* ── Team breakdown (managers, project selected, no member filter) ── */}
+      {memberSummary.length > 0 && (
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
           <div className="px-5 py-3 border-b border-gray-100">
             <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-              Team Hours {viewMode === 'today' ? 'Today' : 'This Week'}
+              Team Hours — {monthLabel} {year}
             </p>
           </div>
           <div className="divide-y divide-gray-50">
@@ -271,8 +293,14 @@ export function MyTimesheetPage() {
                   {m.fullName.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)}
                 </div>
                 <span className="text-sm font-medium text-gray-800 flex-1">{m.fullName}</span>
-                <span className="text-sm font-bold text-gray-900 w-16 text-right">{m.hours.toFixed(1)}h</span>
-                <svg className="w-4 h-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="flex items-center gap-4 text-xs mr-2">
+                  <span className="text-green-600 font-medium">{m.billable.toFixed(1)}h B</span>
+                  <span className="text-orange-500 font-medium">{m.nonBillable.toFixed(1)}h NB</span>
+                  {m.rework > 0 && <span className="text-purple-500 font-medium">{m.rework.toFixed(1)}h RW</span>}
+                  {m.bugFix > 0 && <span className="text-red-500 font-medium">{m.bugFix.toFixed(1)}h Bug</span>}
+                  <span className="font-bold text-gray-900 w-14 text-right">{m.total.toFixed(1)}h</span>
+                </div>
+                <svg className="w-4 h-4 text-gray-300 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                 </svg>
               </button>
@@ -281,82 +309,110 @@ export function MyTimesheetPage() {
         </div>
       )}
 
-      {/* ── Entries table ── */}
+      {/* ── Calendar ── */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-        {isLoading ? (
-          <div className="p-12 text-center text-gray-400 text-sm">Loading entries…</div>
-        ) : entries.length === 0 ? (
-          <div className="p-12 text-center">
-            <p className="text-gray-400 text-sm">
-              No timesheet entries {viewMode === 'today' ? 'for today' : 'for this period'}.
-            </p>
-            <p className="text-gray-300 text-xs mt-1">Log time against work items from the Kanban board.</p>
-          </div>
-        ) : (
-          <div>
-            {/* Table header */}
-            <div className="grid grid-cols-[110px_1fr_150px_70px_140px] gap-3 px-5 py-3 bg-gray-50 border-b border-gray-100 text-[11px] font-semibold text-gray-500 uppercase tracking-wider">
-              <span>Date</span>
-              <span>Work Item / Project</span>
-              <span>Description</span>
-              <span className="text-right">Hours</span>
-              <span>Logged By</span>
-            </div>
+        <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-gray-800">{monthLabel} {year}</h2>
+          {isLoading && <span className="text-xs text-gray-400 animate-pulse">Loading…</span>}
+        </div>
 
-            {Object.entries(byDate)
-              .sort(([a], [b]) => b.localeCompare(a))
-              .map(([date, dayEntries]) => {
-                const dayTotal = dayEntries.reduce((s, e) => s + Number(e.hours), 0);
-                return (
-                  <div key={date}>
-                    <div className="flex items-center justify-between px-5 py-2 bg-gray-50/60 border-b border-gray-100">
-                      <span className="text-xs font-semibold text-gray-600">
-                        {new Date(date + 'T00:00:00').toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })}
+        {/* Day-of-week header */}
+        <div className="grid grid-cols-7 border-b border-gray-100 bg-gray-50">
+          {DOW_LABELS.map((d) => (
+            <div key={d} className="py-2 text-center text-[11px] font-semibold text-gray-400 uppercase tracking-wider">
+              {d}
+            </div>
+          ))}
+        </div>
+
+        {/* Calendar grid */}
+        <div className="grid grid-cols-7">
+          {calendarDays.map((day, idx) => {
+            if (!day) {
+              return (
+                <div
+                  key={`blank-${idx}`}
+                  className="min-h-[108px] border-b border-r border-gray-100 bg-gray-50/40 last:border-r-0"
+                />
+              );
+            }
+
+            const ds = dayStr(day);
+            const dayEntries = byDay[ds] ?? [];
+            const m = dayEntries.length > 0 ? computeMetrics(dayEntries) : null;
+            const isToday  = isCurrentMonth && ds === todayStr;
+            const isFuture = ds > todayStr;
+            const isWeekend = idx % 7 >= 5;
+
+            return (
+              <div
+                key={ds}
+                className={`min-h-[108px] border-b border-r border-gray-100 p-2 flex flex-col last:border-r-0 ${
+                  isToday   ? 'bg-primary-50/50' :
+                  isWeekend ? 'bg-slate-50/60' :
+                  isFuture  ? 'bg-white/50' : 'bg-white'
+                }`}
+              >
+                {/* Day number */}
+                <span className={`text-[11px] font-bold self-start w-6 h-6 flex items-center justify-center rounded-full mb-1 ${
+                  isToday  ? 'bg-primary-600 text-white' :
+                  isFuture ? 'text-gray-300' :
+                  isWeekend? 'text-gray-400' : 'text-gray-500'
+                }`}>
+                  {day}
+                </span>
+
+                {/* Metrics */}
+                {m && (
+                  <div className="space-y-1 flex-1">
+                    <p className="text-sm font-bold text-gray-800 leading-none">{m.total.toFixed(1)}h</p>
+
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="text-[10px] font-semibold text-green-600 bg-green-50 px-1 py-0.5 rounded">
+                        {m.billable.toFixed(1)}B
                       </span>
-                      <span className="text-xs font-bold text-gray-700">{dayTotal.toFixed(1)}h</span>
+                      <span className="text-[10px] font-semibold text-orange-500 bg-orange-50 px-1 py-0.5 rounded">
+                        {m.nonBillable.toFixed(1)}NB
+                      </span>
                     </div>
 
-                    {dayEntries.map((entry) => (
-                      <div
-                        key={entry.id}
-                        className="grid grid-cols-[110px_1fr_150px_70px_140px] gap-3 px-5 py-3 border-b border-gray-50 hover:bg-gray-50/50 items-center"
-                      >
-                        <span className="text-xs text-gray-500">{fmtDisplay(entry.date.slice(0, 10))}</span>
-
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-1.5 mb-0.5">
-                            <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wide shrink-0 ${
-                              entry.workItem.type === 'BUG'        ? 'bg-red-100 text-red-700' :
-                              entry.workItem.type === 'TASK'       ? 'bg-blue-100 text-blue-700' :
-                              entry.workItem.type === 'USER_STORY' ? 'bg-violet-100 text-violet-700' :
-                              entry.workItem.type === 'EPIC'       ? 'bg-orange-100 text-orange-700' :
-                              entry.workItem.type === 'SUB_TASK'   ? 'bg-cyan-100 text-cyan-700' :
-                                                                     'bg-gray-100 text-gray-600'
-                            }`}>
-                              {entry.workItem.type.replace(/_/g, ' ')}
-                            </span>
-                            <p className="text-sm font-medium text-gray-800 truncate">{entry.workItem.title}</p>
-                          </div>
-                          <p className="text-[11px] text-gray-400 truncate">{entry.workItem.project.name}</p>
-                        </div>
-
-                        <span className="text-xs text-gray-500 truncate">{entry.description ?? '—'}</span>
-
-                        <span className="text-sm font-semibold text-gray-800 text-right">{Number(entry.hours).toFixed(1)}h</span>
-
-                        <div className="flex items-center gap-2 min-w-0">
-                          <div className="w-6 h-6 rounded-full bg-primary-600 flex items-center justify-center text-white text-[9px] font-bold shrink-0">
-                            {entry.user.fullName.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2)}
-                          </div>
-                          <span className="text-xs text-gray-600 truncate">{entry.user.fullName}</span>
-                        </div>
+                    {(m.rework > 0 || m.bugFix > 0) && (
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        {m.rework > 0 && (
+                          <span className="text-[10px] font-semibold text-purple-600 bg-purple-50 px-1 py-0.5 rounded">
+                            {m.rework.toFixed(1)}RW
+                          </span>
+                        )}
+                        {m.bugFix > 0 && (
+                          <span className="text-[10px] font-semibold text-red-600 bg-red-50 px-1 py-0.5 rounded">
+                            {m.bugFix.toFixed(1)}Bug
+                          </span>
+                        )}
                       </div>
-                    ))}
+                    )}
                   </div>
-                );
-              })}
-          </div>
-        )}
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Legend */}
+        <div className="px-5 py-3 border-t border-gray-100 bg-gray-50/50 flex items-center gap-5 flex-wrap">
+          <span className="text-[11px] text-gray-400 font-semibold uppercase tracking-wide">Legend</span>
+          <span className="flex items-center gap-1.5 text-[11px] text-green-600">
+            <span className="w-2 h-2 rounded-sm bg-green-500" /> Billable (B)
+          </span>
+          <span className="flex items-center gap-1.5 text-[11px] text-orange-500">
+            <span className="w-2 h-2 rounded-sm bg-orange-400" /> Non-Billable (NB)
+          </span>
+          <span className="flex items-center gap-1.5 text-[11px] text-purple-600">
+            <span className="w-2 h-2 rounded-sm bg-purple-500" /> Rework (RW)
+          </span>
+          <span className="flex items-center gap-1.5 text-[11px] text-red-600">
+            <span className="w-2 h-2 rounded-sm bg-red-500" /> Bug Fix (Bug)
+          </span>
+        </div>
       </div>
     </div>
   );

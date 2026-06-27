@@ -49,6 +49,7 @@ export class UsersController {
   constructor(private usersService: UsersService) {}
 
   @Get()
+  @Roles(SystemRole.SUPER_USER, SystemRole.ADMIN, SystemRole.EMPLOYEE)
   @ApiOperation({ summary: 'List users with search and pagination' })
   findAll(@Query() query: UsersQueryDto) {
     return this.usersService.findAll(query);
@@ -83,14 +84,14 @@ export class UsersController {
 
   @Post()
   @ApiOperation({ summary: 'Create a new user' })
-  createUser(@Body() dto: CreateUserDto) {
-    return this.usersService.createUser(dto);
+  createUser(@Body() dto: CreateUserDto, @Request() req: { user: { id: string } }) {
+    return this.usersService.createUser(dto, req.user.id);
   }
 
   @Patch(':id')
   @ApiOperation({ summary: 'Update user profile fields' })
-  updateUser(@Param('id') id: string, @Body() dto: UpdateUserDto) {
-    return this.usersService.updateUser(id, dto);
+  updateUser(@Param('id') id: string, @Body() dto: UpdateUserDto, @Request() req: { user: { id: string } }) {
+    return this.usersService.updateUser(id, dto, req.user.id);
   }
 
   @Patch(':id/status')

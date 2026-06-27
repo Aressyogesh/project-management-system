@@ -29,6 +29,12 @@ export class UpdateUserDto {
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
+  @MaxLength(50)
+  employeeId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
   joinDate?: string;
 
   @ApiPropertyOptional()

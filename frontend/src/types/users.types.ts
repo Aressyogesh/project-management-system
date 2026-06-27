@@ -19,6 +19,7 @@ export interface User {
   email: string;
   systemRole: SystemRole;
   phone: string | null;
+  employeeId: string | null;
   joinDate: string | null;
   profilePhoto: string | null;
   isActive: boolean;
@@ -39,6 +40,7 @@ export interface CreateUserPayload {
   email: string;
   systemRole: SystemRole;
   phone?: string;
+  employeeId?: string;
   joinDate?: string;
   departmentId?: string;
   shiftId?: string;
@@ -49,6 +51,7 @@ export interface UpdateUserPayload {
   email?: string;
   systemRole?: SystemRole;
   phone?: string;
+  employeeId?: string;
   joinDate?: string;
   departmentId?: string | null;
   shiftId?: string | null;
