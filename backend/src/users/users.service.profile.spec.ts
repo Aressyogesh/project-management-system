@@ -20,6 +20,9 @@ function makePrisma(): any {
       findUnique: jest.fn(),
       update: jest.fn(),
     },
+    projectMember: {
+      count: jest.fn().mockResolvedValue(0),
+    },
     refreshToken: {
       updateMany: jest.fn().mockResolvedValue({ count: 1 }),
     },
@@ -38,7 +41,9 @@ describe('UsersService — profile methods', () => {
       (prisma.user.findUnique as jest.Mock).mockResolvedValue(stub);
       const svc = makeSvc(prisma);
       const result = await svc.getProfile('u1');
-      expect(result).toBe(stub);
+      expect(result).toMatchObject(stub);
+      expect(result).toHaveProperty('hasPmRole', false);
+      expect(result).toHaveProperty('hasManagementRole', false);
       expect(prisma.user.findUnique).toHaveBeenCalledWith({ where: { id: 'u1' }, select: PROFILE_SELECT });
     });
 
