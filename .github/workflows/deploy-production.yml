@@ -137,12 +137,13 @@ jobs:
 
       - name: Resolve failed migrations
         working-directory: backend
+        continue-on-error: true  # defensive step — migrate deploy below is the authoritative check
         run: |
           $sql = 'UPDATE "_prisma_migrations" SET "rolled_back_at" = NOW() WHERE "finished_at" IS NULL AND "started_at" IS NOT NULL AND "rolled_back_at" IS NULL;'
-          $tmp = [System.IO.Path]::GetTempFileName() + ".sql"
+          $tmp = Join-Path $PWD "failed-migrations-fix.sql"
           $sql | Set-Content -Path $tmp -Encoding UTF8
           npx prisma db execute --file $tmp --schema=prisma/schema.prisma
-          Remove-Item $tmp
+          Remove-Item $tmp -ErrorAction SilentlyContinue
           Write-Host "Failed migrations resolved (if any)"
         shell: pwsh
         env:
