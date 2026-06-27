@@ -137,21 +137,6 @@ jobs:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           DIRECT_URL: ${{ secrets.DIRECT_URL }}
 
-      - name: Resolve failed migrations
-        working-directory: backend
-        continue-on-error: true  # defensive step — migrate deploy below is the authoritative check
-        run: |
-          $sql = 'UPDATE "_prisma_migrations" SET "rolled_back_at" = NOW() WHERE "finished_at" IS NULL AND "started_at" IS NOT NULL AND "rolled_back_at" IS NULL;'
-          $tmp = Join-Path $PWD "failed-migrations-fix.sql"
-          $sql | Set-Content -Path $tmp -Encoding UTF8
-          npx prisma db execute --file $tmp --schema=prisma/schema.prisma
-          Remove-Item $tmp -ErrorAction SilentlyContinue
-          Write-Host "Failed migrations resolved (if any)"
-        shell: pwsh
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          DIRECT_URL: ${{ secrets.DIRECT_URL }}
-
       - name: Run Prisma migrations
         working-directory: backend
         run: npx prisma migrate deploy
