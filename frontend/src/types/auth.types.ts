@@ -7,6 +7,7 @@ export interface AuthUser {
   systemRole: SystemRole;
   profilePhoto?: string | null;
   hasManagementRole?: boolean;
+  hasPmRole?: boolean;
 }
 
 export interface AuthResponse {

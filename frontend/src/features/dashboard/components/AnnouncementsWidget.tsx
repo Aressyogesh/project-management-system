@@ -1,40 +1,58 @@
 import { useQuery } from '@tanstack/react-query';
-import { dashboardApi } from '../../../api/dashboard.api';
+import { Link } from 'react-router-dom';
+import { announcementsApi, AnnouncementRecord } from '../../../api/announcementsApi';
 
-interface AnnouncementsWidgetProps {
-  projectId?: string;
-  month?: string;
+function timeAgo(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(diff / 60_000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  if (days < 7) return `${days}d ago`;
+  return new Date(iso).toLocaleDateString();
 }
 
-const typeStyles = {
-  info:    { bg: 'bg-blue-50',    dot: 'bg-blue-400',    text: 'text-blue-700'    },
-  success: { bg: 'bg-emerald-50', dot: 'bg-emerald-400', text: 'text-emerald-700' },
-  warning: { bg: 'bg-amber-50',   dot: 'bg-amber-400',   text: 'text-amber-700'   },
-};
+function AnnouncementRow({ item }: { item: AnnouncementRecord }) {
+  return (
+    <div className="flex gap-3 px-5 py-4 bg-blue-50 hover:bg-blue-100/60 transition-colors">
+      <span className="mt-1.5 w-2 h-2 rounded-full shrink-0 bg-blue-400" />
+      <div className="min-w-0 flex-1">
+        <p className="text-xs font-semibold text-blue-700 leading-snug">{item.title}</p>
+        <p className="text-xs text-gray-600 mt-0.5 leading-relaxed line-clamp-2">{item.content}</p>
+        <div className="flex items-center gap-1.5 mt-1">
+          <span className="text-[10px] text-gray-400">{item.createdBy.fullName}</span>
+          <span className="text-[10px] text-gray-300">·</span>
+          <span className="text-[10px] text-gray-400">{timeAgo(item.createdAt)}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
 
-export function AnnouncementsWidget({ projectId, month }: AnnouncementsWidgetProps) {
-  const params = projectId || month ? { projectId, month } : undefined;
-
-  const { data: items = [], isLoading } = useQuery({
-    queryKey: ['dashboard-announcements', projectId ?? '', month ?? ''],
-    queryFn:  () => dashboardApi.getAnnouncements(params),
+export function AnnouncementsWidget() {
+  const { data, isLoading } = useQuery({
+    queryKey: ['announcements', 'latest'],
+    queryFn: () => announcementsApi.list({ latest: true }),
     staleTime: 60_000,
   });
+
+  const items = data?.data ?? [];
 
   return (
     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
       <div className="px-5 py-4 border-b border-gray-50 flex items-center justify-between">
         <div>
           <h3 className="text-sm font-semibold text-gray-800">Announcements</h3>
-          <p className="text-xs text-gray-400 mt-0.5">
-            {projectId ? 'Project activity & highlights' : "What's New"}
-          </p>
+          <p className="text-xs text-gray-400 mt-0.5">Latest notices from management</p>
         </div>
-        {!isLoading && (
-          <span className="text-xs bg-primary-50 text-primary-700 font-semibold px-2 py-0.5 rounded-full border border-primary-100">
-            {items.length} new
-          </span>
-        )}
+        <Link
+          to="/announcements"
+          className="text-xs text-primary-600 hover:text-primary-800 font-medium transition-colors"
+        >
+          View all
+        </Link>
       </div>
 
       {isLoading ? (
@@ -52,23 +70,11 @@ export function AnnouncementsWidget({ projectId, month }: AnnouncementsWidgetPro
         </div>
       ) : items.length === 0 ? (
         <div className="px-5 py-8 text-center text-xs text-gray-400">
-          No announcements for the selected period.
+          No announcements yet.
         </div>
       ) : (
         <div className="divide-y divide-gray-50">
-          {items.map((item) => {
-            const s = typeStyles[item.type];
-            return (
-              <div key={item.id} className={`flex gap-3 px-5 py-4 ${s.bg}`}>
-                <span className={`mt-1.5 w-2 h-2 rounded-full shrink-0 ${s.dot}`} />
-                <div className="min-w-0">
-                  <p className={`text-xs font-semibold ${s.text}`}>{item.title}</p>
-                  <p className="text-xs text-gray-500 mt-0.5 leading-relaxed">{item.body}</p>
-                  <p className="text-xs text-gray-300 mt-1">{item.date}</p>
-                </div>
-              </div>
-            );
-          })}
+          {items.map((item: AnnouncementRecord) => <AnnouncementRow key={item.id} item={item} />)}
         </div>
       )}
     </div>

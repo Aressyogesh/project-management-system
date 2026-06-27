@@ -179,8 +179,8 @@ function TeamProductivityTab({ currentUserId, period, project }: { currentUserId
     <div className="space-y-6">
       <div className="flex justify-end">
         <CsvButton onClick={() => downloadCsv(`team-productivity-report-${period}.csv`, [
-          ['Name', 'Role', 'Story Completed', 'Story Assigned', 'Hours Logged', 'On-Time %', 'Score'],
-          ...data.map((r) => [r.name, r.role, String(r.tasksDone), String(r.storiesAssigned ?? 0), String(r.hoursLogged), `${r.onTimePct}%`, String(r.score)]),
+          ['Name', 'Role', 'Work Item Assigned', 'Work Item Completed', 'Hours Logged', 'On-Time %', 'Score'],
+          ...data.map((r) => [r.name, r.role, String(r.storiesAssigned ?? 0), String(r.tasksDone), String(r.hoursLogged), `${r.onTimePct}%`, String(r.score)]),
         ])} />
       </div>
 
@@ -211,8 +211,8 @@ function TeamProductivityTab({ currentUserId, period, project }: { currentUserId
               <tr className="bg-gray-50 text-xs text-gray-500 uppercase tracking-wide">
                 <th className="px-5 py-3 text-left">#</th>
                 <th className="px-5 py-3 text-left">Employee</th>
-                <th className="px-5 py-3 text-right">Story Completed</th>
-                <th className="px-5 py-3 text-right">Story Assigned</th>
+                <th className="px-5 py-3 text-right">Work Item Assigned</th>
+                <th className="px-5 py-3 text-right">Work Item Completed</th>
                 <th className="px-5 py-3 text-right">Hours</th>
                 <th className="px-5 py-3 text-right">On-Time %</th>
                 <th className="px-5 py-3 text-left min-w-[140px]">Score</th>
@@ -241,8 +241,8 @@ function TeamProductivityTab({ currentUserId, period, project }: { currentUserId
                         {isMe && <span className="ml-1 text-xs bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-full font-medium">You</span>}
                       </div>
                     </td>
-                    <td className="px-5 py-3 text-right font-semibold text-gray-700">{r.tasksDone}</td>
                     <td className="px-5 py-3 text-right text-gray-600">{r.storiesAssigned ?? 0}</td>
+                    <td className="px-5 py-3 text-right font-semibold text-gray-700">{r.tasksDone}</td>
                     <td className="px-5 py-3 text-right text-gray-600">{r.hoursLogged}h</td>
                     <td className="px-5 py-3 text-right text-gray-600">{r.onTimePct}%</td>
                     <td className="px-5 py-3">

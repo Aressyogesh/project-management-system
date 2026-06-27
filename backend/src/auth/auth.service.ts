@@ -34,13 +34,16 @@ export class AuthService {
     const accessToken = this.generateAccessToken(user);
     const refreshToken = await this.createRefreshToken(user.id);
 
-    const [, hasManagementRole] = await Promise.all([
+    const [, hasManagementRole, hasPmRole] = await Promise.all([
       this.prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } }),
       this.prisma.projectMember.count({
         where: {
           userId: user.id,
           projectRole: { in: [ProjectRole.PROJECT_MANAGER, ProjectRole.TEAM_LEAD] },
         },
+      }).then((n) => n > 0),
+      this.prisma.projectMember.count({
+        where: { userId: user.id, projectRole: ProjectRole.PROJECT_MANAGER },
       }).then((n) => n > 0),
     ]);
 
@@ -61,6 +64,7 @@ export class AuthService {
         systemRole: user.systemRole,
         profilePhoto: user.profilePhoto ?? null,
         hasManagementRole,
+        hasPmRole,
       },
     };
   }

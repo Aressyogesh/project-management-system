@@ -44,7 +44,7 @@ it('getStats_SuperUser_ReturnsSystemWideCounts', async () => {
   mockPrisma.user.count.mockResolvedValue(20);
   const service = buildService();
   const result = await service.getStats('user-001', SystemRole.SUPER_USER);
-  const myProjectCard = result.cards.find((c) => c.label === 'My Projects');
+  const myProjectCard = result.cards.find((c) => c.label === 'All Projects');
   expect(myProjectCard?.value).toBe(5);
 });
 
@@ -204,12 +204,12 @@ it('DashboardService_getStats_EmptyMyTasksWhenNoneAssigned', async () => {
 });
 
 it('DashboardService_getStats_AdminCardActiveProjectsIsLive', async () => {
-  // ADMIN → My Projects card shows total project count from project.count()
+  // ADMIN → All Projects card shows total project count from project.count()
   const memberships = Array.from({ length: 7 }, (_, i) => ({ projectId: `p${i}` }));
   mockPrisma.projectMember.findMany.mockResolvedValue(memberships);
   mockPrisma.project.count.mockResolvedValue(5);
   const service = buildService();
   const result = await service.getStats('user-001', SystemRole.ADMIN);
-  const myProjectCard = result.cards.find((c) => c.label === 'My Projects');
+  const myProjectCard = result.cards.find((c) => c.label === 'All Projects');
   expect(myProjectCard?.value).toBe(5);
 });

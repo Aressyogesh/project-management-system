@@ -271,6 +271,7 @@ model User {
   upskillCreated        UpskillAssignment[]  @relation("UpskillCreated")
   upskillApprovals      UpskillAssignment[]  @relation("UpskillApprovals")
   upskillProgressLogs   UpskillProgressLog[] @relation("UpskillProgressLogs")
+  announcements         Announcement[]       @relation("CreatedAnnouncements")
 
   @@index([email])
   @@map("users")
@@ -1051,4 +1052,19 @@ model UpskillProgressLog {
 
   @@index([assignmentId])
   @@map("upskill_progress_logs")
+}
+
+// ─── Announcements ────────────────────────────────────────────────────────────
+
+model Announcement {
+  id          String   @id @default(uuid())
+  title       String   @db.VarChar(200)
+  content     String   @db.Text
+  createdById String
+  createdAt   DateTime @default(now())
+
+  createdBy User @relation("CreatedAnnouncements", fields: [createdById], references: [id])
+
+  @@index([createdAt(sort: Desc)])
+  @@map("announcements")
 }

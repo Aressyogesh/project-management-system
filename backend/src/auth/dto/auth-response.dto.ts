@@ -8,6 +8,7 @@ export class AuthUserDto {
   @ApiProperty({ enum: SystemRole }) systemRole: SystemRole;
   @ApiProperty({ required: false, nullable: true }) profilePhoto?: string | null;
   @ApiProperty() hasManagementRole: boolean;
+  @ApiProperty() hasPmRole: boolean;
 }
 
 export class AuthResponseDto {

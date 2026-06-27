@@ -1,10 +1,28 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import { GlobalProgressBar } from './GlobalProgressBar';
 import { Sidebar } from './Sidebar';
 import { Topbar } from './Topbar';
+import { usersApi } from '../../api/users.api';
+import { useAuthStore } from '../../store/authStore';
 
 export function AppLayout() {
+  const updateUser = useAuthStore((s) => s.updateUser);
+
+  // Refresh user profile on mount so stored flags (hasPmRole, hasManagementRole)
+  // stay current without requiring a re-login after role changes.
+  useEffect(() => {
+    usersApi.getProfile().then((profile) => {
+      updateUser({
+        fullName: profile.fullName,
+        email: profile.email,
+        profilePhoto: profile.profilePhoto,
+        hasPmRole: (profile as any).hasPmRole,
+        hasManagementRole: (profile as any).hasManagementRole,
+      });
+    }).catch(() => { /* ignore — stale data is acceptable */ });
+  }, [updateUser]);
+
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
     return localStorage.getItem('sidebar-collapsed') === 'true';
   });

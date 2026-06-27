@@ -1,14 +1,11 @@
 import { useQuery } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { dashboardApi } from '../../../api/dashboard.api';
 import { projectsApi } from '../../../api/projects.api';
 import { useAuthStore } from '../../../store/authStore';
-import { ActivityChart } from '../components/ActivityChart';
 import { AnnouncementsWidget } from '../components/AnnouncementsWidget';
-import { MyTaskTable } from '../components/MyTaskTable';
 import { ProjectProgressPanel } from '../components/ProjectProgressPanel';
 import { StatCard } from '../components/StatCard';
-import { TasksProgressChart } from '../components/TasksProgressChart';
 import { TeamActivityPanel } from '../components/TeamActivityPanel';
 import { ProjectRiskScoreCard } from '../components/ProjectRiskScoreCard';
 import { MemberActivity } from '../../../types/dashboard.types';
@@ -25,7 +22,7 @@ function monthLabel(ym: string) {
 }
 
 function toTitleCase(str: string) {
-  return str.replace(/\b\w/g, (c) => c.toUpperCase());
+  return str.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
 function buildMonthOptions() {
@@ -49,10 +46,108 @@ function LoadingSkeleton() {
           <div key={i} className="bg-white rounded-2xl p-5 h-36 border border-gray-100" />
         ))}
       </div>
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-        <div className="xl:col-span-2 bg-white rounded-2xl h-72 border border-gray-100" />
-        <div className="bg-white rounded-2xl h-72 border border-gray-100" />
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <div key={i} className="bg-white rounded-2xl h-40 border border-gray-100" />
+        ))}
       </div>
+    </div>
+  );
+}
+
+// ── Project Combobox ───────────────────────────────────────────────────────────
+
+function ProjectCombobox({
+  projects,
+  selected,
+  onSelect,
+  loading,
+}: {
+  projects: { id: string; name: string }[];
+  selected: string;
+  onSelect: (id: string) => void;
+  loading: boolean;
+}) {
+  const [search, setSearch] = useState('');
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const selectedName = projects.find((p) => p.id === selected)?.name ?? '';
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+        setSearch('');
+      }
+    }
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, []);
+
+  const filtered = search.trim()
+    ? projects.filter((p) => p.name.toLowerCase().includes(search.toLowerCase()))
+    : projects;
+
+  const displayValue = open ? search : (selectedName ? toTitleCase(selectedName) : '');
+
+  return (
+    <div ref={containerRef} className="relative flex items-center gap-2 flex-1 min-w-[200px]">
+      <svg className="w-4 h-4 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+          d="M3 7h18M3 12h18M3 17h18" />
+      </svg>
+      <input
+        type="text"
+        placeholder={loading ? 'Loading…' : 'All Projects'}
+        value={displayValue}
+        disabled={loading}
+        onFocus={() => { setOpen(true); setSearch(''); }}
+        onChange={(e) => setSearch(e.target.value)}
+        className="flex-1 text-sm text-gray-700 bg-transparent border-none focus:outline-none focus:ring-0 font-medium placeholder:text-gray-400 placeholder:font-normal cursor-pointer"
+      />
+      {selected && !open && (
+        <button
+          onMouseDown={(e) => { e.preventDefault(); onSelect(''); setSearch(''); }}
+          className="text-gray-300 hover:text-gray-500 transition-colors shrink-0"
+          title="Clear"
+        >
+          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      )}
+      {!selected && !open && (
+        <svg className="w-4 h-4 text-gray-300 shrink-0 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 9l-7 7-7-7" />
+        </svg>
+      )}
+
+      {open && (
+        <div className="absolute top-full left-0 mt-2 w-full min-w-[220px] bg-white border border-gray-200 rounded-xl shadow-lg z-50 max-h-60 overflow-auto">
+          <div
+            onMouseDown={() => { onSelect(''); setSearch(''); setOpen(false); }}
+            className={`px-3 py-2 text-sm cursor-pointer hover:bg-gray-50 ${!selected ? 'text-primary-600 font-medium' : 'text-gray-400'}`}
+          >
+            All Projects
+          </div>
+          {filtered.length === 0 ? (
+            <div className="px-3 py-2 text-sm text-gray-400 italic">No projects found</div>
+          ) : (
+            filtered.map((p) => (
+              <div
+                key={p.id}
+                onMouseDown={() => { onSelect(p.id); setSearch(''); setOpen(false); }}
+                className={`px-3 py-2 text-sm cursor-pointer hover:bg-primary-50 hover:text-primary-700 ${
+                  selected === p.id ? 'bg-primary-50 text-primary-700 font-medium' : 'text-gray-700'
+                }`}
+              >
+                {toTitleCase(p.name)}
+              </div>
+            ))
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -131,7 +226,7 @@ export function DashboardPage() {
     );
   }
 
-  const selectedProjectName = projects.find((p: any) => p.id === selectedProject)?.name ?? '';
+  const selectedProjectName = (projects as any[]).find((p) => p.id === selectedProject)?.name ?? '';
 
   return (
     <div className="space-y-6">
@@ -139,24 +234,13 @@ export function DashboardPage() {
       {/* ── Top filter bar (Admin / Super User / Project Manager / Team Lead) ─ */}
       {isManager && (
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm px-5 py-3 flex flex-wrap items-center gap-3">
-          {/* Project selector */}
-          <div className="flex items-center gap-2 flex-1 min-w-[200px]">
-            <svg className="w-4 h-4 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-                d="M3 7h18M3 12h18M3 17h18" />
-            </svg>
-            <select
-              className="flex-1 text-sm text-gray-700 bg-transparent border-none focus:outline-none focus:ring-0 cursor-pointer font-medium"
-              value={selectedProject}
-              onChange={(e) => setSelectedProject(e.target.value)}
-              disabled={projectsLoading}
-            >
-              <option value="">{projectsLoading ? 'Loading…' : 'All Projects'}</option>
-              {(projects as any[]).map((p) => (
-                <option key={p.id} value={p.id}>{toTitleCase(p.name)}</option>
-              ))}
-            </select>
-          </div>
+          {/* Project combobox */}
+          <ProjectCombobox
+            projects={projects as { id: string; name: string }[]}
+            selected={selectedProject}
+            onSelect={setSelectedProject}
+            loading={projectsLoading}
+          />
 
           <div className="w-px h-5 bg-gray-200" />
 
@@ -183,7 +267,7 @@ export function DashboardPage() {
               <div className="w-px h-5 bg-gray-200" />
               <div className="flex items-center gap-2">
                 <span className="text-xs bg-primary-50 text-primary-700 border border-primary-100 px-2.5 py-1 rounded-full font-medium">
-                  {selectedProjectName} — {monthLabel(selectedMonth)}
+                  {toTitleCase(selectedProjectName)} — {monthLabel(selectedMonth)}
                 </span>
                 <button
                   onClick={() => setSelectedProject('')}
@@ -204,9 +288,6 @@ export function DashboardPage() {
           <StatCard key={card.label} {...card} />
         ))}
       </div>
-
-      {/* ── Activity Chart ─────────────────────────────────────────────────── */}
-      <ActivityChart data={data.activityData} projectId={selectedProject || undefined} />
 
       {/* ── Projects Progress (Admin/Super/PM/TL, only when no project filter) ─ */}
       {isManager && !hasFilter && (
@@ -231,18 +312,8 @@ export function DashboardPage() {
         <TeamActivitySection projectId={selectedProject} month={selectedMonth} />
       )}
 
-      {/* ── My Tasks + Task Progress Chart ─────────────────────────────────── */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-        <div className="xl:col-span-2">
-          <MyTaskTable tasks={data.myTasks} />
-        </div>
-        <div className="xl:col-span-1">
-          <TasksProgressChart projectId={selectedProject || undefined} />
-        </div>
-      </div>
-
       {/* ── Announcements ──────────────────────────────────────────────────── */}
-      <AnnouncementsWidget projectId={selectedProject || undefined} month={selectedMonth} />
+      <AnnouncementsWidget />
     </div>
   );
 }

@@ -22,14 +22,20 @@ import { LeaveRequestsService } from './leave-requests.service';
 export class LeaveRequestsController {
   constructor(private readonly leaveRequestsService: LeaveRequestsService) {}
 
+  @Get('members')
+  @ApiOperation({ summary: 'List team members the requester can record leaves for' })
+  getManageableMembers(@Request() req: any) {
+    return this.leaveRequestsService.getManageableMembers(req.user.id, req.user.systemRole);
+  }
+
   @Post()
-  @ApiOperation({ summary: 'Apply for leave' })
+  @ApiOperation({ summary: 'Record a leave for a team member (PM/Admin/SuperAdmin only)' })
   create(@Body() dto: CreateLeaveRequestDto, @Request() req: any) {
     return this.leaveRequestsService.create(req.user.id, req.user.systemRole, dto);
   }
 
   @Get()
-  @ApiOperation({ summary: 'List leave requests (own for employees, all for admins)' })
+  @ApiOperation({ summary: 'List leave requests' })
   findAll(
     @Request() req: any,
     @Query('status') status?: LeaveStatus,

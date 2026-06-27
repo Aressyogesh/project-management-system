@@ -158,7 +158,7 @@ export function TeamActivityPanel({ projectId, month }: TeamActivityPanelProps) 
           <thead>
             <tr className="bg-gray-50 text-left">
               <th className="px-4 py-2.5 font-medium text-gray-500">Member</th>
-              <th className="px-3 py-2.5 font-medium text-gray-500 text-center">Assigned</th>
+              <th className="px-3 py-2.5 font-medium text-gray-500 text-center">Work Item Assigned</th>
               <th className="px-3 py-2.5 font-medium text-gray-500 text-center min-w-[90px]">
                 Completed
                 <span className="block text-[10px] font-normal text-gray-400">Delivered / Rework / Bug</span>

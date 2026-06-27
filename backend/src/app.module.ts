@@ -38,6 +38,7 @@ import { AuditLogsModule } from './audit-logs/audit-logs.module';
 import { AutomationModule } from './automation-services/automation.module';
 import { GithubWebhookModule } from './github-webhook/github-webhook.module';
 import { UpskillModule } from './upskill/upskill.module';
+import { AnnouncementsModule } from './announcements/announcements.module';
 
 @Module({
   imports: [
@@ -76,6 +77,7 @@ import { UpskillModule } from './upskill/upskill.module';
     AutomationModule,
     GithubWebhookModule,
     UpskillModule,
+    AnnouncementsModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: GlobalExceptionFilter },
