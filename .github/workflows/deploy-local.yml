@@ -21,6 +21,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 1
+          clean: false  # skip workspace wipe — PM2 may hold a lock on backend/dist while running
 
       - name: Install backend dependencies
         working-directory: backend
