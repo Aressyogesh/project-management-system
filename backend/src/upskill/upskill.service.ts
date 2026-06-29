@@ -234,9 +234,31 @@ export class UpskillService {
       return { data, total, page, limit };
     }
 
+    let assignedToIdFilter: string[] | undefined;
+    if (!isPrivileged) {
+      const managedProjects = await this.prisma.projectMember.findMany({
+        where: { userId: callerId, projectRole: ProjectRole.PROJECT_MANAGER },
+        select: { projectId: true },
+      });
+      const projectIds = managedProjects.map((p) => p.projectId);
+      if (projectIds.length === 0) return { data: [], total: 0, page, limit };
+
+      const members = await this.prisma.projectMember.findMany({
+        where: { projectId: { in: projectIds } },
+        select: { userId: true },
+        distinct: ['userId'],
+      });
+      assignedToIdFilter = members.map((m) => m.userId);
+    }
+
+    const assignedToWhere = options.assignedToId
+      ? { assignedToId: options.assignedToId }
+      : assignedToIdFilter
+        ? { assignedToId: { in: assignedToIdFilter } }
+        : {};
+
     const where = {
-      ...(isPrivileged ? {} : { createdById: callerId }),
-      ...(options.assignedToId ? { assignedToId: options.assignedToId } : {}),
+      ...assignedToWhere,
       ...(options.status ? { status: options.status } : {}),
     };
     const [data, total] = await this.prisma.$transaction([
