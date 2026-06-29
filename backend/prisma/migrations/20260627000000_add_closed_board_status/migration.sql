@@ -1,2 +1,2 @@
 -- AlterEnum
-ALTER TYPE "BoardStatus" ADD VALUE 'CLOSED';
+ALTER TYPE "BoardStatus" ADD VALUE IF NOT EXISTS 'CLOSED';
