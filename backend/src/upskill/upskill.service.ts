@@ -68,6 +68,19 @@ export class UpskillService {
       .sort((a, b) => a.fullName.localeCompare(b.fullName));
   }
 
+  private async isManagedMember(callerId: string, targetUserId: string): Promise<boolean> {
+    const managedProjects = await this.prisma.projectMember.findMany({
+      where: { userId: callerId, projectRole: ProjectRole.PROJECT_MANAGER },
+      select: { projectId: true },
+    });
+    if (managedProjects.length === 0) return false;
+    const projectIds = managedProjects.map((p) => p.projectId);
+    const membership = await this.prisma.projectMember.findFirst({
+      where: { userId: targetUserId, projectId: { in: projectIds } },
+    });
+    return !!membership;
+  }
+
   async createAssignment(callerId: string, dto: CreateAssignmentDto) {
     const { type, assignedToId, description, toolScript, startDate, endDate } = dto;
 
@@ -129,8 +142,10 @@ export class UpskillService {
       throw new ConflictException('Only assignments that have not started can be edited');
     }
     const isPrivileged = systemRole === SystemRole.ADMIN || systemRole === SystemRole.SUPER_USER;
-    if (!isPrivileged && assignment.createdById !== callerId) {
-      throw new ForbiddenException('You can only edit assignments you created');
+    if (!isPrivileged) {
+      const canManage = assignment.createdById === callerId ||
+        await this.isManagedMember(callerId, assignment.assignedToId);
+      if (!canManage) throw new ForbiddenException('You can only edit assignments for your project members');
     }
 
     const start = dto.startDate ? new Date(dto.startDate) : assignment.startDate;
@@ -183,8 +198,10 @@ export class UpskillService {
       throw new ConflictException('Only assignments that have not started can be deleted');
     }
     const isPrivileged = systemRole === SystemRole.ADMIN || systemRole === SystemRole.SUPER_USER;
-    if (!isPrivileged && assignment.createdById !== callerId) {
-      throw new ForbiddenException('You can only delete assignments you created');
+    if (!isPrivileged) {
+      const canManage = assignment.createdById === callerId ||
+        await this.isManagedMember(callerId, assignment.assignedToId);
+      if (!canManage) throw new ForbiddenException('You can only delete assignments for your project members');
     }
     await this.prisma.upskillAssignment.delete({ where: { id: assignmentId } });
     this.auditLogs.log({
@@ -365,8 +382,10 @@ export class UpskillService {
     }
 
     const isPrivileged = systemRole === SystemRole.ADMIN || systemRole === SystemRole.SUPER_USER;
-    if (!isPrivileged && assignment.createdById !== approverId) {
-      throw new ForbiddenException('You can only approve assignments you created');
+    if (!isPrivileged) {
+      const canManage = assignment.createdById === approverId ||
+        await this.isManagedMember(approverId, assignment.assignedToId);
+      if (!canManage) throw new ForbiddenException('You can only approve assignments for your project members');
     }
 
     const approved = await this.prisma.upskillAssignment.update({
@@ -394,8 +413,10 @@ export class UpskillService {
     }
 
     const isPrivileged = systemRole === SystemRole.ADMIN || systemRole === SystemRole.SUPER_USER;
-    if (!isPrivileged && assignment.createdById !== rejectorId) {
-      throw new ForbiddenException('You can only reject assignments you created');
+    if (!isPrivileged) {
+      const canManage = assignment.createdById === rejectorId ||
+        await this.isManagedMember(rejectorId, assignment.assignedToId);
+      if (!canManage) throw new ForbiddenException('You can only reject assignments for your project members');
     }
 
     const rejected = await this.prisma.upskillAssignment.update({
