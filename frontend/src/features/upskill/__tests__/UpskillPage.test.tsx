@@ -6,7 +6,7 @@ import { UpskillPage } from '../pages/UpskillPage';
 import { upskillApi } from '../../../api/upskillApi';
 import { usersApi } from '../../../api/users.api';
 import { useAuthStore } from '../../../store/authStore';
-import type { UpskillAssignment } from '../../../api/upskillApi';
+import type { UpskillAssignment, UpskillPage as UpskillPageData } from '../../../api/upskillApi';
 
 vi.mock('../../../api/upskillApi');
 vi.mock('../../../api/users.api');
@@ -37,6 +37,14 @@ const mockAssignment = (overrides: Partial<UpskillAssignment> = {}): UpskillAssi
   ...overrides,
 });
 
+const emptyPage: UpskillPageData = { data: [], total: 0, page: 1, limit: 10 };
+const pageOf = (assignments: UpskillAssignment[]): UpskillPageData => ({
+  data: assignments,
+  total: assignments.length,
+  page: 1,
+  limit: 10,
+});
+
 function renderPage() {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
@@ -52,42 +60,38 @@ beforeEach(() => {
   vi.clearAllMocks();
   (useAuthStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({ user: mockAdmin });
   vi.mocked(usersApi.list).mockResolvedValue({ data: [], total: 0, page: 1, limit: 200 });
+  vi.mocked(upskillApi.listAssignments).mockResolvedValue(emptyPage);
 });
 
 // ─── UTC-F054-FE-03 ───────────────────────────────────────────────────────────
 
-it('Learning tab form does not show Tool/Script field', async () => {
-  vi.mocked(upskillApi.listAssignments).mockResolvedValue([]);
+it('Create Assignment form always shows Tool/Script as an optional field', async () => {
   renderPage();
 
   fireEvent.click(await screen.findByText('Create Assignment'));
-  expect(screen.queryByPlaceholderText(/selenium/i)).toBeNull();
-  expect(screen.queryByText(/Tool \/ Script/i)).toBeNull();
+  expect(screen.getByPlaceholderText(/selenium/i)).toBeDefined();
+  expect(screen.getByText(/Tool \/ Script/i)).toBeDefined();
 });
 
 // ─── UTC-F054-FE-04 ───────────────────────────────────────────────────────────
 
-it('Automation tab form shows Tool/Script Name field', async () => {
-  vi.mocked(upskillApi.listAssignments).mockResolvedValue([]);
+it('Page has no Learning/Automation tabs — single unified view', async () => {
   renderPage();
 
-  fireEvent.click(screen.getByText('Automation'));
-  fireEvent.click(await screen.findByText('Create Assignment'));
-  expect(screen.getByText(/Tool \/ Script Name/i)).toBeDefined();
+  await screen.findByText('Create Assignment');
+  expect(screen.queryByRole('button', { name: /^Learning$/i })).toBeNull();
+  expect(screen.queryByRole('button', { name: /^Automation$/i })).toBeNull();
 });
 
 // ─── UTC-F054-FE-05 — Submit button exists in modal when fields empty ──────────
 
 it('Submit button exists in modal (HTML5 required prevents submission)', async () => {
-  vi.mocked(upskillApi.listAssignments).mockResolvedValue([]);
   renderPage();
 
   fireEvent.click(await screen.findByText('Create Assignment'));
-  // After modal opens there are two buttons with this name; get all and check the submit one
   const allBtns = screen.getAllByRole('button', { name: /Create Assignment/i });
   const submitBtn = allBtns.find((b) => b.getAttribute('type') === 'submit');
   expect(submitBtn).toBeDefined();
-  // No API call made without valid form data
   expect(upskillApi.createAssignment).not.toHaveBeenCalled();
 });
 
@@ -95,7 +99,7 @@ it('Submit button exists in modal (HTML5 required prevents submission)', async (
 
 it('Approve button calls upskillApi.approve', async () => {
   const submitted = mockAssignment({ status: 'SUBMITTED' });
-  vi.mocked(upskillApi.listAssignments).mockResolvedValue([submitted]);
+  vi.mocked(upskillApi.listAssignments).mockResolvedValue(pageOf([submitted]));
   vi.mocked(upskillApi.approve).mockResolvedValue(mockAssignment({ status: 'APPROVED' }));
 
   renderPage();
@@ -112,7 +116,7 @@ it('Approve button calls upskillApi.approve', async () => {
 
 it('Reject shows dialog and validates empty reason', async () => {
   const submitted = mockAssignment({ status: 'SUBMITTED' });
-  vi.mocked(upskillApi.listAssignments).mockResolvedValue([submitted]);
+  vi.mocked(upskillApi.listAssignments).mockResolvedValue(pageOf([submitted]));
 
   renderPage();
 
@@ -121,7 +125,6 @@ it('Reject shows dialog and validates empty reason', async () => {
 
   expect(await screen.findByText('Reject Assignment')).toBeDefined();
 
-  // Click confirm without entering reason
   const confirmBtn = screen.getAllByRole('button', { name: /Reject/i }).pop()!;
   fireEvent.click(confirmBtn);
 
@@ -130,13 +133,13 @@ it('Reject shows dialog and validates empty reason', async () => {
 });
 
 // ─── UTC-F054-FE-08 — Employee sees upskill assignment in KPI section ─────────
-// (tested via UpskillAssignmentSection — integration, not unit)
+// (tested via MyAssignmentsSection — integration, not unit)
 
 // ─── UTC-F054-FE-11 — APPROVED assignment shows read-only state ───────────────
 
 it('APPROVED assignment shows Approved badge', async () => {
   const approved = mockAssignment({ status: 'APPROVED' });
-  vi.mocked(upskillApi.listAssignments).mockResolvedValue([approved]);
+  vi.mocked(upskillApi.listAssignments).mockResolvedValue(pageOf([approved]));
 
   renderPage();
 
@@ -149,7 +152,7 @@ it('APPROVED assignment shows Approved badge', async () => {
 
 it('REJECTED assignment shows rejection reason in View drawer', async () => {
   const rejected = mockAssignment({ status: 'REJECTED', rejectionReason: 'Certificate unclear' });
-  vi.mocked(upskillApi.listAssignments).mockResolvedValue([rejected]);
+  vi.mocked(upskillApi.listAssignments).mockResolvedValue(pageOf([rejected]));
   vi.mocked(upskillApi.getAssignment).mockResolvedValue(rejected);
 
   renderPage();

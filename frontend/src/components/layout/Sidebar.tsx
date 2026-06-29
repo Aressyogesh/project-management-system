@@ -195,7 +195,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
     return true;
   });
 
-  const upskillItem: NavItem = { path: '/upskill', label: 'Learning & Innovation', Icon: IconUpskill };
+  const upskillItem: NavItem = { path: '/upskill', label: 'Learn & Innovate', Icon: IconUpskill };
   const kpiIdx = baseNav.findIndex((n) => n.path === '/kpi');
   const visibleNav = kpiIdx >= 0
     ? [...baseNav.slice(0, kpiIdx + 1), upskillItem, ...baseNav.slice(kpiIdx + 1)]
