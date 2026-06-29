@@ -137,6 +137,15 @@ jobs:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           DIRECT_URL: ${{ secrets.DIRECT_URL }}
 
+      - name: Resolve any failed migrations
+        working-directory: backend
+        run: |
+          npx prisma migrate resolve --applied 20260526060000_add_departments_and_extend_users 2>$null; $LASTEXITCODE = 0
+        shell: pwsh
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DIRECT_URL: ${{ secrets.DIRECT_URL }}
+
       - name: Run Prisma migrations
         working-directory: backend
         run: npx prisma migrate deploy
