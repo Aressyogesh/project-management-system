@@ -15,7 +15,6 @@ import {
   BugSeverity,
   BugStatus,
   LeaveStatus,
-  LeaveType,
   MilestoneStatus,
   PrismaClient,
   ProjectRole,
@@ -749,15 +748,15 @@ async function main() {
 
   const leaveRequests = [
     // Smart Facility
-    ...(sfDevs[0] ? [{ id: 'lr-sf-dev-1', userId: sfDevs[0],    type: LeaveType.SICK,   start: d(2026,5,5),  end: d(2026,5,6),  days: 2, reason: 'Fever and flu',        status: LeaveStatus.APPROVED,  approvedById: sf.pm }] : []),
-    ...(sfQAs[0]  ? [{ id: 'lr-sf-qa-1',  userId: sfQAs[0],     type: LeaveType.CASUAL, start: d(2026,5,19), end: d(2026,5,19), days: 1, reason: 'Personal work',        status: LeaveStatus.APPROVED,  approvedById: sf.pm }] : []),
-    { id: 'lr-sf-pm-1',  userId: sf.pm,       type: LeaveType.EARNED, start: d(2026,5,26), end: d(2026,5,27), days: 2, reason: 'Annual leave planned',  status: LeaveStatus.PENDING,   approvedById: null },
+    ...(sfDevs[0] ? [{ id: 'lr-sf-dev-1', userId: sfDevs[0],    start: d(2026,5,5),  end: d(2026,5,6),  days: 2, reason: 'Fever and flu',        status: LeaveStatus.APPROVED,  approvedById: sf.pm }] : []),
+    ...(sfQAs[0]  ? [{ id: 'lr-sf-qa-1',  userId: sfQAs[0],     start: d(2026,5,19), end: d(2026,5,19), days: 1, reason: 'Personal work',        status: LeaveStatus.APPROVED,  approvedById: sf.pm }] : []),
+    { id: 'lr-sf-pm-1',  userId: sf.pm,       start: d(2026,5,26), end: d(2026,5,27), days: 2, reason: 'Annual leave planned',  status: LeaveStatus.PENDING,   approvedById: null },
     // HEMS One Rewrite
-    ...(hemsDevs[0] ? [{ id: 'lr-hems-dev1-1', userId: hemsDevs[0], type: LeaveType.SICK,   start: d(2026,5,7),  end: d(2026,5,8),  days: 2, reason: 'Not feeling well',       status: LeaveStatus.APPROVED, approvedById: hems.pm }] : []),
-    ...(hemsDevs[1] ? [{ id: 'lr-hems-dev2-1', userId: hemsDevs[1], type: LeaveType.CASUAL, start: d(2026,5,14), end: d(2026,5,14), days: 1, reason: 'Personal errand',         status: LeaveStatus.APPROVED, approvedById: hems.pm }] : []),
-    ...(hemsQAs[0]  ? [{ id: 'lr-hems-qa1-1',  userId: hemsQAs[0],  type: LeaveType.EARNED, start: d(2026,5,20), end: d(2026,5,22), days: 3, reason: 'Planned vacation',        status: LeaveStatus.APPROVED, approvedById: hems.pm }] : []),
-    ...(hems.tls[0] ? [{ id: 'lr-hems-tl1-1',  userId: hems.tls[0], type: LeaveType.SICK,   start: d(2026,5,27), end: d(2026,5,28), days: 2, reason: 'Back pain',               status: LeaveStatus.PENDING,  approvedById: null }] : []),
-    ...(hemsQAs[1]  ? [{ id: 'lr-hems-qa2-1',  userId: hemsQAs[1],  type: LeaveType.CASUAL, start: d(2026,5,30), end: d(2026,5,30), days: 1, reason: 'Family event',             status: LeaveStatus.REJECTED, approvedById: hems.pm }] : []),
+    ...(hemsDevs[0] ? [{ id: 'lr-hems-dev1-1', userId: hemsDevs[0], start: d(2026,5,7),  end: d(2026,5,8),  days: 2, reason: 'Not feeling well',       status: LeaveStatus.APPROVED, approvedById: hems.pm }] : []),
+    ...(hemsDevs[1] ? [{ id: 'lr-hems-dev2-1', userId: hemsDevs[1], start: d(2026,5,14), end: d(2026,5,14), days: 1, reason: 'Personal errand',         status: LeaveStatus.APPROVED, approvedById: hems.pm }] : []),
+    ...(hemsQAs[0]  ? [{ id: 'lr-hems-qa1-1',  userId: hemsQAs[0],  start: d(2026,5,20), end: d(2026,5,22), days: 3, reason: 'Planned vacation',        status: LeaveStatus.APPROVED, approvedById: hems.pm }] : []),
+    ...(hems.tls[0] ? [{ id: 'lr-hems-tl1-1',  userId: hems.tls[0], start: d(2026,5,27), end: d(2026,5,28), days: 2, reason: 'Back pain',               status: LeaveStatus.PENDING,  approvedById: null }] : []),
+    ...(hemsQAs[1]  ? [{ id: 'lr-hems-qa2-1',  userId: hemsQAs[1],  start: d(2026,5,30), end: d(2026,5,30), days: 1, reason: 'Family event',             status: LeaveStatus.REJECTED, approvedById: hems.pm }] : []),
   ];
 
   for (const lr of leaveRequests) {
@@ -767,7 +766,6 @@ async function main() {
       create: {
         id: lr.id,
         userId: lr.userId,
-        type: lr.type,
         startDate: lr.start,
         endDate: lr.end,
         totalDays: lr.days,

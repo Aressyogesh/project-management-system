@@ -85,15 +85,6 @@ enum TimesheetApprovalStatus {
   REJECTED
 }
 
-enum LeaveType {
-  SICK
-  CASUAL
-  EARNED
-  MATERNITY
-  PATERNITY
-  UNPAID
-  OTHER
-}
 
 enum LeaveStatus {
   PENDING
@@ -811,7 +802,6 @@ model KpiRecord {
 model LeaveRequest {
   id           String      @id @default(uuid())
   userId       String
-  type         LeaveType
   startDate    DateTime    @db.Date
   endDate      DateTime    @db.Date
   totalDays    Float

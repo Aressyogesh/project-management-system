@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { leaveApi, type LeaveRequest, type LeaveType } from '../../../api/leaveApi';
+import { leaveApi, type LeaveRequest } from '../../../api/leaveApi';
 import { useAuthStore } from '../../../store/authStore';
 
 // ── Design tokens ─────────────────────────────────────────────────────────────
@@ -8,28 +8,6 @@ import { useAuthStore } from '../../../store/authStore';
 const inputCls =
   'w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white';
 const labelCls = 'block text-xs font-medium text-gray-600 mb-1';
-
-// ── Config ────────────────────────────────────────────────────────────────────
-
-const LEAVE_TYPE_LABELS: Record<LeaveType, string> = {
-  SICK:      'Sick Leave',
-  CASUAL:    'Casual Leave',
-  EARNED:    'Earned Leave',
-  MATERNITY: 'Maternity Leave',
-  PATERNITY: 'Paternity Leave',
-  UNPAID:    'Unpaid Leave',
-  OTHER:     'Other',
-};
-
-const LEAVE_TYPE_COLORS: Record<LeaveType, string> = {
-  SICK:      'bg-red-100 text-red-700',
-  CASUAL:    'bg-blue-100 text-blue-700',
-  EARNED:    'bg-emerald-100 text-emerald-700',
-  MATERNITY: 'bg-pink-100 text-pink-700',
-  PATERNITY: 'bg-indigo-100 text-indigo-700',
-  UNPAID:    'bg-gray-100 text-gray-600',
-  OTHER:     'bg-amber-100 text-amber-700',
-};
 
 function fmtDate(iso: string) {
   return new Date(iso.slice(0, 10) + 'T00:00:00').toLocaleDateString('en-GB', {
@@ -69,7 +47,6 @@ function RecordLeaveModal({
   const qc = useQueryClient();
   const [targetUserId, setTargetUserId] = useState('');
   const [isPlanned, setIsPlanned]       = useState(true);
-  const [type, setType]                 = useState<LeaveType>('CASUAL');
   const [startDate, setStartDate]       = useState('');
   const [endDate, setEndDate]           = useState('');
   const [isHalfDay, setIsHalfDay]       = useState(false);
@@ -81,7 +58,6 @@ function RecordLeaveModal({
       leaveApi.create({
         targetUserId,
         isPlanned,
-        type,
         startDate,
         endDate,
         isHalfDay,
@@ -169,20 +145,6 @@ function RecordLeaveModal({
                 Unplanned
               </button>
             </div>
-          </div>
-
-          {/* Leave Type */}
-          <div>
-            <label className={labelCls}>Leave Type</label>
-            <select
-              value={type}
-              onChange={(e) => setType(e.target.value as LeaveType)}
-              className={inputCls}
-            >
-              {(Object.keys(LEAVE_TYPE_LABELS) as LeaveType[]).map((t) => (
-                <option key={t} value={t}>{LEAVE_TYPE_LABELS[t]}</option>
-              ))}
-            </select>
           </div>
 
           {/* Dates */}
@@ -446,7 +408,6 @@ export function LeavePage() {
               <tr>
                 <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Employee</th>
                 <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
-                <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Leave Type</th>
                 <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Period</th>
                 <th className="px-5 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Days</th>
                 <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Reason</th>
@@ -510,13 +471,6 @@ function LeaveRow({
           leave.isPlanned ? 'bg-blue-100 text-blue-700' : 'bg-orange-100 text-orange-700'
         }`}>
           {leave.isPlanned ? 'Planned' : 'Unplanned'}
-        </span>
-      </td>
-
-      {/* Leave type */}
-      <td className="px-5 py-3.5">
-        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${LEAVE_TYPE_COLORS[leave.type]}`}>
-          {LEAVE_TYPE_LABELS[leave.type]}
         </span>
       </td>
 

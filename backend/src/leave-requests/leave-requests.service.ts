@@ -70,7 +70,6 @@ export class LeaveRequestsService {
     const leave = await this.prisma.leaveRequest.create({
       data: {
         userId: targetUserId,
-        type: dto.type,
         startDate: start,
         endDate: end,
         totalDays,
@@ -88,8 +87,8 @@ export class LeaveRequestsService {
       action: AuditAction.LEAVE_REQUESTED,
       entity: AuditEntity.LEAVE_REQUEST,
       entityId: leave.id,
-      entityTitle: `${dto.type} leave (${dto.startDate} — ${dto.endDate})`,
-      metadata: { type: dto.type, totalDays, isHalfDay: dto.isHalfDay ?? false, isPlanned: dto.isPlanned ?? true, recordedFor: targetUserId },
+      entityTitle: `Leave (${dto.startDate} — ${dto.endDate})`,
+      metadata: { totalDays, isHalfDay: dto.isHalfDay ?? false, isPlanned: dto.isPlanned ?? true, recordedFor: targetUserId },
     });
     return leave;
   }
@@ -181,7 +180,7 @@ export class LeaveRequestsService {
       action: AuditAction.LEAVE_APPROVED,
       entity: AuditEntity.LEAVE_REQUEST,
       entityId: id,
-      entityTitle: `${approved.user.fullName} — ${approved.type} leave`,
+      entityTitle: `${approved.user.fullName} — leave approved`,
       metadata: { forUserId: approved.user.id },
     });
     return approved;
@@ -213,7 +212,7 @@ export class LeaveRequestsService {
       action: AuditAction.LEAVE_REJECTED,
       entity: AuditEntity.LEAVE_REQUEST,
       entityId: id,
-      entityTitle: `${rejected.user.fullName} — ${rejected.type} leave`,
+      entityTitle: `${rejected.user.fullName} — leave rejected`,
       metadata: { forUserId: rejected.user.id },
     });
     return rejected;
@@ -242,7 +241,7 @@ export class LeaveRequestsService {
       action: AuditAction.LEAVE_CANCELLED,
       entity: AuditEntity.LEAVE_REQUEST,
       entityId: id,
-      entityTitle: `${cancelled.type} leave cancelled`,
+      entityTitle: `Leave cancelled`,
     });
     return cancelled;
   }

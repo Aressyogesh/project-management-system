@@ -1,12 +1,10 @@
 import { apiClient } from './client';
 
-export type LeaveType = 'SICK' | 'CASUAL' | 'EARNED' | 'MATERNITY' | 'PATERNITY' | 'UNPAID' | 'OTHER';
 export type LeaveStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED';
 
 export interface LeaveRequest {
   id: string;
   userId: string;
-  type: LeaveType;
   startDate: string;
   endDate: string;
   totalDays: number;
@@ -24,7 +22,6 @@ export interface LeaveRequest {
 }
 
 export interface CreateLeaveRequestDto {
-  type: LeaveType;
   startDate: string;
   endDate: string;
   isHalfDay?: boolean;
