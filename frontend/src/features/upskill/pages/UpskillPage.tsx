@@ -652,6 +652,159 @@ const STATUS_FILTERS: { value: UpskillStatus | 'ALL'; label: string }[] = [
 
 const PAGE_SIZE = 10;
 
+// ─── My Assignments Progress Section ─────────────────────────────────────────
+
+function UpskillCard({ asgn, onRefresh }: { asgn: UpskillAssignment; onRefresh: () => void }) {
+  const [showProgress, setShowProgress] = useState(false);
+  const [pct, setPct] = useState('');
+  const [hrs, setHrs] = useState('');
+  const [notes, setNotes] = useState('');
+  const [formErr, setFormErr] = useState('');
+  const [fileErr, setFileErr] = useState('');
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const canLog = asgn.status !== 'APPROVED' && asgn.status !== 'SUBMITTED';
+  const canSubmit = asgn.status === 'ASSIGNED' || asgn.status === 'IN_PROGRESS' || asgn.status === 'REJECTED';
+
+  const logMutation = useMutation({
+    mutationFn: () => upskillApi.logProgress(asgn.id, {
+      percentComplete: Number(pct), hoursSpent: Number(hrs), notes: notes.trim() || undefined,
+    }),
+    onSuccess: () => {
+      onRefresh();
+      setPct(''); setHrs(''); setNotes(''); setShowProgress(false); setFormErr('');
+    },
+    onError: (err: any) => setFormErr(err?.response?.data?.message ?? 'Failed to log progress'),
+  });
+
+  const submitMutation = useMutation({
+    mutationFn: (file: File) => upskillApi.submitEvidence(asgn.id, file),
+    onSuccess: () => { onRefresh(); setFileErr(''); },
+    onError: (err: any) => setFileErr(err?.response?.data?.message ?? 'Failed to submit evidence'),
+  });
+
+  const latestPct = Math.min(100, (asgn.progressLogs ?? []).reduce((s, l) => s + l.percentComplete, 0));
+  const cfg = STATUS_CONFIG[asgn.status];
+  const inputCls = 'w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500';
+
+  return (
+    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
+      <div className="flex items-start justify-between gap-3 mb-3">
+        <div>
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-[10px] font-semibold uppercase tracking-wide text-primary-600 bg-primary-50 px-2 py-0.5 rounded-full">
+              {asgn.type === 'LEARNING' ? 'Learning' : 'Automation'}
+            </span>
+            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold ${cfg.cls}`}>{cfg.label}</span>
+          </div>
+          <p className="text-sm font-medium text-gray-800 line-clamp-2">{asgn.description}</p>
+          {asgn.toolScript && <p className="text-[10px] text-gray-400 mt-0.5">Tool: {asgn.toolScript}</p>}
+        </div>
+        <div className="text-right shrink-0">
+          <p className="text-lg font-bold text-primary-600">{latestPct}%</p>
+          <p className="text-[10px] text-gray-400">complete</p>
+        </div>
+      </div>
+
+      {asgn.status === 'REJECTED' && asgn.rejectionReason && (
+        <div className="mb-3 px-3 py-2 bg-red-50 border border-red-100 rounded-lg text-xs text-red-600">
+          Rejected: {asgn.rejectionReason}
+        </div>
+      )}
+
+      <p className="text-[10px] text-gray-400 mb-3">
+        {new Date(asgn.startDate).toLocaleDateString()} – {new Date(asgn.endDate).toLocaleDateString()}
+        {' · '}by {asgn.createdBy?.fullName}
+      </p>
+
+      <div className="flex gap-2">
+        {canLog && (
+          <button
+            onClick={() => setShowProgress((v) => !v)}
+            className="text-xs px-3 py-1.5 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 transition"
+          >
+            Log Progress
+          </button>
+        )}
+        {canSubmit && (
+          <>
+            <input ref={fileRef} type="file" accept=".pdf,.docx,.png,.jpg,.jpeg,.pptx,.xlsx,.zip" className="hidden" onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (!file) return;
+              if (file.size > 10 * 1024 * 1024) { setFileErr('File size must not exceed 10 MB'); return; }
+              setFileErr('');
+              submitMutation.mutate(file);
+            }} />
+            <button
+              onClick={() => fileRef.current?.click()}
+              disabled={submitMutation.isPending}
+              className="text-xs px-3 py-1.5 rounded-lg bg-green-50 text-green-700 hover:bg-green-100 disabled:opacity-60 transition"
+            >
+              {submitMutation.isPending ? 'Uploading…' : 'Submit Evidence'}
+            </button>
+          </>
+        )}
+      </div>
+
+      {fileErr && <p className="text-xs text-red-600 mt-1">{fileErr}</p>}
+      {canSubmit && <p className="text-[10px] text-gray-400 mt-1">Supported: PDF, DOCX, PPTX, XLSX, ZIP, PNG, JPG · max 10 MB</p>}
+
+      {showProgress && canLog && (
+        <div className="mt-3 p-3 bg-gray-50 rounded-xl space-y-2">
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="block text-[10px] font-medium text-gray-600 mb-1">% Complete *</label>
+              <input type="number" min={0} max={100} value={pct} onChange={(e) => setPct(e.target.value)} placeholder="0–100" className={inputCls} />
+            </div>
+            <div>
+              <label className="block text-[10px] font-medium text-gray-600 mb-1">Hours Spent *</label>
+              <input type="number" min={0.5} step={0.5} value={hrs} onChange={(e) => setHrs(e.target.value)} placeholder="e.g. 2" className={inputCls} />
+            </div>
+          </div>
+          <textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Notes (optional)" className={`${inputCls} resize-none`} />
+          {formErr && <p className="text-[10px] text-red-600">{formErr}</p>}
+          <div className="flex gap-2 justify-end">
+            <button onClick={() => setShowProgress(false)} className="text-xs px-3 py-1.5 rounded-lg bg-gray-200 text-gray-600 hover:bg-gray-300">Cancel</button>
+            <button
+              onClick={() => {
+                if (!pct || !hrs) { setFormErr('Both fields required'); return; }
+                if (Number(pct) < 0 || Number(pct) > 100) { setFormErr('Must be between 0 and 100'); return; }
+                logMutation.mutate();
+              }}
+              disabled={logMutation.isPending}
+              className="text-xs px-3 py-1.5 rounded-lg bg-primary-600 text-white hover:bg-primary-700 disabled:opacity-60"
+            >
+              {logMutation.isPending ? 'Saving…' : 'Save'}
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function MyAssignmentsSection() {
+  const { data: result, refetch } = useQuery({
+    queryKey: ['upskill-mine-all'],
+    queryFn: () => upskillApi.listAssignments({ mine: true, limit: 50 }),
+    staleTime: 15_000,
+  });
+  const assignments = result?.data ?? [];
+
+  if (assignments.length === 0) return null;
+
+  return (
+    <div className="mt-8">
+      <h2 className="text-base font-semibold text-gray-800 mb-3">My Assignments</h2>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {assignments.map((a) => (
+          <UpskillCard key={a.id} asgn={a} onRefresh={() => refetch()} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function UpskillPage() {
   const qc = useQueryClient();
   const { user } = useAuthStore();
@@ -708,7 +861,7 @@ export function UpskillPage() {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-xl font-bold text-gray-900">Upskill</h1>
+          <h1 className="text-xl font-bold text-gray-900">Learning & Innovation</h1>
           <p className="text-sm text-gray-400 mt-0.5">Assign and track learning & automation upskilling for your team</p>
         </div>
         {isManager && (
@@ -806,6 +959,8 @@ export function UpskillPage() {
       {result && result.total > PAGE_SIZE && (
         <Pagination page={page} pageSize={PAGE_SIZE} total={result.total} onChange={setPage} />
       )}
+
+      <MyAssignmentsSection />
 
       {/* Modals */}
       {showCreate && <CreateAssignmentModal type={activeTab} onClose={() => setShowCreate(false)} onCreated={() => setToast({ message: 'Assignment created successfully', type: 'success' })} />}
