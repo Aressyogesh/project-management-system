@@ -184,6 +184,7 @@ describe('UpskillService', () => {
     (prisma.upskillAssignment.findUnique as jest.Mock).mockResolvedValue(
       mockAssignment({ status: UpskillStatus.SUBMITTED, createdById: 'other-pm' }),
     );
+    (prisma.projectMember.findMany as jest.Mock).mockResolvedValue([]);
 
     await expect(service.approveAssignment('asgn-001', 'mgr-001', SystemRole.EMPLOYEE)).rejects.toThrow(ForbiddenException);
     expect(prisma.upskillAssignment.update).not.toHaveBeenCalled();
@@ -216,6 +217,7 @@ describe('UpskillService', () => {
     (prisma.upskillAssignment.findUnique as jest.Mock).mockResolvedValue(
       mockAssignment({ status: UpskillStatus.SUBMITTED, createdById: 'other-pm' }),
     );
+    (prisma.projectMember.findMany as jest.Mock).mockResolvedValue([]);
 
     await expect(service.rejectAssignment('asgn-001', 'mgr-001', 'not valid', SystemRole.EMPLOYEE)).rejects.toThrow(ForbiddenException);
     expect(prisma.upskillAssignment.update).not.toHaveBeenCalled();
