@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
-import { upskillApi, type CreateAssignmentDto, type UpskillAssignment, type UpskillStatus, type UpskillType } from '../../../api/upskillApi';
+import { upskillApi, type CreateAssignmentDto, type UpskillAssignment, type UpskillStatus } from '../../../api/upskillApi';
 import { useAuthStore } from '../../../store/authStore';
 import { Pagination } from '../../../components/shared/Pagination';
 
@@ -45,7 +45,7 @@ function StatusBadge({ status }: { status: UpskillStatus }) {
 
 // ─── Create Assignment Modal ──────────────────────────────────────────────────
 
-function CreateAssignmentModal({ type, onClose, onCreated }: { type: UpskillType; onClose: () => void; onCreated: () => void }) {
+function CreateAssignmentModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
   const qc = useQueryClient();
   const { data: users = [] } = useQuery({
     queryKey: ['upskill-assignable-users'],
@@ -53,7 +53,7 @@ function CreateAssignmentModal({ type, onClose, onCreated }: { type: UpskillType
     staleTime: 60_000,
   });
 
-  const [form, setForm] = useState<Partial<CreateAssignmentDto>>({ type });
+  const [form, setForm] = useState<Partial<CreateAssignmentDto>>({ type: 'LEARNING' });
   const [error, setError] = useState('');
 
   const createMutation = useMutation({
@@ -75,10 +75,6 @@ function CreateAssignmentModal({ type, onClose, onCreated }: { type: UpskillType
       setError('Please select a resource');
       return;
     }
-    if (type === 'AUTOMATION' && !form.toolScript?.trim()) {
-      setError('Tool / Script Name is required for Automation type');
-      return;
-    }
     if (!form.startDate || !form.endDate) {
       setError('Start date and end date are required');
       return;
@@ -94,9 +90,7 @@ function CreateAssignmentModal({ type, onClose, onCreated }: { type: UpskillType
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6">
         <div className="flex items-center justify-between mb-5">
-          <h2 className="text-base font-semibold text-gray-900">
-            Create {type === 'LEARNING' ? 'Learning' : 'Automation'} Assignment
-          </h2>
+          <h2 className="text-base font-semibold text-gray-900">Create Assignment</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -120,29 +114,26 @@ function CreateAssignmentModal({ type, onClose, onCreated }: { type: UpskillType
             </select>
           </div>
 
-          {type === 'AUTOMATION' && (
-            <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Tool / Script Name <span className="text-red-500">*</span></label>
-              <input
-                required
-                value={form.toolScript ?? ''}
-                onChange={(e) => setForm((p) => ({ ...p, toolScript: e.target.value }))}
-                placeholder="e.g. Selenium regression suite"
-                className={inputCls}
-              />
-            </div>
-          )}
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Tool / Script <span className="text-gray-400">(optional)</span></label>
+            <input
+              value={form.toolScript ?? ''}
+              onChange={(e) => setForm((p) => ({ ...p, toolScript: e.target.value }))}
+              placeholder="e.g. Selenium regression suite"
+              className={inputCls}
+            />
+          </div>
 
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">
-              {type === 'LEARNING' ? 'What to learn' : 'What to automate'} <span className="text-red-500">*</span>
+              Description <span className="text-red-500">*</span>
             </label>
             <textarea
               required
               rows={3}
               value={form.description ?? ''}
               onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))}
-              placeholder={type === 'LEARNING' ? 'Describe the learning goal…' : 'Describe the automation goal…'}
+              placeholder="Describe the learning and/or automation goal…"
               className={`${inputCls} resize-none`}
             />
           </div>
@@ -264,7 +255,7 @@ function ProgressDrawer({ assignment, onClose }: { assignment: UpskillAssignment
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
           <div>
             <h2 className="text-sm font-semibold text-gray-900">Progress — {assignment.assignedTo?.fullName}</h2>
-            <p className="text-xs text-gray-400 mt-0.5">{assignment.type === 'LEARNING' ? 'Learning' : 'Automation'} Assignment</p>
+            <p className="text-xs text-gray-400 mt-0.5">Learn & Automate Assignment</p>
           </div>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -479,12 +470,10 @@ function EditAssignmentModal({ assignment, onClose }: { assignment: UpskillAssig
               {users.map((u) => <option key={u.id} value={u.id}>{u.fullName}</option>)}
             </select>
           </div>
-          {assignment.type === 'AUTOMATION' && (
-            <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Tool / Script Name <span className="text-red-500">*</span></label>
-              <input value={form.toolScript} onChange={(e) => setForm((p) => ({ ...p, toolScript: e.target.value }))} className={inputCls} />
-            </div>
-          )}
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Tool / Script <span className="text-gray-400">(optional)</span></label>
+            <input value={form.toolScript} onChange={(e) => setForm((p) => ({ ...p, toolScript: e.target.value }))} className={inputCls} />
+          </div>
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">Description <span className="text-red-500">*</span></label>
             <textarea rows={3} value={form.description} onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))} className={`${inputCls} resize-none`} />
@@ -636,10 +625,6 @@ function RejectModal({ assignment, onClose }: { assignment: UpskillAssignment; o
 
 // ─── Main Upskill Page ────────────────────────────────────────────────────────
 
-const TABS: { id: UpskillType; label: string }[] = [
-  { id: 'LEARNING', label: 'Learning' },
-  { id: 'AUTOMATION', label: 'Automation' },
-];
 
 const STATUS_FILTERS: { value: UpskillStatus | 'ALL'; label: string }[] = [
   { value: 'ALL', label: 'All Statuses' },
@@ -693,7 +678,7 @@ function UpskillCard({ asgn, onRefresh }: { asgn: UpskillAssignment; onRefresh: 
         <div>
           <div className="flex items-center gap-2 mb-1">
             <span className="text-[10px] font-semibold uppercase tracking-wide text-primary-600 bg-primary-50 px-2 py-0.5 rounded-full">
-              {asgn.type === 'LEARNING' ? 'Learning' : 'Automation'}
+              Learn & Automate
             </span>
             <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold ${cfg.cls}`}>{cfg.label}</span>
           </div>
@@ -808,7 +793,6 @@ function MyAssignmentsSection() {
 export function UpskillPage() {
   const qc = useQueryClient();
   const { user } = useAuthStore();
-  const [activeTab, setActiveTab] = useState<UpskillType>('LEARNING');
   const [statusFilter, setStatusFilter] = useState<UpskillStatus | 'ALL'>('ALL');
   const [page, setPage] = useState(1);
   const [showCreate, setShowCreate] = useState(false);
@@ -833,7 +817,7 @@ export function UpskillPage() {
   const isManager = isPrivileged || (managerCheck?.isManager ?? false);
 
   const { data: result, isLoading } = useQuery({
-    queryKey: ['upskill-assignments', activeTab, statusFilter, page],
+    queryKey: ['upskill-assignments', statusFilter, page],
     queryFn: () =>
       upskillApi.listAssignments({
         ...(statusFilter !== 'ALL' ? { status: statusFilter } : {}),
@@ -844,7 +828,6 @@ export function UpskillPage() {
   });
 
   const assignments = result?.data ?? [];
-  const filtered = assignments.filter((a) => a.type === activeTab);
 
   const approveMutation = useMutation({
     mutationFn: (id: string) => upskillApi.approve(id),
@@ -861,7 +844,7 @@ export function UpskillPage() {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-xl font-bold text-gray-900">Learning & Innovation</h1>
+          <h1 className="text-xl font-bold text-gray-900">Learn & Innovate</h1>
           <p className="text-sm text-gray-400 mt-0.5">Assign and track learning & automation upskilling for your team</p>
         </div>
         {isManager && (
@@ -875,21 +858,6 @@ export function UpskillPage() {
             Create Assignment
           </button>
         )}
-      </div>
-
-      {/* Tabs */}
-      <div className="flex items-center gap-1 mb-5 bg-gray-100 p-1 rounded-xl w-fit">
-        {TABS.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => { setActiveTab(tab.id); setPage(1); }}
-            className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${
-              activeTab === tab.id ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
       </div>
 
       {/* Filters */}
@@ -910,14 +878,14 @@ export function UpskillPage() {
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
         {isLoading ? (
           <div className="flex items-center justify-center py-16 text-sm text-gray-400">Loading…</div>
-        ) : filtered.length === 0 ? (
+        ) : assignments.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center">
             <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center mb-3">
               <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
               </svg>
             </div>
-            <p className="text-sm font-medium text-gray-600">No {activeTab.toLowerCase()} assignments yet</p>
+            <p className="text-sm font-medium text-gray-600">No assignments yet</p>
             <p className="text-xs text-gray-400 mt-1">
               {isManager ? 'Create an assignment to get started' : 'No assignments have been given to you yet'}
             </p>
@@ -929,7 +897,7 @@ export function UpskillPage() {
                 <tr>
                   <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Resource</th>
                   <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                    {activeTab === 'AUTOMATION' ? 'Description / Tool' : 'Description'}
+                    Description / Tool
                   </th>
                   <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Duration</th>
                   <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Progress</th>
@@ -938,7 +906,7 @@ export function UpskillPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
-                {filtered.map((asgn) => (
+                {assignments.map((asgn) => (
                   <AssignmentRow
                     key={asgn.id}
                     asgn={asgn}
@@ -963,7 +931,7 @@ export function UpskillPage() {
       <MyAssignmentsSection />
 
       {/* Modals */}
-      {showCreate && <CreateAssignmentModal type={activeTab} onClose={() => setShowCreate(false)} onCreated={() => setToast({ message: 'Assignment created successfully', type: 'success' })} />}
+      {showCreate && <CreateAssignmentModal onClose={() => setShowCreate(false)} onCreated={() => setToast({ message: 'Assignment created successfully', type: 'success' })} />}
       {editFor && <EditAssignmentModal assignment={editFor} onClose={() => setEditFor(null)} />}
       {progressFor && <ProgressDrawer assignment={progressFor} onClose={() => setProgressFor(null)} />}
       {rejectFor && <RejectModal assignment={rejectFor} onClose={() => setRejectFor(null)} />}
