@@ -87,7 +87,7 @@ Required / Not required — reason.
 - **Remote repo:** https://github.com/Aressyogesh/project-management-system.git
 - **Deployed:** Fully self-hosted on Windows machine (DEVLOPMNET) via PM2 — `pms-backend` on port 3000, `pms-frontend` on port 5173. GitHub Actions self-hosted runner deploys on push to main.
 - **Local DB:** `postgresql://postgres:postgres@localhost:5432/pms_db` (both `DATABASE_URL` and `DIRECT_URL`)
-- **Migration note:** Local — `npx prisma db push`; Production — `npx prisma migrate deploy` runs automatically in the GitHub Actions deploy workflow. **Always create a migration file** (`prisma/migrations/YYYYMMDDHHMMSS_name/migration.sql`) for any schema change — `db push` alone does NOT update production. Mark it applied locally with `prisma migrate resolve --applied <name>` after `db push`.
+- **Migration note:** For every schema change, run `npx prisma migrate dev --name <migration_name>` from the `backend/` directory. This generates the migration SQL file AND applies it locally in one step. **Never use `prisma db push` for schema changes** — it skips the migration file and breaks production. Production runs `npx prisma migrate deploy` automatically via GitHub Actions on push to main/production.
 
 ## Retroactive Documentation Status
 
