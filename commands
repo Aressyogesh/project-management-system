@@ -6,7 +6,7 @@
   ├──────────────────┼────────────────────┼───────────┤
   │ Frontend dev     │ npm run dev        │ frontend/ │
   ├──────────────────┼────────────────────┼───────────┤
-  │ DB push (schema) │ npx prisma db push │ backend/  │
+  │ DB migrate (schema) │ npx prisma migrate dev --name <name> │ backend/  │
   ├──────────────────┼────────────────────┼───────────┤
   │ DB seed          │ npx prisma db seed │ backend/  │
   ├──────────────────┼────────────────────┼───────────┤
