@@ -176,7 +176,7 @@ export function ActivityLogPage() {
               <option value="TASK">Task</option>
               <option value="MILESTONE">Milestone</option>
               <option value="LEAVE_REQUEST">Leave Request</option>
-              <option value="UPSKILL_ASSIGNMENT">Upskill</option>
+              <option value="UPSKILL_ASSIGNMENT">Learning & Innovation</option>
               <option value="USER_PROFILE">Profile</option>
             </select>
 
