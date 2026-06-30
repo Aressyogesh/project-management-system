@@ -98,6 +98,7 @@ export class UsersService {
         joinDate: dto.joinDate ? new Date(dto.joinDate) : undefined,
         departmentId: dto.departmentId || undefined,
         shiftId: dto.shiftId || undefined,
+        mustResetPassword: true,
       },
       select: USER_SELECT,
     });
@@ -115,7 +116,7 @@ export class UsersService {
           <tr><td style="padding:8px 12px;color:#6b7280;">Temporary Password</td><td style="padding:8px 12px;font-weight:600;font-family:monospace;letter-spacing:2px;">${tempPassword}</td></tr>
         </tbody>
       </table>
-      <p style="margin:0 0 16px;color:#374151;font-size:13px;">This is a system-generated password. Please log in and change it from <strong>Edit Profile</strong> immediately.</p>
+      <p style="margin:0 0 16px;color:#374151;font-size:13px;">This is a system-generated temporary password. <strong>You will be required to change it on your first login before you can access the system.</strong></p>
       <a href="${loginUrl}/login" style="display:inline-block;background:#4f46e5;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:700;font-size:14px;">
         Log In to PMS
       </a>

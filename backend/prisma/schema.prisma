@@ -230,9 +230,10 @@ model User {
   profilePhoto String?
   departmentId String?
   shiftId      String?
-  isActive     Boolean    @default(true)
-  createdAt    DateTime   @default(now())
-  lastLoginAt  DateTime?
+  isActive          Boolean    @default(true)
+  mustResetPassword Boolean    @default(false)
+  createdAt         DateTime   @default(now())
+  lastLoginAt       DateTime?
 
   department    Department?  @relation(fields: [departmentId], references: [id])
   shift         Shift?       @relation(fields: [shiftId], references: [id])

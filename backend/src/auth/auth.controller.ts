@@ -7,6 +7,7 @@ import {
   Request,
   UseGuards,
 } from '@nestjs/common';
+import { IsString, MinLength } from 'class-validator';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { Public } from '../common/decorators/public.decorator';
@@ -76,4 +77,23 @@ export class AuthController {
   async resetPassword(@Body() dto: ResetPasswordDto): Promise<void> {
     await this.authService.resetPassword(dto.token, dto.newPassword);
   }
+
+  @ApiBearerAuth()
+  @Post('change-password')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Change password on first login (clears mustResetPassword flag)' })
+  @ApiResponse({ status: 204, description: 'Password changed successfully' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async changePassword(
+    @Request() req: Express.Request & { user: any },
+    @Body() dto: ChangePasswordDto,
+  ): Promise<void> {
+    await this.authService.changePassword(req.user.id, dto.newPassword);
+  }
+}
+
+class ChangePasswordDto {
+  @IsString()
+  @MinLength(8)
+  newPassword: string;
 }

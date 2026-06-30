@@ -9,6 +9,7 @@ export class AuthUserDto {
   @ApiProperty({ required: false, nullable: true }) profilePhoto?: string | null;
   @ApiProperty() hasManagementRole: boolean;
   @ApiProperty() hasPmRole: boolean;
+  @ApiProperty() mustResetPassword: boolean;
 }
 
 export class AuthResponseDto {

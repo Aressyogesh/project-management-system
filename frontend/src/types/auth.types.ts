@@ -8,6 +8,7 @@ export interface AuthUser {
   profilePhoto?: string | null;
   hasManagementRole?: boolean;
   hasPmRole?: boolean;
+  mustResetPassword?: boolean;
 }
 
 export interface AuthResponse {

@@ -50,7 +50,7 @@ export function LoginPage() {
       }
       // REMEMBER_ME_KEY must be set before setAuth so dynamicStorage writes to the correct store
       setAuth(response.user, response.accessToken, response.refreshToken);
-      navigate('/dashboard');
+      navigate(response.user.mustResetPassword ? '/change-password' : '/dashboard');
     } catch (error) {
       const axiosError = error as AxiosError<{ message: string }>;
       const status = axiosError.response?.status;
