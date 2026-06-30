@@ -841,17 +841,17 @@ export class WorkItemsService implements OnModuleInit {
     const sampleRows = [
       [
         'User Authentication Module', 'USER_STORY', 'john.doe@company.com', 'Sprint 1',
-        'HIGH', '8', '16', 'BILLABLE', '2026-07-01', '2026-07-15', '', 'auth,security', '',
+        'HIGH', '8', '16', 'BILLABLE', '07-01-2026', '07-15-2026', '', 'auth,security', '',
         'As a user, I want to log in securely using email and password',
       ],
       [
         'Create Login API', 'TASK', 'jane.smith@company.com', 'Sprint 1', 'HIGH', '3', '8',
-        'BILLABLE', '2026-07-01', '2026-07-08', 'MEP10001', 'api,backend', '',
+        'BILLABLE', '07-01-2026', '07-08-2026', 'MEP10001', 'api,backend', '',
         'Implement POST /auth/login endpoint with JWT token generation',
       ],
       [
         'Write Login Unit Tests', 'SUB_TASK', '', 'Sprint 1', 'MEDIUM', '1', '4',
-        'NON_BILLABLE', '2026-07-05', '2026-07-08', 'MEP10002', 'testing', '',
+        'NON_BILLABLE', '07-05-2026', '07-08-2026', 'MEP10002', 'testing', '',
         'Unit tests for login service and controller',
       ],
     ];
@@ -916,18 +916,39 @@ export class WorkItemsService implements OnModuleInit {
       const parentIdRaw = String(row['Parent ID'] ?? '').trim().toUpperCase();
       const labelsRaw = String(row['Labels'] ?? '').trim();
       const milestoneRaw = String(row['Release Milestone'] ?? '').trim().toLowerCase();
-      const description = String(row['Description'] ?? '').trim() || undefined;
+      const description = String(row['Description'] ?? '').trim();
 
+      // All import fields are required
       if (!title) errors.push('Title is required');
+
       if (!typeRaw) {
         errors.push('Work Item Type is required');
       } else if (!VALID_TYPES.has(typeRaw)) {
         errors.push(`Work Item Type must be USER_STORY, TASK, or SUB_TASK (got: "${row['Work Item Type']}")`);
       }
 
-      if (priorityRaw && !VALID_PRIORITIES.has(priorityRaw)) {
+      if (!assigneeEmail) errors.push('Assignee Email is required');
+      if (!sprintName) errors.push('Sprint Name is required');
+
+      if (!priorityRaw) {
+        errors.push('Priority is required (LOW, MEDIUM, HIGH, CRITICAL)');
+      } else if (!VALID_PRIORITIES.has(priorityRaw)) {
         errors.push('Priority must be LOW, MEDIUM, HIGH, or CRITICAL');
       }
+
+      if (!storyPointsRaw) errors.push('Story Points is required');
+      if (!estHoursRaw) errors.push('Est. Hours is required');
+
+      if (!billingRaw) {
+        errors.push('Billing Status is required (BILLABLE or NON_BILLABLE)');
+      }
+
+      if (!startDateRaw) errors.push('Start Date is required (MM-DD-YYYY)');
+      if (!dueDateRaw) errors.push('Due Date is required (MM-DD-YYYY)');
+      if (!parentIdRaw) errors.push('Parent ID is required');
+      if (!labelsRaw) errors.push('Labels is required');
+      if (!milestoneRaw) errors.push('Release Milestone is required');
+      if (!description) errors.push('Description is required');
 
       let assigneeId: string | undefined;
       if (assigneeEmail) {
@@ -984,17 +1005,20 @@ export class WorkItemsService implements OnModuleInit {
         }
       }
 
+      // Parse dates as MM-DD-YYYY
       let startDate: Date | undefined;
       if (startDateRaw) {
-        const d = new Date(startDateRaw);
-        if (isNaN(d.getTime())) errors.push(`Start Date "${startDateRaw}" is not a valid date (use YYYY-MM-DD)`);
+        const [mm, dd, yyyy] = startDateRaw.split('-').map(Number);
+        const d = new Date(yyyy, mm - 1, dd);
+        if (!mm || !dd || !yyyy || isNaN(d.getTime())) errors.push(`Start Date "${startDateRaw}" is not a valid date (use MM-DD-YYYY)`);
         else startDate = d;
       }
 
       let dueDate: Date | undefined;
       if (dueDateRaw) {
-        const d = new Date(dueDateRaw);
-        if (isNaN(d.getTime())) errors.push(`Due Date "${dueDateRaw}" is not a valid date (use YYYY-MM-DD)`);
+        const [mm, dd, yyyy] = dueDateRaw.split('-').map(Number);
+        const d = new Date(yyyy, mm - 1, dd);
+        if (!mm || !dd || !yyyy || isNaN(d.getTime())) errors.push(`Due Date "${dueDateRaw}" is not a valid date (use MM-DD-YYYY)`);
         else dueDate = d;
       }
 
