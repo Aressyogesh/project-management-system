@@ -337,9 +337,6 @@ export class UsersService {
     const dateStr = today.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
     const title = `Team Celebrations — ${dateStr}`;
 
-    const existing = await this.prisma.announcement.findFirst({ where: { title } });
-    if (existing) return existing;
-
     const birthdayPeople = celebrations.filter((c) => c.type === 'BIRTHDAY');
     const anniversaryPeople = celebrations.filter((c) => c.type === 'ANNIVERSARY');
 
@@ -366,6 +363,15 @@ export class UsersService {
           : `Let's celebrate our amazing team members today! 🎉`;
 
     const content = `<p>🥳 <strong>Hip Hip Hooray!</strong> ${opener}</p>${sections.join('')}<p>Please join us in wishing them a fantastic day! 💐</p>`;
+
+    const existing = await this.prisma.announcement.findFirst({ where: { title } });
+
+    if (existing) {
+      return this.prisma.announcement.update({
+        where: { id: existing.id },
+        data: { content },
+      });
+    }
 
     return this.prisma.announcement.create({
       data: {
