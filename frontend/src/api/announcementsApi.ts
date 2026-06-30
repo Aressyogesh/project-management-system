@@ -10,7 +10,7 @@ export interface AnnouncementRecord {
   projectId: string | null;
   project?: { id: string; name: string } | null;
   createdAt: string;
-  createdBy: { id: string; fullName: string; profilePhoto?: string | null };
+  createdBy: { id: string; fullName: string; profilePhoto?: string | null } | null;
 }
 
 export interface AnnouncementsPage {

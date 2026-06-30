@@ -329,7 +329,7 @@ export class UsersService {
     return celebrations;
   }
 
-  async postCelebrationAnnouncement(requesterId: string) {
+  async postCelebrationAnnouncement(_requesterId: string) {
     const celebrations = await this.getCelebrationsToday();
     if (celebrations.length === 0) return null;
 
@@ -351,7 +351,6 @@ export class UsersService {
         title,
         content: `<p>Let's celebrate our amazing team members today! 🥳</p><ul>${lines.join('')}</ul>`,
         scope: 'GLOBAL',
-        createdById: requesterId,
       },
     });
   }

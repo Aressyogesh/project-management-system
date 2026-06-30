@@ -50,7 +50,7 @@ function ManualRow({ item }: { item: AnnouncementRecord }) {
         </div>
         <p className="text-xs text-gray-600 mt-0.5 leading-relaxed line-clamp-2">{item.content}</p>
         <div className="flex items-center gap-1.5 mt-1">
-          <span className="text-[10px] text-gray-400">{item.createdBy.fullName}</span>
+          <span className="text-[10px] text-gray-400">{item.createdBy?.fullName ?? 'System'}</span>
           <span className="text-[10px] text-gray-300">·</span>
           <span className="text-[10px] text-gray-400">{timeAgo(item.createdAt)}</span>
         </div>
