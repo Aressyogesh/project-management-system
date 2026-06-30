@@ -178,6 +178,7 @@ export function BoardPage() {
   const canEditColumns    = isAdminOrSuper || isMgmt;
   const canCreateItem     = isAdminOrSuper || !!myProjectRole;
   const bugOnly           = canCreateItem && !canEditSidebar;
+  const canAddChild       = canEditSidebar || myProjectRole === 'QA';
 
   useEffect(() => {
     if (!toast) return;
@@ -309,6 +310,7 @@ export function BoardPage() {
           canDelete={canDeleteWorkItem}
           canChangeBilling={canChangeBilling}
           canEditSidebar={canEditSidebar}
+          canAddChild={canAddChild}
           onClose={() => setSelectedItem(null)}
           onSaved={() => setSelectedItem(null)}
           onSuccess={setToast}

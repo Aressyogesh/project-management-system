@@ -40,6 +40,7 @@ interface Props {
   canDelete?: boolean;
   canChangeBilling?: boolean;
   canEditSidebar?: boolean;
+  canAddChild?: boolean;
   onClose: () => void;
   onSaved: () => void;
   onSuccess?: (msg: string) => void;
@@ -413,7 +414,7 @@ function TestCasesPanel({ workItemId, projectId: _projectId, onCreateBug }: Test
 
 // ─── WorkItemModal (edit existing) ───────────────────────────────────────────
 
-export function WorkItemModal({ item, sprints, members, milestones, canDelete = true, canChangeBilling = false, canEditSidebar = false, onClose, onSaved: _onSaved, onSuccess, onOpenChild }: Props) {
+export function WorkItemModal({ item, sprints, members, milestones, canDelete = true, canChangeBilling = false, canEditSidebar = false, canAddChild = false, onClose, onSaved: _onSaved, onSuccess, onOpenChild }: Props) {
   const { user } = useAuthStore();
   const qc = useQueryClient();
 
@@ -1058,8 +1059,8 @@ export function WorkItemModal({ item, sprints, members, milestones, canDelete = 
                         );
                       })}
 
-                      {/* Quick-add input — PM/Admin/Super only */}
-                      {canEditSidebar && (
+                      {/* Quick-add input — PM/Admin/Super + QA */}
+                      {(canEditSidebar || canAddChild) && (
                         <div className="flex items-center gap-2 mt-1.5 pl-2">
                           <div className="w-4 h-4 rounded-full border-2 border-dashed border-gray-200 shrink-0" />
                           <input
