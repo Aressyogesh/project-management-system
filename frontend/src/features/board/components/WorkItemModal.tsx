@@ -39,6 +39,7 @@ interface Props {
   milestones: Milestone[];
   canDelete?: boolean;
   canChangeBilling?: boolean;
+  canEditSidebar?: boolean;
   onClose: () => void;
   onSaved: () => void;
   onSuccess?: (msg: string) => void;
@@ -411,7 +412,7 @@ function TestCasesPanel({ workItemId, projectId: _projectId, onCreateBug }: Test
 
 // ─── WorkItemModal (edit existing) ───────────────────────────────────────────
 
-export function WorkItemModal({ item, sprints, members, milestones, canDelete = true, canChangeBilling = false, onClose, onSaved: _onSaved, onSuccess, onOpenChild }: Props) {
+export function WorkItemModal({ item, sprints, members, milestones, canDelete = true, canChangeBilling = false, canEditSidebar = false, onClose, onSaved: _onSaved, onSuccess, onOpenChild }: Props) {
   const { user } = useAuthStore();
   const qc = useQueryClient();
 
@@ -1056,33 +1057,35 @@ export function WorkItemModal({ item, sprints, members, milestones, canDelete = 
                         );
                       })}
 
-                      {/* Quick-add input — type comes from active tab */}
-                      <div className="flex items-center gap-2 mt-1.5 pl-2">
-                        <div className="w-4 h-4 rounded-full border-2 border-dashed border-gray-200 shrink-0" />
-                        <input
-                          type="text"
-                          value={newChildTitle}
-                          onChange={(e) => setNewChildTitle(e.target.value)}
-                          placeholder={`Add ${activeChildType.replace(/_/g, ' ').toLowerCase()}…`}
-                          className="input-sm flex-1 text-sm"
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter' && newChildTitle.trim()) {
-                              createChildMut.mutate({ type: activeChildType, title: newChildTitle.trim(), parentId: detail.id } as Partial<WorkItem>);
-                            }
-                          }}
-                        />
-                        <button
-                          disabled={!newChildTitle.trim() || createChildMut.isPending}
-                          onClick={() => {
-                            if (newChildTitle.trim()) {
-                              createChildMut.mutate({ type: activeChildType, title: newChildTitle.trim(), parentId: detail.id } as Partial<WorkItem>);
-                            }
-                          }}
-                          className="btn-primary text-xs px-3 py-1.5 shrink-0"
-                        >
-                          {createChildMut.isPending ? '…' : '+ Add'}
-                        </button>
-                      </div>
+                      {/* Quick-add input — PM/Admin/Super only */}
+                      {canEditSidebar && (
+                        <div className="flex items-center gap-2 mt-1.5 pl-2">
+                          <div className="w-4 h-4 rounded-full border-2 border-dashed border-gray-200 shrink-0" />
+                          <input
+                            type="text"
+                            value={newChildTitle}
+                            onChange={(e) => setNewChildTitle(e.target.value)}
+                            placeholder={`Add ${activeChildType.replace(/_/g, ' ').toLowerCase()}…`}
+                            className="input-sm flex-1 text-sm"
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' && newChildTitle.trim()) {
+                                createChildMut.mutate({ type: activeChildType, title: newChildTitle.trim(), parentId: detail.id } as Partial<WorkItem>);
+                              }
+                            }}
+                          />
+                          <button
+                            disabled={!newChildTitle.trim() || createChildMut.isPending}
+                            onClick={() => {
+                              if (newChildTitle.trim()) {
+                                createChildMut.mutate({ type: activeChildType, title: newChildTitle.trim(), parentId: detail.id } as Partial<WorkItem>);
+                              }
+                            }}
+                            className="btn-primary text-xs px-3 py-1.5 shrink-0"
+                          >
+                            {createChildMut.isPending ? '…' : '+ Add'}
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </div>
                 );
@@ -1490,49 +1493,67 @@ export function WorkItemModal({ item, sprints, members, milestones, canDelete = 
 
               {/* Sprint */}
               <SidebarRow label="Sprint">
-                <select
-                  value={detail.sprintId ?? ''}
-                  onChange={(e) => updateMut.mutate({ sprintId: e.target.value || undefined })}
-                  className="input-sm w-full text-xs"
-                >
-                  <option value="">— none —</option>
-                  {sprints.map((s) => (
-                    <option key={s.id} value={s.id}>{s.name}</option>
-                  ))}
-                </select>
+                {canEditSidebar ? (
+                  <select
+                    value={detail.sprintId ?? ''}
+                    onChange={(e) => updateMut.mutate({ sprintId: e.target.value || undefined })}
+                    className="input-sm w-full text-xs"
+                  >
+                    <option value="">— none —</option>
+                    {sprints.map((s) => (
+                      <option key={s.id} value={s.id}>{s.name}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <span className="text-xs text-gray-700">{sprints.find((s) => s.id === detail.sprintId)?.name ?? <span className="text-gray-400 italic">None</span>}</span>
+                )}
               </SidebarRow>
 
               {/* Priority */}
               <SidebarRow label="Priority">
-                <select
-                  value={detail.priority}
-                  onChange={(e) => updateMut.mutate({ priority: e.target.value as TaskPriority })}
-                  className="input-sm w-full text-xs"
-                >
-                  {(Object.keys(PRIORITY_CONFIG) as TaskPriority[]).map((p) => (
-                    <option key={p} value={p}>{PRIORITY_CONFIG[p].label}</option>
-                  ))}
-                </select>
+                {canEditSidebar ? (
+                  <select
+                    value={detail.priority}
+                    onChange={(e) => updateMut.mutate({ priority: e.target.value as TaskPriority })}
+                    className="input-sm w-full text-xs"
+                  >
+                    {(Object.keys(PRIORITY_CONFIG) as TaskPriority[]).map((p) => (
+                      <option key={p} value={p}>{PRIORITY_CONFIG[p].label}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${PRIORITY_CONFIG[detail.priority].bg} ${PRIORITY_CONFIG[detail.priority].text}`}>
+                    {PRIORITY_CONFIG[detail.priority].label}
+                  </span>
+                )}
               </SidebarRow>
 
               {/* Story Points */}
               <SidebarRow label="Story Points">
-                <input
-                  type="number" min={0}
-                  defaultValue={detail.storyPoints ?? ''}
-                  onBlur={(e) => updateMut.mutate({ storyPoints: Number(e.target.value) || undefined })}
-                  className="input-sm w-24 text-xs"
-                />
+                {canEditSidebar ? (
+                  <input
+                    type="number" min={0}
+                    defaultValue={detail.storyPoints ?? ''}
+                    onBlur={(e) => updateMut.mutate({ storyPoints: Number(e.target.value) || undefined })}
+                    className="input-sm w-24 text-xs"
+                  />
+                ) : (
+                  <span className="text-xs text-gray-700">{detail.storyPoints != null ? detail.storyPoints : '—'}</span>
+                )}
               </SidebarRow>
 
               {/* Estimated Hours */}
               <SidebarRow label="Est. Hours">
-                <input
-                  type="number" min={0} step={0.5}
-                  defaultValue={detail.estimatedHours ?? ''}
-                  onBlur={(e) => updateMut.mutate({ estimatedHours: Number(e.target.value) || undefined })}
-                  className="input-sm w-24 text-xs"
-                />
+                {canEditSidebar ? (
+                  <input
+                    type="number" min={0} step={0.5}
+                    defaultValue={detail.estimatedHours ?? ''}
+                    onBlur={(e) => updateMut.mutate({ estimatedHours: Number(e.target.value) || undefined })}
+                    className="input-sm w-24 text-xs"
+                  />
+                ) : (
+                  <span className="text-xs text-gray-700">{detail.estimatedHours != null ? `${detail.estimatedHours}h` : '—'}</span>
+                )}
               </SidebarRow>
 
               {/* Billing */}
@@ -1566,26 +1587,34 @@ export function WorkItemModal({ item, sprints, members, milestones, canDelete = 
 
               {/* Start Date */}
               <SidebarRow label="Start Date">
-                <input
-                  type="date"
-                  defaultValue={detail.startDate?.slice(0, 10) ?? ''}
-                  min={pastDateStr(5)}
-                  max={futureDateStr(10)}
-                  onBlur={(e) => updateMut.mutate({ startDate: e.target.value || undefined })}
-                  className="input-sm w-full text-xs"
-                />
+                {canEditSidebar ? (
+                  <input
+                    type="date"
+                    defaultValue={detail.startDate?.slice(0, 10) ?? ''}
+                    min={pastDateStr(5)}
+                    max={futureDateStr(10)}
+                    onBlur={(e) => updateMut.mutate({ startDate: e.target.value || undefined })}
+                    className="input-sm w-full text-xs"
+                  />
+                ) : (
+                  <span className="text-xs text-gray-700">{detail.startDate ? fmtDate(detail.startDate) : '—'}</span>
+                )}
               </SidebarRow>
 
               {/* Due Date */}
               <SidebarRow label="Due Date">
-                <input
-                  type="date"
-                  defaultValue={detail.dueDate?.slice(0, 10) ?? ''}
-                  min={pastDateStr(5)}
-                  max={futureDateStr(10)}
-                  onBlur={(e) => updateMut.mutate({ dueDate: e.target.value || undefined })}
-                  className="input-sm w-full text-xs"
-                />
+                {canEditSidebar ? (
+                  <input
+                    type="date"
+                    defaultValue={detail.dueDate?.slice(0, 10) ?? ''}
+                    min={pastDateStr(5)}
+                    max={futureDateStr(10)}
+                    onBlur={(e) => updateMut.mutate({ dueDate: e.target.value || undefined })}
+                    className="input-sm w-full text-xs"
+                  />
+                ) : (
+                  <span className="text-xs text-gray-700">{detail.dueDate ? fmtDate(detail.dueDate) : '—'}</span>
+                )}
               </SidebarRow>
 
               {/* Labels */}
@@ -1595,27 +1624,32 @@ export function WorkItemModal({ item, sprints, members, milestones, canDelete = 
                     {(detail.labels ?? []).map((l) => (
                       <span key={l} className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 text-blue-700 text-[11px] rounded-full border border-blue-200">
                         {l}
-                        <button onClick={() => removeLabel(l)} className="hover:text-red-500 leading-none">×</button>
+                        {canEditSidebar && <button onClick={() => removeLabel(l)} className="hover:text-red-500 leading-none">×</button>}
                       </span>
                     ))}
+                    {(detail.labels ?? []).length === 0 && !canEditSidebar && (
+                      <span className="text-xs text-gray-400 italic">—</span>
+                    )}
                   </div>
-                  {addingLabel ? (
-                    <div className="flex gap-1">
-                      <input
-                        autoFocus
-                        type="text"
-                        value={newLabel}
-                        onChange={(e) => setNewLabel(e.target.value)}
-                        onKeyDown={(e) => { if (e.key === 'Enter') addLabel(); if (e.key === 'Escape') setAddingLabel(false); }}
-                        placeholder="label…"
-                        className="input-sm flex-1 text-xs"
-                      />
-                      <button onClick={addLabel} className="text-xs text-primary-600 font-medium">Add</button>
-                    </div>
-                  ) : (
-                    <button onClick={() => setAddingLabel(true)} className="text-[11px] text-primary-600 hover:text-primary-700 font-medium">
-                      + Add label
-                    </button>
+                  {canEditSidebar && (
+                    addingLabel ? (
+                      <div className="flex gap-1">
+                        <input
+                          autoFocus
+                          type="text"
+                          value={newLabel}
+                          onChange={(e) => setNewLabel(e.target.value)}
+                          onKeyDown={(e) => { if (e.key === 'Enter') addLabel(); if (e.key === 'Escape') setAddingLabel(false); }}
+                          placeholder="label…"
+                          className="input-sm flex-1 text-xs"
+                        />
+                        <button onClick={addLabel} className="text-xs text-primary-600 font-medium">Add</button>
+                      </div>
+                    ) : (
+                      <button onClick={() => setAddingLabel(true)} className="text-[11px] text-primary-600 hover:text-primary-700 font-medium">
+                        + Add label
+                      </button>
+                    )
                   )}
                 </div>
               </SidebarRow>
@@ -1623,38 +1657,53 @@ export function WorkItemModal({ item, sprints, members, milestones, canDelete = 
               {/* Parent — editable */}
               {validParentTypes && (
                 <SidebarRow label="Parent">
-                  <div className="space-y-1">
-                    {detail.parent && (
-                      <div className="flex items-center gap-1.5 mb-1">
+                  {canEditSidebar ? (
+                    <div className="space-y-1">
+                      {detail.parent && (
+                        <div className="flex items-center gap-1.5 mb-1">
+                          <TypeBadge type={detail.parent.type} />
+                          <span className="text-xs text-gray-600 truncate">{detail.parent.title}</span>
+                        </div>
+                      )}
+                      <select
+                        value={detail.parentId ?? ''}
+                        onChange={(e) => updateMut.mutate({ parentId: e.target.value || undefined })}
+                        className="input-sm w-full text-xs"
+                      >
+                        <option value="">— none —</option>
+                        {parentOptions.map((p) => (
+                          <option key={p.id} value={p.id}>
+                            [{TYPE_CONFIG[p.type].label}] {p.title}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  ) : (
+                    detail.parent ? (
+                      <div className="flex items-center gap-1.5">
                         <TypeBadge type={detail.parent.type} />
                         <span className="text-xs text-gray-600 truncate">{detail.parent.title}</span>
                       </div>
-                    )}
-                    <select
-                      value={detail.parentId ?? ''}
-                      onChange={(e) => updateMut.mutate({ parentId: e.target.value || undefined })}
-                      className="input-sm w-full text-xs"
-                    >
-                      <option value="">— none —</option>
-                      {parentOptions.map((p) => (
-                        <option key={p.id} value={p.id}>
-                          [{TYPE_CONFIG[p.type].label}] {p.title}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                    ) : (
+                      <span className="text-xs text-gray-400 italic">—</span>
+                    )
+                  )}
                 </SidebarRow>
               )}
 
               {/* Fix Version */}
               <SidebarRow label="Fix Version">
-                <input
-                  type="text"
-                  defaultValue={detail.fixVersion ?? ''}
-                  onBlur={(e) => updateMut.mutate({ fixVersion: e.target.value || undefined })}
-                  placeholder="e.g. v1.2.0"
-                  className="input-sm w-full text-xs"
-                />
+                {canEditSidebar ? (
+                  <input
+                    type="text"
+                    defaultValue={detail.fixVersion ?? ''}
+                    onBlur={(e) => updateMut.mutate({ fixVersion: e.target.value || undefined })}
+                    placeholder="e.g. v1.2.0"
+                    className="input-sm w-full text-xs"
+                  />
+                ) : (
+                  <span className="text-xs text-gray-700">{detail.fixVersion ?? '—'}</span>
+                )}
               </SidebarRow>
 
               {/* GitHub PR link — read-only, set by webhook */}
@@ -1685,32 +1734,44 @@ export function WorkItemModal({ item, sprints, members, milestones, canDelete = 
               {/* Release Milestone — all item types */}
               {milestones.length > 0 && (
                 <SidebarRow label="Release Milestone">
-                  <select
-                    value={detail.releaseMilestoneId ?? ''}
-                    onChange={(e) => updateMut.mutate({ releaseMilestoneId: e.target.value || undefined })}
-                    className="input-sm w-full text-xs"
-                  >
-                    <option value="">— none —</option>
-                    {milestones.map((m) => (
-                      <option key={m.id} value={m.id}>{m.name ?? m.description}</option>
-                    ))}
-                  </select>
+                  {canEditSidebar ? (
+                    <select
+                      value={detail.releaseMilestoneId ?? ''}
+                      onChange={(e) => updateMut.mutate({ releaseMilestoneId: e.target.value || undefined })}
+                      className="input-sm w-full text-xs"
+                    >
+                      <option value="">— none —</option>
+                      {milestones.map((m) => (
+                        <option key={m.id} value={m.id}>{m.name ?? m.description}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <span className="text-xs text-gray-700">
+                      {(() => { const m = milestones.find((x) => x.id === detail.releaseMilestoneId); return m ? (m.name ?? m.description) : '—'; })()}
+                    </span>
+                  )}
                 </SidebarRow>
               )}
 
               {/* Affected Milestone — all item types */}
               {milestones.length > 0 && (
                 <SidebarRow label="Affected Milestone">
-                  <select
-                    value={detail.affectedMilestoneId ?? ''}
-                    onChange={(e) => updateMut.mutate({ affectedMilestoneId: e.target.value || undefined })}
-                    className="input-sm w-full text-xs"
-                  >
-                    <option value="">— none —</option>
-                    {milestones.map((m) => (
-                      <option key={m.id} value={m.id}>{m.name ?? m.description}</option>
-                    ))}
-                  </select>
+                  {canEditSidebar ? (
+                    <select
+                      value={detail.affectedMilestoneId ?? ''}
+                      onChange={(e) => updateMut.mutate({ affectedMilestoneId: e.target.value || undefined })}
+                      className="input-sm w-full text-xs"
+                    >
+                      <option value="">— none —</option>
+                      {milestones.map((m) => (
+                        <option key={m.id} value={m.id}>{m.name ?? m.description}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <span className="text-xs text-gray-700">
+                      {(() => { const m = milestones.find((x) => x.id === detail.affectedMilestoneId); return m ? (m.name ?? m.description) : '—'; })()}
+                    </span>
+                  )}
                 </SidebarRow>
               )}
 
@@ -1731,14 +1792,16 @@ export function WorkItemModal({ item, sprints, members, milestones, canDelete = 
                 <div className="pt-3">
                   <div className="flex items-center justify-between border-t border-gray-200 pt-3 pb-2">
                     <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest">Bug Details</p>
-                    <button
-                      type="button"
-                      onClick={saveBugDetails}
-                      disabled={updateMut.isPending}
-                      className="text-xs font-semibold text-white bg-primary-600 hover:bg-primary-700 px-3 py-1 rounded-md transition disabled:opacity-50"
-                    >
-                      {updateMut.isPending ? 'Saving…' : 'Save'}
-                    </button>
+                    {canEditSidebar && (
+                      <button
+                        type="button"
+                        onClick={saveBugDetails}
+                        disabled={updateMut.isPending}
+                        className="text-xs font-semibold text-white bg-primary-600 hover:bg-primary-700 px-3 py-1 rounded-md transition disabled:opacity-50"
+                      >
+                        {updateMut.isPending ? 'Saving…' : 'Save'}
+                      </button>
+                    )}
                   </div>
 
                   {bugDetailError && (
@@ -1760,138 +1823,186 @@ export function WorkItemModal({ item, sprints, members, milestones, canDelete = 
                   </SidebarRow>
 
                   {/* Severity — required */}
-                  <SidebarRow label={<>Severity <span className="text-red-500">*</span></>}>
-                    <select
-                      value={bugSeverityLocal}
-                      onChange={(e) => { setBugSeverityLocal(e.target.value as BugSeverity); setBugDetailError(''); }}
-                      className={`input-sm w-full text-xs ${!bugSeverityLocal ? 'border-red-300' : ''}`}
-                    >
-                      <option value="">— select —</option>
-                      {(['SHOW_STOPPER', 'BLOCKER', 'CRITICAL', 'MAJOR', 'MINOR', 'TRIVIAL'] as BugSeverity[]).map((s) => (
-                        <option key={s} value={s}>{s.replace(/_/g, ' ').charAt(0) + s.replace(/_/g, ' ').slice(1).toLowerCase()}</option>
-                      ))}
-                    </select>
+                  <SidebarRow label={<>Severity {canEditSidebar && <span className="text-red-500">*</span>}</>}>
+                    {canEditSidebar ? (
+                      <select
+                        value={bugSeverityLocal}
+                        onChange={(e) => { setBugSeverityLocal(e.target.value as BugSeverity); setBugDetailError(''); }}
+                        className={`input-sm w-full text-xs ${!bugSeverityLocal ? 'border-red-300' : ''}`}
+                      >
+                        <option value="">— select —</option>
+                        {(['SHOW_STOPPER', 'BLOCKER', 'CRITICAL', 'MAJOR', 'MINOR', 'TRIVIAL'] as BugSeverity[]).map((s) => (
+                          <option key={s} value={s}>{s.replace(/_/g, ' ').charAt(0) + s.replace(/_/g, ' ').slice(1).toLowerCase()}</option>
+                        ))}
+                      </select>
+                    ) : (
+                      <span className="text-xs text-gray-700">
+                        {bugSeverityLocal ? (bugSeverityLocal.replace(/_/g, ' ').charAt(0) + bugSeverityLocal.replace(/_/g, ' ').slice(1).toLowerCase()) : '—'}
+                      </span>
+                    )}
                   </SidebarRow>
 
                   {/* Classification — required */}
-                  <SidebarRow label={<>Classification <span className="text-red-500">*</span></>}>
-                    <select
-                      value={bugClassificationLocal}
-                      onChange={(e) => { setBugClassificationLocal(e.target.value as BugClassification); setBugDetailError(''); }}
-                      className={`input-sm w-full text-xs ${!bugClassificationLocal ? 'border-red-300' : ''}`}
-                    >
-                      <option value="">— select —</option>
-                      <option value="UI_USABILITY">UI / Usability</option>
-                      <option value="NEW_BUG">New Bug</option>
-                      <option value="ENHANCEMENT">Enhancement</option>
-                      <option value="PERFORMANCE">Performance</option>
-                      <option value="SECURITY">Security</option>
-                      <option value="CRASH_HANG">Crash / Hang</option>
-                      <option value="DATA_LOSS">Data Loss</option>
-                      <option value="OTHER_BUG">Other Bug</option>
-                      <option value="FEATURE_NEW">Feature (New)</option>
-                      <option value="DESIGN">Design</option>
-                      <option value="CODE_REVIEW">Code Review</option>
-                      <option value="UNIT_TESTING">Unit Testing</option>
-                      <option value="SUGGESTION">Suggestion</option>
-                      <option value="PROJECT_MANAGEMENT">Project Management</option>
-                      <option value="EXISTING_APPLICATION">Existing Application</option>
-                      <option value="TECHNICAL">Technical</option>
-                      <option value="FUNCTIONAL">Functional</option>
-                      <option value="OTHER">Other</option>
-                    </select>
+                  <SidebarRow label={<>Classification {canEditSidebar && <span className="text-red-500">*</span>}</>}>
+                    {canEditSidebar ? (
+                      <select
+                        value={bugClassificationLocal}
+                        onChange={(e) => { setBugClassificationLocal(e.target.value as BugClassification); setBugDetailError(''); }}
+                        className={`input-sm w-full text-xs ${!bugClassificationLocal ? 'border-red-300' : ''}`}
+                      >
+                        <option value="">— select —</option>
+                        <option value="UI_USABILITY">UI / Usability</option>
+                        <option value="NEW_BUG">New Bug</option>
+                        <option value="ENHANCEMENT">Enhancement</option>
+                        <option value="PERFORMANCE">Performance</option>
+                        <option value="SECURITY">Security</option>
+                        <option value="CRASH_HANG">Crash / Hang</option>
+                        <option value="DATA_LOSS">Data Loss</option>
+                        <option value="OTHER_BUG">Other Bug</option>
+                        <option value="FEATURE_NEW">Feature (New)</option>
+                        <option value="DESIGN">Design</option>
+                        <option value="CODE_REVIEW">Code Review</option>
+                        <option value="UNIT_TESTING">Unit Testing</option>
+                        <option value="SUGGESTION">Suggestion</option>
+                        <option value="PROJECT_MANAGEMENT">Project Management</option>
+                        <option value="EXISTING_APPLICATION">Existing Application</option>
+                        <option value="TECHNICAL">Technical</option>
+                        <option value="FUNCTIONAL">Functional</option>
+                        <option value="OTHER">Other</option>
+                      </select>
+                    ) : (
+                      <span className="text-xs text-gray-700">
+                        {bugClassificationLocal ? bugClassificationLocal.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase()) : '—'}
+                      </span>
+                    )}
                   </SidebarRow>
 
                   {/* Environment (formerly Flag) */}
-                  <SidebarRow label={<>Environment <span className="text-red-500">*</span></>}>
-                    <select
-                      value={bugFlagLocal}
-                      onChange={(e) => { setBugFlagLocal(e.target.value as BugFlag); setBugDetailError(''); }}
-                      className={`input-sm w-full text-xs ${!bugFlagLocal ? 'border-red-300' : ''}`}
-                    >
-                      <option value="">— select —</option>
-                      <option value="INTERNAL">Development</option>
-                      <option value="EXTERNAL">Production</option>
-                    </select>
+                  <SidebarRow label={<>Environment {canEditSidebar && <span className="text-red-500">*</span>}</>}>
+                    {canEditSidebar ? (
+                      <select
+                        value={bugFlagLocal}
+                        onChange={(e) => { setBugFlagLocal(e.target.value as BugFlag); setBugDetailError(''); }}
+                        className={`input-sm w-full text-xs ${!bugFlagLocal ? 'border-red-300' : ''}`}
+                      >
+                        <option value="">— select —</option>
+                        <option value="INTERNAL">Development</option>
+                        <option value="EXTERNAL">Production</option>
+                      </select>
+                    ) : (
+                      <span className="text-xs text-gray-700">
+                        {bugFlagLocal === 'INTERNAL' ? 'Development' : bugFlagLocal === 'EXTERNAL' ? 'Production' : '—'}
+                      </span>
+                    )}
                   </SidebarRow>
 
                   {/* Reproducibility */}
                   <SidebarRow label="Reproducibility">
-                    <select
-                      value={bugReproducibilityLocal}
-                      onChange={(e) => setBugReproducibilityLocal(e.target.value as BugReproducibility)}
-                      className="input-sm w-full text-xs"
-                    >
-                      <option value="">— select —</option>
-                      <option value="ALWAYS">Always</option>
-                      <option value="SOMETIMES">Sometimes</option>
-                      <option value="RARELY">Rarely</option>
-                      <option value="UNABLE">Unable to Reproduce</option>
-                      <option value="NEVER_TRIED">Never Tried</option>
-                      <option value="NOT_APPLICABLE">Not Applicable</option>
-                    </select>
+                    {canEditSidebar ? (
+                      <select
+                        value={bugReproducibilityLocal}
+                        onChange={(e) => setBugReproducibilityLocal(e.target.value as BugReproducibility)}
+                        className="input-sm w-full text-xs"
+                      >
+                        <option value="">— select —</option>
+                        <option value="ALWAYS">Always</option>
+                        <option value="SOMETIMES">Sometimes</option>
+                        <option value="RARELY">Rarely</option>
+                        <option value="UNABLE">Unable to Reproduce</option>
+                        <option value="NEVER_TRIED">Never Tried</option>
+                        <option value="NOT_APPLICABLE">Not Applicable</option>
+                      </select>
+                    ) : (
+                      <span className="text-xs text-gray-700">
+                        {bugReproducibilityLocal ? ({ ALWAYS: 'Always', SOMETIMES: 'Sometimes', RARELY: 'Rarely', UNABLE: 'Unable to Reproduce', NEVER_TRIED: 'Never Tried', NOT_APPLICABLE: 'Not Applicable' } as Record<string, string>)[bugReproducibilityLocal] ?? '—' : '—'}
+                      </span>
+                    )}
                   </SidebarRow>
 
                   {/* Module */}
                   <SidebarRow label="Module">
-                    <input
-                      type="text"
-                      value={bugModuleLocal}
-                      onChange={(e) => setBugModuleLocal(e.target.value)}
-                      placeholder="e.g. Auth, Dashboard"
-                      className="input-sm w-full text-xs"
-                    />
+                    {canEditSidebar ? (
+                      <input
+                        type="text"
+                        value={bugModuleLocal}
+                        onChange={(e) => setBugModuleLocal(e.target.value)}
+                        placeholder="e.g. Auth, Dashboard"
+                        className="input-sm w-full text-xs"
+                      />
+                    ) : (
+                      <span className="text-xs text-gray-700">{bugModuleLocal || '—'}</span>
+                    )}
                   </SidebarRow>
 
                   {/* Responsible Developer */}
                   <SidebarRow label="Responsible Dev">
-                    <select
-                      value={bugResponsibleUserIdLocal}
-                      onChange={(e) => setBugResponsibleUserIdLocal(e.target.value)}
-                      className="input-sm w-full text-xs"
-                    >
-                      <option value="">— select —</option>
-                      {members.map((m) => (
-                        <option key={m.id} value={m.id}>{m.fullName}</option>
-                      ))}
-                    </select>
+                    {canEditSidebar ? (
+                      <select
+                        value={bugResponsibleUserIdLocal}
+                        onChange={(e) => setBugResponsibleUserIdLocal(e.target.value)}
+                        className="input-sm w-full text-xs"
+                      >
+                        <option value="">— select —</option>
+                        {members.map((m) => (
+                          <option key={m.id} value={m.id}>{m.fullName}</option>
+                        ))}
+                      </select>
+                    ) : (
+                      <span className="text-xs text-gray-700">
+                        {bugResponsibleUserIdLocal ? (members.find((m) => m.id === bugResponsibleUserIdLocal)?.fullName ?? '—') : '—'}
+                      </span>
+                    )}
                   </SidebarRow>
 
                   {/* Affected Build Version */}
                   <SidebarRow label="Affected Build">
-                    <input
-                      type="text"
-                      value={bugAffectedBuildLocal}
-                      onChange={(e) => setBugAffectedBuildLocal(e.target.value)}
-                      placeholder="e.g. 1.0.5"
-                      className="input-sm w-full text-xs"
-                    />
+                    {canEditSidebar ? (
+                      <input
+                        type="text"
+                        value={bugAffectedBuildLocal}
+                        onChange={(e) => setBugAffectedBuildLocal(e.target.value)}
+                        placeholder="e.g. 1.0.5"
+                        className="input-sm w-full text-xs"
+                      />
+                    ) : (
+                      <span className="text-xs text-gray-700">{bugAffectedBuildLocal || '—'}</span>
+                    )}
                   </SidebarRow>
 
                   {/* Fixed Build Version */}
                   <SidebarRow label="Fixed Build">
-                    <input
-                      type="text"
-                      value={bugFixedBuildLocal}
-                      onChange={(e) => setBugFixedBuildLocal(e.target.value)}
-                      placeholder="e.g. 1.0.6"
-                      className="input-sm w-full text-xs"
-                    />
+                    {canEditSidebar ? (
+                      <input
+                        type="text"
+                        value={bugFixedBuildLocal}
+                        onChange={(e) => setBugFixedBuildLocal(e.target.value)}
+                        placeholder="e.g. 1.0.6"
+                        className="input-sm w-full text-xs"
+                      />
+                    ) : (
+                      <span className="text-xs text-gray-700">{bugFixedBuildLocal || '—'}</span>
+                    )}
                   </SidebarRow>
 
                   {/* Reminder Type */}
                   <SidebarRow label="Reminder">
-                    <select
-                      value={bugReminderTypeLocal}
-                      onChange={(e) => setBugReminderTypeLocal(e.target.value as BugReminderType)}
-                      className="input-sm w-full text-xs"
-                    >
-                      <option value="NONE">None</option>
-                      <option value="DAILY">Daily</option>
-                      <option value="ONE_DAY">1 Day before</option>
-                      <option value="TWO_DAYS">2 Days before</option>
-                      <option value="THREE_DAYS">3 Days before</option>
-                    </select>
+                    {canEditSidebar ? (
+                      <select
+                        value={bugReminderTypeLocal}
+                        onChange={(e) => setBugReminderTypeLocal(e.target.value as BugReminderType)}
+                        className="input-sm w-full text-xs"
+                      >
+                        <option value="NONE">None</option>
+                        <option value="DAILY">Daily</option>
+                        <option value="ONE_DAY">1 Day before</option>
+                        <option value="TWO_DAYS">2 Days before</option>
+                        <option value="THREE_DAYS">3 Days before</option>
+                      </select>
+                    ) : (
+                      <span className="text-xs text-gray-700">
+                        {({ NONE: 'None', DAILY: 'Daily', ONE_DAY: '1 Day before', TWO_DAYS: '2 Days before', THREE_DAYS: '3 Days before' } as Record<string, string>)[bugReminderTypeLocal] ?? '—'}
+                      </span>
+                    )}
                   </SidebarRow>
 
                   {/* Steps to Reproduce */}

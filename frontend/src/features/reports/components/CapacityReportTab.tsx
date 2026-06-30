@@ -66,7 +66,7 @@ const STATUS_STYLE: Record<string, { bg: string; title: string }> = {
   weekly_off:      { bg: 'bg-gray-100',    title: 'Weekly Off' },
   planned_leave:   { bg: 'bg-pink-300',    title: 'On Planned Leave' },
   unplanned_leave: { bg: 'bg-blue-400',    title: 'On Unplanned Leave' },
-  occupied:        { bg: 'bg-red-600',     title: 'Fully Occupied (≥8h logged)' },
+  occupied:        { bg: 'bg-red-600',     title: 'Fully Occupied (≥8h)' },
   partial:         { bg: 'bg-red-400',     title: 'Work Assigned / Partially Occupied' },
   available:       { bg: 'bg-green-200',   title: 'Available' },
 };
@@ -76,7 +76,7 @@ const LEGEND = [
   { label: 'Weekly Off',                   color: 'bg-gray-100 border border-gray-200' },
   { label: 'Planned Leave',                color: 'bg-pink-300' },
   { label: 'Unplanned Leave',              color: 'bg-blue-400' },
-  { label: 'Fully Occupied (≥8h logged)',  color: 'bg-red-600' },
+  { label: 'Fully Occupied (≥8h)',          color: 'bg-red-600' },
   { label: 'Work Assigned / Partial',      color: 'bg-red-400' },
   { label: 'Available',                    color: 'bg-green-200' },
 ];

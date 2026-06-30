@@ -172,6 +172,7 @@ export function BoardPage() {
   const canManageSprints  = isAdminOrSuper || isMgmt;
   const canDeleteWorkItem = isAdminOrSuper || isMgmt;
   const canChangeBilling  = isAdminOrSuper || myProjectRole === 'PROJECT_MANAGER';
+  const canEditSidebar    = isAdminOrSuper || myProjectRole === 'PROJECT_MANAGER';
   const canEditColumns    = isAdminOrSuper || isMgmt;
 
   useEffect(() => {
@@ -301,6 +302,7 @@ export function BoardPage() {
           milestones={milestones}
           canDelete={canDeleteWorkItem}
           canChangeBilling={canChangeBilling}
+          canEditSidebar={canEditSidebar}
           onClose={() => setSelectedItem(null)}
           onSaved={() => setSelectedItem(null)}
           onSuccess={setToast}
