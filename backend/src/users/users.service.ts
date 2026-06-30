@@ -358,7 +358,14 @@ export class UsersService {
       sections.push(`<p><strong>🏆 Work Anniversary Celebrations</strong></p><ul>${anniversaryLines.join('')}</ul>`);
     }
 
-    const content = `<p>🥳 <strong>Hip Hip Hooray!</strong> Let's come together to celebrate our amazing team members who make every day special!</p>${sections.join('')}<p>Please join us in wishing them a fantastic day! 💐</p>`;
+    const opener =
+      birthdayPeople.length > 0 && anniversaryPeople.length === 0
+        ? `Let's celebrate our amazing team member's birthday today! 🎂`
+        : anniversaryPeople.length > 0 && birthdayPeople.length === 0
+          ? `Let's celebrate our amazing team member's work anniversary today! 🏆`
+          : `Let's celebrate our amazing team members today! 🎉`;
+
+    const content = `<p>🥳 <strong>Hip Hip Hooray!</strong> ${opener}</p>${sections.join('')}<p>Please join us in wishing them a fantastic day! 💐</p>`;
 
     return this.prisma.announcement.create({
       data: {
