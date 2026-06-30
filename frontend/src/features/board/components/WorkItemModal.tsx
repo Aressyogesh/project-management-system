@@ -54,6 +54,7 @@ interface CreateProps {
   defaultType?: WorkItemType;
   parentId?: string;
   prefill?: { title?: string; stepsToRepro?: string };
+  bugOnly?: boolean;
   onClose: () => void;
   onSaved: () => void;
   onSuccess?: (msg: string) => void;
@@ -2082,10 +2083,10 @@ function TypeIcon({ type }: { type: WorkItemType }) {
 
 export function CreateWorkItemModal({
   projectId, sprints, members = [], milestones = [],
-  defaultType = 'TASK', parentId, prefill, onClose, onSaved, onSuccess,
+  defaultType = 'TASK', parentId, prefill, bugOnly = false, onClose, onSaved, onSuccess,
 }: CreateProps) {
   const qc = useQueryClient();
-  const [type, setType] = useState<WorkItemType>(defaultType);
+  const [type, setType] = useState<WorkItemType>(bugOnly ? 'BUG' : defaultType);
   const [showTypeMenu, setShowTypeMenu] = useState(false);
   const typeMenuRef = useRef<HTMLDivElement>(null);
   const [showParentMenu, setShowParentMenu] = useState(false);
@@ -2266,14 +2267,16 @@ export function CreateWorkItemModal({
           {/* JIRA-style type selector */}
           <div ref={typeMenuRef} className="relative">
             <button
-              onClick={() => setShowTypeMenu((v) => !v)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition ${cfg.bg} ${cfg.text}`}
+              onClick={() => !bugOnly && setShowTypeMenu((v) => !v)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition ${cfg.bg} ${cfg.text} ${bugOnly ? 'cursor-default' : ''}`}
             >
               <TypeIcon type={type} />
               {cfg.label}
-              <svg className="w-3 h-3 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
+              {!bugOnly && (
+                <svg className="w-3 h-3 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              )}
             </button>
 
             {showTypeMenu && (
