@@ -13,6 +13,7 @@ import { BoardToolbar } from '../components/BoardToolbar';
 import { KanbanColumn } from '../components/KanbanColumn';
 import { SprintManager } from '../components/SprintManager';
 import { CreateWorkItemModal, WorkItemModal } from '../components/WorkItemModal';
+import { ImportWorkItemsModal } from '../components/ImportWorkItemsModal';
 import { useBoard } from '../hooks/useBoard';
 import { useSprints } from '../hooks/useSprints';
 import type { BoardStatus, WorkItem } from '../types/board.types';
@@ -97,6 +98,7 @@ export function BoardPage() {
   const [filters, setFilters] = useState<BoardFiltersQuery>({});
   const [selectedItem, setSelectedItem] = useState<WorkItem | null>(null);
   const [showCreate, setShowCreate] = useState(false);
+  const [showImport, setShowImport] = useState(false);
   const [showSprintManager, setShowSprintManager] = useState(false);
   const [showMilestoneModal, setShowMilestoneModal] = useState(false);
   const [showEditLabels, setShowEditLabels] = useState(false);
@@ -265,6 +267,7 @@ export function BoardPage() {
             onFiltersChange={setFilters}
             members={memberOptions}
             onCreateItem={() => setShowCreate(true)}
+            onImportItems={canEditSidebar ? () => setShowImport(true) : undefined}
             canCreateItem={canEditSidebar}
             onManageSprints={() => setShowSprintManager(true)}
             onAddMilestone={() => setShowMilestoneModal(true)}
@@ -320,6 +323,14 @@ export function BoardPage() {
           onClose={() => setShowCreate(false)}
           onSaved={() => setShowCreate(false)}
           onSuccess={setToast}
+        />
+      )}
+
+      {showImport && canEditSidebar && (
+        <ImportWorkItemsModal
+          projectId={projectId!}
+          onClose={() => { setShowImport(false); qc.invalidateQueries({ queryKey: ['board', projectId] }); }}
+          onSuccess={(msg) => { setShowImport(false); setToast(msg); qc.invalidateQueries({ queryKey: ['board', projectId] }); }}
         />
       )}
 

@@ -34,6 +34,7 @@ interface Props {
   onFiltersChange: (f: BoardFiltersQuery) => void;
   members: Member[];
   onCreateItem: () => void;
+  onImportItems?: () => void;
   onManageSprints: () => void;
   onAddMilestone: () => void;
   canManageSprints: boolean;
@@ -47,6 +48,7 @@ export function BoardToolbar({
   onFiltersChange,
   members,
   onCreateItem,
+  onImportItems,
   onManageSprints,
   onAddMilestone,
   canManageSprints,
@@ -228,6 +230,19 @@ export function BoardToolbar({
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
           </svg>
           Sprints
+        </button>
+      )}
+
+      {/* Import Items — PM / Admin / Super only */}
+      {canCreateItem && onImportItems && (
+        <button
+          onClick={onImportItems}
+          className="flex items-center gap-1.5 text-xs font-medium text-gray-600 hover:text-gray-900 px-3 py-1.5 border border-gray-200 rounded-lg hover:bg-gray-50 transition"
+        >
+          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+          </svg>
+          Import
         </button>
       )}
 

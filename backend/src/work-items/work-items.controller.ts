@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -16,7 +17,7 @@ import {
   UploadedFile,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { diskStorage } from 'multer';
+import { diskStorage, memoryStorage } from 'multer';
 import { extname, join } from 'path';
 import { randomUUID } from 'crypto';
 import { Response } from 'express';
@@ -162,5 +163,44 @@ export class WorkItemsController {
     @Request() req: any,
   ) {
     return this.workItemsService.removeComment(commentId, req.user.id, req.user.systemRole);
+  }
+
+  @Get('projects/:projectId/work-items/import/template')
+  @UseGuards(ProjectRoleGuard)
+  @ProjectRoles(ProjectRole.PROJECT_MANAGER)
+  @ProjectIdFrom('param')
+  @ApiOperation({ summary: 'Download Excel import template with sample data' })
+  async getImportTemplate(@Res() res: Response) {
+    const buffer = await this.workItemsService.getImportTemplate();
+    (res as any).setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    (res as any).setHeader('Content-Disposition', 'attachment; filename="work-items-import-template.xlsx"');
+    (res as any).send(buffer);
+  }
+
+  @Post('projects/:projectId/work-items/import')
+  @UseGuards(ProjectRoleGuard)
+  @ProjectRoles(ProjectRole.PROJECT_MANAGER)
+  @ProjectIdFrom('param')
+  @ApiOperation({ summary: 'Import work items from Excel file (PM only)' })
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: memoryStorage(),
+      fileFilter: (_req, file, cb) => {
+        const ok =
+          file.mimetype === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
+          file.originalname.endsWith('.xlsx');
+        cb(ok ? null : new Error('Only .xlsx files are allowed'), ok);
+      },
+      limits: { fileSize: 5 * 1024 * 1024 },
+    }),
+  )
+  async importWorkItems(
+    @Param('projectId') projectId: string,
+    @Query('dryRun') dryRun: string,
+    @UploadedFile() file: Express.Multer.File,
+    @Request() req: any,
+  ) {
+    if (!file) throw new BadRequestException('No file uploaded. Field name must be "file".');
+    return this.workItemsService.importWorkItems(projectId, req.user.id, file.buffer, dryRun === 'true');
   }
 }
