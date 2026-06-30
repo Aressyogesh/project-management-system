@@ -1,11 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type CSSProperties } from 'react';
 import { useCelebrations } from '../../../contexts/CelebrationsContext';
 import { avatarUrl } from '../../../utils/avatarUrl';
 import type { CelebrationEntry } from '../../../api/users.api';
 
 const CONFETTI = ['🎊', '✨', '🎈', '🌟', '🎀', '💫', '🎁', '🥳'];
 
-function FloatingParticle({ emoji, style }: { emoji: string; style: React.CSSProperties }) {
+function FloatingParticle({ emoji, style }: { emoji: string; style: CSSProperties }) {
   return (
     <span
       className="pointer-events-none absolute select-none text-lg"
@@ -119,7 +119,7 @@ export function CelebrationBanner() {
       animationDuration: `${3 + (i % 3)}s`,
       opacity: 0.35,
       fontSize: i % 3 === 0 ? '1.2rem' : '0.9rem',
-    } as React.CSSProperties,
+    } as CSSProperties,
   }));
 
   const gradientClass = birthdays.length > 0 && anniversaries.length > 0
