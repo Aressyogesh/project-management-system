@@ -20,6 +20,12 @@ import { LocalAuthGuard } from './guards/local-auth.guard';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 
+class ChangePasswordDto {
+  @IsString()
+  @MinLength(8)
+  newPassword: string;
+}
+
 @ApiTags('Auth')
 @Controller('auth')
 export class AuthController {
@@ -90,10 +96,4 @@ export class AuthController {
   ): Promise<void> {
     await this.authService.changePassword(req.user.id, dto.newPassword);
   }
-}
-
-class ChangePasswordDto {
-  @IsString()
-  @MinLength(8)
-  newPassword: string;
 }
