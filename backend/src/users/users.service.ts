@@ -222,7 +222,7 @@ export class UsersService {
         select: {
           id: true, fullName: true, email: true,
           profilePhoto: true, systemRole: true,
-          phone: true, joinDate: true,
+          phone: true, joinDate: true, dateOfBirth: true,
         },
       }),
       this.prisma.projectMember.count({
@@ -267,7 +267,7 @@ export class UsersService {
       select: {
         id: true, fullName: true, email: true,
         profilePhoto: true, systemRole: true,
-        phone: true, joinDate: true,
+        phone: true, joinDate: true, dateOfBirth: true,
       },
     });
 

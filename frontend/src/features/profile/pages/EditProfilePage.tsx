@@ -32,7 +32,7 @@ export function EditProfilePage() {
 
   const [fullName, setFullName] = useState(user?.fullName ?? '');
   const [email, setEmail] = useState(user?.email ?? '');
-  const [dateOfBirth, setDateOfBirth] = useState((user as any)?.dateOfBirth ? new Date((user as any).dateOfBirth).toISOString().slice(0, 10) : '');
+  const [dateOfBirth, setDateOfBirth] = useState(user?.dateOfBirth ? new Date(user.dateOfBirth).toISOString().slice(0, 10) : '');
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -52,7 +52,7 @@ export function EditProfilePage() {
         throw new Error('New passwords do not match');
       }
       passwordChangedRef.current = !!newPassword;
-      const originalDob = (user as any)?.dateOfBirth ? new Date((user as any).dateOfBirth).toISOString().slice(0, 10) : '';
+      const originalDob = user?.dateOfBirth ? new Date(user.dateOfBirth).toISOString().slice(0, 10) : '';
       return usersApi.updateProfile(
         {
           fullName: fullName !== user?.fullName ? fullName : undefined,
@@ -71,7 +71,7 @@ export function EditProfilePage() {
         navigate('/login');
         return;
       }
-      updateUser({ fullName: updated.fullName, email: updated.email, profilePhoto: updated.profilePhoto });
+      updateUser({ fullName: updated.fullName, email: updated.email, profilePhoto: updated.profilePhoto, dateOfBirth: updated.dateOfBirth });
       setSuccessMsg('Profile updated successfully.');
       setErrorMsg('');
       setCurrentPassword('');
