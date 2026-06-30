@@ -68,7 +68,41 @@ export const boardApi = {
 
   attachmentDownloadUrl: (attachmentId: string): string =>
     `${(apiClient.defaults.baseURL ?? '').replace(/\/$/, '')}/work-items/attachments/${attachmentId}/download`,
+
+  downloadImportTemplate: async (projectId: string): Promise<void> => {
+    const res = await apiClient.get(`/projects/${projectId}/work-items/import/template`, { responseType: 'blob' });
+    const url = URL.createObjectURL(res.data as Blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'work-items-import-template.xlsx';
+    a.click();
+    URL.revokeObjectURL(url);
+  },
+
+  importWorkItems: (projectId: string, file: File, dryRun: boolean): Promise<ImportWorkItemsResult> => {
+    const form = new FormData();
+    form.append('file', file);
+    return apiClient
+      .post(`/projects/${projectId}/work-items/import`, form, {
+        params: { dryRun: String(dryRun) },
+        headers: { 'Content-Type': 'multipart/form-data' },
+      })
+      .then((r) => r.data);
+  },
 };
+
+export interface ImportRowResult {
+  row: number;
+  title: string;
+  type: string;
+  status: 'valid' | 'error';
+  errors: string[];
+}
+
+export interface ImportWorkItemsResult {
+  results: ImportRowResult[];
+  success: boolean;
+}
 
 // ─── Sprints ──────────────────────────────────────────────────────────────────
 

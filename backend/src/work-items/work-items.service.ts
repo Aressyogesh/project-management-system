@@ -5,7 +5,8 @@ import {
   NotFoundException,
   OnModuleInit,
 } from '@nestjs/common';
-import { AuditAction, AuditEntity, BoardStatus, BugSeverity, ProjectRole, SystemRole, TaskPriority, WorkItemType } from '@prisma/client';
+import { AuditAction, AuditEntity, BillingStatus, BoardStatus, BugSeverity, ProjectRole, SystemRole, TaskPriority, WorkItemType } from '@prisma/client';
+import * as XLSX from 'xlsx';
 import { mkdir, unlink } from 'fs/promises';
 import { join } from 'path';
 import { PrismaService } from '../prisma/prisma.service';
@@ -830,4 +831,259 @@ export class WorkItemsService implements OnModuleInit {
     if (!item) throw new NotFoundException(`Work item ${id} not found`);
     return item;
   }
+
+  async getImportTemplate(): Promise<Buffer> {
+    const headers = [
+      'Title', 'Work Item Type', 'Assignee Email', 'Sprint Name', 'Priority',
+      'Story Points', 'Est. Hours', 'Billing Status', 'Start Date', 'Due Date',
+      'Parent ID', 'Labels', 'Release Milestone', 'Description',
+    ];
+    const sampleRows = [
+      [
+        'User Authentication Module', 'USER_STORY', 'john.doe@company.com', 'Sprint 1',
+        'HIGH', '8', '16', 'BILLABLE', '07-01-2026', '07-15-2026', '', 'auth,security', '',
+        'As a user, I want to log in securely using email and password',
+      ],
+      [
+        'Create Login API', 'TASK', 'jane.smith@company.com', 'Sprint 1', 'HIGH', '3', '8',
+        'BILLABLE', '07-01-2026', '07-08-2026', 'MEP10001', 'api,backend', '',
+        'Implement POST /auth/login endpoint with JWT token generation',
+      ],
+      [
+        'Write Login Unit Tests', 'SUB_TASK', '', 'Sprint 1', 'MEDIUM', '1', '4',
+        'NON_BILLABLE', '07-05-2026', '07-08-2026', 'MEP10002', 'testing', '',
+        'Unit tests for login service and controller',
+      ],
+    ];
+    const ws = XLSX.utils.aoa_to_sheet([headers, ...sampleRows]);
+    ws['!cols'] = [
+      { wch: 35 }, { wch: 18 }, { wch: 28 }, { wch: 15 }, { wch: 12 },
+      { wch: 14 }, { wch: 12 }, { wch: 16 }, { wch: 14 }, { wch: 14 },
+      { wch: 12 }, { wch: 20 }, { wch: 22 }, { wch: 50 },
+    ];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Work Items');
+    return Buffer.from(XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' }));
+  }
+
+  async importWorkItems(
+    projectId: string,
+    reporterId: string,
+    fileBuffer: Buffer,
+    dryRun: boolean,
+  ): Promise<{ results: ImportRowResult[]; success: boolean }> {
+    const workbook = XLSX.read(fileBuffer, { type: 'buffer', cellDates: false });
+    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json<Record<string, any>>(sheet, { raw: false, defval: '' });
+
+    if (rows.length === 0) throw new BadRequestException('The uploaded file has no data rows.');
+
+    const [projectMembers, sprints, milestones] = await Promise.all([
+      this.prisma.projectMember.findMany({
+        where: { projectId },
+        include: { user: { select: { id: true, email: true } } },
+      }),
+      this.prisma.sprint.findMany({ where: { projectId }, select: { id: true, name: true } }),
+      this.prisma.milestone.findMany({ where: { projectId }, select: { id: true, description: true } }),
+    ]);
+
+    const memberByEmail = new Map(projectMembers.map((m) => [m.user.email.toLowerCase(), m.user.id]));
+    const sprintByName = new Map(sprints.map((s) => [s.name.toLowerCase(), s.id]));
+    const milestoneByDesc = new Map(milestones.filter((m) => m.description).map((m) => [(m.description as string).toLowerCase(), m.id]));
+
+    const VALID_TYPES = new Set(['USER_STORY', 'TASK', 'SUB_TASK']);
+    const VALID_PRIORITIES = new Set(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL', '']);
+    const VALID_BILLING = new Set(['BILLABLE', 'NON_BILLABLE', '']);
+
+    const parsedItems: (Record<string, any> | null)[] = [];
+    const results: ImportRowResult[] = [];
+
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      const rowNum = i + 2;
+      const errors: string[] = [];
+
+      const title = String(row['Title'] ?? '').trim();
+      const typeRaw = String(row['Work Item Type'] ?? '').trim().toUpperCase().replace(/\s+/g, '_');
+      const assigneeEmail = String(row['Assignee Email'] ?? '').trim().toLowerCase();
+      const sprintName = String(row['Sprint Name'] ?? '').trim();
+      const priorityRaw = String(row['Priority'] ?? '').trim().toUpperCase();
+      const storyPointsRaw = String(row['Story Points'] ?? '').trim();
+      const estHoursRaw = String(row['Est. Hours'] ?? '').trim();
+      const billingRaw = String(row['Billing Status'] ?? '').trim().toUpperCase().replace(/\s+/g, '_');
+      const startDateRaw = String(row['Start Date'] ?? '').trim();
+      const dueDateRaw = String(row['Due Date'] ?? '').trim();
+      const parentIdRaw = String(row['Parent ID'] ?? '').trim().toUpperCase();
+      const labelsRaw = String(row['Labels'] ?? '').trim();
+      const milestoneRaw = String(row['Release Milestone'] ?? '').trim().toLowerCase();
+      const description = String(row['Description'] ?? '').trim();
+
+      // All import fields are required
+      if (!title) errors.push('Title is required');
+
+      if (!typeRaw) {
+        errors.push('Work Item Type is required');
+      } else if (!VALID_TYPES.has(typeRaw)) {
+        errors.push(`Work Item Type must be USER_STORY, TASK, or SUB_TASK (got: "${row['Work Item Type']}")`);
+      }
+
+      if (!assigneeEmail) errors.push('Assignee Email is required');
+      if (!sprintName) errors.push('Sprint Name is required');
+
+      if (!priorityRaw) {
+        errors.push('Priority is required (LOW, MEDIUM, HIGH, CRITICAL)');
+      } else if (!VALID_PRIORITIES.has(priorityRaw)) {
+        errors.push('Priority must be LOW, MEDIUM, HIGH, or CRITICAL');
+      }
+
+      if (!storyPointsRaw) errors.push('Story Points is required');
+      if (!estHoursRaw) errors.push('Est. Hours is required');
+
+      if (!billingRaw) {
+        errors.push('Billing Status is required (BILLABLE or NON_BILLABLE)');
+      }
+
+      if (!startDateRaw) errors.push('Start Date is required (MM-DD-YYYY)');
+      if (!dueDateRaw) errors.push('Due Date is required (MM-DD-YYYY)');
+      if (!parentIdRaw) errors.push('Parent ID is required');
+      if (!labelsRaw) errors.push('Labels is required');
+      if (!milestoneRaw) errors.push('Release Milestone is required');
+      if (!description) errors.push('Description is required');
+
+      let assigneeId: string | undefined;
+      if (assigneeEmail) {
+        const uid = memberByEmail.get(assigneeEmail);
+        if (!uid) errors.push(`Assignee "${row['Assignee Email']}" is not a member of this project`);
+        else assigneeId = uid;
+      }
+
+      let sprintId: string | undefined;
+      if (sprintName) {
+        const sid = sprintByName.get(sprintName.toLowerCase());
+        if (!sid) errors.push(`Sprint "${sprintName}" not found in this project`);
+        else sprintId = sid;
+      }
+
+      let parentId: string | undefined;
+      if (parentIdRaw) {
+        const parent = await this.prisma.workItem.findFirst({
+          where: { projectId, displayId: parentIdRaw },
+          select: { id: true, type: true },
+        });
+        if (!parent) {
+          errors.push(`Parent ID "${parentIdRaw}" not found in this project`);
+        } else {
+          const validParents = VALID_PARENT_TYPES[typeRaw as WorkItemType];
+          if (validParents && !validParents.includes(parent.type)) {
+            errors.push(`${typeRaw} cannot have a ${parent.type} as parent. Valid: ${validParents.join(', ')}`);
+          } else {
+            parentId = parent.id;
+          }
+        }
+      }
+
+      let storyPoints: number | undefined;
+      if (storyPointsRaw) {
+        const n = Number(storyPointsRaw);
+        if (isNaN(n) || n < 0) errors.push('Story Points must be a non-negative number');
+        else storyPoints = Math.round(n);
+      }
+
+      let estimatedHours: number | undefined;
+      if (estHoursRaw) {
+        const n = Number(estHoursRaw);
+        if (isNaN(n) || n < 0) errors.push('Est. Hours must be a non-negative number');
+        else estimatedHours = n;
+      }
+
+      let billingStatus: BillingStatus | undefined;
+      if (billingRaw) {
+        if (!VALID_BILLING.has(billingRaw)) {
+          errors.push('Billing Status must be BILLABLE or NON_BILLABLE');
+        } else {
+          billingStatus = billingRaw as BillingStatus;
+        }
+      }
+
+      // Parse dates as MM-DD-YYYY
+      let startDate: Date | undefined;
+      if (startDateRaw) {
+        const [mm, dd, yyyy] = startDateRaw.split('-').map(Number);
+        const d = new Date(yyyy, mm - 1, dd);
+        if (!mm || !dd || !yyyy || isNaN(d.getTime())) errors.push(`Start Date "${startDateRaw}" is not a valid date (use MM-DD-YYYY)`);
+        else startDate = d;
+      }
+
+      let dueDate: Date | undefined;
+      if (dueDateRaw) {
+        const [mm, dd, yyyy] = dueDateRaw.split('-').map(Number);
+        const d = new Date(yyyy, mm - 1, dd);
+        if (!mm || !dd || !yyyy || isNaN(d.getTime())) errors.push(`Due Date "${dueDateRaw}" is not a valid date (use MM-DD-YYYY)`);
+        else dueDate = d;
+      }
+
+      const labels = labelsRaw ? labelsRaw.split(',').map((l) => l.trim()).filter(Boolean) : [];
+
+      let releaseMilestoneId: string | undefined;
+      if (milestoneRaw) {
+        const mid = milestoneByDesc.get(milestoneRaw);
+        if (!mid) errors.push(`Release Milestone "${row['Release Milestone']}" not found in this project`);
+        else releaseMilestoneId = mid;
+      }
+
+      results.push({ row: rowNum, title: title || `(Row ${rowNum})`, type: typeRaw, status: errors.length === 0 ? 'valid' : 'error', errors });
+
+      parsedItems.push(
+        errors.length === 0
+          ? {
+              type: typeRaw as WorkItemType,
+              title, description,
+              priority: (priorityRaw || 'MEDIUM') as TaskPriority,
+              assigneeId, sprintId, parentId, storyPoints, estimatedHours,
+              billingStatus, startDate, dueDate, labels, releaseMilestoneId,
+            }
+          : null,
+      );
+    }
+
+    if (dryRun) return { results, success: results.every((r) => r.status === 'valid') };
+
+    if (!results.every((r) => r.status === 'valid')) {
+      throw new BadRequestException('Import has validation errors. Run with dryRun=true first.');
+    }
+
+    for (const parsed of parsedItems) {
+      if (!parsed) continue;
+      await this.prisma.$transaction(async (tx) => {
+        const project = await tx.project.update({
+          where: { id: projectId },
+          data: { workItemCounter: { increment: 1 } },
+          select: { name: true, workItemCounter: true },
+        });
+        const prefix = generateWorkItemPrefix(project.name);
+        const displayId = `${prefix}${project.workItemCounter}`;
+        await tx.workItem.create({
+          data: {
+            projectId, reporterId, displayId,
+            type: parsed.type, title: parsed.title, description: parsed.description,
+            priority: parsed.priority, parentId: parsed.parentId, sprintId: parsed.sprintId,
+            assigneeId: parsed.assigneeId, storyPoints: parsed.storyPoints,
+            estimatedHours: parsed.estimatedHours, labels: parsed.labels ?? [],
+            billingStatus: parsed.billingStatus, startDate: parsed.startDate,
+            dueDate: parsed.dueDate, releaseMilestoneId: parsed.releaseMilestoneId,
+          },
+        });
+      });
+    }
+
+    return { results, success: true };
+  }
+}
+
+export interface ImportRowResult {
+  row: number;
+  title: string;
+  type: string;
+  status: 'valid' | 'error';
+  errors: string[];
 }
