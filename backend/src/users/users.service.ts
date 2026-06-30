@@ -340,16 +340,30 @@ export class UsersService {
     const existing = await this.prisma.announcement.findFirst({ where: { title } });
     if (existing) return existing;
 
-    const lines = celebrations.map((c) =>
-      c.type === 'BIRTHDAY'
-        ? `<li>🎂 <strong>${c.user.fullName}</strong> — Wishing you a very Happy Birthday!</li>`
-        : `<li>🎉 <strong>${c.user.fullName}</strong> — Congratulations on your ${c.yearsCount} Year${c.yearsCount !== 1 ? 's' : ''} Work Anniversary!</li>`,
+    const birthdayPeople = celebrations.filter((c) => c.type === 'BIRTHDAY');
+    const anniversaryPeople = celebrations.filter((c) => c.type === 'ANNIVERSARY');
+
+    const birthdayLines = birthdayPeople.map(
+      (c) => `<li>🎂 <strong>${c.user.fullName}</strong> — Wishing you a wonderful birthday filled with joy! May this year bring you great success and happiness! 🎊</li>`,
     );
+    const anniversaryLines = anniversaryPeople.map(
+      (c) => `<li>🏆 <strong>${c.user.fullName}</strong> — Celebrating <strong>${c.yearsCount} incredible year${c.yearsCount !== 1 ? 's' : ''}</strong> with us! Thank you for your dedication and hard work. Here's to many more! 🌟</li>`,
+    );
+
+    const sections: string[] = [];
+    if (birthdayLines.length > 0) {
+      sections.push(`<p><strong>🎂 Birthday Celebrations</strong></p><ul>${birthdayLines.join('')}</ul>`);
+    }
+    if (anniversaryLines.length > 0) {
+      sections.push(`<p><strong>🏆 Work Anniversary Celebrations</strong></p><ul>${anniversaryLines.join('')}</ul>`);
+    }
+
+    const content = `<p>🥳 <strong>Hip Hip Hooray!</strong> Let's come together to celebrate our amazing team members who make every day special!</p>${sections.join('')}<p>Please join us in wishing them a fantastic day! 💐</p>`;
 
     return this.prisma.announcement.create({
       data: {
         title,
-        content: `<p>Let's celebrate our amazing team members today! 🥳</p><ul>${lines.join('')}</ul>`,
+        content,
         scope: 'GLOBAL',
       },
     });
