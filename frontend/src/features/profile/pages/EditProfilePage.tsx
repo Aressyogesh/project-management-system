@@ -32,6 +32,7 @@ export function EditProfilePage() {
 
   const [fullName, setFullName] = useState(user?.fullName ?? '');
   const [email, setEmail] = useState(user?.email ?? '');
+  const [dateOfBirth, setDateOfBirth] = useState((user as any)?.dateOfBirth ? new Date((user as any).dateOfBirth).toISOString().slice(0, 10) : '');
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -51,12 +52,14 @@ export function EditProfilePage() {
         throw new Error('New passwords do not match');
       }
       passwordChangedRef.current = !!newPassword;
+      const originalDob = (user as any)?.dateOfBirth ? new Date((user as any).dateOfBirth).toISOString().slice(0, 10) : '';
       return usersApi.updateProfile(
         {
           fullName: fullName !== user?.fullName ? fullName : undefined,
           email: email !== user?.email ? email : undefined,
           currentPassword: currentPassword || undefined,
           newPassword: newPassword || undefined,
+          dateOfBirth: dateOfBirth !== originalDob ? (dateOfBirth || '') : undefined,
         },
         photoFile ?? undefined,
       );
@@ -170,6 +173,20 @@ export function EditProfilePage() {
             className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
             maxLength={255}
             required
+          />
+        </div>
+
+        {/* Date of Birth */}
+        <div>
+          <label htmlFor="dateOfBirth" className="block text-sm font-medium text-gray-700 mb-1">
+            Date of Birth <span className="text-gray-400 font-normal">(optional)</span>
+          </label>
+          <input
+            id="dateOfBirth"
+            type="date"
+            value={dateOfBirth}
+            onChange={(e) => setDateOfBirth(e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
           />
         </div>
 

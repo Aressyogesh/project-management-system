@@ -25,6 +25,7 @@ const USER_SELECT = {
   phone: true,
   employeeId: true,
   joinDate: true,
+  dateOfBirth: true,
   profilePhoto: true,
   isActive: true,
   createdAt: true,
@@ -164,6 +165,7 @@ export class UsersService {
         ...dto,
         email: dto.email ? dto.email.toLowerCase() : undefined,
         joinDate: dto.joinDate ? new Date(dto.joinDate) : undefined,
+        dateOfBirth: dto.dateOfBirth !== undefined ? (dto.dateOfBirth ? new Date(dto.dateOfBirth) : null) : undefined,
         departmentId: dto.departmentId !== undefined ? (dto.departmentId || null) : undefined,
         shiftId: dto.shiftId !== undefined ? (dto.shiftId || null) : undefined,
       },
@@ -260,6 +262,7 @@ export class UsersService {
         ...(dto.email && { email: dto.email.toLowerCase() }),
         ...(passwordHash && { passwordHash }),
         ...(profilePhoto !== undefined && { profilePhoto }),
+        ...(dto.dateOfBirth !== undefined && { dateOfBirth: dto.dateOfBirth ? new Date(dto.dateOfBirth) : null }),
       },
       select: {
         id: true, fullName: true, email: true,
@@ -292,5 +295,64 @@ export class UsersService {
     });
 
     return updated;
+  }
+
+  async getCelebrationsToday() {
+    const today = new Date();
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const dd = String(today.getDate()).padStart(2, '0');
+
+    const users = await this.prisma.user.findMany({
+      where: { isActive: true },
+      select: { id: true, fullName: true, profilePhoto: true, dateOfBirth: true, joinDate: true },
+    });
+
+    const celebrations: { type: 'BIRTHDAY' | 'ANNIVERSARY'; user: { id: string; fullName: string; profilePhoto: string | null }; yearsCount: number }[] = [];
+
+    for (const u of users) {
+      if (u.dateOfBirth) {
+        const bMm = String(u.dateOfBirth.getMonth() + 1).padStart(2, '0');
+        const bDd = String(u.dateOfBirth.getDate()).padStart(2, '0');
+        if (bMm === mm && bDd === dd) {
+          celebrations.push({ type: 'BIRTHDAY', user: { id: u.id, fullName: u.fullName, profilePhoto: u.profilePhoto }, yearsCount: today.getFullYear() - u.dateOfBirth.getFullYear() });
+        }
+      }
+      if (u.joinDate) {
+        const jMm = String(u.joinDate.getMonth() + 1).padStart(2, '0');
+        const jDd = String(u.joinDate.getDate()).padStart(2, '0');
+        if (jMm === mm && jDd === dd && u.joinDate.getFullYear() < today.getFullYear()) {
+          celebrations.push({ type: 'ANNIVERSARY', user: { id: u.id, fullName: u.fullName, profilePhoto: u.profilePhoto }, yearsCount: today.getFullYear() - u.joinDate.getFullYear() });
+        }
+      }
+    }
+
+    return celebrations;
+  }
+
+  async postCelebrationAnnouncement(requesterId: string) {
+    const celebrations = await this.getCelebrationsToday();
+    if (celebrations.length === 0) return null;
+
+    const today = new Date();
+    const dateStr = today.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+    const title = `Team Celebrations — ${dateStr}`;
+
+    const existing = await this.prisma.announcement.findFirst({ where: { title } });
+    if (existing) return existing;
+
+    const lines = celebrations.map((c) =>
+      c.type === 'BIRTHDAY'
+        ? `<li>🎂 <strong>${c.user.fullName}</strong> — Wishing you a very Happy Birthday!</li>`
+        : `<li>🎉 <strong>${c.user.fullName}</strong> — Congratulations on your ${c.yearsCount} Year${c.yearsCount !== 1 ? 's' : ''} Work Anniversary!</li>`,
+    );
+
+    return this.prisma.announcement.create({
+      data: {
+        title,
+        content: `<p>Let's celebrate our amazing team members today! 🥳</p><ul>${lines.join('')}</ul>`,
+        scope: 'GLOBAL',
+        createdById: requesterId,
+      },
+    });
   }
 }

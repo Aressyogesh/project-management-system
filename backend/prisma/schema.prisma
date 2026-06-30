@@ -227,6 +227,7 @@ model User {
   phone        String?    @db.VarChar(20)
   employeeId   String?    @db.VarChar(50)
   joinDate     DateTime?  @db.Date
+  dateOfBirth  DateTime?  @db.Date
   profilePhoto String?
   departmentId String?
   shiftId      String?
