@@ -719,7 +719,7 @@ export function CapacityReportTab({ project }: { project?: string }) {
             <p className="text-gray-600">Rest of day: <span className="font-medium capitalize">{STATUS_STYLE[tooltip.cell.restOfDayStatus]?.title ?? tooltip.cell.restOfDayStatus}</span></p>
           )}
           {(tooltip.cell.workItemHours ?? 0) > 0 && (
-            <p className="text-gray-600">Allocated (est): <span className="font-medium text-red-600">{tooltip.cell.workItemHours}h</span></p>
+            <p className="text-gray-600">Est. load: <span className="font-medium text-red-600">{tooltip.cell.workItemHours}h/day</span></p>
           )}
           {tooltip.cell.hours > 0 && (
             <>

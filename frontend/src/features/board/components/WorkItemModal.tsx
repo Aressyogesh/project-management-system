@@ -2076,7 +2076,7 @@ export function CreateWorkItemModal({
       return;
     }
     setDateError('');
-    if (!estimatedHours) {
+    if (type !== 'EPIC' && !estimatedHours) {
       setEstHoursError(true);
       return;
     }
@@ -2415,7 +2415,10 @@ export function CreateWorkItemModal({
               <input type="number" min={0} value={storyPoints} onChange={(e) => setStoryPoints(e.target.value)} className={inputCls} />
             </div>
             <div>
-              <label className={labelCls}>Est. Hours <span className="text-red-500">*</span></label>
+              <label className={labelCls}>
+                Est. Hours {type !== 'EPIC' && <span className="text-red-500">*</span>}
+                {type === 'EPIC' && <span className="text-gray-400 font-normal">(optional)</span>}
+              </label>
               <input
                 type="number" min={0} step={0.5} value={estimatedHours}
                 onChange={(e) => { setEstimatedHours(e.target.value); if (e.target.value) setEstHoursError(false); }}

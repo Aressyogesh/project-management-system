@@ -945,9 +945,12 @@ export class AnalyticsService {
           select: { userId: true, date: true, hours: true },
         }),
         // Active work items assigned to users — interval overlap or no dates set
+        // Epics are excluded: they are planning containers and their estimated hours
+        // should not contribute to daily capacity load.
         this.prisma.workItem.findMany({
           where: {
             assigneeId: { not: null },
+            type: { not: WorkItemType.EPIC },
             status: { notIn: [BoardStatus.QA_DONE, BoardStatus.CLOSED] },
             ...(scopedProjectIds !== undefined ? { projectId: { in: scopedProjectIds } } : {}),
             OR: [
@@ -1006,23 +1009,42 @@ export class AnalyticsService {
       hoursMap.get(entry.userId)!.set(day, existing + Number(entry.hours));
     }
 
-    // Build per-user assigned-work-item day sets + estimated hours per day
-    const workItemDayMap          = new Map<string, Set<number>>();
-    const workItemEstHoursMap     = new Map<string, Map<number, number>>();
+    // Build per-user assigned-work-item day sets + estimated hours per day.
+    // Estimated hours are distributed equally across working days in the item's
+    // full span (wiStart→wiEnd), giving a realistic daily load figure.
+    const workItemDayMap      = new Map<string, Set<number>>();
+    const workItemEstHoursMap = new Map<string, Map<number, number>>();
     for (const wi of workItems) {
       if (!wi.assigneeId) continue;
       const wiStart = wi.startDate ? new Date(wi.startDate) : start;
       const wiEnd   = wi.dueDate   ? new Date(wi.dueDate)   : end;
       const estHrs  = Number(wi.estimatedHours ?? 0);
+
+      // Count total working days across the item's full span.
+      // Weekends are excluded using workingDaysCfg; holidays outside the current
+      // month are not loaded so only current-month holidays are subtracted.
+      let workingDaysInSpan = 0;
+      for (let d = new Date(wiStart); d <= wiEnd; d.setDate(d.getDate() + 1)) {
+        const dn = dayNames[d.getDay()];
+        if (!workingDaysCfg[dn]) continue;
+        if (d.getFullYear() === year && d.getMonth() + 1 === month && holidayDates.has(d.getDate())) continue;
+        workingDaysInSpan++;
+      }
+
+      // Daily estimated load = total estimated hours ÷ working days in span.
+      const dailyEst = workingDaysInSpan > 0 && estHrs > 0
+        ? Math.round((estHrs / workingDaysInSpan) * 100) / 100
+        : 0;
+
       for (let d = new Date(wiStart); d <= wiEnd; d.setDate(d.getDate() + 1)) {
         if (d.getFullYear() === year && d.getMonth() + 1 === month) {
           const day = d.getDate();
           if (!workItemDayMap.has(wi.assigneeId)) workItemDayMap.set(wi.assigneeId, new Set());
           workItemDayMap.get(wi.assigneeId)!.add(day);
-          if (estHrs > 0) {
+          if (dailyEst > 0) {
             if (!workItemEstHoursMap.has(wi.assigneeId)) workItemEstHoursMap.set(wi.assigneeId, new Map());
             const prev = workItemEstHoursMap.get(wi.assigneeId)!.get(day) ?? 0;
-            workItemEstHoursMap.get(wi.assigneeId)!.set(day, prev + estHrs);
+            workItemEstHoursMap.get(wi.assigneeId)!.set(day, Math.round((prev + dailyEst) * 100) / 100);
           }
         }
       }
@@ -1055,15 +1077,15 @@ export class AnalyticsService {
         else if (isOnUnplannedLeave) status = 'unplanned_leave';
         else if (isOnPlannedLeave)   status = 'planned_leave';
         else if (hours >= 8)     status = 'occupied';
-        else if (hours >= 1 || hasWorkItem) status = 'partial';
+        else if (hasWorkItem)    status = 'partial';
         else status = 'available';
 
         // For half-day leave, compute what the "rest of day" looks like
         let restOfDayStatus: string | undefined;
         if (isHalfDay && isOnLeave) {
           if (hours >= 4)      restOfDayStatus = 'occupied';
-          else if (hours >= 1 || hasWorkItem) restOfDayStatus = 'partial';
-          else                 restOfDayStatus = 'available';
+          else if (hasWorkItem) restOfDayStatus = 'partial';
+          else                  restOfDayStatus = 'available';
         }
 
         return {
