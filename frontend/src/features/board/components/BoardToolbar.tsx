@@ -37,6 +37,7 @@ interface Props {
   onManageSprints: () => void;
   onAddMilestone: () => void;
   canManageSprints: boolean;
+  canCreateItem?: boolean;
 }
 
 export function BoardToolbar({
@@ -49,6 +50,7 @@ export function BoardToolbar({
   onManageSprints,
   onAddMilestone,
   canManageSprints,
+  canCreateItem = false,
 }: Props) {
   const hasFilters = !!(
     filters.type || filters.assigneeId || filters.priority ||
@@ -229,16 +231,18 @@ export function BoardToolbar({
         </button>
       )}
 
-      {/* Create Item */}
-      <button
-        onClick={onCreateItem}
-        className="flex items-center gap-1.5 text-xs font-semibold text-white bg-primary-600 hover:bg-primary-700 px-3 py-1.5 rounded-lg transition"
-      >
-        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-        </svg>
-        Create
-      </button>
+      {/* Create Item — PM / Admin / Super only */}
+      {canCreateItem && (
+        <button
+          onClick={onCreateItem}
+          className="flex items-center gap-1.5 text-xs font-semibold text-white bg-primary-600 hover:bg-primary-700 px-3 py-1.5 rounded-lg transition"
+        >
+          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+          </svg>
+          Create
+        </button>
+      )}
     </div>
   );
 }
