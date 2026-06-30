@@ -15,8 +15,6 @@ export function useCelebrations() {
   return useContext(CelebrationsContext);
 }
 
-const todayKey = () => new Date().toISOString().slice(0, 10);
-
 export function CelebrationsProvider({ children }: { children: ReactNode }) {
   const [celebrations, setCelebrations] = useState<CelebrationEntry[]>([]);
 
@@ -24,12 +22,7 @@ export function CelebrationsProvider({ children }: { children: ReactNode }) {
     usersApi.getCelebrationsToday().then((data) => {
       if (!data.length) return;
       setCelebrations(data);
-
-      const key = `celebration-announced-${todayKey()}`;
-      if (!localStorage.getItem(key)) {
-        localStorage.setItem(key, '1');
-        usersApi.postCelebrationAnnouncement().catch(() => {});
-      }
+      usersApi.postCelebrationAnnouncement().catch(() => {});
     }).catch(() => {});
   }, []);
 
