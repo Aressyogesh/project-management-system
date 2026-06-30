@@ -82,7 +82,7 @@ function AnniversarySection({ people }: { people: CelebrationEntry[] }) {
           </p>
           <p className="text-xs text-purple-500">
             {people.length === 1
-              ? 'Thank you for your dedication and passion. Here's to many more! 🌟'
+              ? "Thank you for your dedication and passion. Here's to many more! 🌟"
               : 'Celebrating loyalty, dedication and years of excellence!'}
           </p>
         </div>
