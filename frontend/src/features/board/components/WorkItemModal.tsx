@@ -1562,7 +1562,12 @@ export function WorkItemModal({ item, sprints, members, milestones, canDelete = 
 
               {/* Billing */}
               <SidebarRow label={<span>Billing <span className="text-red-500">*</span></span>}>
-                {canChangeBilling ? (
+                {item.type === 'BUG' ? (
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-orange-50 text-orange-600">Non-Billable</span>
+                    <span className="text-[10px] text-gray-400">(bugs are always non-billable)</span>
+                  </div>
+                ) : canChangeBilling ? (
                   <select
                     value={billingStatusLocal}
                     onChange={(e) => {
@@ -2196,7 +2201,7 @@ export function CreateWorkItemModal({
       return;
     }
     setEstHoursError(false);
-    if (!billingStatus) {
+    if (type !== 'BUG' && !billingStatus) {
       setBillingStatusError(true);
       return;
     }
@@ -2237,7 +2242,7 @@ export function CreateWorkItemModal({
       bugStatus: (bugStatus || undefined) as BugStatus | undefined,
       module: module || undefined,
       responsibleUserId: responsibleUserId || undefined,
-      billingStatus: (billingStatus || undefined) as BillingStatus | undefined,
+      billingStatus: (type === 'BUG' ? 'NON_BILLABLE' : billingStatus || undefined) as BillingStatus | undefined,
       affectedBuildVersion: affectedBuildVersion || undefined,
       fixedBuildVersion: fixedBuildVersion || undefined,
       reminderType: reminderType || undefined,
@@ -2543,16 +2548,25 @@ export function CreateWorkItemModal({
             </div>
             <div>
               <label className={labelCls}>Billing <span className="text-red-500">*</span></label>
-              <select
-                value={billingStatus}
-                onChange={(e) => { setBillingStatus(e.target.value as BillingStatus); if (e.target.value) setBillingStatusError(false); }}
-                className={`${inputCls} ${billingStatusError ? 'border-red-500 focus:ring-red-500' : ''}`}
-              >
-                <option value="">— select —</option>
-                <option value="BILLABLE">Billable</option>
-                <option value="NON_BILLABLE">Non-Billable</option>
-              </select>
-              {billingStatusError && <p className="text-xs text-red-500 mt-1">Billing is required</p>}
+              {type === 'BUG' ? (
+                <div className="flex items-center gap-1.5 mt-1">
+                  <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-orange-50 text-orange-600">Non-Billable</span>
+                  <span className="text-[10px] text-gray-400">(bugs are always non-billable)</span>
+                </div>
+              ) : (
+                <>
+                  <select
+                    value={billingStatus}
+                    onChange={(e) => { setBillingStatus(e.target.value as BillingStatus); if (e.target.value) setBillingStatusError(false); }}
+                    className={`${inputCls} ${billingStatusError ? 'border-red-500 focus:ring-red-500' : ''}`}
+                  >
+                    <option value="">— select —</option>
+                    <option value="BILLABLE">Billable</option>
+                    <option value="NON_BILLABLE">Non-Billable</option>
+                  </select>
+                  {billingStatusError && <p className="text-xs text-red-500 mt-1">Billing is required</p>}
+                </>
+              )}
             </div>
           </div>
 

@@ -144,6 +144,9 @@ export class WorkItemsService implements OnModuleInit {
     }
     if (dto.parentId) await this.validateParentType(dto.type, dto.parentId);
 
+    // BUG items are always Non-Billable
+    if (dto.type === WorkItemType.BUG) dto.billingStatus = BillingStatus.NON_BILLABLE;
+
     const item = await this.prisma.$transaction(async (tx) => {
       const project = await tx.project.update({
         where: { id: projectId },
@@ -287,7 +290,10 @@ export class WorkItemsService implements OnModuleInit {
       throw new ForbiddenException('You can only edit items assigned to or reported by you');
     }
 
-    if (dto.billingStatus !== undefined && dto.billingStatus !== item.billingStatus) {
+    // BUG items are always Non-Billable
+    if (item.type === WorkItemType.BUG || dto.type === WorkItemType.BUG) {
+      dto.billingStatus = BillingStatus.NON_BILLABLE;
+    } else if (dto.billingStatus !== undefined && dto.billingStatus !== item.billingStatus) {
       if (!isAdmin) {
         const membership = await this.prisma.projectMember.findUnique({
           where: { projectId_userId: { projectId: item.projectId, userId } },
