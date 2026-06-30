@@ -227,6 +227,7 @@ model User {
   phone        String?    @db.VarChar(20)
   employeeId   String?    @db.VarChar(50)
   joinDate     DateTime?  @db.Date
+  dateOfBirth  DateTime?  @db.Date
   profilePhoto String?
   departmentId String?
   shiftId      String?
@@ -1088,11 +1089,11 @@ model Announcement {
   content     String            @db.Text
   scope       AnnouncementScope @default(GLOBAL)
   projectId   String?
-  createdById String
+  createdById String?
   createdAt   DateTime          @default(now())
 
   project   Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  createdBy User     @relation("CreatedAnnouncements", fields: [createdById], references: [id])
+  createdBy User?    @relation("CreatedAnnouncements", fields: [createdById], references: [id])
 
   @@index([createdAt(sort: Desc)])
   @@map("announcements")

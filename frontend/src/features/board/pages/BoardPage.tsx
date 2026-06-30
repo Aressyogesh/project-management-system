@@ -176,6 +176,9 @@ export function BoardPage() {
   const canChangeBilling  = isAdminOrSuper || myProjectRole === 'PROJECT_MANAGER';
   const canEditSidebar    = isAdminOrSuper || myProjectRole === 'PROJECT_MANAGER';
   const canEditColumns    = isAdminOrSuper || isMgmt;
+  const canCreateItem     = isAdminOrSuper || !!myProjectRole;
+  const bugOnly           = canCreateItem && !canEditSidebar;
+  const canAddChild       = canEditSidebar || myProjectRole === 'QA';
 
   useEffect(() => {
     if (!toast) return;
@@ -268,7 +271,7 @@ export function BoardPage() {
             members={memberOptions}
             onCreateItem={() => setShowCreate(true)}
             onImportItems={canEditSidebar ? () => setShowImport(true) : undefined}
-            canCreateItem={canEditSidebar}
+            canCreateItem={canCreateItem}
             onManageSprints={() => setShowSprintManager(true)}
             onAddMilestone={() => setShowMilestoneModal(true)}
             canManageSprints={canManageSprints}
@@ -307,6 +310,7 @@ export function BoardPage() {
           canDelete={canDeleteWorkItem}
           canChangeBilling={canChangeBilling}
           canEditSidebar={canEditSidebar}
+          canAddChild={canAddChild}
           onClose={() => setSelectedItem(null)}
           onSaved={() => setSelectedItem(null)}
           onSuccess={setToast}
@@ -314,12 +318,13 @@ export function BoardPage() {
         />
       )}
 
-      {showCreate && canEditSidebar && (
+      {showCreate && canCreateItem && (
         <CreateWorkItemModal
           projectId={projectId!}
           sprints={sprints}
           members={memberOptions}
           milestones={milestones}
+          bugOnly={bugOnly}
           onClose={() => setShowCreate(false)}
           onSaved={() => setShowCreate(false)}
           onSuccess={setToast}

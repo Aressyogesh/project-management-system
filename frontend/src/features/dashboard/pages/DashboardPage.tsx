@@ -5,6 +5,7 @@ import { dashboardApi } from '../../../api/dashboard.api';
 import { projectsApi } from '../../../api/projects.api';
 import { useAuthStore } from '../../../store/authStore';
 import { AnnouncementsWidget } from '../components/AnnouncementsWidget';
+import { CelebrationBanner } from '../components/CelebrationBanner';
 import { ProjectProgressPanel } from '../components/ProjectProgressPanel';
 import { StatCard } from '../components/StatCard';
 import { TeamActivityPanel } from '../components/TeamActivityPanel';
@@ -232,6 +233,9 @@ export function DashboardPage() {
 
   return (
     <div className="space-y-6">
+
+      {/* ── Celebration Banner ─────────────────────────────────────────────── */}
+      <CelebrationBanner />
 
       {/* ── Top filter bar (Admin / Super User / Project Manager / Team Lead) ─ */}
       {isManager && (

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { avatarUrl } from '../../utils/avatarUrl';
+import { useCelebrations } from '../../contexts/CelebrationsContext';
 
 type AvatarSize = 'xs' | 'sm' | 'md' | 'card' | 'lg';
 
@@ -18,34 +19,49 @@ interface Props {
   size?: AvatarSize;
   className?: string;
   title?: string;
+  userId?: string;
 }
 
-export function UserAvatar({ name, photo, size = 'md', className = '', title }: Props) {
+export function UserAvatar({ name, photo, size = 'md', className = '', title, userId }: Props) {
   const [failed, setFailed] = useState(false);
   const src = avatarUrl(photo);
+  const { celebrationMap } = useCelebrations();
+  const celebrationType = userId ? celebrationMap.get(userId) : undefined;
 
   useEffect(() => { setFailed(false); }, [photo]);
   const initials = name.split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase();
   const { wrap, text } = SIZE_MAP[size];
 
-  if (src && !failed) {
-    return (
-      <img
-        src={src}
-        alt={name}
-        title={title}
-        className={`${wrap} rounded-full object-cover shrink-0 ${className}`}
-        onError={() => setFailed(true)}
-      />
-    );
-  }
+  const badgeEmoji = celebrationType === 'BIRTHDAY' ? '🎂' : celebrationType === 'ANNIVERSARY' ? '🎉' : null;
 
-  return (
+  const inner = src && !failed ? (
+    <img
+      src={src}
+      alt={name}
+      title={title}
+      className={`${wrap} rounded-full object-cover shrink-0 ${className}`}
+      onError={() => setFailed(true)}
+    />
+  ) : (
     <div
       title={title ?? name}
       className={`${wrap} ${text} rounded-full bg-primary-100 text-primary-700 flex items-center justify-center font-semibold shrink-0 ${className}`}
     >
       {initials}
+    </div>
+  );
+
+  if (!badgeEmoji) return inner;
+
+  return (
+    <div className="relative inline-flex shrink-0">
+      {inner}
+      <span
+        className="absolute -bottom-0.5 -right-0.5 text-[10px] leading-none"
+        title={celebrationType === 'BIRTHDAY' ? 'Birthday today!' : 'Work anniversary today!'}
+      >
+        {badgeEmoji}
+      </span>
     </div>
   );
 }

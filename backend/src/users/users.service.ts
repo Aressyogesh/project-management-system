@@ -25,6 +25,7 @@ const USER_SELECT = {
   phone: true,
   employeeId: true,
   joinDate: true,
+  dateOfBirth: true,
   profilePhoto: true,
   isActive: true,
   createdAt: true,
@@ -164,6 +165,7 @@ export class UsersService {
         ...dto,
         email: dto.email ? dto.email.toLowerCase() : undefined,
         joinDate: dto.joinDate ? new Date(dto.joinDate) : undefined,
+        dateOfBirth: dto.dateOfBirth !== undefined ? (dto.dateOfBirth ? new Date(dto.dateOfBirth) : null) : undefined,
         departmentId: dto.departmentId !== undefined ? (dto.departmentId || null) : undefined,
         shiftId: dto.shiftId !== undefined ? (dto.shiftId || null) : undefined,
       },
@@ -220,7 +222,7 @@ export class UsersService {
         select: {
           id: true, fullName: true, email: true,
           profilePhoto: true, systemRole: true,
-          phone: true, joinDate: true,
+          phone: true, joinDate: true, dateOfBirth: true,
         },
       }),
       this.prisma.projectMember.count({
@@ -260,11 +262,12 @@ export class UsersService {
         ...(dto.email && { email: dto.email.toLowerCase() }),
         ...(passwordHash && { passwordHash }),
         ...(profilePhoto !== undefined && { profilePhoto }),
+        ...(dto.dateOfBirth !== undefined && { dateOfBirth: dto.dateOfBirth ? new Date(dto.dateOfBirth) : null }),
       },
       select: {
         id: true, fullName: true, email: true,
         profilePhoto: true, systemRole: true,
-        phone: true, joinDate: true,
+        phone: true, joinDate: true, dateOfBirth: true,
       },
     });
 
@@ -292,5 +295,90 @@ export class UsersService {
     });
 
     return updated;
+  }
+
+  async getCelebrationsToday() {
+    const today = new Date();
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const dd = String(today.getDate()).padStart(2, '0');
+
+    const users = await this.prisma.user.findMany({
+      where: { isActive: true },
+      select: { id: true, fullName: true, profilePhoto: true, dateOfBirth: true, joinDate: true },
+    });
+
+    const celebrations: { type: 'BIRTHDAY' | 'ANNIVERSARY'; user: { id: string; fullName: string; profilePhoto: string | null }; yearsCount: number }[] = [];
+
+    for (const u of users) {
+      if (u.dateOfBirth) {
+        const bMm = String(u.dateOfBirth.getMonth() + 1).padStart(2, '0');
+        const bDd = String(u.dateOfBirth.getDate()).padStart(2, '0');
+        if (bMm === mm && bDd === dd) {
+          celebrations.push({ type: 'BIRTHDAY', user: { id: u.id, fullName: u.fullName, profilePhoto: u.profilePhoto }, yearsCount: today.getFullYear() - u.dateOfBirth.getFullYear() });
+        }
+      }
+      if (u.joinDate) {
+        const jMm = String(u.joinDate.getMonth() + 1).padStart(2, '0');
+        const jDd = String(u.joinDate.getDate()).padStart(2, '0');
+        if (jMm === mm && jDd === dd && u.joinDate.getFullYear() < today.getFullYear()) {
+          celebrations.push({ type: 'ANNIVERSARY', user: { id: u.id, fullName: u.fullName, profilePhoto: u.profilePhoto }, yearsCount: today.getFullYear() - u.joinDate.getFullYear() });
+        }
+      }
+    }
+
+    return celebrations;
+  }
+
+  async postCelebrationAnnouncement(_requesterId: string) {
+    const celebrations = await this.getCelebrationsToday();
+    if (celebrations.length === 0) return null;
+
+    const today = new Date();
+    const dateStr = today.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+    const title = `Team Celebrations — ${dateStr}`;
+
+    const birthdayPeople = celebrations.filter((c) => c.type === 'BIRTHDAY');
+    const anniversaryPeople = celebrations.filter((c) => c.type === 'ANNIVERSARY');
+
+    const birthdayLines = birthdayPeople.map(
+      (c) => `<li>🎂 <strong>${c.user.fullName}</strong> — Wishing you a wonderful birthday filled with joy! May this year bring you great success and happiness! 🎊</li>`,
+    );
+    const anniversaryLines = anniversaryPeople.map(
+      (c) => `<li>🏆 <strong>${c.user.fullName}</strong> — Celebrating <strong>${c.yearsCount} incredible year${c.yearsCount !== 1 ? 's' : ''}</strong> with us! Thank you for your dedication and hard work. Here's to many more! 🌟</li>`,
+    );
+
+    const sections: string[] = [];
+    if (birthdayLines.length > 0) {
+      sections.push(`<p><strong>🎂 Birthday Celebrations</strong></p><ul>${birthdayLines.join('')}</ul>`);
+    }
+    if (anniversaryLines.length > 0) {
+      sections.push(`<p><strong>🏆 Work Anniversary Celebrations</strong></p><ul>${anniversaryLines.join('')}</ul>`);
+    }
+
+    const opener =
+      birthdayPeople.length > 0 && anniversaryPeople.length === 0
+        ? `Let's celebrate our amazing team member's birthday today! 🎂`
+        : anniversaryPeople.length > 0 && birthdayPeople.length === 0
+          ? `Let's celebrate our amazing team member's work anniversary today! 🏆`
+          : `Let's celebrate our amazing team members today! 🎉`;
+
+    const content = `<p>🥳 <strong>Hip Hip Hooray!</strong> ${opener}</p>${sections.join('')}<p>Please join us in wishing them a fantastic day! 💐</p>`;
+
+    const existing = await this.prisma.announcement.findFirst({ where: { title } });
+
+    if (existing) {
+      return this.prisma.announcement.update({
+        where: { id: existing.id },
+        data: { content },
+      });
+    }
+
+    return this.prisma.announcement.create({
+      data: {
+        title,
+        content,
+        scope: 'GLOBAL',
+      },
+    });
   }
 }

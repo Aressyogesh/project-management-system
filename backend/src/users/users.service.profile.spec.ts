@@ -6,7 +6,7 @@ import { UsersService } from './users.service';
 const PROFILE_SELECT = {
   id: true, fullName: true, email: true,
   profilePhoto: true, systemRole: true,
-  phone: true, joinDate: true,
+  phone: true, joinDate: true, dateOfBirth: true,
 };
 
 const mockAuditLogs: Partial<AuditLogsService> = { log: jest.fn() };

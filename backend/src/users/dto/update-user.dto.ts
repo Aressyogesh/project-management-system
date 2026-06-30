@@ -40,6 +40,11 @@ export class UpdateUserDto {
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
+  dateOfBirth?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
   departmentId?: string;
 
   @ApiPropertyOptional()

@@ -48,9 +48,9 @@ function ManualRow({ item }: { item: AnnouncementRecord }) {
             </span>
           )}
         </div>
-        <p className="text-xs text-gray-600 mt-0.5 leading-relaxed line-clamp-2">{item.content}</p>
+        <div className="text-xs text-gray-600 mt-0.5 leading-relaxed line-clamp-2 [&_strong]:font-semibold [&_ul]:list-none [&_li]:inline" dangerouslySetInnerHTML={{ __html: item.content }} />
         <div className="flex items-center gap-1.5 mt-1">
-          <span className="text-[10px] text-gray-400">{item.createdBy.fullName}</span>
+          <span className="text-[10px] text-gray-400">{item.createdBy?.fullName ?? 'System'}</span>
           <span className="text-[10px] text-gray-300">·</span>
           <span className="text-[10px] text-gray-400">{timeAgo(item.createdAt)}</span>
         </div>

@@ -116,4 +116,19 @@ export class UsersController {
   ) {
     return this.usersService.updateProfilePhoto(id, file.filename);
   }
+
+  @Get('celebrations/today')
+  @Roles(SystemRole.SUPER_USER, SystemRole.ADMIN, SystemRole.EMPLOYEE)
+  @ApiOperation({ summary: 'Get today\'s birthdays and work anniversaries' })
+  getCelebrationsToday() {
+    return this.usersService.getCelebrationsToday();
+  }
+
+  @Post('celebrations/announce')
+  @HttpCode(200)
+  @Roles(SystemRole.SUPER_USER, SystemRole.ADMIN, SystemRole.EMPLOYEE)
+  @ApiOperation({ summary: 'Auto-post celebration announcement (idempotent)' })
+  postCelebrationAnnouncement(@Request() req: { user: { id: string } }) {
+    return this.usersService.postCelebrationAnnouncement(req.user.id);
+  }
 }

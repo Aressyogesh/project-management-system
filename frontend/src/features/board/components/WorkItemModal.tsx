@@ -40,6 +40,7 @@ interface Props {
   canDelete?: boolean;
   canChangeBilling?: boolean;
   canEditSidebar?: boolean;
+  canAddChild?: boolean;
   onClose: () => void;
   onSaved: () => void;
   onSuccess?: (msg: string) => void;
@@ -54,6 +55,7 @@ interface CreateProps {
   defaultType?: WorkItemType;
   parentId?: string;
   prefill?: { title?: string; stepsToRepro?: string };
+  bugOnly?: boolean;
   onClose: () => void;
   onSaved: () => void;
   onSuccess?: (msg: string) => void;
@@ -412,7 +414,7 @@ function TestCasesPanel({ workItemId, projectId: _projectId, onCreateBug }: Test
 
 // ─── WorkItemModal (edit existing) ───────────────────────────────────────────
 
-export function WorkItemModal({ item, sprints, members, milestones, canDelete = true, canChangeBilling = false, canEditSidebar = false, onClose, onSaved: _onSaved, onSuccess, onOpenChild }: Props) {
+export function WorkItemModal({ item, sprints, members, milestones, canDelete = true, canChangeBilling = false, canEditSidebar = false, canAddChild = false, onClose, onSaved: _onSaved, onSuccess, onOpenChild }: Props) {
   const { user } = useAuthStore();
   const qc = useQueryClient();
 
@@ -1057,8 +1059,8 @@ export function WorkItemModal({ item, sprints, members, milestones, canDelete = 
                         );
                       })}
 
-                      {/* Quick-add input — PM/Admin/Super only */}
-                      {canEditSidebar && (
+                      {/* Quick-add input — PM/Admin/Super + QA */}
+                      {(canEditSidebar || canAddChild) && (
                         <div className="flex items-center gap-2 mt-1.5 pl-2">
                           <div className="w-4 h-4 rounded-full border-2 border-dashed border-gray-200 shrink-0" />
                           <input
@@ -1562,7 +1564,12 @@ export function WorkItemModal({ item, sprints, members, milestones, canDelete = 
 
               {/* Billing */}
               <SidebarRow label={<span>Billing <span className="text-red-500">*</span></span>}>
-                {canChangeBilling ? (
+                {item.type === 'BUG' ? (
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-orange-50 text-orange-600">Non-Billable</span>
+                    <span className="text-[10px] text-gray-400">(bugs are always non-billable)</span>
+                  </div>
+                ) : canChangeBilling ? (
                   <select
                     value={billingStatusLocal}
                     onChange={(e) => {
@@ -2077,10 +2084,10 @@ function TypeIcon({ type }: { type: WorkItemType }) {
 
 export function CreateWorkItemModal({
   projectId, sprints, members = [], milestones = [],
-  defaultType = 'TASK', parentId, prefill, onClose, onSaved, onSuccess,
+  defaultType = 'TASK', parentId, prefill, bugOnly = false, onClose, onSaved, onSuccess,
 }: CreateProps) {
   const qc = useQueryClient();
-  const [type, setType] = useState<WorkItemType>(defaultType);
+  const [type, setType] = useState<WorkItemType>(bugOnly ? 'BUG' : defaultType);
   const [showTypeMenu, setShowTypeMenu] = useState(false);
   const typeMenuRef = useRef<HTMLDivElement>(null);
   const [showParentMenu, setShowParentMenu] = useState(false);
@@ -2196,7 +2203,7 @@ export function CreateWorkItemModal({
       return;
     }
     setEstHoursError(false);
-    if (!billingStatus) {
+    if (type !== 'BUG' && !billingStatus) {
       setBillingStatusError(true);
       return;
     }
@@ -2237,7 +2244,7 @@ export function CreateWorkItemModal({
       bugStatus: (bugStatus || undefined) as BugStatus | undefined,
       module: module || undefined,
       responsibleUserId: responsibleUserId || undefined,
-      billingStatus: (billingStatus || undefined) as BillingStatus | undefined,
+      billingStatus: (type === 'BUG' ? 'NON_BILLABLE' : billingStatus || undefined) as BillingStatus | undefined,
       affectedBuildVersion: affectedBuildVersion || undefined,
       fixedBuildVersion: fixedBuildVersion || undefined,
       reminderType: reminderType || undefined,
@@ -2261,14 +2268,16 @@ export function CreateWorkItemModal({
           {/* JIRA-style type selector */}
           <div ref={typeMenuRef} className="relative">
             <button
-              onClick={() => setShowTypeMenu((v) => !v)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition ${cfg.bg} ${cfg.text}`}
+              onClick={() => !bugOnly && setShowTypeMenu((v) => !v)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition ${cfg.bg} ${cfg.text} ${bugOnly ? 'cursor-default' : ''}`}
             >
               <TypeIcon type={type} />
               {cfg.label}
-              <svg className="w-3 h-3 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
+              {!bugOnly && (
+                <svg className="w-3 h-3 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              )}
             </button>
 
             {showTypeMenu && (
@@ -2543,16 +2552,25 @@ export function CreateWorkItemModal({
             </div>
             <div>
               <label className={labelCls}>Billing <span className="text-red-500">*</span></label>
-              <select
-                value={billingStatus}
-                onChange={(e) => { setBillingStatus(e.target.value as BillingStatus); if (e.target.value) setBillingStatusError(false); }}
-                className={`${inputCls} ${billingStatusError ? 'border-red-500 focus:ring-red-500' : ''}`}
-              >
-                <option value="">— select —</option>
-                <option value="BILLABLE">Billable</option>
-                <option value="NON_BILLABLE">Non-Billable</option>
-              </select>
-              {billingStatusError && <p className="text-xs text-red-500 mt-1">Billing is required</p>}
+              {type === 'BUG' ? (
+                <div className="flex items-center gap-1.5 mt-1">
+                  <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-orange-50 text-orange-600">Non-Billable</span>
+                  <span className="text-[10px] text-gray-400">(bugs are always non-billable)</span>
+                </div>
+              ) : (
+                <>
+                  <select
+                    value={billingStatus}
+                    onChange={(e) => { setBillingStatus(e.target.value as BillingStatus); if (e.target.value) setBillingStatusError(false); }}
+                    className={`${inputCls} ${billingStatusError ? 'border-red-500 focus:ring-red-500' : ''}`}
+                  >
+                    <option value="">— select —</option>
+                    <option value="BILLABLE">Billable</option>
+                    <option value="NON_BILLABLE">Non-Billable</option>
+                  </select>
+                  {billingStatusError && <p className="text-xs text-red-500 mt-1">Billing is required</p>}
+                </>
+              )}
             </div>
           </div>
 
