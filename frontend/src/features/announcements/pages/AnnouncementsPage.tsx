@@ -185,7 +185,7 @@ function AnnouncementCard({
                 </span>
               )}
             </div>
-            <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-wrap">{item.content}</p>
+            <div className="text-sm text-gray-600 leading-relaxed prose prose-sm max-w-none [&_ul]:list-disc [&_ul]:pl-4 [&_strong]:font-semibold" dangerouslySetInnerHTML={{ __html: item.content }} />
             <div className="flex items-center gap-2 mt-3 text-xs text-gray-400">
               <span className="font-medium text-gray-500">{item.createdBy?.fullName ?? 'System'}</span>
               <span>·</span>
