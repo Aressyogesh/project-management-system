@@ -945,9 +945,12 @@ export class AnalyticsService {
           select: { userId: true, date: true, hours: true },
         }),
         // Active work items assigned to users — interval overlap or no dates set
+        // Epics are excluded: they are planning containers and their estimated hours
+        // should not contribute to daily capacity load.
         this.prisma.workItem.findMany({
           where: {
             assigneeId: { not: null },
+            type: { not: WorkItemType.EPIC },
             status: { notIn: [BoardStatus.QA_DONE, BoardStatus.CLOSED] },
             ...(scopedProjectIds !== undefined ? { projectId: { in: scopedProjectIds } } : {}),
             OR: [
@@ -1006,23 +1009,37 @@ export class AnalyticsService {
       hoursMap.get(entry.userId)!.set(day, existing + Number(entry.hours));
     }
 
-    // Build per-user assigned-work-item day sets + estimated hours per day
-    const workItemDayMap          = new Map<string, Set<number>>();
-    const workItemEstHoursMap     = new Map<string, Map<number, number>>();
+    // Build per-user assigned-work-item day sets + estimated hours per day.
+    // Fill-to-capacity model: allocate up to 8h per working day, carry the
+    // remainder forward. e.g. 12h over 2 days → day 1 = 8h, day 2 = 4h.
+    // This correctly reflects that a developer cannot work more than 8h/day,
+    // so any overflow spills into the next working day.
+    const workItemDayMap      = new Map<string, Set<number>>();
+    const workItemEstHoursMap = new Map<string, Map<number, number>>();
     for (const wi of workItems) {
       if (!wi.assigneeId) continue;
       const wiStart = wi.startDate ? new Date(wi.startDate) : start;
       const wiEnd   = wi.dueDate   ? new Date(wi.dueDate)   : end;
-      const estHrs  = Number(wi.estimatedHours ?? 0);
-      for (let d = new Date(wiStart); d <= wiEnd; d.setDate(d.getDate() + 1)) {
+      let remaining = Number(wi.estimatedHours ?? 0);
+
+      for (let d = new Date(wiStart); d <= wiEnd && remaining > 0; d.setDate(d.getDate() + 1)) {
+        const dn = dayNames[d.getDay()];
+        if (!workingDaysCfg[dn]) continue; // skip weekends
+        // Skip holidays in the current month (holidays outside this month are not loaded)
+        if (d.getFullYear() === year && d.getMonth() + 1 === month && holidayDates.has(d.getDate())) continue;
+
+        const allocatedForDay = Math.min(remaining, 8);
+        remaining = Math.round((remaining - allocatedForDay) * 100) / 100;
+
+        // Only populate maps for days that fall within the viewed month
         if (d.getFullYear() === year && d.getMonth() + 1 === month) {
           const day = d.getDate();
           if (!workItemDayMap.has(wi.assigneeId)) workItemDayMap.set(wi.assigneeId, new Set());
           workItemDayMap.get(wi.assigneeId)!.add(day);
-          if (estHrs > 0) {
+          if (allocatedForDay > 0) {
             if (!workItemEstHoursMap.has(wi.assigneeId)) workItemEstHoursMap.set(wi.assigneeId, new Map());
             const prev = workItemEstHoursMap.get(wi.assigneeId)!.get(day) ?? 0;
-            workItemEstHoursMap.get(wi.assigneeId)!.set(day, prev + estHrs);
+            workItemEstHoursMap.get(wi.assigneeId)!.set(day, Math.round((prev + allocatedForDay) * 100) / 100);
           }
         }
       }
@@ -1054,16 +1071,16 @@ export class AnalyticsService {
         else if (isWeeklyOff)    status = 'weekly_off';
         else if (isOnUnplannedLeave) status = 'unplanned_leave';
         else if (isOnPlannedLeave)   status = 'planned_leave';
-        else if (hours >= 8)     status = 'occupied';
-        else if (hours >= 1 || hasWorkItem) status = 'partial';
+        else if (hours >= 8 || workItemHours >= 8) status = 'occupied';
+        else if (hasWorkItem)                       status = 'partial';
         else status = 'available';
 
         // For half-day leave, compute what the "rest of day" looks like
         let restOfDayStatus: string | undefined;
         if (isHalfDay && isOnLeave) {
-          if (hours >= 4)      restOfDayStatus = 'occupied';
-          else if (hours >= 1 || hasWorkItem) restOfDayStatus = 'partial';
-          else                 restOfDayStatus = 'available';
+          if (hours >= 4 || workItemHours >= 4) restOfDayStatus = 'occupied';
+          else if (hasWorkItem)                 restOfDayStatus = 'partial';
+          else                                  restOfDayStatus = 'available';
         }
 
         return {

@@ -4,6 +4,7 @@ import { AppLayout } from './components/layout/AppLayout';
 import { ProtectedRoute } from './components/shared/ProtectedRoute';
 import { LoginPage } from './features/auth/pages/LoginPage';
 import { ResetPasswordPage } from './features/auth/pages/ResetPasswordPage';
+import { ForceChangePasswordPage } from './features/auth/pages/ForceChangePasswordPage';
 import { DashboardPage } from './features/dashboard/pages/DashboardPage';
 import { CompanySettingsPage } from './features/settings/pages/CompanySettingsPage';
 import { PortalConfigPage } from './features/settings/pages/PortalConfigPage';
@@ -42,6 +43,9 @@ export default function App() {
 
           {/* Protected — wrapped in AppLayout (Sidebar + Topbar) */}
           <Route element={<ProtectedRoute />}>
+            {/* Force password reset — no layout */}
+            <Route path="/change-password" element={<ForceChangePasswordPage />} />
+
             <Route element={<AppLayout />}>
               <Route path="/dashboard" element={<DashboardPage />} />
 

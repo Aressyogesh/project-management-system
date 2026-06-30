@@ -66,7 +66,7 @@ const STATUS_STYLE: Record<string, { bg: string; title: string }> = {
   weekly_off:      { bg: 'bg-gray-100',    title: 'Weekly Off' },
   planned_leave:   { bg: 'bg-pink-300',    title: 'On Planned Leave' },
   unplanned_leave: { bg: 'bg-blue-400',    title: 'On Unplanned Leave' },
-  occupied:        { bg: 'bg-red-600',     title: 'Fully Occupied (≥8h logged)' },
+  occupied:        { bg: 'bg-red-600',     title: 'Fully Occupied (≥8h)' },
   partial:         { bg: 'bg-red-400',     title: 'Work Assigned / Partially Occupied' },
   available:       { bg: 'bg-green-200',   title: 'Available' },
 };
@@ -76,7 +76,7 @@ const LEGEND = [
   { label: 'Weekly Off',                   color: 'bg-gray-100 border border-gray-200' },
   { label: 'Planned Leave',                color: 'bg-pink-300' },
   { label: 'Unplanned Leave',              color: 'bg-blue-400' },
-  { label: 'Fully Occupied (≥8h logged)',  color: 'bg-red-600' },
+  { label: 'Fully Occupied (≥8h)',          color: 'bg-red-600' },
   { label: 'Work Assigned / Partial',      color: 'bg-red-400' },
   { label: 'Available',                    color: 'bg-green-200' },
 ];
@@ -719,21 +719,28 @@ export function CapacityReportTab({ project }: { project?: string }) {
             <p className="text-gray-600">Rest of day: <span className="font-medium capitalize">{STATUS_STYLE[tooltip.cell.restOfDayStatus]?.title ?? tooltip.cell.restOfDayStatus}</span></p>
           )}
           {(tooltip.cell.workItemHours ?? 0) > 0 && (
-            <p className="text-gray-600">Allocated (est): <span className="font-medium text-red-600">{tooltip.cell.workItemHours}h</span></p>
+            <p className="text-gray-600">Est. load: <span className="font-medium text-red-600">{tooltip.cell.workItemHours}h/day</span></p>
           )}
           {tooltip.cell.hours > 0 && (
-            <>
-              <p className="text-gray-600">Hours logged: <span className="font-medium">{tooltip.cell.hours}h</span></p>
-              {(tooltip.cell.status === 'occupied' || tooltip.cell.status === 'partial') && (
-                <p className="text-gray-600">Hours available: <span className="font-medium">{Math.max(0, 8 - tooltip.cell.hours)}h</span></p>
-              )}
-            </>
+            <p className="text-gray-600">Hours logged: <span className="font-medium">{tooltip.cell.hours}h</span></p>
+          )}
+          {(tooltip.cell.status === 'occupied' || tooltip.cell.status === 'partial') && (
+            (() => {
+              const estLoad = tooltip.cell.workItemHours ?? 0;
+              const logged  = tooltip.cell.hours ?? 0;
+              const available = Math.max(0, 8 - Math.max(estLoad, logged));
+              return available > 0 ? (
+                <p className="text-gray-600">Available: <span className="font-medium text-green-600">{available}h</span></p>
+              ) : (
+                <p className="text-red-600 font-semibold text-[10px] mt-0.5">Fully allocated — 0h available</p>
+              );
+            })()
           )}
           {tooltip.cell.hours > 8 && (
             <p className="text-red-600 font-semibold text-[10px] mt-1">Overloaded — {tooltip.cell.hours - 8}h over capacity</p>
           )}
           {tooltip.cell.status === 'available' && (
-            <p className="text-gray-600">Hours available: <span className="font-medium">8h</span></p>
+            <p className="text-gray-600">Available: <span className="font-medium text-green-600">8h</span></p>
           )}
           {tooltip.cell.hasWorkItem && !(tooltip.cell.workItemHours ?? 0) && (
             <p className="text-red-500 text-[10px] mt-0.5">Has assigned work item</p>

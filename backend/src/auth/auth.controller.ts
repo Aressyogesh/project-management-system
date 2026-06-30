@@ -7,6 +7,7 @@ import {
   Request,
   UseGuards,
 } from '@nestjs/common';
+import { IsString, MinLength } from 'class-validator';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { Public } from '../common/decorators/public.decorator';
@@ -18,6 +19,12 @@ import { LogoutDto } from './dto/logout.dto';
 import { LocalAuthGuard } from './guards/local-auth.guard';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
+
+class ChangePasswordDto {
+  @IsString()
+  @MinLength(8)
+  newPassword: string;
+}
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -75,5 +82,18 @@ export class AuthController {
   @ApiResponse({ status: 400, description: 'Invalid or expired token' })
   async resetPassword(@Body() dto: ResetPasswordDto): Promise<void> {
     await this.authService.resetPassword(dto.token, dto.newPassword);
+  }
+
+  @ApiBearerAuth()
+  @Post('change-password')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Change password on first login (clears mustResetPassword flag)' })
+  @ApiResponse({ status: 204, description: 'Password changed successfully' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async changePassword(
+    @Request() req: Express.Request & { user: any },
+    @Body() dto: ChangePasswordDto,
+  ): Promise<void> {
+    await this.authService.changePassword(req.user.id, dto.newPassword);
   }
 }

@@ -65,6 +65,7 @@ export class AuthService {
         profilePhoto: user.profilePhoto ?? null,
         hasManagementRole,
         hasPmRole,
+        mustResetPassword: user.mustResetPassword,
       },
     };
   }
@@ -151,6 +152,14 @@ export class AuthService {
         data: { isRevoked: true },
       }),
     ]);
+  }
+
+  async changePassword(userId: string, newPassword: string): Promise<void> {
+    const passwordHash = await bcrypt.hash(newPassword, 10);
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { passwordHash, mustResetPassword: false },
+    });
   }
 
   private generateAccessToken(user: Pick<User, 'id' | 'email' | 'systemRole'>): string {
