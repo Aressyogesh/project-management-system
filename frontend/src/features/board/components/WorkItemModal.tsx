@@ -1462,23 +1462,27 @@ export function WorkItemModal({ item, sprints, members, milestones, canDelete = 
                       <span className="text-xs text-gray-400 italic">Unassigned</span>
                     )}
                   </div>
-                  <select
-                    value={detail.assigneeId ?? ''}
-                    onChange={(e) => updateMut.mutate({ assigneeId: e.target.value || undefined })}
-                    className="input-sm w-full text-xs mt-1"
-                  >
-                    <option value="">Unassigned</option>
-                    {members.map((m) => (
-                      <option key={m.id} value={m.id}>{m.fullName}</option>
-                    ))}
-                  </select>
-                  {user && (
-                    <button
-                      onClick={() => updateMut.mutate({ assigneeId: user.id })}
-                      className="text-[11px] text-primary-600 hover:text-primary-700 font-medium"
-                    >
-                      Assign to me
-                    </button>
+                  {canEditSidebar && (
+                    <>
+                      <select
+                        value={detail.assigneeId ?? ''}
+                        onChange={(e) => updateMut.mutate({ assigneeId: e.target.value || undefined })}
+                        className="input-sm w-full text-xs mt-1"
+                      >
+                        <option value="">Unassigned</option>
+                        {members.map((m) => (
+                          <option key={m.id} value={m.id}>{m.fullName}</option>
+                        ))}
+                      </select>
+                      {user && (
+                        <button
+                          onClick={() => updateMut.mutate({ assigneeId: user.id })}
+                          className="text-[11px] text-primary-600 hover:text-primary-700 font-medium"
+                        >
+                          Assign to me
+                        </button>
+                      )}
+                    </>
                   )}
                 </div>
               </SidebarRow>

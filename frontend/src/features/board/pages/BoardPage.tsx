@@ -265,6 +265,7 @@ export function BoardPage() {
             onFiltersChange={setFilters}
             members={memberOptions}
             onCreateItem={() => setShowCreate(true)}
+            canCreateItem={canEditSidebar}
             onManageSprints={() => setShowSprintManager(true)}
             onAddMilestone={() => setShowMilestoneModal(true)}
             canManageSprints={canManageSprints}
@@ -310,7 +311,7 @@ export function BoardPage() {
         />
       )}
 
-      {showCreate && (
+      {showCreate && canEditSidebar && (
         <CreateWorkItemModal
           projectId={projectId!}
           sprints={sprints}
