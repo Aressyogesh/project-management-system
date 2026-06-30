@@ -918,7 +918,7 @@ export class WorkItemsService implements OnModuleInit {
       const milestoneRaw = String(row['Release Milestone'] ?? '').trim().toLowerCase();
       const description = String(row['Description'] ?? '').trim();
 
-      // All import fields are required
+      // Required fields
       if (!title) errors.push('Title is required');
 
       if (!typeRaw) {
@@ -928,7 +928,6 @@ export class WorkItemsService implements OnModuleInit {
       }
 
       if (!assigneeEmail) errors.push('Assignee Email is required');
-      if (!sprintName) errors.push('Sprint Name is required');
 
       if (!priorityRaw) {
         errors.push('Priority is required (LOW, MEDIUM, HIGH, CRITICAL)');
@@ -936,7 +935,6 @@ export class WorkItemsService implements OnModuleInit {
         errors.push('Priority must be LOW, MEDIUM, HIGH, or CRITICAL');
       }
 
-      if (!storyPointsRaw) errors.push('Story Points is required');
       if (!estHoursRaw) errors.push('Est. Hours is required');
 
       if (!billingRaw) {
@@ -946,9 +944,9 @@ export class WorkItemsService implements OnModuleInit {
       if (!startDateRaw) errors.push('Start Date is required (MM-DD-YYYY)');
       if (!dueDateRaw) errors.push('Due Date is required (MM-DD-YYYY)');
       if (!parentIdRaw) errors.push('Parent ID is required');
-      if (!labelsRaw) errors.push('Labels is required');
-      if (!milestoneRaw) errors.push('Release Milestone is required');
       if (!description) errors.push('Description is required');
+
+      // Sprint Name, Story Points, Labels, Release Milestone are optional
 
       let assigneeId: string | undefined;
       if (assigneeEmail) {

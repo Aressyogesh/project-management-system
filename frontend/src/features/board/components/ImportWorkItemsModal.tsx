@@ -146,13 +146,28 @@ export function ImportWorkItemsModal({ projectId, onClose, onSuccess }: Props) {
               <div className="p-3 rounded-xl bg-gray-50 border border-gray-100">
                 <p className="text-[11px] font-semibold text-gray-500 mb-2">REQUIRED COLUMNS (in order)</p>
                 <div className="flex flex-wrap gap-1.5">
-                  {['Title', 'Work Item Type', 'Assignee Email', 'Sprint Name', 'Priority', 'Story Points', 'Est. Hours', 'Billing Status', 'Start Date', 'Due Date', 'Parent ID', 'Labels', 'Release Milestone', 'Description'].map((col) => (
-                    <span key={col} className="text-[10px] px-2 py-0.5 rounded-full font-medium bg-primary-100 text-primary-700">
-                      {col}
+                  {[
+                    { label: 'Title', required: true },
+                    { label: 'Work Item Type', required: true },
+                    { label: 'Assignee Email', required: true },
+                    { label: 'Sprint Name', required: false },
+                    { label: 'Priority', required: true },
+                    { label: 'Story Points', required: false },
+                    { label: 'Est. Hours', required: true },
+                    { label: 'Billing Status', required: true },
+                    { label: 'Start Date', required: true },
+                    { label: 'Due Date', required: true },
+                    { label: 'Parent ID', required: true },
+                    { label: 'Labels', required: false },
+                    { label: 'Release Milestone', required: false },
+                    { label: 'Description', required: true },
+                  ].map(({ label, required }) => (
+                    <span key={label} className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${required ? 'bg-primary-100 text-primary-700' : 'bg-gray-100 text-gray-500'}`}>
+                      {label}{required ? '' : ' (opt)'}
                     </span>
                   ))}
                 </div>
-                <p className="text-[10px] text-gray-400 mt-2">All fields required · Work Item Type: USER_STORY, TASK, SUB_TASK · Date format: MM-DD-YYYY</p>
+                <p className="text-[10px] text-gray-400 mt-2">Blue = required · Gray = optional · Work Item Type: USER_STORY, TASK, SUB_TASK · Date format: MM-DD-YYYY</p>
               </div>
             </div>
           )}
