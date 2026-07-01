@@ -5,6 +5,11 @@ export interface AuthUser {
   fullName: string;
   email: string;
   systemRole: SystemRole;
+  profilePhoto?: string | null;
+  dateOfBirth?: string | null;
+  hasManagementRole?: boolean;
+  hasPmRole?: boolean;
+  mustResetPassword?: boolean;
 }
 
 export interface AuthResponse {

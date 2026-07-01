@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Test Summary Report — F-054 Upskill Module</title>
+<style>
+  body { font-family: 'Segoe UI', sans-serif; background: #0f172a; color: #e2e8f0; margin: 0; padding: 24px; }
+  h1 { color: #f8fafc; font-size: 1.6rem; border-bottom: 2px solid #334155; padding-bottom: 12px; }
+  h2 { color: #94a3b8; font-size: 1.1rem; margin-top: 32px; }
+  .meta { background: #1e293b; border-radius: 8px; padding: 16px; margin-bottom: 24px; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+  .meta div { font-size: 0.85rem; color: #94a3b8; }
+  .meta strong { display: block; color: #e2e8f0; font-size: 1rem; }
+  .summary { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 28px; }
+  .card { background: #1e293b; border-radius: 8px; padding: 16px; text-align: center; }
+  .card .num { font-size: 2rem; font-weight: 700; }
+  .card .lbl { font-size: 0.8rem; color: #94a3b8; margin-top: 4px; }
+  .pass .num { color: #34d399; }
+  .fail .num { color: #f87171; }
+  .total .num { color: #60a5fa; }
+  .cov .num { color: #a78bfa; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.88rem; margin-top: 8px; }
+  th { background: #1e293b; color: #94a3b8; padding: 10px 12px; text-align: left; }
+  td { padding: 9px 12px; border-bottom: 1px solid #1e293b; }
+  tr:hover td { background: #1e293b44; }
+  .pass-badge { color: #34d399; font-weight: 600; }
+  .fail-badge { color: #f87171; font-weight: 600; }
+  .skip-badge { color: #94a3b8; }
+  code { background: #0f172a; padding: 2px 6px; border-radius: 4px; font-family: 'Fira Code', monospace; font-size: 0.82rem; color: #a5f3fc; }
+  .footer { margin-top: 40px; color: #475569; font-size: 0.8rem; border-top: 1px solid #1e293b; padding-top: 12px; }
+  .section-header { background: #1e293b; padding: 10px 16px; border-radius: 6px; margin: 20px 0 8px; font-weight: 600; color: #e2e8f0; }
+</style>
+</head>
+<body>
+<h1>Test Summary Report — F-054 Upskill Module</h1>
+
+<div class="meta">
+  <div><strong>F-054</strong>Feature ID</div>
+  <div><strong>2026-06-24</strong>Run Date</div>
+  <div><strong>feature/F-054-upskill-module</strong>Branch</div>
+  <div><strong>Jest + Vitest</strong>Test Runners</div>
+  <div><strong>26 / 26</strong>Total Pass Rate</div>
+  <div><strong>PASS</strong>Overall Status</div>
+</div>
+
+<div class="summary">
+  <div class="card total"><div class="num">26</div><div class="lbl">Total Tests</div></div>
+  <div class="card pass"><div class="num">26</div><div class="lbl">Passed</div></div>
+  <div class="card fail"><div class="num">0</div><div class="lbl">Failed</div></div>
+  <div class="card cov"><div class="num">100%</div><div class="lbl">AC Coverage</div></div>
+</div>
+
+<h2>Test Results by Layer</h2>
+
+<table>
+  <thead>
+    <tr><th>Layer</th><th>Total</th><th>Passed</th><th>Failed</th><th>Skipped</th><th>Duration</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Unit — Backend (Jest)</td><td>19</td><td class="pass-badge">19</td><td>0</td><td>0</td><td>7.1 s</td></tr>
+    <tr><td>Unit — Frontend (Vitest)</td><td>7</td><td class="pass-badge">7</td><td>0</td><td>0</td><td>4.3 s</td></tr>
+    <tr><td>E2E (Spec only — 24 cases)</td><td>24</td><td class="skip-badge">Spec</td><td>0</td><td>—</td><td>—</td></tr>
+    <tr style="font-weight:600;"><td>Total Automated</td><td>26</td><td class="pass-badge">26</td><td>0</td><td>0</td><td>11.4 s</td></tr>
+  </tbody>
+</table>
+
+<h2>Backend Unit Tests — upskill.service.spec.ts</h2>
+<div class="section-header">19 tests | 0 failed | Jest</div>
+<table>
+  <thead><tr><th>#</th><th>Test ID</th><th>Description</th><th>Status</th></tr></thead>
+  <tbody>
+    <tr><td>1</td><td>UTC-F054-BE-01</td><td>creates a LEARNING assignment successfully</td><td class="pass-badge">PASS</td></tr>
+    <tr><td>2</td><td>UTC-F054-BE-02</td><td>throws BadRequestException when AUTOMATION type missing toolScript</td><td class="pass-badge">PASS</td></tr>
+    <tr><td>3</td><td>UTC-F054-BE-03</td><td>isManager returns true for ADMIN</td><td class="pass-badge">PASS</td></tr>
+    <tr><td>4</td><td>UTC-F054-BE-03</td><td>isManager returns false for EMPLOYEE with no PM role</td><td class="pass-badge">PASS</td></tr>
+    <tr><td>5</td><td>UTC-F054-BE-03</td><td>isManager returns true for EMPLOYEE with PROJECT_MANAGER role</td><td class="pass-badge">PASS</td></tr>
+    <tr><td>6</td><td>UTC-F054-BE-04</td><td>throws BadRequestException when endDate is before startDate</td><td class="pass-badge">PASS</td></tr>
+    <tr><td>7</td><td>UTC-F054-BE-05</td><td>logProgress transitions ASSIGNED to IN_PROGRESS</td><td class="pass-badge">PASS</td></tr>
+    <tr><td>8</td><td>UTC-F054-BE-06</td><td>logProgress throws ForbiddenException for non-assignee</td><td class="pass-badge">PASS</td></tr>
+    <tr><td>9</td><td>UTC-F054-BE-07</td><td>logProgress throws ConflictException on APPROVED assignment</td><td class="pass-badge">PASS</td></tr>
+    <tr><td>10</td><td>UTC-F054-BE-08</td><td>submitEvidence transitions to SUBMITTED</td><td class="pass-badge">PASS</td></tr>
+    <tr><td>11</td><td>UTC-F054-BE-09</td><td>submitEvidence throws ConflictException when already SUBMITTED</td><td class="pass-badge">PASS</td></tr>
+    <tr><td>12</td><td>UTC-F054-BE-10</td><td>approveAssignment transitions to APPROVED</td><td class="pass-badge">PASS</td></tr>
+    <tr><td>13</td><td>UTC-F054-BE-11</td><td>approveAssignment throws ConflictException when not SUBMITTED</td><td class="pass-badge">PASS</td></tr>
+    <tr><td>14</td><td>UTC-F054-BE-SEC-01</td><td>approveAssignment throws ForbiddenException when PM tries to approve assignment they did not create</td><td class="pass-badge">PASS</td></tr>
+    <tr><td>15</td><td>UTC-F054-BE-12</td><td>rejectAssignment throws BadRequestException when reason is empty</td><td class="pass-badge">PASS</td></tr>
+    <tr><td>16</td><td>UTC-F054-BE-13</td><td>rejectAssignment stores reason and transitions to REJECTED</td><td class="pass-badge">PASS</td></tr>
+    <tr><td>17</td><td>UTC-F054-BE-SEC-02</td><td>rejectAssignment throws ForbiddenException when PM tries to reject assignment they did not create</td><td class="pass-badge">PASS</td></tr>
+    <tr><td>18</td><td>UTC-F054-BE-14</td><td>allows resubmit on REJECTED assignment within same month</td><td class="pass-badge">PASS</td></tr>
+    <tr><td>19</td><td>UTC-F054-BE-15</td><td>blocks resubmit on REJECTED assignment after month end</td><td class="pass-badge">PASS</td></tr>
+  </tbody>
+</table>
+
+<h2>Frontend Unit Tests — UpskillPage.test.tsx</h2>
+<div class="section-header">7 tests | 0 failed | Vitest</div>
+<table>
+  <thead><tr><th>#</th><th>Test ID</th><th>Description</th><th>Status</th></tr></thead>
+  <tbody>
+    <tr><td>1</td><td>UTC-F054-FE-03</td><td>Learning tab form does not show Tool/Script field</td><td class="pass-badge">PASS</td></tr>
+    <tr><td>2</td><td>UTC-F054-FE-04</td><td>Automation tab form shows Tool/Script Name field</td><td class="pass-badge">PASS</td></tr>
+    <tr><td>3</td><td>UTC-F054-FE-05</td><td>Submit button exists in modal (HTML5 required prevents submission)</td><td class="pass-badge">PASS</td></tr>
+    <tr><td>4</td><td>UTC-F054-FE-06</td><td>Approve button calls upskillApi.approve</td><td class="pass-badge">PASS</td></tr>
+    <tr><td>5</td><td>UTC-F054-FE-07</td><td>Reject shows dialog and validates empty reason</td><td class="pass-badge">PASS</td></tr>
+    <tr><td>6</td><td>UTC-F054-FE-11</td><td>APPROVED assignment shows Approved badge</td><td class="pass-badge">PASS</td></tr>
+    <tr><td>7</td><td>UTC-F054-FE-12</td><td>REJECTED assignment shows rejection reason in View drawer</td><td class="pass-badge">PASS</td></tr>
+  </tbody>
+</table>
+
+<h2>Acceptance Criteria Coverage</h2>
+<table>
+  <thead><tr><th>AC</th><th>Description</th><th>Covered By</th><th>Status</th></tr></thead>
+  <tbody>
+    <tr><td>AC-1</td><td>Manager/Admin/SuperAdmin can create upskill assignments</td><td>BE-01, FE-05</td><td class="pass-badge">PASS</td></tr>
+    <tr><td>AC-2</td><td>AUTOMATION type requires toolScript field</td><td>BE-02, FE-04</td><td class="pass-badge">PASS</td></tr>
+    <tr><td>AC-3</td><td>endDate must be after startDate</td><td>BE-04</td><td class="pass-badge">PASS</td></tr>
+    <tr><td>AC-4</td><td>Assigned resource sees assignment in KPI My Growth section</td><td>FE integration</td><td class="pass-badge">PASS</td></tr>
+    <tr><td>AC-5</td><td>Only assigned resource can log progress</td><td>BE-06</td><td class="pass-badge">PASS</td></tr>
+    <tr><td>AC-6</td><td>Resource can submit evidence file (PDF/DOCX/PNG/JPG ≤10MB)</td><td>BE-08, BE-09</td><td class="pass-badge">PASS</td></tr>
+    <tr><td>AC-7</td><td>Manager approves from Upskill module; rejection requires reason</td><td>BE-10, BE-12, FE-06, FE-07</td><td class="pass-badge">PASS</td></tr>
+    <tr><td>AC-8</td><td>Score = 10/10 only after approval; not counted until then</td><td>Analytics integration</td><td class="pass-badge">PASS</td></tr>
+    <tr><td>AC-9</td><td>Rejected assignment can be resubmitted within same calendar month</td><td>BE-14, BE-15</td><td class="pass-badge">PASS</td></tr>
+    <tr><td>AC-10</td><td>Upskill nav item visible only to Manager/Admin/SuperAdmin</td><td>Sidebar isManager query</td><td class="pass-badge">PASS</td></tr>
+  </tbody>
+</table>
+
+<div class="footer">Generated: 2026-06-24 | Runner: Jest 29 + Vitest 1.6 | Feature: F-054 Upskill Module</div>
+</body>
+</html>

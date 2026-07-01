@@ -1,0 +1,151 @@
+import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { AnnouncementScope, AuditAction, AuditEntity, ProjectRole, SystemRole } from '@prisma/client';
+import { PrismaService } from '../prisma/prisma.service';
+import { AuditLogsService } from '../audit-logs/audit-logs.service';
+import { CreateAnnouncementDto } from './dto/create-announcement.dto';
+
+const CREATOR_SELECT = { id: true, fullName: true, profilePhoto: true };
+const ITEM_SELECT = {
+  id: true,
+  title: true,
+  content: true,
+  scope: true,
+  projectId: true,
+  project: { select: { id: true, name: true } },
+  createdAt: true,
+  createdBy: { select: CREATOR_SELECT },
+};
+
+@Injectable()
+export class AnnouncementsService {
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly auditLogs: AuditLogsService,
+  ) {}
+
+  private isAdminOrSuper(role: SystemRole) {
+    return role === SystemRole.SUPER_USER || role === SystemRole.ADMIN;
+  }
+
+  private async getPmProjectIds(userId: string): Promise<string[]> {
+    const memberships = await this.prisma.projectMember.findMany({
+      where: { userId, projectRole: ProjectRole.PROJECT_MANAGER },
+      select: { projectId: true },
+    });
+    return memberships.map((m) => m.projectId);
+  }
+
+  private async getUserProjectIds(userId: string): Promise<string[]> {
+    const memberships = await this.prisma.projectMember.findMany({
+      where: { userId },
+      select: { projectId: true },
+    });
+    return memberships.map((m) => m.projectId);
+  }
+
+  async create(dto: CreateAnnouncementDto, createdById: string, userRole: SystemRole) {
+    const scope = dto.scope ?? AnnouncementScope.GLOBAL;
+
+    if (this.isAdminOrSuper(userRole)) {
+      if (scope === AnnouncementScope.PROJECT && !dto.projectId) {
+        throw new ForbiddenException('projectId is required for PROJECT-scoped announcements');
+      }
+    } else {
+      const pmIds = await this.getPmProjectIds(createdById);
+      if (pmIds.length === 0) throw new ForbiddenException('Only admins or project managers can post announcements');
+      if (scope !== AnnouncementScope.PROJECT) throw new ForbiddenException('Project managers can only create project-scoped announcements');
+      if (!dto.projectId) throw new ForbiddenException('projectId is required');
+      if (!pmIds.includes(dto.projectId)) throw new ForbiddenException('You can only post announcements for your own projects');
+    }
+
+    const result = await this.prisma.announcement.create({
+      data: {
+        title: dto.title,
+        content: dto.content,
+        scope,
+        projectId: scope === AnnouncementScope.PROJECT ? dto.projectId : null,
+        createdById,
+      },
+      select: ITEM_SELECT,
+    });
+
+    this.auditLogs.log({
+      userId: createdById,
+      action: AuditAction.ANNOUNCEMENT_CREATED,
+      entity: AuditEntity.ANNOUNCEMENT,
+      entityId: result.id,
+      entityTitle: result.title,
+      projectId: result.projectId ?? undefined,
+    });
+
+    return result;
+  }
+
+  async findAll(
+    query: { page?: number; limit?: number },
+    userId: string,
+    userRole: SystemRole,
+  ) {
+    const isAdmin = this.isAdminOrSuper(userRole);
+    const { page = 1, limit = 20 } = query;
+    const safeLimit = Math.min(limit, 50);
+    const skip = (page - 1) * safeLimit;
+
+    let where: object = {};
+    if (!isAdmin) {
+      const pmIds = await this.getPmProjectIds(userId);
+      if (pmIds.length === 0) throw new ForbiddenException('Access denied');
+      where = {
+        OR: [
+          { scope: AnnouncementScope.GLOBAL },
+          { scope: AnnouncementScope.PROJECT, projectId: { in: pmIds } },
+        ],
+      };
+    }
+
+    const [data, total] = await Promise.all([
+      this.prisma.announcement.findMany({ where, skip, take: safeLimit, orderBy: { createdAt: 'desc' }, select: ITEM_SELECT }),
+      this.prisma.announcement.count({ where }),
+    ]);
+
+    return { data, total, page, lastPage: Math.ceil(total / safeLimit) || 1 };
+  }
+
+  async findLatestForWidget(userId: string) {
+    const projectIds = await this.getUserProjectIds(userId);
+
+    const where =
+      projectIds.length > 0
+        ? { OR: [{ scope: AnnouncementScope.GLOBAL }, { scope: AnnouncementScope.PROJECT, projectId: { in: projectIds } }] }
+        : { scope: AnnouncementScope.GLOBAL };
+
+    const data = await this.prisma.announcement.findMany({
+      where,
+      take: 3,
+      orderBy: { createdAt: 'desc' },
+      select: ITEM_SELECT,
+    });
+
+    return { data, total: data.length, page: 1, lastPage: 1 };
+  }
+
+  async remove(id: string, userId: string, userRole: SystemRole) {
+    const existing = await this.prisma.announcement.findUnique({ where: { id } });
+    if (!existing) throw new NotFoundException('Announcement not found');
+
+    if (!this.isAdminOrSuper(userRole) && existing.createdById !== userId) {
+      throw new ForbiddenException('You can only delete your own announcements');
+    }
+
+    await this.prisma.announcement.delete({ where: { id } });
+
+    this.auditLogs.log({
+      userId,
+      action: AuditAction.ANNOUNCEMENT_DELETED,
+      entity: AuditEntity.ANNOUNCEMENT,
+      entityId: id,
+      entityTitle: existing.title,
+      projectId: existing.projectId ?? undefined,
+    });
+  }
+}

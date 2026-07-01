@@ -1,0 +1,284 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches: [production]
+  workflow_dispatch:
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Job 1 — TEST GATE
+# Runs on every push. Deploy will not start if this fails.
+# ──────────────────────────────────────────────────────────────────────────────
+jobs:
+  test:
+    name: Run Backend Unit Tests
+    runs-on: self-hosted
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          clean: false  # skip workspace wipe — pms-prod-backend may hold a lock on backend/dist while running
+
+      - name: Install backend dependencies
+        working-directory: backend
+        run: npm ci
+
+      - name: Generate Prisma client
+        working-directory: backend
+        run: npx prisma generate
+        env:
+          DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
+          DIRECT_URL: ${{ secrets.PROD_DIRECT_URL }}
+
+      - name: Run unit tests
+        working-directory: backend
+        run: npm test -- --passWithNoTests
+        env:
+          DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
+          DIRECT_URL: ${{ secrets.PROD_DIRECT_URL }}
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Job 2 — DEPLOY
+# Runs only on push to production branch. Requires test job to pass.
+# ──────────────────────────────────────────────────────────────────────────────
+  deploy:
+    name: Build & Deploy Production (self-hosted)
+    runs-on: self-hosted
+    needs: test
+    if: github.ref == 'refs/heads/production' && github.event_name != 'pull_request'
+
+    steps:
+      # ── 1. Stop production processes before checkout ─────────────────────────
+      - name: Stop production processes
+        run: |
+          pm2 stop pms-prod-backend  2>$null | Out-Null
+          pm2 stop pms-prod-frontend 2>$null | Out-Null
+          $LASTEXITCODE = 0
+          Write-Host "pms-prod-backend stopped"
+          Write-Host "pms-prod-frontend stopped"
+        shell: pwsh
+
+      # ── 2. Checkout ──────────────────────────────────────────────────────────
+      - name: Checkout production
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      # ── 3. Backend ───────────────────────────────────────────────────────────
+      - name: Write backend .env
+        working-directory: backend
+        run: |
+          @(
+            "DATABASE_URL=$env:DATABASE_URL",
+            "DIRECT_URL=$env:DIRECT_URL",
+            "JWT_SECRET=$env:JWT_SECRET",
+            "JWT_REFRESH_SECRET=$env:JWT_REFRESH_SECRET",
+            "JWT_ACCESS_EXPIRY=15m",
+            "JWT_REFRESH_EXPIRY_DAYS=7",
+            "PORT=3001",
+            "NODE_ENV=production",
+            "UPLOAD_DEST=D:\PMS\pms-prod-uploads",
+            "GROQ_API_KEY=$env:GROQ_API_KEY",
+            "NODE_OPTIONS=--use-system-ca",
+            "SMTP_HOST=$env:SMTP_HOST",
+            "SMTP_PORT=$env:SMTP_PORT",
+            "SMTP_USER=$env:SMTP_USER",
+            "SMTP_PASS=$env:SMTP_PASS",
+            "SMTP_FROM_NAME=$env:SMTP_FROM_NAME",
+            "SMTP_FROM_EMAIL=$env:SMTP_FROM_EMAIL",
+            "APP_FRONTEND_URL=$env:FRONTEND_URL",
+            "FRONTEND_URL=$env:FRONTEND_URL",
+            "AUTOMATION_AP_BASE=$env:AUTOMATION_AP_BASE",
+            "AP_BUG_WEBHOOK_ID=$env:AP_BUG_WEBHOOK_ID",
+            "AP_SPRINT_WEBHOOK_ID=$env:AP_SPRINT_WEBHOOK_ID",
+            "AUTOMATION_NODERED_WEBHOOK=$env:AUTOMATION_NODERED_WEBHOOK",
+            "AP_TASK_ASSIGNED_WEBHOOK_ID=$env:AP_TASK_ASSIGNED_WEBHOOK_ID",
+            "AP_CRITICAL_BUG_WEBHOOK_ID=$env:AP_CRITICAL_BUG_WEBHOOK_ID",
+            "AP_BUG_REOPENED_WEBHOOK_ID=$env:AP_BUG_REOPENED_WEBHOOK_ID",
+            "AP_ITEM_BLOCKED_WEBHOOK_ID=$env:AP_ITEM_BLOCKED_WEBHOOK_ID",
+            "GITHUB_WEBHOOK_SECRET=$env:GITHUB_WEBHOOK_SECRET"
+          ) | Out-File -FilePath ".env" -Encoding UTF8
+        shell: pwsh
+        env:
+          DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
+          DIRECT_URL: ${{ secrets.PROD_DIRECT_URL }}
+          JWT_SECRET: ${{ secrets.PROD_JWT_SECRET }}
+          JWT_REFRESH_SECRET: ${{ secrets.PROD_JWT_REFRESH_SECRET }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASS: ${{ secrets.SMTP_PASS }}
+          SMTP_FROM_NAME: ${{ secrets.SMTP_FROM_NAME }}
+          SMTP_FROM_EMAIL: ${{ secrets.SMTP_FROM_EMAIL }}
+          FRONTEND_URL: ${{ secrets.PROD_FRONTEND_URL }}
+          AUTOMATION_AP_BASE: ${{ secrets.AUTOMATION_AP_BASE }}
+          AP_BUG_WEBHOOK_ID: ${{ secrets.AP_BUG_WEBHOOK_ID }}
+          AP_SPRINT_WEBHOOK_ID: ${{ secrets.AP_SPRINT_WEBHOOK_ID }}
+          AUTOMATION_NODERED_WEBHOOK: ${{ secrets.AUTOMATION_NODERED_WEBHOOK }}
+          AP_TASK_ASSIGNED_WEBHOOK_ID: ${{ secrets.AP_TASK_ASSIGNED_WEBHOOK_ID }}
+          AP_CRITICAL_BUG_WEBHOOK_ID: ${{ secrets.AP_CRITICAL_BUG_WEBHOOK_ID }}
+          AP_BUG_REOPENED_WEBHOOK_ID: ${{ secrets.AP_BUG_REOPENED_WEBHOOK_ID }}
+          AP_ITEM_BLOCKED_WEBHOOK_ID: ${{ secrets.AP_ITEM_BLOCKED_WEBHOOK_ID }}
+          GITHUB_WEBHOOK_SECRET: ${{ secrets.GITHUB_WEBHOOK_SECRET }}
+
+      - name: Install backend dependencies
+        working-directory: backend
+        run: npm ci
+
+      - name: Generate Prisma client
+        working-directory: backend
+        run: npx prisma generate
+        env:
+          DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
+          DIRECT_URL: ${{ secrets.PROD_DIRECT_URL }}
+
+      - name: Resolve any failed migrations
+        working-directory: backend
+        run: |
+          npx prisma migrate resolve --rolled-back 20260526073946_add_projects_table 2>$null; $LASTEXITCODE = 0
+          npx prisma migrate resolve --rolled-back 20260603000000_add_work_item_display_id 2>$null; $LASTEXITCODE = 0
+        shell: pwsh
+        env:
+          DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
+          DIRECT_URL: ${{ secrets.PROD_DIRECT_URL }}
+
+      - name: Run Prisma migrations
+        working-directory: backend
+        run: npx prisma migrate deploy
+        env:
+          DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
+          DIRECT_URL: ${{ secrets.PROD_DIRECT_URL }}
+
+      - name: Ensure upload directories exist
+        run: |
+          New-Item -ItemType Directory -Force -Path "D:\PMS\pms-prod-uploads\avatars" | Out-Null
+          New-Item -ItemType Directory -Force -Path "D:\PMS\pms-prod-uploads\images"  | Out-Null
+          Write-Host "Upload directories ready"
+        shell: pwsh
+
+      - name: Build backend
+        working-directory: backend
+        run: npm run build
+
+      - name: Copy backend to fixed deploy folder
+        run: |
+          New-Item -ItemType Directory -Force -Path "D:\PMS\pms-prod-backend" | Out-Null
+          robocopy "$env:GITHUB_WORKSPACE\backend\dist"         "D:\PMS\pms-prod-backend\dist"         /MIR /NFL /NDL /NJH /NJS 2>$null; if ($LASTEXITCODE -le 7) { $LASTEXITCODE = 0 }
+          robocopy "$env:GITHUB_WORKSPACE\backend\node_modules" "D:\PMS\pms-prod-backend\node_modules" /MIR /NFL /NDL /NJH /NJS 2>$null; if ($LASTEXITCODE -le 7) { $LASTEXITCODE = 0 }
+          robocopy "$env:GITHUB_WORKSPACE\backend\prisma"       "D:\PMS\pms-prod-backend\prisma"       /MIR /NFL /NDL /NJH /NJS 2>$null; if ($LASTEXITCODE -le 7) { $LASTEXITCODE = 0 }
+          Copy-Item "$env:GITHUB_WORKSPACE\backend\.env" "D:\PMS\pms-prod-backend\.env" -Force
+          Write-Host "Backend copied to D:\PMS\pms-prod-backend"
+        shell: pwsh
+
+      - name: Restart backend via PM2
+        run: |
+          pm2 delete pms-prod-backend 2>$null | Out-Null; $true
+          pm2 start "D:\PMS\pms-prod-backend\dist\src\main.js" --name pms-prod-backend --cwd "D:\PMS\pms-prod-backend" | Out-Null
+          pm2 save | Out-Null
+          # Poll health endpoint until NestJS finishes initialising (max 30 s)
+          $deadline = (Get-Date).AddSeconds(30)
+          $ready = $false
+          while ((Get-Date) -lt $deadline) {
+            try {
+              $r = Invoke-WebRequest -Uri "http://localhost:3001/api/v1/health" -UseBasicParsing -TimeoutSec 3 -ErrorAction Stop
+              $body = $r.Content | ConvertFrom-Json
+              if ($r.StatusCode -eq 200 -and $body.status -eq 'ok') { $ready = $true; break }
+            } catch {}
+            Start-Sleep -Seconds 2
+          }
+          if (-not $ready) {
+            Write-Host "Backend did not come online within 30s — PM2 logs:"
+            pm2 logs pms-prod-backend --lines 30 --nostream 2>$null
+            exit 1
+          }
+          Write-Host "Production backend startup confirmed"
+        shell: pwsh
+        env:
+          DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
+          DIRECT_URL: ${{ secrets.PROD_DIRECT_URL }}
+          JWT_SECRET: ${{ secrets.PROD_JWT_SECRET }}
+          JWT_REFRESH_SECRET: ${{ secrets.PROD_JWT_REFRESH_SECRET }}
+          FRONTEND_URL: ${{ secrets.PROD_FRONTEND_URL }}
+          PORT: '3001'
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASS: ${{ secrets.SMTP_PASS }}
+          SMTP_FROM_NAME: ${{ secrets.SMTP_FROM_NAME }}
+          SMTP_FROM_EMAIL: ${{ secrets.SMTP_FROM_EMAIL }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          APP_FRONTEND_URL: ${{ secrets.PROD_FRONTEND_URL }}
+          NODE_OPTIONS: '--use-system-ca'
+
+      # ── 4. Frontend ──────────────────────────────────────────────────────────
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Build frontend
+        working-directory: frontend
+        run: npm run build
+        env:
+          VITE_API_URL: ${{ secrets.PROD_VITE_API_BASE_URL }}/api/v1
+
+      - name: Copy frontend dist to fixed deploy folder
+        run: |
+          $src  = "$env:GITHUB_WORKSPACE\frontend\dist"
+          $dest = "D:\PMS\pms-prod-frontend"
+          if (Test-Path $dest) { Remove-Item $dest -Recurse -Force }
+          Copy-Item $src $dest -Recurse
+        shell: pwsh
+
+      - name: Restart frontend via PM2
+        run: |
+          npm install -g serve 2>$null; $true
+          $serveMain = "$(npm root -g)/serve/build/main.js" -replace '\\','/'
+          $cfg = "module.exports={apps:[{name:'pms-prod-frontend',script:'$serveMain',args:'-s D:/PMS/pms-prod-frontend -l 5174',cwd:'D:/PMS'}]};"
+          $cfg | Out-File -FilePath "D:/PMS/pms-prod-frontend.config.js" -Encoding ASCII
+          pm2 delete pms-prod-frontend 2>$null | Out-Null; $true
+          pm2 start "D:/PMS/pms-prod-frontend.config.js" | Out-Null
+          pm2 save | Out-Null
+          Write-Host "pms-prod-frontend started"
+        shell: pwsh
+
+      # ── 5. Health check ───────────────────────────────────────────────────────
+      - name: Health check — backend
+        run: |
+          $maxAttempts = 6
+          $delay = 5
+          for ($i = 1; $i -le $maxAttempts; $i++) {
+            try {
+              $response = Invoke-WebRequest -Uri "http://localhost:3001/api/v1/health" -UseBasicParsing -TimeoutSec 10
+              $body = $response.Content | ConvertFrom-Json
+              if ($response.StatusCode -eq 200 -and $body.status -eq 'ok') {
+                Write-Host "Health check passed on attempt $i"
+                exit 0
+              }
+              Write-Host "Attempt ${i}: unexpected response: $($response.Content)"
+            } catch {
+              Write-Host "Attempt ${i} failed: $_"
+            }
+            if ($i -lt $maxAttempts) {
+              Write-Host "Retrying in ${delay}s..."
+              Start-Sleep -Seconds $delay
+            }
+          }
+          Write-Host "Health check failed after $maxAttempts attempts — PM2 logs:"
+          pm2 logs pms-prod-backend --lines 50 --nostream 2>$null
+          exit 1
+        shell: pwsh
+
+      # ── 6. Deployment summary ─────────────────────────────────────────────────
+      - name: Deployment summary
+        run: |
+          Write-Host "✅ Production deployment complete"
+          pm2 jlist | ConvertFrom-Json -AsHashTable |
+            Where-Object { $_['name'] -like 'pms-prod-*' } |
+            ForEach-Object {
+              $mem = [math]::Round($_['monit']['memory'] / 1MB, 1)
+              Write-Host "$($_['name'])  |  status: $($_['pm2_env']['status'])  |  pid: $($_['pid'])  |  restarts: $($_['pm2_env']['restart_time'])  |  mem: ${mem}mb"
+            }
+        shell: pwsh

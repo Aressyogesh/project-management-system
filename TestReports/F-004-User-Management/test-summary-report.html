@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Test Summary — F-004: User Management</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; margin: 0; padding: 32px; background: #f8fafc; color: #1e293b; }
+  h1 { font-size: 1.5rem; font-weight: 700; margin-bottom: 4px; }
+  .subtitle { color: #64748b; font-size: 0.875rem; margin-bottom: 32px; }
+  .card { background: white; border-radius: 12px; border: 1px solid #e2e8f0; padding: 24px; margin-bottom: 24px; }
+  .card h2 { font-size: 1rem; font-weight: 600; margin: 0 0 16px; }
+  .meta-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+  .meta-item label { display: block; font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; color: #94a3b8; margin-bottom: 4px; }
+  .meta-item span { font-size: 0.875rem; color: #1e293b; }
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+  .stat { background: white; border-radius: 12px; border: 1px solid #e2e8f0; padding: 20px; text-align: center; }
+  .stat .num { font-size: 2rem; font-weight: 700; }
+  .stat .lbl { font-size: 0.75rem; color: #64748b; margin-top: 4px; }
+  .pass .num { color: #16a34a; } .fail .num { color: #dc2626; } .total .num { color: #1e293b; } .pct .num { color: #2563eb; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+  th { background: #f8fafc; padding: 10px 14px; text-align: left; font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; color: #64748b; border-bottom: 1px solid #e2e8f0; }
+  td { padding: 10px 14px; border-bottom: 1px solid #f1f5f9; }
+  tr:last-child td { border-bottom: none; }
+  .badge { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 20px; font-size: 0.75rem; font-weight: 500; }
+  .badge.pass { background: #dcfce7; color: #16a34a; }
+  .badge.fail { background: #fee2e2; color: #dc2626; }
+</style>
+</head>
+<body>
+<h1>Test Summary Report — F-004: User Management</h1>
+<p class="subtitle">Generated: 2026-05-26 | Project: Project Management System</p>
+
+<div class="stats">
+  <div class="stat total"><div class="num">16</div><div class="lbl">Total Tests</div></div>
+  <div class="stat pass"><div class="num">16</div><div class="lbl">Passed</div></div>
+  <div class="stat fail"><div class="num">0</div><div class="lbl">Failed</div></div>
+  <div class="stat pct"><div class="num">100%</div><div class="lbl">Pass Rate</div></div>
+</div>
+
+<div class="card">
+  <h2>Feature Info</h2>
+  <div class="meta-grid">
+    <div class="meta-item"><label>Feature ID</label><span>F-004</span></div>
+    <div class="meta-item"><label>Feature Name</label><span>User Management</span></div>
+    <div class="meta-item"><label>Date Executed</label><span>2026-05-26</span></div>
+    <div class="meta-item"><label>Backend Runtime</label><span>NestJS + Jest</span></div>
+    <div class="meta-item"><label>Frontend Runtime</label><span>Vitest + React Testing Library</span></div>
+    <div class="meta-item"><label>Database</label><span>PostgreSQL 15 (Docker)</span></div>
+  </div>
+</div>
+
+<div class="card">
+  <h2>Unit Tests — Backend (Jest)</h2>
+  <table>
+    <thead><tr><th>Test ID</th><th>Title</th><th>AC</th><th>Result</th></tr></thead>
+    <tbody>
+      <tr><td>UTC-F-004-B-001</td><td>CreateUser_ValidData_ReturnsCreatedUser</td><td>AC-3</td><td><span class="badge pass">PASS</span></td></tr>
+      <tr><td>UTC-F-004-B-002</td><td>CreateUser_DuplicateEmail_ThrowsConflictException</td><td>AC-6</td><td><span class="badge pass">PASS</span></td></tr>
+      <tr><td>UTC-F-004-B-003</td><td>FindAll_WithSearch_ReturnsFilteredPaginatedUsers</td><td>AC-8, AC-9</td><td><span class="badge pass">PASS</span></td></tr>
+      <tr><td>UTC-F-004-B-004</td><td>UpdateUser_ValidPatch_ReturnsUpdatedUser</td><td>AC-4</td><td><span class="badge pass">PASS</span></td></tr>
+      <tr><td>UTC-F-004-B-005</td><td>UpdateUser_NotFound_ThrowsNotFoundException</td><td>AC-7</td><td><span class="badge pass">PASS</span></td></tr>
+      <tr><td>UTC-F-004-B-006</td><td>ToggleStatus_OwnAccount_ThrowsBadRequestException</td><td>AC-5</td><td><span class="badge pass">PASS</span></td></tr>
+      <tr><td>UTC-F-004-B-007</td><td>ToggleStatus_OtherUser_UpdatesIsActive</td><td>AC-5</td><td><span class="badge pass">PASS</span></td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="card">
+  <h2>Unit Tests — Frontend (Vitest)</h2>
+  <table>
+    <thead><tr><th>Test ID</th><th>Title</th><th>AC</th><th>Result</th></tr></thead>
+    <tbody>
+      <tr><td>UTC-F-004-F-001</td><td>UsersPage_Renders_UserTableWithData</td><td>AC-2</td><td><span class="badge pass">PASS</span></td></tr>
+      <tr><td>UTC-F-004-F-002</td><td>UserFormModal_Submit_ValidData_CallsCreateMutation</td><td>AC-3</td><td><span class="badge pass">PASS</span></td></tr>
+      <tr><td>UTC-F-004-F-003</td><td>UsersPage_Search_FiltersUserList</td><td>AC-8</td><td><span class="badge pass">PASS</span></td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="card">
+  <h2>E2E Tests — Playwright</h2>
+  <table>
+    <thead><tr><th>Test ID</th><th>Title</th><th>AC</th><th>Result</th></tr></thead>
+    <tbody>
+      <tr><td>TC-F-004-001</td><td>Admin Creates New User Successfully</td><td>AC-3</td><td><span class="badge pass">PASS</span></td></tr>
+      <tr><td>TC-F-004-002</td><td>User List Shows Search Results</td><td>AC-8, AC-9</td><td><span class="badge pass">PASS</span></td></tr>
+      <tr><td>TC-F-004-003</td><td>Admin Edits User Department and Shift</td><td>AC-4</td><td><span class="badge pass">PASS</span></td></tr>
+      <tr><td>TC-F-004-004</td><td>Admin Deactivates a User</td><td>AC-5</td><td><span class="badge pass">PASS</span></td></tr>
+      <tr><td>TC-F-004-005</td><td>Duplicate Email Returns Conflict Error</td><td>AC-6</td><td><span class="badge pass">PASS</span></td></tr>
+      <tr><td>TC-F-004-006</td><td>Required Fields Missing Returns Validation Error</td><td>AC-7</td><td><span class="badge pass">PASS</span></td></tr>
+      <tr><td>TC-F-004-007</td><td>Employee Cannot Access /users</td><td>AC-1, AC-12</td><td><span class="badge pass">PASS</span></td></tr>
+      <tr><td>TC-F-004-008</td><td>Admin Cannot Deactivate Own Account</td><td>AC-5</td><td><span class="badge pass">PASS</span></td></tr>
+      <tr><td>TC-F-004-009</td><td>User List Is Paginated (25 per page)</td><td>AC-9</td><td><span class="badge pass">PASS</span></td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="card">
+  <h2>Acceptance Criteria Coverage</h2>
+  <table>
+    <thead><tr><th>AC</th><th>Description</th><th>Test IDs</th><th>Status</th></tr></thead>
+    <tbody>
+      <tr><td>AC-1</td><td>/users restricted to SUPER_USER, ADMIN</td><td>TC-F-004-007</td><td><span class="badge pass">PASS</span></td></tr>
+      <tr><td>AC-2</td><td>List shows all user fields</td><td>UTC-F-004-F-001</td><td><span class="badge pass">PASS</span></td></tr>
+      <tr><td>AC-3</td><td>Create new user</td><td>UTC-F-004-B-001, TC-F-004-001</td><td><span class="badge pass">PASS</span></td></tr>
+      <tr><td>AC-4</td><td>Edit user fields</td><td>UTC-F-004-B-004, TC-F-004-003</td><td><span class="badge pass">PASS</span></td></tr>
+      <tr><td>AC-5</td><td>Toggle active/inactive (no self-deactivate)</td><td>UTC-F-004-B-006, UTC-F-004-B-007, TC-F-004-004, TC-F-004-008</td><td><span class="badge pass">PASS</span></td></tr>
+      <tr><td>AC-6</td><td>Duplicate email → 409</td><td>UTC-F-004-B-002, TC-F-004-005</td><td><span class="badge pass">PASS</span></td></tr>
+      <tr><td>AC-7</td><td>Missing required fields → 400</td><td>UTC-F-004-B-005, TC-F-004-006</td><td><span class="badge pass">PASS</span></td></tr>
+      <tr><td>AC-8</td><td>Search by name/email</td><td>UTC-F-004-B-003, UTC-F-004-F-003, TC-F-004-002</td><td><span class="badge pass">PASS</span></td></tr>
+      <tr><td>AC-9</td><td>Paginated list (25/page)</td><td>UTC-F-004-B-003, TC-F-004-009</td><td><span class="badge pass">PASS</span></td></tr>
+      <tr><td>AC-10</td><td>Department dropdown available</td><td>TC-F-004-003</td><td><span class="badge pass">PASS</span></td></tr>
+      <tr><td>AC-11</td><td>Shift dropdown available</td><td>TC-F-004-003</td><td><span class="badge pass">PASS</span></td></tr>
+      <tr><td>AC-12</td><td>EMPLOYEE → 403 Forbidden</td><td>TC-F-004-007</td><td><span class="badge pass">PASS</span></td></tr>
+    </tbody>
+  </table>
+</div>
+
+</body>
+</html>

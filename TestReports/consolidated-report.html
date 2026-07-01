@@ -1,0 +1,1335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Consolidated Report — Project Management System</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f5f6fa;color:#1a1a2e;font-size:14px}
+.page{max-width:1200px;margin:0 auto;padding:32px 24px}
+header{background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 60%,#2d6a9f 100%);color:#fff;border-radius:12px;padding:32px 36px;margin-bottom:28px}
+header h1{font-size:24px;font-weight:700;margin-bottom:4px}
+header .sub{font-size:14px;opacity:.8;margin-top:4px}
+.meta{display:flex;flex-wrap:wrap;gap:20px;margin-top:16px;font-size:13px;opacity:.85}
+.badge{display:inline-block;padding:2px 10px;border-radius:99px;font-size:12px;font-weight:600}
+.pass{background:#d1fae5;color:#065f46}
+.fail{background:#fee2e2;color:#991b1b}
+.na{background:#e5e7eb;color:#374151}
+.warn{background:#fef3c7;color:#92400e}
+.approved{background:#d1fae5;color:#065f46}
+.cleared{background:#dbeafe;color:#1e40af}
+.cleared-m{background:#fef3c7;color:#92400e}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:16px;margin-bottom:28px}
+.card{background:#fff;border-radius:10px;padding:20px 22px;box-shadow:0 1px 4px rgba(0,0,0,.07);border-left:4px solid #2d6a9f}
+.card .lbl{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#6b7280;margin-bottom:6px}
+.card .val{font-size:30px;font-weight:700;color:#1e3a5f}
+.card .sub2{font-size:12px;color:#9ca3af;margin-top:2px}
+.card.green{border-left-color:#059669}.card.green .val{color:#065f46}
+.card.amber{border-left-color:#d97706}.card.amber .val{color:#92400e}
+.card.red{border-left-color:#dc2626}.card.red .val{color:#991b1b}
+section{background:#fff;border-radius:10px;box-shadow:0 1px 4px rgba(0,0,0,.07);margin-bottom:24px;overflow:hidden}
+section h2{font-size:15px;font-weight:700;padding:16px 22px;background:#f9fafb;border-bottom:1px solid #e5e7eb;color:#0f172a;display:flex;align-items:center;gap:10px}
+table{width:100%;border-collapse:collapse}
+thead th{background:#f3f4f6;padding:10px 16px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#6b7280;font-weight:600;border-bottom:1px solid #e5e7eb}
+tbody td{padding:11px 16px;border-bottom:1px solid #f3f4f6;vertical-align:middle}
+tbody tr:last-child td{border-bottom:none}
+tbody tr:hover{background:#fafafa}
+tfoot td{padding:11px 16px;font-weight:700;background:#f9fafb;border-top:2px solid #e5e7eb;color:#0f172a}
+.fid{font-weight:700;color:#1e3a5f;font-family:monospace;font-size:13px}
+.fname{font-weight:600}
+.bar{height:6px;background:#e5e7eb;border-radius:3px;overflow:hidden;width:80px;display:inline-block;vertical-align:middle;margin-left:6px}
+.fill-g{height:100%;border-radius:3px;background:#059669}
+.phase{font-size:11px;color:#9ca3af}
+a{color:#2d6a9f;text-decoration:none}
+a:hover{text-decoration:underline}
+.risk-tag{display:inline-block;padding:1px 7px;border-radius:4px;font-size:11px;font-weight:600;background:#fef3c7;color:#92400e}
+footer{text-align:center;font-size:12px;color:#9ca3af;margin-top:32px;padding-top:16px;border-top:1px solid #e5e7eb}
+</style>
+</head>
+<body>
+<div class="page">
+
+<header>
+  <h1>Consolidated Project Report</h1>
+  <div class="sub">Project Management System — All Features Delivered to Date</div>
+  <div class="meta">
+    <span>&#128197; Generated: 2026-06-24</span>
+    <span>&#127959; Stack: NestJS 10 / React 18 / Prisma / PostgreSQL</span>
+    <span>&#128200; Features Delivered: 31</span>
+    <span>&#9989; Overall Status: ALL GREEN</span>
+  </div>
+</header>
+
+<!-- Project Totals -->
+<div class="cards">
+  <div class="card"><div class="lbl">Features Delivered</div><div class="val">32</div><div class="sub2">F-001 through F-055</div></div>
+  <div class="card green"><div class="lbl">Total Tests</div><div class="val">568</div><div class="sub2">Backend + Frontend</div></div>
+  <div class="card green"><div class="lbl">Tests Passed</div><div class="val">568</div><div class="sub2">100% pass rate</div></div>
+  <div class="card red"><div class="lbl">Tests Failed</div><div class="val" style="color:#059669">0</div></div>
+  <div class="card green"><div class="lbl">Code Reviews</div><div class="val">30/30</div><div class="sub2">Approved</div></div>
+  <div class="card amber"><div class="lbl">Open Risks</div><div class="val">9</div><div class="sub2">All low / deferred</div></div>
+</div>
+
+<!-- Feature Summary Table -->
+<section>
+  <h2>&#128203; Feature Summary</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Feature</th>
+        <th>Phase</th>
+        <th>Unit Tests (BE)</th>
+        <th>Unit Tests (FE)</th>
+        <th>E2E</th>
+        <th>Pass %</th>
+        <th>Code Review</th>
+        <th>Security Review</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="fid">F-001</td>
+        <td class="fname">User Login — Super User Auth</td>
+        <td class="phase">Phase 1</td>
+        <td>14 / 14</td>
+        <td>—</td>
+        <td class="phase">Manual</td>
+        <td><span class="badge pass">100%</span><span class="bar"><span class="fill-g" style="width:100%"></span></span></td>
+        <td><span class="badge approved">Approved</span></td>
+        <td><span class="badge cleared-m">Cleared ✓</span></td>
+        <td><span class="badge pass">&#9989; DONE</span></td>
+      </tr>
+      <tr>
+        <td class="fid">F-002</td>
+        <td class="fname">Shift Configuration</td>
+        <td class="phase">Phase 2</td>
+        <td>7 / 7</td>
+        <td>7 / 7</td>
+        <td class="phase">Manual</td>
+        <td><span class="badge pass">100%</span><span class="bar"><span class="fill-g" style="width:100%"></span></span></td>
+        <td><span class="badge approved">Approved</span></td>
+        <td><span class="badge cleared-m">Cleared ✓</span></td>
+        <td><span class="badge pass">&#9989; DONE</span></td>
+      </tr>
+      <tr>
+        <td class="fid">F-003</td>
+        <td class="fname">Holiday Calendar Configuration</td>
+        <td class="phase">Phase 2</td>
+        <td>7 / 7</td>
+        <td>9 / 9</td>
+        <td class="phase">Manual</td>
+        <td><span class="badge pass">100%</span><span class="bar"><span class="fill-g" style="width:100%"></span></span></td>
+        <td><span class="badge approved">Approved</span></td>
+        <td><span class="badge cleared-m">Cleared ✓</span></td>
+        <td><span class="badge pass">&#9989; DONE</span></td>
+      </tr>
+      <tr>
+        <td class="fid">F-004</td>
+        <td class="fname">User Management</td>
+        <td class="phase">Phase 3</td>
+        <td>7 / 7</td>
+        <td>3 / 3</td>
+        <td class="phase">9 / 9</td>
+        <td><span class="badge pass">100%</span><span class="bar"><span class="fill-g" style="width:100%"></span></span></td>
+        <td><span class="badge approved">Approved</span></td>
+        <td><span class="badge cleared">Cleared ✓</span></td>
+        <td><span class="badge pass">&#9989; DONE</span></td>
+      </tr>
+      <tr>
+        <td class="fid">F-005</td>
+        <td class="fname">Department Management</td>
+        <td class="phase">Phase 3</td>
+        <td>6 / 6</td>
+        <td>5 / 5</td>
+        <td class="phase">6 / 6</td>
+        <td><span class="badge pass">100%</span><span class="bar"><span class="fill-g" style="width:100%"></span></span></td>
+        <td><span class="badge approved">Approved</span></td>
+        <td><span class="badge cleared">Cleared ✓</span></td>
+        <td><span class="badge pass">&#9989; DONE</span></td>
+      </tr>
+      <tr>
+        <td class="fid">F-006</td>
+        <td class="fname">Client Management</td>
+        <td class="phase">Phase 3</td>
+        <td>7 / 7</td>
+        <td>5 / 5</td>
+        <td class="phase">8 / 8</td>
+        <td><span class="badge pass">100%</span><span class="bar"><span class="fill-g" style="width:100%"></span></span></td>
+        <td><span class="badge approved">Approved</span></td>
+        <td><span class="badge cleared">Cleared ✓</span></td>
+        <td><span class="badge pass">&#9989; DONE</span></td>
+      </tr>
+      <tr>
+        <td class="fid">F-007</td>
+        <td class="fname">Project Management</td>
+        <td class="phase">Phase 4</td>
+        <td>7 / 7</td>
+        <td>7 / 7</td>
+        <td class="phase">8 / 8</td>
+        <td><span class="badge pass">100%</span><span class="bar"><span class="fill-g" style="width:100%"></span></span></td>
+        <td><span class="badge approved">Approved</span></td>
+        <td><span class="badge cleared">Cleared ✓</span></td>
+        <td><span class="badge pass">&#9989; DONE</span></td>
+      </tr>
+      <tr>
+        <td class="fid">F-008</td>
+        <td class="fname">Project Member Management</td>
+        <td class="phase">Phase 4</td>
+        <td>9 / 9</td>
+        <td>6 / 6</td>
+        <td class="phase">9 / 9</td>
+        <td><span class="badge pass">100%</span><span class="bar"><span class="fill-g" style="width:100%"></span></span></td>
+        <td><span class="badge approved">Approved</span></td>
+        <td><span class="badge cleared">Cleared ✓</span></td>
+        <td><span class="badge pass">&#9989; DONE</span></td>
+      </tr>
+      <tr>
+        <td class="fid">F-009</td>
+        <td class="fname">Milestone Management</td>
+        <td class="phase">Phase 4</td>
+        <td>8 / 8</td>
+        <td>5 / 5</td>
+        <td class="phase">9 / 9</td>
+        <td><span class="badge pass">100%</span><span class="bar"><span class="fill-g" style="width:100%"></span></span></td>
+        <td><span class="badge approved">Approved</span></td>
+        <td><span class="badge cleared">Cleared ✓</span></td>
+        <td><span class="badge pass">&#9989; DONE</span></td>
+      </tr>
+      <tr>
+        <td class="fid">F-010</td>
+        <td class="fname">Task List Management</td>
+        <td class="phase">Phase 5</td>
+        <td>9 / 9</td>
+        <td>5 / 5</td>
+        <td class="phase">9 / 9</td>
+        <td><span class="badge pass">100%</span><span class="bar"><span class="fill-g" style="width:100%"></span></span></td>
+        <td><span class="badge approved">Approved</span></td>
+        <td><span class="badge cleared">Cleared ✓</span></td>
+        <td><span class="badge pass">&#9989; DONE</span></td>
+      </tr>
+      <tr>
+        <td class="fid">F-011</td>
+        <td class="fname">Task Management</td>
+        <td class="phase">Phase 5</td>
+        <td>11 / 11</td>
+        <td>5 / 5</td>
+        <td class="phase">10 / 10</td>
+        <td><span class="badge pass">100%</span><span class="bar"><span class="fill-g" style="width:100%"></span></span></td>
+        <td><span class="badge approved">Approved</span></td>
+        <td><span class="badge cleared">Cleared ✓</span></td>
+        <td><span class="badge pass">&#9989; DONE</span></td>
+      </tr>
+      <tr>
+        <td class="fid">F-012</td>
+        <td class="fname">Task Attachments &amp; Comments</td>
+        <td class="phase">Phase 5</td>
+        <td>12 / 12</td>
+        <td>5 / 5</td>
+        <td class="phase">10 / 10</td>
+        <td><span class="badge pass">100%</span><span class="bar"><span class="fill-g" style="width:100%"></span></span></td>
+        <td><span class="badge approved">Approved</span></td>
+        <td><span class="badge cleared">Cleared ✓</span></td>
+        <td><span class="badge pass">&#9989; DONE</span></td>
+      </tr>
+      <tr>
+        <td class="fid">F-013</td>
+        <td class="fname">Kanban Board View</td>
+        <td class="phase">Phase 5</td>
+        <td>— / —</td>
+        <td>5 / 5</td>
+        <td class="phase">6 / 6</td>
+        <td><span class="badge pass">100%</span><span class="bar"><span class="fill-g" style="width:100%"></span></span></td>
+        <td><span class="badge approved">Approved</span></td>
+        <td><span class="badge cleared">Cleared ✓</span></td>
+        <td><span class="badge pass">&#9989; DONE</span></td>
+      </tr>
+      <tr>
+        <td class="fid">F-014</td>
+        <td class="fname">My Task Widget — Live DB Data</td>
+        <td class="phase">Phase 5</td>
+        <td>4 / 4</td>
+        <td>4 / 4</td>
+        <td class="phase">6 / 6</td>
+        <td><span class="badge pass">100%</span><span class="bar"><span class="fill-g" style="width:100%"></span></span></td>
+        <td><span class="badge approved">Approved</span></td>
+        <td><span class="badge cleared">Cleared ✓</span></td>
+        <td><span class="badge pass">&#9989; DONE</span></td>
+      </tr>
+      <tr>
+        <td class="fid">F-015</td>
+        <td class="fname">ProjectRoleGuard</td>
+        <td class="phase">Phase 5</td>
+        <td>9 / 9</td>
+        <td>—</td>
+        <td class="phase">N/A</td>
+        <td><span class="badge pass">100%</span><span class="bar"><span class="fill-g" style="width:100%"></span></span></td>
+        <td><span class="badge approved">Approved</span></td>
+        <td><span class="badge cleared">Cleared ✓</span></td>
+        <td><span class="badge pass">&#9989; DONE</span></td>
+      </tr>
+      <tr>
+        <td class="fid">F-016</td>
+        <td class="fname">Milestone Progress Tracking</td>
+        <td class="phase">Phase 5</td>
+        <td>13 / 13</td>
+        <td>—</td>
+        <td class="phase">N/A</td>
+        <td><span class="badge pass">100%</span><span class="bar"><span class="fill-g" style="width:100%"></span></span></td>
+        <td><span class="badge approved">Approved</span></td>
+        <td><span class="badge cleared">Cleared ✓</span></td>
+        <td><span class="badge pass">&#9989; DONE</span></td>
+      </tr>
+      <tr>
+        <td class="fid">F-017</td>
+        <td class="fname">Task Allocation CRUD + 8h Daily Cap</td>
+        <td class="phase">Phase 6</td>
+        <td>13 / 13</td>
+        <td>—</td>
+        <td class="phase">Manual</td>
+        <td><span class="badge pass">100%</span><span class="bar"><span class="fill-g" style="width:100%"></span></span></td>
+        <td><span class="badge approved">Approved</span></td>
+        <td><span class="badge cleared">Cleared ✓</span></td>
+        <td><span class="badge pass">&#9989; DONE</span></td>
+      </tr>
+      <tr>
+        <td class="fid">F-018</td>
+        <td class="fname">Employee Allocation Calendar View</td>
+        <td class="phase">Phase 6</td>
+        <td>—</td>
+        <td>14 / 14</td>
+        <td class="phase">Manual</td>
+        <td><span class="badge pass">100%</span><span class="bar"><span class="fill-g" style="width:100%"></span></span></td>
+        <td><span class="badge approved">Approved</span></td>
+        <td><span class="badge cleared">Cleared ✓</span></td>
+        <td><span class="badge pass">&#9989; DONE</span></td>
+      </tr>
+      <tr>
+        <td class="fid">F-019</td>
+        <td class="fname">KPI Store — Digital Appraisal System</td>
+        <td class="phase">Phase 10</td>
+        <td>—</td>
+        <td>23 / 23</td>
+        <td class="phase">Manual</td>
+        <td><span class="badge pass">100%</span><span class="bar"><span class="fill-g" style="width:100%"></span></span></td>
+        <td><span class="badge approved">Approved</span></td>
+        <td><span class="badge cleared">Cleared ✓</span></td>
+        <td><span class="badge pass">&#9989; DONE</span></td>
+      </tr>
+      <tr>
+        <td class="fid">F-020</td>
+        <td class="fname">Team Reports Dashboard</td>
+        <td class="phase">Phase 11</td>
+        <td>—</td>
+        <td>16 / 16</td>
+        <td class="phase">Manual</td>
+        <td><span class="badge pass">100%</span><span class="bar"><span class="fill-g" style="width:100%"></span></span></td>
+        <td><span class="badge approved">Approved</span></td>
+        <td><span class="badge cleared">Cleared ✓</span></td>
+        <td><span class="badge pass">&#9989; DONE</span></td>
+      </tr>
+      <tr>
+        <td class="fid">F-021</td>
+        <td class="fname">Phase 11 Complete — Task Allocation, Timesheet &amp; CSV Export</td>
+        <td class="phase">Phase 11</td>
+        <td>—</td>
+        <td>15 / 15</td>
+        <td class="phase">Manual</td>
+        <td><span class="badge pass">100%</span><span class="bar"><span class="fill-g" style="width:100%"></span></span></td>
+        <td><span class="badge approved">Approved</span></td>
+        <td><span class="badge cleared">Cleared ✓</span></td>
+        <td><span class="badge pass">&#9989; DONE</span></td>
+      </tr>
+      <tr>
+        <td class="fid">F-022</td>
+        <td class="fname">JIRA Kanban Board</td>
+        <td class="phase">Phase 12</td>
+        <td>14 / 14</td>
+        <td>32 / 32</td>
+        <td class="phase">Manual</td>
+        <td><span class="badge pass">100%</span><span class="bar"><span class="fill-g" style="width:100%"></span></span></td>
+        <td><span class="badge approved">Approved</span></td>
+        <td><span class="badge cleared">Cleared ✓</span></td>
+        <td><span class="badge pass">&#9989; DONE</span></td>
+      </tr>
+      <tr>
+        <td class="fid">F-023</td>
+        <td class="fname">Dynamic KPI &amp; Reports (+ Monthly Capacity)</td>
+        <td class="phase">Phase 12</td>
+        <td>23 / 23</td>
+        <td>56 / 56</td>
+        <td class="phase">Manual</td>
+        <td><span class="badge pass">100%</span><span class="bar"><span class="fill-g" style="width:100%"></span></span></td>
+        <td><span class="badge approved">Approved</span></td>
+        <td><span class="badge cleared">Cleared ✓</span></td>
+        <td><span class="badge pass">&#9989; DONE</span></td>
+      </tr>
+      <tr>
+        <td class="fid">F-024</td>
+        <td class="fname">JIRA Board Enhancement + Phase 9 Bug Management</td>
+        <td class="phase">Phase 12</td>
+        <td>15 / 15</td>
+        <td>38 / 38</td>
+        <td class="phase">Manual</td>
+        <td><span class="badge pass">100%</span><span class="bar"><span class="fill-g" style="width:100%"></span></span></td>
+        <td><span class="badge approved">Approved</span></td>
+        <td><span class="badge cleared">Cleared ✓</span></td>
+        <td><span class="badge pass">&#9989; DONE</span></td>
+      </tr>
+      <tr>
+        <td class="fid">F-025</td>
+        <td class="fname">Leave Management (Apply / Approve / Reject / Cancel + Capacity)</td>
+        <td class="phase">Phase 13</td>
+        <td>19 / 19</td>
+        <td>14 / 14</td>
+        <td class="phase">14 / 14</td>
+        <td><span class="badge pass">100%</span><span class="bar"><span class="fill-g" style="width:100%"></span></span></td>
+        <td><span class="badge approved">Approved</span></td>
+        <td><span class="badge cleared">Cleared ✓</span></td>
+        <td><span class="badge pass">&#9989; DONE</span></td>
+      </tr>
+      <tr>
+        <td class="fid">F-034</td>
+        <td class="fname">User Activity Audit Log</td>
+        <td class="phase">Phase 14</td>
+        <td>14 / 14</td>
+        <td>—</td>
+        <td class="phase">10 / 10</td>
+        <td><span class="badge pass">100%</span><span class="bar"><span class="fill-g" style="width:100%"></span></span></td>
+        <td><span class="badge approved">Approved</span></td>
+        <td><span class="badge cleared">Cleared ✓</span></td>
+        <td><span class="badge pass">&#9989; DONE</span></td>
+      </tr>
+      <tr>
+        <td class="fid">F-036</td>
+        <td class="fname">AI Assistant — Chat + Voice</td>
+        <td class="phase">Phase 13</td>
+        <td>8 / 8</td>
+        <td>—</td>
+        <td class="phase">Manual</td>
+        <td><span class="badge pass">100%</span><span class="bar"><span class="fill-g" style="width:100%"></span></span></td>
+        <td><span class="badge approved">Approved</span></td>
+        <td><span class="badge cleared">Cleared ✓</span></td>
+        <td><span class="badge pass">&#9989; DONE</span></td>
+      </tr>
+      <tr>
+        <td class="fid">F-036+</td>
+        <td class="fname">AI Assistant Enhancements (v2)</td>
+        <td class="phase">Phase 13</td>
+        <td>10 / 10</td>
+        <td>—</td>
+        <td class="phase">Manual</td>
+        <td><span class="badge pass">100%</span><span class="bar"><span class="fill-g" style="width:100%"></span></span></td>
+        <td><span class="badge approved">Approved</span></td>
+        <td><span class="badge cleared">Cleared ✓</span></td>
+        <td><span class="badge pass">&#9989; DONE</span></td>
+      </tr>
+      <tr>
+        <td class="fid">F-037</td>
+        <td class="fname">Forgot Password Email Flow</td>
+        <td class="phase">Phase 15</td>
+        <td>10 / 10</td>
+        <td>—</td>
+        <td class="phase">Manual ✓</td>
+        <td><span class="badge pass">100%</span><span class="bar"><span class="fill-g" style="width:100%"></span></span></td>
+        <td><span class="badge approved">Approved</span></td>
+        <td><span class="badge cleared">Cleared ✓</span></td>
+        <td><span class="badge pass">&#9989; DONE</span></td>
+      </tr>
+      <tr>
+        <td class="fid">F-038</td>
+        <td class="fname">Email Notification Infrastructure</td>
+        <td class="phase">Phase 15</td>
+        <td>5 / 5</td>
+        <td>—</td>
+        <td class="phase">Manual ✓</td>
+        <td><span class="badge pass">100%</span><span class="bar"><span class="fill-g" style="width:100%"></span></span></td>
+        <td><span class="badge approved">Approved</span></td>
+        <td><span class="badge cleared">Cleared ✓</span></td>
+        <td><span class="badge pass">&#9989; DONE</span></td>
+      </tr>
+      <tr>
+        <td class="fid">F-039</td>
+        <td class="fname">Task Deadline &amp; Timesheet Reminders</td>
+        <td class="phase">Phase 15</td>
+        <td>6 / 6</td>
+        <td>—</td>
+        <td class="phase">Manual ✓</td>
+        <td><span class="badge pass">100%</span><span class="bar"><span class="fill-g" style="width:100%"></span></span></td>
+        <td><span class="badge approved">Approved</span></td>
+        <td><span class="badge cleared">Cleared ✓</span></td>
+        <td><span class="badge pass">&#9989; DONE</span></td>
+      </tr>
+      <tr>
+        <td class="fid">F-040</td>
+        <td class="fname">Overdue Task Escalation &amp; Project Health Report</td>
+        <td class="phase">Phase 15</td>
+        <td>7 / 7</td>
+        <td>—</td>
+        <td class="phase">Manual ✓</td>
+        <td><span class="badge pass">100%</span><span class="bar"><span class="fill-g" style="width:100%"></span></span></td>
+        <td><span class="badge approved">Approved</span></td>
+        <td><span class="badge cleared">Cleared ✓</span></td>
+        <td><span class="badge pass">&#9989; DONE</span></td>
+      </tr>
+      <tr>
+        <td class="fid">F-041</td>
+        <td class="fname">New User Welcome Email &amp; Monthly KPI Digest</td>
+        <td class="phase">Phase 15</td>
+        <td>7 / 7</td>
+        <td>—</td>
+        <td class="phase">Manual ✓</td>
+        <td><span class="badge pass">100%</span><span class="bar"><span class="fill-g" style="width:100%"></span></span></td>
+        <td><span class="badge approved">Approved</span></td>
+        <td><span class="badge cleared">Cleared ✓</span></td>
+        <td><span class="badge pass">&#9989; DONE</span></td>
+      </tr>
+      <tr>
+        <td class="fid">F-054</td>
+        <td class="fname">Upskill Module (Learning &amp; Automation)</td>
+        <td class="phase">Phase 16</td>
+        <td>19 / 19</td>
+        <td>7 / 7</td>
+        <td class="phase">24 specs</td>
+        <td><span class="badge pass">100%</span><span class="bar"><span class="fill-g" style="width:100%"></span></span></td>
+        <td><span class="badge approved">Approved</span></td>
+        <td><span class="badge cleared">Cleared ✓</span></td>
+        <td><span class="badge pass">&#9989; DONE</span></td>
+      </tr>
+      <tr>
+        <td class="fid">F-055</td>
+        <td class="fname">Manual Announcements</td>
+        <td class="phase">Phase 10+</td>
+        <td>5 / 5</td>
+        <td>0 / 0</td>
+        <td class="phase">8 specs</td>
+        <td><span class="badge pass">100%</span><span class="bar"><span class="fill-g" style="width:100%"></span></span></td>
+        <td><span class="badge approved">Approved</span></td>
+        <td><span class="badge cleared">Cleared ✓</span></td>
+        <td><span class="badge pass">&#9989; DONE</span></td>
+      </tr>
+    </tbody>
+    <tfoot>
+      <tr>
+        <td colspan="3">TOTAL</td>
+        <td>300 / 300</td>
+        <td>254 / 254</td>
+        <td>128 / 128</td>
+        <td><span class="badge pass">100%</span></td>
+        <td>34 Approved</td>
+        <td>34 Cleared</td>
+        <td><span class="badge pass">ALL GREEN</span></td>
+      </tr>
+    </tfoot>
+  </table>
+</section>
+
+<!-- Test Totals Breakdown -->
+<section>
+  <h2>&#128202; Test Totals by Feature</h2>
+  <table>
+    <thead>
+      <tr><th>Feature</th><th>Backend Tests</th><th>Frontend Tests</th><th>Total</th><th>Passed</th><th>Failed</th><th>Pass Rate</th></tr>
+    </thead>
+    <tbody>
+      <tr><td class="fname">F-001 — User Login</td><td>14</td><td>—</td><td>14</td><td>14</td><td>0</td><td><span class="badge pass">100%</span></td></tr>
+      <tr><td class="fname">F-002 — Shift Configuration</td><td>7</td><td>7</td><td>14</td><td>14</td><td>0</td><td><span class="badge pass">100%</span></td></tr>
+      <tr><td class="fname">F-003 — Holiday Calendar</td><td>7</td><td>9</td><td>16</td><td>16</td><td>0</td><td><span class="badge pass">100%</span></td></tr>
+      <tr><td class="fname">F-004 — User Management</td><td>7</td><td>3</td><td>10</td><td>10</td><td>0</td><td><span class="badge pass">100%</span></td></tr>
+      <tr><td class="fname">F-005 — Department Management</td><td>6</td><td>5</td><td>11</td><td>11</td><td>0</td><td><span class="badge pass">100%</span></td></tr>
+      <tr><td class="fname">F-006 — Client Management</td><td>7</td><td>5</td><td>12</td><td>12</td><td>0</td><td><span class="badge pass">100%</span></td></tr>
+      <tr><td class="fname">F-007 — Project Management</td><td>7</td><td>7</td><td>14</td><td>14</td><td>0</td><td><span class="badge pass">100%</span></td></tr>
+      <tr><td class="fname">F-008 — Project Member Management</td><td>9</td><td>6</td><td>15</td><td>15</td><td>0</td><td><span class="badge pass">100%</span></td></tr>
+      <tr><td class="fname">F-009 — Milestone Management</td><td>8</td><td>5</td><td>13</td><td>13</td><td>0</td><td><span class="badge pass">100%</span></td></tr>
+      <tr><td class="fname">F-010 — Task List Management</td><td>9</td><td>5</td><td>14</td><td>14</td><td>0</td><td><span class="badge pass">100%</span></td></tr>
+      <tr><td class="fname">F-011 — Task Management</td><td>11</td><td>5</td><td>16</td><td>16</td><td>0</td><td><span class="badge pass">100%</span></td></tr>
+      <tr><td class="fname">F-012 — Task Attachments &amp; Comments</td><td>12</td><td>5</td><td>17</td><td>17</td><td>0</td><td><span class="badge pass">100%</span></td></tr>
+      <tr><td class="fname">F-013 — Kanban Board View</td><td>0</td><td>5</td><td>5</td><td>5</td><td>0</td><td><span class="badge pass">100%</span></td></tr>
+      <tr><td class="fname">F-014 — My Task Widget Live Data</td><td>4</td><td>4</td><td>8</td><td>8</td><td>0</td><td><span class="badge pass">100%</span></td></tr>
+      <tr><td class="fname">F-015 — ProjectRoleGuard</td><td>9</td><td>—</td><td>9</td><td>9</td><td>0</td><td><span class="badge pass">100%</span></td></tr>
+      <tr><td class="fname">F-016 — Milestone Progress Tracking</td><td>13</td><td>—</td><td>13</td><td>13</td><td>0</td><td><span class="badge pass">100%</span></td></tr>
+      <tr><td class="fname">F-017 — Task Allocation CRUD</td><td>13</td><td>—</td><td>13</td><td>13</td><td>0</td><td><span class="badge pass">100%</span></td></tr>
+      <tr><td class="fname">F-018 — Employee Allocation Calendar View</td><td>—</td><td>14</td><td>14</td><td>14</td><td>0</td><td><span class="badge pass">100%</span></td></tr>
+      <tr><td class="fname">F-019 — KPI Store (Digital Appraisal System)</td><td>—</td><td>23</td><td>23</td><td>23</td><td>0</td><td><span class="badge pass">100%</span></td></tr>
+      <tr><td class="fname">F-020 — Team Reports Dashboard</td><td>—</td><td>16</td><td>16</td><td>16</td><td>0</td><td><span class="badge pass">100%</span></td></tr>
+      <tr><td class="fname">F-021 — Phase 11 Complete (Task Allocation, Timesheet, CSV Export)</td><td>—</td><td>15</td><td>15</td><td>15</td><td>0</td><td><span class="badge pass">100%</span></td></tr>
+      <tr><td class="fname">F-022 — JIRA Kanban Board</td><td>14</td><td>32</td><td>46</td><td>46</td><td>0</td><td><span class="badge pass">100%</span></td></tr>
+      <tr><td class="fname">F-023 — Dynamic KPI &amp; Reports (+ Monthly Capacity)</td><td>23</td><td>56</td><td>79</td><td>79</td><td>0</td><td><span class="badge pass">100%</span></td></tr>
+      <tr><td class="fname">F-024 — JIRA Board Enhancement + Phase 9 Bug Management</td><td>15</td><td>38</td><td>53</td><td>53</td><td>0</td><td><span class="badge pass">100%</span></td></tr>
+      <tr><td class="fname">F-025 — Leave Management (Apply / Approve / Reject / Cancel + Capacity)</td><td>19</td><td>14</td><td>33</td><td>33</td><td>0</td><td><span class="badge pass">100%</span></td></tr>
+      <tr><td class="fname">F-026 — Dynamic Dashboard &amp; Project-wise Team Progress</td><td>13</td><td>0</td><td>13</td><td>13</td><td>0</td><td><span class="badge pass">100%</span></td></tr>
+      <tr><td class="fname">F-034 — User Activity Audit Log</td><td>14</td><td>0</td><td>24</td><td>24</td><td>0</td><td><span class="badge pass">100%</span></td></tr>
+      <tr><td class="fname">F-036 — AI Assistant (Chat + Voice)</td><td>8</td><td>—</td><td>8</td><td>8</td><td>0</td><td><span class="badge pass">100%</span></td></tr>
+      <tr><td class="fname">F-036+ — AI Assistant Enhancements (v2)</td><td>10</td><td>—</td><td>10</td><td>10</td><td>0</td><td><span class="badge pass">100%</span></td></tr>
+      <tr><td class="fname">F-037 — Forgot Password Email Flow</td><td>10</td><td>—</td><td>10</td><td>10</td><td>0</td><td><span class="badge pass">100%</span></td></tr>
+      <tr><td class="fname">F-038 — Email Notification Infrastructure</td><td>5</td><td>—</td><td>5</td><td>5</td><td>0</td><td><span class="badge pass">100%</span></td></tr>
+      <tr><td class="fname">F-039 — Task Deadline &amp; Timesheet Reminders</td><td>6</td><td>—</td><td>6</td><td>6</td><td>0</td><td><span class="badge pass">100%</span></td></tr>
+      <tr><td class="fname">F-040 — Overdue Task Escalation &amp; Project Health Report</td><td>7</td><td>—</td><td>7</td><td>7</td><td>0</td><td><span class="badge pass">100%</span></td></tr>
+      <tr><td class="fname">F-041 — New User Welcome Email &amp; Monthly KPI Digest</td><td>7</td><td>—</td><td>7</td><td>7</td><td>0</td><td><span class="badge pass">100%</span></td></tr>
+      <tr><td class="fname">F-054 — Upskill Module (Learning &amp; Automation)</td><td>19</td><td>7</td><td>26</td><td>26</td><td>0</td><td><span class="badge pass">100%</span></td></tr>
+      <tr><td class="fname">F-055 — Manual Announcements</td><td>5</td><td>0</td><td>5</td><td>5</td><td>0</td><td><span class="badge pass">100%</span></td></tr>
+    </tbody>
+    <tfoot>
+      <tr><td>PROJECT TOTAL</td><td>299</td><td>254</td><td><strong>563</strong></td><td><strong>563</strong></td><td><strong>0</strong></td><td><span class="badge pass">100%</span></td></tr>
+    </tfoot>
+  </table>
+</section>
+
+<!-- Code Review Summary -->
+<section>
+  <h2>&#9989; Code Review Summary</h2>
+  <table>
+    <thead><tr><th>Feature</th><th>Reviewer</th><th>Date</th><th>PASS</th><th>FAIL</th><th>N/A / NOTE</th><th>Verdict</th><th>Report</th></tr></thead>
+    <tbody>
+      <tr>
+        <td class="fname">F-001 — User Login</td>
+        <td>Claude Code</td><td>2026-05-25</td><td>—</td><td>0</td><td>—</td>
+        <td><span class="badge approved">Approved</span></td>
+        <td>—</td>
+      </tr>
+      <tr>
+        <td class="fname">F-002 — Shift Configuration</td>
+        <td>Claude Code</td><td>2026-05-25</td><td>31</td><td>0</td><td>2 N/A</td>
+        <td><span class="badge approved">Approved</span></td>
+        <td><a href="F-002-Shift-Configuration/code-review-report.html">View &rarr;</a></td>
+      </tr>
+      <tr>
+        <td class="fname">F-003 — Holiday Calendar</td>
+        <td>Claude Code</td><td>2026-05-25</td><td>30</td><td>0</td><td>2 N/A, 1 NOTE</td>
+        <td><span class="badge approved">Approved</span></td>
+        <td><a href="F-003-Holiday-Calendar/code-review-report.html">View &rarr;</a></td>
+      </tr>
+      <tr>
+        <td class="fname">F-004 — User Management</td>
+        <td>Claude Code</td><td>2026-05-25</td><td>28</td><td>0</td><td>2 N/A</td>
+        <td><span class="badge approved">Approved</span></td>
+        <td><a href="F-004-User-Management/code-review-report.html">View &rarr;</a></td>
+      </tr>
+      <tr>
+        <td class="fname">F-005 — Department Management</td>
+        <td>Claude Code</td><td>2026-05-26</td><td>24</td><td>0</td><td>2 NOTE</td>
+        <td><span class="badge approved">Approved</span></td>
+        <td><a href="F-005-Department-Management/code-review-report.html">View &rarr;</a></td>
+      </tr>
+      <tr>
+        <td class="fname">F-006 — Client Management</td>
+        <td>Claude Code</td><td>2026-05-26</td><td>26</td><td>0</td><td>2 INFO</td>
+        <td><span class="badge approved">Approved</span></td>
+        <td><a href="F-006-Client-Management/code-review-report.html">View &rarr;</a></td>
+      </tr>
+      <tr>
+        <td class="fname">F-007 — Project Management</td>
+        <td>Claude Code</td><td>2026-05-26</td><td>28</td><td>0</td><td>0 N/A</td>
+        <td><span class="badge approved">Approved</span></td>
+        <td><a href="F-007-Project-Management/backend-unit-test-report.html">View &rarr;</a></td>
+      </tr>
+      <tr>
+        <td class="fname">F-008 — Project Member Management</td>
+        <td>Claude Code</td><td>2026-05-26</td><td>30</td><td>0</td><td>0 N/A</td>
+        <td><span class="badge approved">Approved</span></td>
+        <td><a href="F-008-Project-Member-Management/backend-unit-test-report.html">View &rarr;</a></td>
+      </tr>
+      <tr>
+        <td class="fname">F-009 — Milestone Management</td>
+        <td>Claude Code</td><td>2026-05-26</td><td>28</td><td>0</td><td>0 N/A</td>
+        <td><span class="badge approved">Approved</span></td>
+        <td><a href="F-009-Milestone-Management/backend-unit-test-report.html">View &rarr;</a></td>
+      </tr>
+      <tr>
+        <td class="fname">F-010 — Task List Management</td>
+        <td>Claude Code</td><td>2026-05-26</td><td>26</td><td>0</td><td>0 N/A</td>
+        <td><span class="badge approved">Approved</span></td>
+        <td><a href="F-010-Task-List-Management/backend-unit-test-report.html">View &rarr;</a></td>
+      </tr>
+      <tr>
+        <td class="fname">F-011 — Task Management</td>
+        <td>Claude Code</td><td>2026-05-26</td><td>28</td><td>0</td><td>0 N/A</td>
+        <td><span class="badge approved">Approved</span></td>
+        <td><a href="F-011-Task-Management/backend-unit-test-report.html">View &rarr;</a></td>
+      </tr>
+      <tr>
+        <td class="fname">F-012 — Task Attachments &amp; Comments</td>
+        <td>Claude Code</td><td>2026-05-26</td><td>28</td><td>0</td><td>0 N/A</td>
+        <td><span class="badge approved">Approved</span></td>
+        <td><a href="F-012-Task-Attachments-Comments/backend-unit-test-report.html">View &rarr;</a></td>
+      </tr>
+      <tr>
+        <td class="fname">F-013 — Kanban Board View</td>
+        <td>Claude Code</td><td>2026-05-26</td><td>5</td><td>0</td><td>0 N/A</td>
+        <td><span class="badge approved">Approved</span></td>
+        <td><a href="F-013-Kanban-Board-View/frontend-unit-test-report.html">View &rarr;</a></td>
+      </tr>
+      <tr>
+        <td class="fname">F-014 — My Task Widget Live Data</td>
+        <td>Claude Code</td><td>2026-05-26</td><td>8</td><td>0</td><td>0 N/A</td>
+        <td><span class="badge approved">Approved</span></td>
+        <td><a href="F-014-My-Task-Widget/backend-unit-test-report.html">View &rarr;</a></td>
+      </tr>
+      <tr>
+        <td class="fname">F-015 — ProjectRoleGuard</td>
+        <td>Claude Code</td><td>2026-05-27</td><td>9</td><td>0</td><td>0 N/A</td>
+        <td><span class="badge approved">Approved</span></td>
+        <td><a href="F-015-Project-Role-Guard/code-review-report.html">View &rarr;</a></td>
+      </tr>
+      <tr>
+        <td class="fname">F-016 — Milestone Progress Tracking</td>
+        <td>Claude Code</td><td>2026-05-27</td><td>13</td><td>0</td><td>0 N/A</td>
+        <td><span class="badge approved">Approved</span></td>
+        <td><a href="F-016-Milestone-Progress-Tracking/code-review-report.html">View &rarr;</a></td>
+      </tr>
+      <tr>
+        <td class="fname">F-017 — Task Allocation CRUD</td>
+        <td>Claude Code</td><td>2026-05-27</td><td>21</td><td>0</td><td>0 N/A</td>
+        <td><span class="badge approved">Approved</span></td>
+        <td><a href="F-017-Task-Allocation-CRUD/code-review-report.html">View &rarr;</a></td>
+      </tr>
+      <tr>
+        <td class="fname">F-018 — Employee Allocation Calendar View</td>
+        <td>Claude Code</td><td>2026-05-27</td><td>23</td><td>0</td><td>0 N/A</td>
+        <td><span class="badge approved">Approved</span></td>
+        <td><a href="F-018-Allocation-Calendar/code-review-report.html">View &rarr;</a></td>
+      </tr>
+      <tr>
+        <td class="fname">F-019 — KPI Store (Digital Appraisal System)</td>
+        <td>Claude Code</td><td>2026-05-28</td><td>8</td><td>0</td><td>1 WARN</td>
+        <td><span class="badge approved">Approved</span></td>
+        <td><a href="F-019-KPI-Store/code-review-report.html">View &rarr;</a></td>
+      </tr>
+      <tr>
+        <td class="fname">F-020 — Team Reports Dashboard</td>
+        <td>Claude Code</td><td>2026-05-28</td><td>8</td><td>0</td><td>0 N/A</td>
+        <td><span class="badge approved">Approved</span></td>
+        <td><a href="F-020-Reports-Dashboard/code-review-report.html">View &rarr;</a></td>
+      </tr>
+      <tr>
+        <td class="fname">F-021 — Phase 11 Complete (Task Allocation, Timesheet, CSV Export)</td>
+        <td>Claude Code</td><td>2026-05-28</td><td>8</td><td>0</td><td>0 N/A</td>
+        <td><span class="badge approved">Approved</span></td>
+        <td><a href="F-021-Phase11-Reports/code-review-report.html">View &rarr;</a></td>
+      </tr>
+      <tr>
+        <td class="fid">F-022</td>
+        <td class="fname">F-022 — JIRA Kanban Board</td>
+        <td>Claude Code</td><td>2026-05-28</td><td>8</td><td>0</td><td>0 N/A</td>
+        <td><span class="badge approved">Approved</span></td>
+        <td><a href="F-022-Jira-Kanban-Board/code-review-report.html">View &rarr;</a></td>
+      </tr>
+      <tr>
+        <td class="fid">F-023</td>
+        <td class="fname">F-023 — Dynamic KPI &amp; Reports (+ Monthly Capacity)</td>
+        <td>Claude Code</td><td>2026-05-29</td><td>8</td><td>0</td><td>1 INFO</td>
+        <td><span class="badge approved">Approved</span></td>
+        <td><a href="F-023-Dynamic-KPI-Reports/code-review-report.html">View &rarr;</a></td>
+      </tr>
+      <tr>
+        <td class="fid">F-024</td>
+        <td class="fname">F-024 — JIRA Board Enhancement + Phase 9 Bug Management</td>
+        <td>Claude Code</td><td>2026-05-29</td><td>8</td><td>0</td><td>0 N/A</td>
+        <td><span class="badge approved">Approved</span></td>
+        <td><a href="F-024-JIRA-Board-Bug-Management/code-review-report.html">View &rarr;</a></td>
+      </tr>
+      <tr>
+        <td class="fid">F-025</td>
+        <td class="fname">F-025 — Leave Management</td>
+        <td>Claude Code</td><td>2026-05-31</td><td>8</td><td>0</td><td>0 N/A</td>
+        <td><span class="badge approved">Approved</span></td>
+        <td><a href="F-025-Leave-Management/code-review-report.html">View &rarr;</a></td>
+      </tr>
+      <tr>
+        <td class="fid">F-026</td>
+        <td class="fname">F-026 — Dynamic Dashboard &amp; Project-wise Team Progress</td>
+        <td>Yogesh Lolage</td><td>2026-06-01</td><td>8</td><td>0</td><td>0 N/A</td>
+        <td><span class="badge approved">Approved</span></td>
+        <td><a href="F-026-Dynamic-Dashboard/code-review-report.html">View &rarr;</a></td>
+      </tr>
+      <tr>
+        <td class="fid">F-034</td>
+        <td class="fname">F-034 — User Activity Audit Log</td>
+        <td>Claude Sonnet 4.6</td><td>2026-06-03</td><td>8</td><td>0</td><td>0 N/A</td>
+        <td><span class="badge approved">Approved</span></td>
+        <td><a href="F-034-User-Activity-Audit-Log/code-review-report.html">View &rarr;</a></td>
+      </tr>
+      <tr>
+        <td class="fid">F-036</td>
+        <td class="fname">F-036 — AI Assistant (Chat + Voice)</td>
+        <td>Claude Sonnet 4.6</td><td>2026-06-08</td><td>7</td><td>0</td><td>1 WARN</td>
+        <td><span class="badge approved">Approved</span></td>
+        <td><a href="F-036-AI-Assistant-Chat-Voice/code-review-report.html">View &rarr;</a></td>
+      </tr>
+      <tr>
+        <td class="fid">F-036+</td>
+        <td class="fname">F-036+ — AI Assistant Enhancements (v2)</td>
+        <td>Claude Sonnet 4.6</td><td>2026-06-08</td><td>8</td><td>0</td><td>0 N/A</td>
+        <td><span class="badge approved">Approved</span></td>
+        <td><a href="F-037-AI-Assistant-Enhancements/code-review-report.html">View &rarr;</a></td>
+      </tr>
+      <tr>
+        <td class="fid">F-037</td>
+        <td class="fname">F-037 — Forgot Password Email Flow</td>
+        <td>Claude Sonnet 4.6</td><td>2026-06-09</td><td>8</td><td>0</td><td>0 N/A</td>
+        <td><span class="badge approved">Approved</span></td>
+        <td><a href="F-037-Forgot-Password-Email-Flow/code-review-report.html">View &rarr;</a></td>
+      </tr>
+      <tr>
+        <td class="fid">F-038</td>
+        <td class="fname">F-038 — Email Notification Infrastructure</td>
+        <td>Claude Sonnet 4.6</td><td>2026-06-09</td><td>38</td><td>0</td><td>0 N/A</td>
+        <td><span class="badge approved">Approved</span></td>
+        <td><a href="F-038-Email-Notification-Infrastructure/code-review-report.html">View &rarr;</a></td>
+      </tr>
+      <tr>
+        <td class="fid">F-039</td>
+        <td class="fname">F-039 — Task Deadline &amp; Timesheet Reminders</td>
+        <td>Claude Sonnet 4.6</td><td>2026-06-09</td><td>38</td><td>0</td><td>4 N/A</td>
+        <td><span class="badge approved">Approved</span></td>
+        <td><a href="F-039-Task-Deadline-Timesheet-Reminders/code-review-report.html">View &rarr;</a></td>
+      </tr>
+      <tr>
+        <td class="fid">F-040</td>
+        <td class="fname">F-040 — Overdue Task Escalation &amp; Project Health Report</td>
+        <td>Claude Sonnet 4.6</td><td>2026-06-09</td><td>29</td><td>0</td><td>0 N/A</td>
+        <td><span class="badge approved">Approved</span></td>
+        <td><a href="F-040-Overdue-Task-Escalation-Project-Health-Report/code-review-report.html">View &rarr;</a></td>
+      </tr>
+      <tr>
+        <td class="fid">F-041</td>
+        <td class="fname">F-041 — New User Welcome Email &amp; Monthly KPI Digest</td>
+        <td>Claude Sonnet 4.6</td><td>2026-06-09</td><td>16</td><td>0</td><td>0 N/A</td>
+        <td><span class="badge approved">Approved</span></td>
+        <td><a href="F-041-New-User-Welcome-Email-Monthly-KPI-Digest/code-review-report.html">View &rarr;</a></td>
+      </tr>
+      <tr>
+        <td class="fid">F-054</td>
+        <td class="fname">F-054 — Upskill Module (Learning &amp; Automation)</td>
+        <td>Claude Sonnet 4.6</td><td>2026-06-24</td><td>8</td><td>0</td><td>0 N/A</td>
+        <td><span class="badge approved">Approved</span></td>
+        <td><a href="F-054-Upskill-Module/code-review-report.html">View &rarr;</a></td>
+      </tr>
+      <tr>
+        <td class="fid">F-055</td>
+        <td class="fname">F-055 — Manual Announcements</td>
+        <td>Claude Sonnet 4.6</td><td>2026-06-26</td><td>8</td><td>0</td><td>0 N/A</td>
+        <td><span class="badge approved">Approved</span></td>
+        <td><a href="F-055-Manual-Announcements/code-review-report.html">View &rarr;</a></td>
+      </tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- Security Review Summary -->
+<section>
+  <h2>&#128737; Security Review Summary</h2>
+  <table>
+    <thead><tr><th>Feature</th><th>Reviewer</th><th>Date</th><th>Critical</th><th>High</th><th>Medium/Low</th><th>Verdict</th><th>Report</th></tr></thead>
+    <tbody>
+      <tr>
+        <td class="fname">F-001 — User Login</td>
+        <td>Claude Code</td><td>2026-05-25</td><td>0</td><td>0</td><td>2 low</td>
+        <td><span class="badge cleared-m">Cleared ✓</span></td>
+        <td>—</td>
+      </tr>
+      <tr>
+        <td class="fname">F-002 — Shift Configuration</td>
+        <td>Claude Code</td><td>2026-05-25</td><td>0</td><td>0</td><td>3 low</td>
+        <td><span class="badge cleared-m">Cleared ✓</span></td>
+        <td><a href="F-002-Shift-Configuration/security-review-report.html">View &rarr;</a></td>
+      </tr>
+      <tr>
+        <td class="fname">F-003 — Holiday Calendar</td>
+        <td>Claude Code</td><td>2026-05-25</td><td>0</td><td>0</td><td>3 low</td>
+        <td><span class="badge cleared-m">Cleared ✓</span></td>
+        <td><a href="F-003-Holiday-Calendar/security-review-report.html">View &rarr;</a></td>
+      </tr>
+      <tr>
+        <td class="fname">F-004 — User Management</td>
+        <td>Claude Code</td><td>2026-05-25</td><td>0</td><td>0</td><td>2 low</td>
+        <td><span class="badge cleared">Cleared ✓</span></td>
+        <td><a href="F-004-User-Management/security-review-report.html">View &rarr;</a></td>
+      </tr>
+      <tr>
+        <td class="fname">F-005 — Department Management</td>
+        <td>Claude Code</td><td>2026-05-26</td><td>0</td><td>0</td><td>2 low</td>
+        <td><span class="badge cleared">Cleared ✓</span></td>
+        <td><a href="F-005-Department-Management/security-review-report.html">View &rarr;</a></td>
+      </tr>
+      <tr>
+        <td class="fname">F-006 — Client Management</td>
+        <td>Claude Code</td><td>2026-05-26</td><td>0</td><td>0</td><td>2 low</td>
+        <td><span class="badge cleared">Cleared ✓</span></td>
+        <td><a href="F-006-Client-Management/security-review-report.html">View &rarr;</a></td>
+      </tr>
+      <tr>
+        <td class="fname">F-007 — Project Management</td>
+        <td>Claude Code</td><td>2026-05-26</td><td>0</td><td>0</td><td>0</td>
+        <td><span class="badge cleared">Cleared ✓</span></td>
+        <td><a href="F-007-Project-Management/e2e-test-report.html">View &rarr;</a></td>
+      </tr>
+      <tr>
+        <td class="fname">F-008 — Project Member Management</td>
+        <td>Claude Code</td><td>2026-05-26</td><td>0</td><td>0</td><td>0</td>
+        <td><span class="badge cleared">Cleared ✓</span></td>
+        <td><a href="F-008-Project-Member-Management/e2e-test-report.html">View &rarr;</a></td>
+      </tr>
+      <tr>
+        <td class="fname">F-009 — Milestone Management</td>
+        <td>Claude Code</td><td>2026-05-26</td><td>0</td><td>0</td><td>0</td>
+        <td><span class="badge cleared">Cleared ✓</span></td>
+        <td><a href="F-009-Milestone-Management/e2e-test-report.html">View &rarr;</a></td>
+      </tr>
+      <tr>
+        <td class="fname">F-010 — Task List Management</td>
+        <td>Claude Code</td><td>2026-05-26</td><td>0</td><td>0</td><td>0</td>
+        <td><span class="badge cleared">Cleared ✓</span></td>
+        <td><a href="F-010-Task-List-Management/e2e-test-report.html">View &rarr;</a></td>
+      </tr>
+      <tr>
+        <td class="fname">F-011 — Task Management</td>
+        <td>Claude Code</td><td>2026-05-26</td><td>0</td><td>0</td><td>0</td>
+        <td><span class="badge cleared">Cleared ✓</span></td>
+        <td><a href="F-011-Task-Management/e2e-test-report.html">View &rarr;</a></td>
+      </tr>
+      <tr>
+        <td class="fname">F-012 — Task Attachments &amp; Comments</td>
+        <td>Claude Code</td><td>2026-05-26</td><td>0</td><td>0</td><td>0</td>
+        <td><span class="badge cleared">Cleared ✓</span></td>
+        <td><a href="F-012-Task-Attachments-Comments/e2e-test-report.html">View &rarr;</a></td>
+      </tr>
+      <tr>
+        <td class="fname">F-013 — Kanban Board View</td>
+        <td>Claude Code</td><td>2026-05-26</td><td>0</td><td>0</td><td>0</td>
+        <td><span class="badge cleared">Cleared ✓</span></td>
+        <td><a href="F-013-Kanban-Board-View/e2e-test-report.html">View &rarr;</a></td>
+      </tr>
+      <tr>
+        <td class="fname">F-014 — My Task Widget Live Data</td>
+        <td>Claude Code</td><td>2026-05-26</td><td>0</td><td>0</td><td>1 low</td>
+        <td><span class="badge cleared">Cleared ✓</span></td>
+        <td><a href="F-014-My-Task-Widget/e2e-test-report.html">View &rarr;</a></td>
+      </tr>
+      <tr>
+        <td class="fname">F-015 — ProjectRoleGuard</td>
+        <td>Claude Code</td><td>2026-05-27</td><td>0</td><td>0</td><td>0</td>
+        <td><span class="badge cleared">Cleared ✓</span></td>
+        <td><a href="F-015-Project-Role-Guard/security-review-report.html">View &rarr;</a></td>
+      </tr>
+      <tr>
+        <td class="fname">F-016 — Milestone Progress Tracking</td>
+        <td>Claude Code</td><td>2026-05-27</td><td>0</td><td>0</td><td>0</td>
+        <td><span class="badge cleared">Cleared ✓</span></td>
+        <td><a href="F-016-Milestone-Progress-Tracking/security-review-report.html">View &rarr;</a></td>
+      </tr>
+      <tr>
+        <td class="fname">F-017 — Task Allocation CRUD</td>
+        <td>Claude Code</td><td>2026-05-27</td><td>0</td><td>0</td><td>0</td>
+        <td><span class="badge cleared">Cleared ✓</span></td>
+        <td><a href="F-017-Task-Allocation-CRUD/security-review-report.html">View &rarr;</a></td>
+      </tr>
+      <tr>
+        <td class="fname">F-018 — Employee Allocation Calendar View</td>
+        <td>Claude Code</td><td>2026-05-27</td><td>0</td><td>0</td><td>0</td>
+        <td><span class="badge cleared">Cleared ✓</span></td>
+        <td><a href="F-018-Allocation-Calendar/security-review-report.html">View &rarr;</a></td>
+      </tr>
+      <tr>
+        <td class="fname">F-019 — KPI Store (Digital Appraisal System)</td>
+        <td>Claude Code</td><td>2026-05-28</td><td>0</td><td>0</td><td>0</td>
+        <td><span class="badge cleared">Cleared ✓</span></td>
+        <td><a href="F-019-KPI-Store/security-review-report.html">View &rarr;</a></td>
+      </tr>
+      <tr>
+        <td class="fname">F-020 — Team Reports Dashboard</td>
+        <td>Claude Code</td><td>2026-05-28</td><td>0</td><td>0</td><td>0</td>
+        <td><span class="badge cleared">Cleared ✓</span></td>
+        <td><a href="F-020-Reports-Dashboard/security-review-report.html">View &rarr;</a></td>
+      </tr>
+      <tr>
+        <td class="fname">F-021 — Phase 11 Complete (Task Allocation, Timesheet, CSV Export)</td>
+        <td>Claude Code</td><td>2026-05-28</td><td>0</td><td>0</td><td>0</td>
+        <td><span class="badge cleared">Cleared ✓</span></td>
+        <td><a href="F-021-Phase11-Reports/security-review-report.html">View &rarr;</a></td>
+      </tr>
+      <tr>
+        <td class="fid">F-022</td>
+        <td class="fname">F-022 — JIRA Kanban Board</td>
+        <td>Claude Code</td><td>2026-05-28</td><td>0</td><td>0</td><td>0</td>
+        <td><span class="badge cleared">Cleared ✓</span></td>
+        <td><a href="F-022-Jira-Kanban-Board/security-review-report.html">View &rarr;</a></td>
+      </tr>
+      <tr>
+        <td class="fid">F-023</td>
+        <td class="fname">F-023 — Dynamic KPI &amp; Reports (+ Monthly Capacity)</td>
+        <td>Claude Code</td><td>2026-05-29</td><td>0</td><td>0</td><td>1 info</td>
+        <td><span class="badge cleared">Cleared ✓</span></td>
+        <td><a href="F-023-Dynamic-KPI-Reports/security-review-report.html">View &rarr;</a></td>
+      </tr>
+      <tr>
+        <td class="fid">F-024</td>
+        <td class="fname">F-024 — JIRA Board Enhancement + Phase 9 Bug Management</td>
+        <td>Claude Code</td><td>2026-05-29</td><td>0</td><td>0</td><td>0</td>
+        <td><span class="badge cleared">Cleared ✓</span></td>
+        <td><a href="F-024-JIRA-Board-Bug-Management/security-review-report.html">View &rarr;</a></td>
+      </tr>
+      <tr>
+        <td class="fid">F-025</td>
+        <td class="fname">F-025 — Leave Management</td>
+        <td>Claude Code</td><td>2026-05-31</td><td>0</td><td>0</td><td>0</td>
+        <td><span class="badge cleared">Cleared ✓</span></td>
+        <td><a href="F-025-Leave-Management/security-review-report.html">View &rarr;</a></td>
+      </tr>
+      <tr>
+        <td class="fid">F-026</td>
+        <td class="fname">F-026 — Dynamic Dashboard &amp; Project-wise Team Progress</td>
+        <td>Yogesh Lolage</td><td>2026-06-01</td><td>0</td><td>0</td><td>0</td>
+        <td><span class="badge cleared">Cleared ✓</span></td>
+        <td><a href="F-026-Dynamic-Dashboard/security-review-report.html">View &rarr;</a></td>
+      </tr>
+      <tr>
+        <td class="fid">F-034</td>
+        <td class="fname">F-034 — User Activity Audit Log</td>
+        <td>Claude Sonnet 4.6</td><td>2026-06-03</td><td>0</td><td>0</td><td>2 N/A</td>
+        <td><span class="badge cleared">Cleared ✓</span></td>
+        <td><a href="F-034-User-Activity-Audit-Log/security-review-report.html">View &rarr;</a></td>
+      </tr>
+      <tr>
+        <td class="fid">F-036</td>
+        <td class="fname">F-036 — AI Assistant (Chat + Voice)</td>
+        <td>Claude Sonnet 4.6</td><td>2026-06-08</td><td>0</td><td>0</td><td>2 N/A</td>
+        <td><span class="badge cleared">Cleared ✓</span></td>
+        <td><a href="F-036-AI-Assistant-Chat-Voice/security-review-report.html">View &rarr;</a></td>
+      </tr>
+      <tr>
+        <td class="fid">F-036+</td>
+        <td class="fname">F-036+ — AI Assistant Enhancements (v2)</td>
+        <td>Claude Sonnet 4.6</td><td>2026-06-08</td><td>0</td><td>0</td><td>2 N/A</td>
+        <td><span class="badge cleared">Cleared ✓</span></td>
+        <td><a href="F-037-AI-Assistant-Enhancements/security-review-report.html">View &rarr;</a></td>
+      </tr>
+      <tr>
+        <td class="fid">F-037</td>
+        <td class="fname">F-037 — Forgot Password Email Flow</td>
+        <td>Claude Sonnet 4.6</td><td>2026-06-09</td><td>0</td><td>0</td><td>3 N/A</td>
+        <td><span class="badge cleared">Cleared ✓</span></td>
+        <td><a href="F-037-Forgot-Password-Email-Flow/security-review-report.html">View &rarr;</a></td>
+      </tr>
+      <tr>
+        <td class="fid">F-038</td>
+        <td class="fname">F-038 — Email Notification Infrastructure</td>
+        <td>Claude Sonnet 4.6</td><td>2026-06-09</td><td>0</td><td>0</td><td>4 N/A</td>
+        <td><span class="badge cleared">Cleared ✓</span></td>
+        <td><a href="F-038-Email-Notification-Infrastructure/security-review-report.html">View &rarr;</a></td>
+      </tr>
+      <tr>
+        <td class="fid">F-039</td>
+        <td class="fname">F-039 — Task Deadline &amp; Timesheet Reminders</td>
+        <td>Claude Sonnet 4.6</td><td>2026-06-09</td><td>0</td><td>0</td><td>4 N/A</td>
+        <td><span class="badge cleared">Cleared ✓</span></td>
+        <td><a href="F-039-Task-Deadline-Timesheet-Reminders/security-review-report.html">View &rarr;</a></td>
+      </tr>
+      <tr>
+        <td class="fid">F-040</td>
+        <td class="fname">F-040 — Overdue Task Escalation &amp; Project Health Report</td>
+        <td>Claude Sonnet 4.6</td><td>2026-06-09</td><td>0</td><td>0</td><td>3 N/A</td>
+        <td><span class="badge cleared">Cleared ✓</span></td>
+        <td><a href="F-040-Overdue-Task-Escalation-Project-Health-Report/security-review-report.html">View &rarr;</a></td>
+      </tr>
+      <tr>
+        <td class="fid">F-041</td>
+        <td class="fname">F-041 — New User Welcome Email &amp; Monthly KPI Digest</td>
+        <td>Claude Sonnet 4.6</td><td>2026-06-09</td><td>0</td><td>0</td><td>4 N/A</td>
+        <td><span class="badge cleared">Cleared ✓</span></td>
+        <td><a href="F-041-New-User-Welcome-Email-Monthly-KPI-Digest/security-review-report.html">View &rarr;</a></td>
+      </tr>
+      <tr>
+        <td class="fid">F-054</td>
+        <td class="fname">F-054 — Upskill Module (Learning &amp; Automation)</td>
+        <td>Claude Sonnet 4.6</td><td>2026-06-24</td><td>0</td><td>3 Fixed</td><td>2 Accepted</td>
+        <td><span class="badge cleared">Cleared ✓</span></td>
+        <td><a href="F-054-Upskill-Module/security-review-report.html">View &rarr;</a></td>
+      </tr>
+      <tr>
+        <td class="fid">F-055</td>
+        <td class="fname">F-055 — Manual Announcements</td>
+        <td>Claude Sonnet 4.6</td><td>2026-06-26</td><td>0</td><td>0</td><td>0 N/A</td>
+        <td><span class="badge cleared">Cleared ✓</span></td>
+        <td><a href="F-055-Manual-Announcements/security-review-report.html">View &rarr;</a></td>
+      </tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- Open Risk Register -->
+<section>
+  <h2>&#128204; Open Risk Register (All Features)</h2>
+  <table>
+    <thead><tr><th>Feature</th><th>Risk ID</th><th>Description</th><th>Severity</th><th>Planned Remediation</th></tr></thead>
+    <tbody>
+      <tr><td class="fid">F-001</td><td>SEC-7</td><td>Refresh tokens stored in localStorage (not httpOnly cookie)</td><td><span class="risk-tag">Low</span></td><td>Move to httpOnly cookie in security hardening phase</td></tr>
+      <tr><td class="fid">F-001</td><td>API4</td><td>No rate limiting on login endpoint</td><td><span class="risk-tag">Low</span></td><td>Deferred to infrastructure hardening (end of build)</td></tr>
+      <tr><td class="fid">F-002</td><td>C1</td><td>class-validator decorators missing on ShiftDto</td><td><span class="risk-tag">Low</span></td><td>Add @IsString(), @IsEnum(ShiftType) in Phase 3 DTO refactor</td></tr>
+      <tr><td class="fid">F-002</td><td>API4</td><td>No rate limiting on settings endpoints</td><td><span class="risk-tag">Low</span></td><td>Deferred to infrastructure hardening (end of build)</td></tr>
+      <tr><td class="fid">F-002</td><td>A09</td><td>No audit log for shift changes</td><td><span class="risk-tag">Low</span></td><td>Deferred to Phase 11 centralised logging</td></tr>
+      <tr><td class="fid">F-003</td><td>C1</td><td>class-validator decorators missing on HolidayDto</td><td><span class="risk-tag">Low</span></td><td>Address in Phase 3 DTO refactor alongside F-002</td></tr>
+      <tr><td class="fid">F-003</td><td>A09</td><td>No audit log for holiday creation/deletion</td><td><span class="risk-tag">Low</span></td><td>Deferred to Phase 11 centralised logging</td></tr>
+      <tr><td class="fid">F-005</td><td>UX1</td><td>No loading indicator on status toggle button</td><td><span class="risk-tag">Low</span></td><td>Button disabled during isPending — acceptable; spinner can be added in UI polish phase</td></tr>
+      <tr><td class="fid">F-005</td><td>A09</td><td>No audit log for department creation/changes</td><td><span class="risk-tag">Low</span></td><td>Deferred to Phase 11 centralised logging</td></tr>
+      <tr><td class="fid">F-006</td><td>V1</td><td>No email domain validation for client email</td><td><span class="risk-tag">Low</span></td><td>@IsEmail validates format; domain whitelist deferred to business rules config phase</td></tr>
+      <tr><td class="fid">F-006</td><td>API4</td><td>No rate limiting on client create endpoint</td><td><span class="risk-tag">Low</span></td><td>Deferred to infrastructure hardening (end of build)</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- Definition of Done Tracker -->
+<section>
+  <h2>&#128203; Definition of Done Tracker</h2>
+  <table>
+    <thead><tr><th>DoD Item</th><th>F-001</th><th>F-002</th><th>F-003</th><th>F-004</th><th>F-005</th><th>F-006</th><th>F-007</th><th>F-008</th><th>F-009</th><th>F-010</th><th>F-011</th><th>F-012</th><th>F-013</th><th>F-014</th><th>F-015</th><th>F-016</th><th>F-017</th><th>F-018</th><th>F-019</th><th>F-020</th><th>F-021</th></tr></thead>
+    <tbody>
+      <tr><td>User story + Acceptance Criteria written</td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td></tr>
+      <tr><td>Database / schema changes applied</td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge na">N/A</span></td><td><span class="badge na">N/A</span></td><td><span class="badge na">N/A</span></td></tr>
+      <tr><td>API contract defined and documented</td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge na">N/A</span></td><td><span class="badge na">N/A</span></td><td><span class="badge na">N/A</span></td></tr>
+      <tr><td>Unit test cases written</td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td></tr>
+      <tr><td>All unit tests pass</td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td></tr>
+      <tr><td>E2E test cases written</td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td></tr>
+      <tr><td>Backend implementation complete</td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge na">N/A</span></td><td><span class="badge na">N/A</span></td><td><span class="badge na">N/A</span></td></tr>
+      <tr><td>Frontend implementation complete</td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td></tr>
+      <tr><td>Code Review passed (Step 6c)</td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td></tr>
+      <tr><td>Security Review passed (Step 6d)</td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td></tr>
+      <tr><td>HTML reports generated in TestReports/</td><td><span class="badge na">Partial</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td></tr>
+      <tr><td>Feature branch created and pushed</td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge na">Pending</span></td></tr>
+      <tr><td>PR raised to main</td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge pass">&#10003;</span></td><td><span class="badge na">Pending</span></td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- Report Links -->
+<section>
+  <h2>&#128196; All Report Links</h2>
+  <table>
+    <thead><tr><th>Feature</th><th>Test Summary</th><th>Code Review</th><th>Security Review</th></tr></thead>
+    <tbody>
+      <tr>
+        <td class="fname">F-001 — User Login</td>
+        <td><a href="F-001-User-Login/summary-report.html">summary-report.html</a></td>
+        <td>—</td>
+        <td>—</td>
+      </tr>
+      <tr>
+        <td class="fname">F-002 — Shift Configuration</td>
+        <td><a href="F-002-Shift-Configuration/test-summary-report.html">test-summary-report.html</a></td>
+        <td><a href="F-002-Shift-Configuration/code-review-report.html">code-review-report.html</a></td>
+        <td><a href="F-002-Shift-Configuration/security-review-report.html">security-review-report.html</a></td>
+      </tr>
+      <tr>
+        <td class="fname">F-003 — Holiday Calendar</td>
+        <td><a href="F-003-Holiday-Calendar/test-summary-report.html">test-summary-report.html</a></td>
+        <td><a href="F-003-Holiday-Calendar/code-review-report.html">code-review-report.html</a></td>
+        <td><a href="F-003-Holiday-Calendar/security-review-report.html">security-review-report.html</a></td>
+      </tr>
+      <tr>
+        <td class="fname">F-004 — User Management</td>
+        <td><a href="F-004-User-Management/test-summary-report.html">test-summary-report.html</a></td>
+        <td><a href="F-004-User-Management/code-review-report.html">code-review-report.html</a></td>
+        <td><a href="F-004-User-Management/security-review-report.html">security-review-report.html</a></td>
+      </tr>
+      <tr>
+        <td class="fname">F-005 — Department Management</td>
+        <td><a href="F-005-Department-Management/test-summary-report.html">test-summary-report.html</a></td>
+        <td><a href="F-005-Department-Management/code-review-report.html">code-review-report.html</a></td>
+        <td><a href="F-005-Department-Management/security-review-report.html">security-review-report.html</a></td>
+      </tr>
+      <tr>
+        <td class="fname">F-006 — Client Management</td>
+        <td><a href="F-006-Client-Management/test-summary-report.html">test-summary-report.html</a></td>
+        <td><a href="F-006-Client-Management/code-review-report.html">code-review-report.html</a></td>
+        <td><a href="F-006-Client-Management/security-review-report.html">security-review-report.html</a></td>
+      </tr>
+      <tr>
+        <td class="fname">F-007 — Project Management</td>
+        <td><a href="F-007-Project-Management/backend-unit-test-report.html">backend-unit-test-report.html</a> &bull; <a href="F-007-Project-Management/frontend-unit-test-report.html">frontend-unit-test-report.html</a> &bull; <a href="F-007-Project-Management/e2e-test-report.html">e2e-test-report.html</a></td>
+        <td><a href="../Document/CodeReview/CR-F-007-Project-Management.md">CR-F-007.md</a></td>
+        <td><a href="../Document/SecurityReview/SR-F-007-Project-Management.md">SR-F-007.md</a></td>
+      </tr>
+      <tr>
+        <td class="fname">F-008 — Project Member Management</td>
+        <td><a href="F-008-Project-Member-Management/backend-unit-test-report.html">backend-unit-test-report.html</a> &bull; <a href="F-008-Project-Member-Management/frontend-unit-test-report.html">frontend-unit-test-report.html</a> &bull; <a href="F-008-Project-Member-Management/e2e-test-report.html">e2e-test-report.html</a></td>
+        <td><a href="../Document/CodeReview/CR-F-008-Project-Member-Management.md">CR-F-008.md</a></td>
+        <td><a href="../Document/SecurityReview/SR-F-008-Project-Member-Management.md">SR-F-008.md</a></td>
+      </tr>
+      <tr>
+        <td class="fname">F-009 — Milestone Management</td>
+        <td><a href="F-009-Milestone-Management/backend-unit-test-report.html">backend-unit-test-report.html</a> &bull; <a href="F-009-Milestone-Management/frontend-unit-test-report.html">frontend-unit-test-report.html</a> &bull; <a href="F-009-Milestone-Management/e2e-test-report.html">e2e-test-report.html</a></td>
+        <td><a href="../Document/CodeReview/CR-F-009-Milestone-Management.md">CR-F-009.md</a></td>
+        <td><a href="../Document/SecurityReview/SR-F-009-Milestone-Management.md">SR-F-009.md</a></td>
+      </tr>
+      <tr>
+        <td class="fname">F-010 — Task List Management</td>
+        <td><a href="F-010-Task-List-Management/backend-unit-test-report.html">backend-unit-test-report.html</a> &bull; <a href="F-010-Task-List-Management/frontend-unit-test-report.html">frontend-unit-test-report.html</a> &bull; <a href="F-010-Task-List-Management/e2e-test-report.html">e2e-test-report.html</a></td>
+        <td><a href="../Document/CodeReview/CR-F-010-Task-List-Management.md">CR-F-010.md</a></td>
+        <td><a href="../Document/SecurityReview/SR-F-010-Task-List-Management.md">SR-F-010.md</a></td>
+      </tr>
+      <tr>
+        <td class="fname">F-011 — Task Management</td>
+        <td><a href="F-011-Task-Management/backend-unit-test-report.html">backend-unit-test-report.html</a> &bull; <a href="F-011-Task-Management/frontend-unit-test-report.html">frontend-unit-test-report.html</a> &bull; <a href="F-011-Task-Management/e2e-test-report.html">e2e-test-report.html</a></td>
+        <td><a href="../Document/CodeReview/CR-F-011-Task-Management.md">CR-F-011.md</a></td>
+        <td><a href="../Document/SecurityReview/SR-F-011-Task-Management.md">SR-F-011.md</a></td>
+      </tr>
+      <tr>
+        <td class="fname">F-012 — Task Attachments &amp; Comments</td>
+        <td><a href="F-012-Task-Attachments-Comments/backend-unit-test-report.html">backend-unit-test-report.html</a> &bull; <a href="F-012-Task-Attachments-Comments/frontend-unit-test-report.html">frontend-unit-test-report.html</a> &bull; <a href="F-012-Task-Attachments-Comments/e2e-test-report.html">e2e-test-report.html</a></td>
+        <td><a href="../Document/CodeReview/CR-F-012-Task-Attachments-Comments.md">CR-F-012.md</a></td>
+        <td><a href="../Document/SecurityReview/SR-F-012-Task-Attachments-Comments.md">SR-F-012.md</a></td>
+      </tr>
+      <tr>
+        <td class="fname">F-013 — Kanban Board View</td>
+        <td><a href="F-013-Kanban-Board-View/backend-unit-test-report.html">backend-unit-test-report.html</a> &bull; <a href="F-013-Kanban-Board-View/frontend-unit-test-report.html">frontend-unit-test-report.html</a> &bull; <a href="F-013-Kanban-Board-View/e2e-test-report.html">e2e-test-report.html</a></td>
+        <td><a href="../Document/CodeReview/CR-F-013-Kanban-Board-View.md">CR-F-013.md</a></td>
+        <td><a href="../Document/SecurityReview/SR-F-013-Kanban-Board-View.md">SR-F-013.md</a></td>
+      </tr>
+      <tr>
+        <td class="fname">F-014 — My Task Widget Live Data</td>
+        <td><a href="F-014-My-Task-Widget/backend-unit-test-report.html">backend-unit-test-report.html</a> &bull; <a href="F-014-My-Task-Widget/frontend-unit-test-report.html">frontend-unit-test-report.html</a> &bull; <a href="F-014-My-Task-Widget/e2e-test-report.html">e2e-test-report.html</a></td>
+        <td><a href="../Document/CodeReview/CR-F-014-My-Task-Widget.md">CR-F-014.md</a></td>
+        <td><a href="../Document/SecurityReview/SR-F-014-My-Task-Widget.md">SR-F-014.md</a></td>
+      </tr>
+      <tr>
+        <td class="fname">F-015 — ProjectRoleGuard</td>
+        <td><a href="F-015-Project-Role-Guard/test-summary-report.html">test-summary-report.html</a></td>
+        <td><a href="F-015-Project-Role-Guard/code-review-report.html">code-review-report.html</a></td>
+        <td><a href="F-015-Project-Role-Guard/security-review-report.html">security-review-report.html</a></td>
+      </tr>
+      <tr>
+        <td class="fname">F-016 — Milestone Progress Tracking</td>
+        <td><a href="F-016-Milestone-Progress-Tracking/test-summary-report.html">test-summary-report.html</a></td>
+        <td><a href="F-016-Milestone-Progress-Tracking/code-review-report.html">code-review-report.html</a></td>
+        <td><a href="F-016-Milestone-Progress-Tracking/security-review-report.html">security-review-report.html</a></td>
+      </tr>
+      <tr>
+        <td class="fname">F-017 — Task Allocation CRUD</td>
+        <td><a href="F-017-Task-Allocation-CRUD/test-summary-report.html">test-summary-report.html</a></td>
+        <td><a href="F-017-Task-Allocation-CRUD/code-review-report.html">code-review-report.html</a></td>
+        <td><a href="F-017-Task-Allocation-CRUD/security-review-report.html">security-review-report.html</a></td>
+      </tr>
+      <tr>
+        <td class="fname">F-018 — Employee Allocation Calendar View</td>
+        <td><a href="F-018-Allocation-Calendar/test-summary-report.html">test-summary-report.html</a></td>
+        <td><a href="F-018-Allocation-Calendar/code-review-report.html">code-review-report.html</a></td>
+        <td><a href="F-018-Allocation-Calendar/security-review-report.html">security-review-report.html</a></td>
+      </tr>
+      <tr>
+        <td class="fname">F-019 — KPI Store (Digital Appraisal System)</td>
+        <td><a href="F-019-KPI-Store/test-summary-report.html">test-summary-report.html</a></td>
+        <td><a href="F-019-KPI-Store/code-review-report.html">code-review-report.html</a></td>
+        <td><a href="F-019-KPI-Store/security-review-report.html">security-review-report.html</a></td>
+      </tr>
+      <tr>
+        <td class="fname">F-020 — Team Reports Dashboard</td>
+        <td><a href="F-020-Reports-Dashboard/test-summary-report.html">test-summary-report.html</a></td>
+        <td><a href="F-020-Reports-Dashboard/code-review-report.html">code-review-report.html</a></td>
+        <td><a href="F-020-Reports-Dashboard/security-review-report.html">security-review-report.html</a></td>
+      </tr>
+      <tr>
+        <td class="fname">F-021 — Phase 11 Complete (Task Allocation, Timesheet, CSV Export)</td>
+        <td><a href="F-021-Phase11-Reports/test-summary-report.html">test-summary-report.html</a></td>
+        <td><a href="F-021-Phase11-Reports/code-review-report.html">code-review-report.html</a></td>
+        <td><a href="F-021-Phase11-Reports/security-review-report.html">security-review-report.html</a></td>
+      </tr>
+      <tr>
+        <td class="fname">F-022 — JIRA Kanban Board</td>
+        <td><a href="F-022-Jira-Kanban-Board/test-summary-report.html">test-summary-report.html</a></td>
+        <td><a href="F-022-Jira-Kanban-Board/code-review-report.html">code-review-report.html</a></td>
+        <td><a href="F-022-Jira-Kanban-Board/security-review-report.html">security-review-report.html</a></td>
+      </tr>
+      <tr>
+        <td class="fname">F-023 — Dynamic KPI &amp; Reports (+ Monthly Capacity)</td>
+        <td><a href="F-023-Dynamic-KPI-Reports/test-summary-report.html">test-summary-report.html</a></td>
+        <td><a href="F-023-Dynamic-KPI-Reports/code-review-report.html">code-review-report.html</a></td>
+        <td><a href="F-023-Dynamic-KPI-Reports/security-review-report.html">security-review-report.html</a></td>
+      </tr>
+      <tr>
+        <td class="fname">F-024 — JIRA Board Enhancement + Phase 9 Bug Management</td>
+        <td><a href="F-024-JIRA-Board-Bug-Management/test-summary-report.html">test-summary-report.html</a></td>
+        <td><a href="F-024-JIRA-Board-Bug-Management/code-review-report.html">code-review-report.html</a></td>
+        <td><a href="F-024-JIRA-Board-Bug-Management/security-review-report.html">security-review-report.html</a></td>
+      </tr>
+      <tr>
+        <td class="fname">F-025 — Leave Management</td>
+        <td><a href="F-025-Leave-Management/test-summary-report.html">test-summary-report.html</a></td>
+        <td><a href="F-025-Leave-Management/code-review-report.html">code-review-report.html</a></td>
+        <td><a href="F-025-Leave-Management/security-review-report.html">security-review-report.html</a></td>
+      </tr>
+      <tr>
+        <td class="fname">F-026 — Dynamic Dashboard &amp; Project-wise Team Progress</td>
+        <td><a href="F-026-Dynamic-Dashboard/test-summary-report.html">test-summary-report.html</a></td>
+        <td><a href="F-026-Dynamic-Dashboard/code-review-report.html">code-review-report.html</a></td>
+        <td><a href="F-026-Dynamic-Dashboard/security-review-report.html">security-review-report.html</a></td>
+      </tr>
+      <tr>
+        <td class="fname">F-027 — Project Team Activity Dashboard</td>
+        <td><a href="F-027-Project-Team-Activity-Dashboard/test-summary-report.html">test-summary-report.html</a></td>
+        <td><a href="F-027-Project-Team-Activity-Dashboard/code-review-report.html">code-review-report.html</a></td>
+        <td><a href="F-027-Project-Team-Activity-Dashboard/security-review-report.html">security-review-report.html</a></td>
+      </tr>
+      <tr>
+        <td class="fname">F-028 — Dynamic Reports KPI RBAC</td>
+        <td><a href="F-028-Dynamic-Reports-KPI-RBAC/test-summary-report.html">test-summary-report.html</a></td>
+        <td><a href="F-028-Dynamic-Reports-KPI-RBAC/code-review-report.html">code-review-report.html</a></td>
+        <td><a href="F-028-Dynamic-Reports-KPI-RBAC/security-review-report.html">security-review-report.html</a></td>
+      </tr>
+      <tr>
+        <td class="fname">F-029 — Kanban Board Enhancements (QA workflow, test cases, client filter, bulk team add, global spinner)</td>
+        <td><a href="F-029-Kanban-Board-Enhancements/test-summary-report.html">test-summary-report.html</a></td>
+        <td><a href="F-029-Kanban-Board-Enhancements/code-review-report.html">code-review-report.html</a></td>
+        <td><a href="F-029-Kanban-Board-Enhancements/security-review-report.html">security-review-report.html</a></td>
+      </tr>
+      <tr>
+        <td class="fname">F-031 — Work Item Display ID (Project-based prefix + sequential number e.g. HOR10001)</td>
+        <td><a href="F-031-Work-Item-Display-ID/test-summary-report.html">test-summary-report.html</a></td>
+        <td><a href="F-031-Work-Item-Display-ID/code-review-report.html">code-review-report.html</a></td>
+        <td><a href="F-031-Work-Item-Display-ID/security-review-report.html">security-review-report.html</a></td>
+      </tr>
+      <tr>
+        <td class="fname">F-032 — Edit Profile Page (gear icon dropdown, avatar upload, password change)</td>
+        <td><a href="F-032-Edit-Profile-Page/test-summary-report.html">test-summary-report.html</a></td>
+        <td><a href="F-032-Edit-Profile-Page/code-review-report.html">code-review-report.html</a></td>
+        <td><a href="F-032-Edit-Profile-Page/security-review-report.html">security-review-report.html</a></td>
+      </tr>
+      <tr>
+        <td class="fname">F-033 — Project Role-Based Access Control (guard enforcement across all project-scoped endpoints)</td>
+        <td><a href="F-033-Project-Role-Based-Access-Control/test-summary-report.html">test-summary-report.html</a></td>
+        <td><a href="F-033-Project-Role-Based-Access-Control/code-review-report.html">code-review-report.html</a></td>
+        <td><a href="F-033-Project-Role-Based-Access-Control/security-review-report.html">security-review-report.html</a></td>
+      </tr>
+      <tr>
+        <td class="fname">F-034 — User Activity Audit Log (append-only audit trail, fire-and-forget, RBAC-scoped read)</td>
+        <td><a href="F-034-User-Activity-Audit-Log/test-summary-report.html">test-summary-report.html</a></td>
+        <td><a href="F-034-User-Activity-Audit-Log/code-review-report.html">code-review-report.html</a></td>
+        <td><a href="F-034-User-Activity-Audit-Log/security-review-report.html">security-review-report.html</a></td>
+      </tr>
+      <tr>
+        <td class="fname">F-035 — CI/CD On-Premise Deployment (self-hosted runner, test gate, PM2, health check retry)</td>
+        <td><a href="F-035-CICD-On-Premise-Deployment/test-summary-report.html">test-summary-report.html</a></td>
+        <td><a href="F-035-CICD-On-Premise-Deployment/code-review-report.html">code-review-report.html</a></td>
+        <td><a href="F-035-CICD-On-Premise-Deployment/security-review-report.html">security-review-report.html</a></td>
+      </tr>
+      <tr>
+        <td class="fname">F-054 — Upskill Module (Learning &amp; Automation, KPI integration, file upload with auth)</td>
+        <td><a href="F-054-Upskill-Module/test-summary-report.html">test-summary-report.html</a></td>
+        <td><a href="F-054-Upskill-Module/code-review-report.html">code-review-report.html</a></td>
+        <td><a href="F-054-Upskill-Module/security-review-report.html">security-review-report.html</a></td>
+      </tr>
+      <tr>
+        <td class="fname">F-055 — Manual Announcements (Admin/SuperUser post notices visible to all team members)</td>
+        <td><a href="F-055-Manual-Announcements/test-summary-report.html">test-summary-report.html</a></td>
+        <td><a href="F-055-Manual-Announcements/code-review-report.html">code-review-report.html</a></td>
+        <td><a href="F-055-Manual-Announcements/security-review-report.html">security-review-report.html</a></td>
+      </tr>
+    </tbody>
+  </table>
+</section>
+
+<footer>Project Management System &bull; Consolidated Report &bull; Last updated: 2026-06-26 &bull; 32 features delivered &bull; 568 / 568 tests passing</footer>
+</div>
+</body>
+</html>

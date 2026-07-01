@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Code Review — F-021 Phase 11 Complete Reports</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f8fafc; margin: 0; padding: 24px; color: #1e293b; }
+  .container { max-width: 960px; margin: 0 auto; }
+  h1 { font-size: 1.5rem; font-weight: 700; margin-bottom: 4px; }
+  .meta { color: #64748b; font-size: 0.875rem; margin-bottom: 24px; }
+  .summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+  .card { background: #fff; border-radius: 12px; padding: 20px; text-align: center; border: 1px solid #e2e8f0; }
+  .card .num { font-size: 2rem; font-weight: 800; }
+  .card .label { font-size: 0.75rem; color: #64748b; margin-top: 4px; }
+  .green { color: #10b981; } .red { color: #ef4444; } .blue { color: #3b82f6; }
+  table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 12px; overflow: hidden; border: 1px solid #e2e8f0; font-size: 0.875rem; }
+  thead { background: #f1f5f9; }
+  th { padding: 10px 16px; text-align: left; font-size: 0.75rem; font-weight: 600; color: #475569; text-transform: uppercase; letter-spacing: 0.05em; }
+  td { padding: 10px 16px; border-top: 1px solid #f1f5f9; vertical-align: top; }
+  .pass { display: inline-block; background: #d1fae5; color: #065f46; font-size: 0.7rem; font-weight: 700; padding: 2px 8px; border-radius: 999px; }
+  .na { display: inline-block; background: #f1f5f9; color: #475569; font-size: 0.7rem; font-weight: 700; padding: 2px 8px; border-radius: 999px; }
+  .note { font-size: 0.8rem; color: #64748b; margin-top: 2px; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>Code Review Report — F-021</h1>
+  <p class="meta">Feature: Phase 11 Complete — Task Allocation, Timesheet &amp; Export Reports &nbsp;|&nbsp; Date: 2026-05-28 &nbsp;|&nbsp; Reviewer: Claude Code</p>
+
+  <div class="summary-grid">
+    <div class="card"><div class="num green">8</div><div class="label">Checks Passed</div></div>
+    <div class="card"><div class="num red">0</div><div class="label">Checks Failed</div></div>
+    <div class="card"><div class="num" style="color:#94a3b8">0</div><div class="label">N/A</div></div>
+    <div class="card"><div class="num blue">100%</div><div class="label">Pass Rate</div></div>
+  </div>
+
+  <table>
+    <thead>
+      <tr><th>ID</th><th>Check</th><th>Finding</th><th>Result</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>CR-1</td>
+        <td>TypeScript strict compliance</td>
+        <td><code>npx tsc --noEmit</code> returned 0 errors. All new interfaces (AllocationRecord, TimesheetRecord, TimesheetStatus) are properly typed.</td>
+        <td><span class="pass">PASS</span></td>
+      </tr>
+      <tr>
+        <td>CR-2</td>
+        <td>Component structure &amp; separation of concerns</td>
+        <td>Tab logic isolated in dedicated sub-components (TaskAllocationTab, TimesheetTab). Shared utility downloadCsv() and ExportBar component prevent duplication across 6 tabs.</td>
+        <td><span class="pass">PASS</span></td>
+      </tr>
+      <tr>
+        <td>CR-3</td>
+        <td>Static data integrity</td>
+        <td>STATIC_ALLOCATION_DATA: 14 entries, total 1600 hours. STATIC_TIMESHEET_DATA: 14 entries, total 1562 hours, 8 Approved / 4 Submitted / 2 Draft. All user UUIDs match existing DB users.</td>
+        <td><span class="pass">PASS</span></td>
+      </tr>
+      <tr>
+        <td>CR-4</td>
+        <td>CSV export correctness</td>
+        <td>downloadCsv() uses Blob API with proper RFC 4180 escaping (double-quote doubling). URL.createObjectURL / revokeObjectURL called correctly. Each of 6 tabs has a distinct filename.</td>
+        <td><span class="pass">PASS</span></td>
+      </tr>
+      <tr>
+        <td>CR-5</td>
+        <td>RBAC enforcement</td>
+        <td>isAdminView gate (ADMIN | SUPER_USER) blocks tab panel for EMPLOYEE. Employee sees MyPerformanceSummary with personal allocation utilisation and timesheet project/status.</td>
+        <td><span class="pass">PASS</span></td>
+      </tr>
+      <tr>
+        <td>CR-6</td>
+        <td>Over-allocation visual indicator</td>
+        <td>utilisationPct &gt; 100 renders red row background (bg-red-50/30) and "Over" badge (bg-red-100 text-red-700). Hemant Atre (110%) correctly identified.</td>
+        <td><span class="pass">PASS</span></td>
+      </tr>
+      <tr>
+        <td>CR-7</td>
+        <td>Timesheet status badge colours</td>
+        <td>TIMESHEET_STATUS_STYLE maps Approved→green (emerald), Submitted→blue, Draft→gray. All 14 rows render correct badge colour.</td>
+        <td><span class="pass">PASS</span></td>
+      </tr>
+      <tr>
+        <td>CR-8</td>
+        <td>No dead code / console statements</td>
+        <td>No console.log, no unused imports, no commented-out code. PDF export button correctly renders as placeholder with cursor-not-allowed styling.</td>
+        <td><span class="pass">PASS</span></td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+</body>
+</html>

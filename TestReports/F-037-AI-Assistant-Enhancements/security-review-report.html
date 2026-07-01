@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<title>Security Review — F-037 AI Assistant Enhancements</title>
+<style>
+  body{font-family:Inter,sans-serif;margin:0;background:#f8fafc;color:#1e293b}
+  .header{background:linear-gradient(135deg,#6d28d9,#7c3aed);color:#fff;padding:32px 40px}
+  .header h1{margin:0 0 4px;font-size:22px}
+  .header p{margin:0;opacity:.8;font-size:13px}
+  .container{max-width:960px;margin:32px auto;padding:0 24px}
+  .card{background:#fff;border:1px solid #e2e8f0;border-radius:12px;margin-bottom:20px;overflow:hidden}
+  .card-header{padding:14px 20px;border-bottom:1px solid #f1f5f9;display:flex;align-items:center;gap:10px}
+  .card-header h3{margin:0;font-size:14px;font-weight:600}
+  .badge{padding:2px 10px;border-radius:20px;font-size:11px;font-weight:700}
+  .pass{background:#dcfce7;color:#166534}
+  .na{background:#f1f5f9;color:#64748b}
+  table{width:100%;border-collapse:collapse}
+  th{background:#f8fafc;padding:10px 16px;text-align:left;font-size:12px;color:#64748b;font-weight:600;border-bottom:1px solid #e2e8f0}
+  td{padding:10px 16px;font-size:13px;border-bottom:1px solid #f1f5f9;vertical-align:top}
+  tr:last-child td{border-bottom:none}
+  .status-pass{color:#16a34a;font-weight:600}
+  .status-na{color:#94a3b8;font-weight:600}
+  .summary{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px}
+  .stat{background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:16px;text-align:center}
+  .stat-num{font-size:28px;font-weight:700;color:#6d28d9}
+  .stat-lbl{font-size:12px;color:#64748b;margin-top:4px}
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>Security Review Report — F-037</h1>
+  <p>AI Assistant Enhancements &nbsp;|&nbsp; OWASP Top 10 &nbsp;|&nbsp; Reviewed: 2026-06-08</p>
+</div>
+<div class="container">
+  <div class="summary">
+    <div class="stat"><div class="stat-num">11</div><div class="stat-lbl">Checks Run</div></div>
+    <div class="stat"><div class="stat-num">9</div><div class="stat-lbl">Passed</div></div>
+    <div class="stat"><div class="stat-num">2</div><div class="stat-lbl">N/A</div></div>
+    <div class="stat"><div class="stat-num">0</div><div class="stat-lbl">Failures</div></div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><h3>SEC-1 — Broken Access Control</h3><span class="badge pass">PASS</span></div>
+    <table>
+      <tr><th>Check</th><th>Finding</th><th>Status</th></tr>
+      <tr><td>Action RBAC</td><td>Work item context for action intents applies identical RBAC filter as read queries. EMPLOYEE cannot resolve tasks belonging to others, so the LLM cannot generate valid action tokens for them.</td><td class="status-pass">✓ Pass</td></tr>
+      <tr><td>Confirmed action user identity</td><td>Leave and timesheet submissions use <code>userId</code> from the validated JWT, not from the action token. User cannot elevate identity via chat.</td><td class="status-pass">✓ Pass</td></tr>
+      <tr><td>Status update ownership</td><td>Work item status PATCH uses existing <code>ProjectRoleGuard</code> — roles enforced independently of AI path.</td><td class="status-pass">✓ Pass</td></tr>
+    </table>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><h3>SEC-2 — Cryptographic Failures</h3><span class="badge pass">PASS</span></div>
+    <table>
+      <tr><th>Check</th><th>Finding</th><th>Status</th></tr>
+      <tr><td>API key unchanged</td><td><code>GROQ_API_KEY</code> still sourced from env var. Model name change does not alter key handling.</td><td class="status-pass">✓ Pass</td></tr>
+    </table>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><h3>SEC-3 — Injection</h3><span class="badge pass">PASS</span></div>
+    <table>
+      <tr><th>Check</th><th>Finding</th><th>Status</th></tr>
+      <tr><td>Prompt injection via ACTION token</td><td>ACTION token is parsed by the backend (not interpreted as code). <code>JSON.parse</code> result is validated against <code>ActionType</code> union before use; unknown <code>type</code> values are dropped.</td><td class="status-pass">✓ Pass</td></tr>
+      <tr><td>SQL injection</td><td>All DB queries continue to use Prisma parameterised API. No raw SQL introduced.</td><td class="status-pass">✓ Pass</td></tr>
+      <tr><td>User message still sandboxed</td><td>User message remains in the <code>user</code> role — cannot contaminate the system prompt or ACTION instruction.</td><td class="status-pass">✓ Pass</td></tr>
+    </table>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><h3>SEC-4 — Insecure Design</h3><span class="badge pass">PASS</span></div>
+    <table>
+      <tr><th>Check</th><th>Finding</th><th>Status</th></tr>
+      <tr><td>Write actions require explicit confirmation</td><td>No write action executes without a separate frontend Confirm click. The backend only supplies the action metadata; the frontend initiates the actual API call.</td><td class="status-pass">✓ Pass</td></tr>
+      <tr><td>Action metadata is display-only</td><td>The <code>action</code> field returned by <code>/ai/chat</code> contains no server-side tokens or signed payloads — it is purely informational for the confirmation UI.</td><td class="status-pass">✓ Pass</td></tr>
+    </table>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><h3>SEC-5 — Security Misconfiguration</h3><span class="badge pass">PASS</span></div>
+    <table>
+      <tr><th>Check</th><th>Finding</th><th>Status</th></tr>
+      <tr><td>No new env vars</td><td>Model name is a code constant, not a runtime config. No new secrets introduced.</td><td class="status-pass">✓ Pass</td></tr>
+    </table>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><h3>SEC-6 — Vulnerable Components</h3><span class="badge pass">PASS</span></div>
+    <table>
+      <tr><th>Check</th><th>Finding</th><th>Status</th></tr>
+      <tr><td>No new npm dependencies</td><td>All enhancements use existing Prisma, NestJS, and React primitives. Zero new packages.</td><td class="status-pass">✓ Pass</td></tr>
+    </table>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><h3>SEC-7 — Authentication Failures</h3><span class="badge pass">PASS</span></div>
+    <table>
+      <tr><th>Check</th><th>Finding</th><th>Status</th></tr>
+      <tr><td>Auth unchanged</td><td>Same global <code>JwtAuthGuard</code> applies. No new public endpoints or auth bypasses.</td><td class="status-pass">✓ Pass</td></tr>
+    </table>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><h3>SEC-8 — Software Integrity Failures</h3><span class="badge na">N/A</span></div>
+    <table>
+      <tr><th>Check</th><th>Finding</th><th>Status</th></tr>
+      <tr><td>Supply chain</td><td>No new dependencies added. Not applicable.</td><td class="status-na">— N/A</td></tr>
+    </table>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><h3>SEC-9 — Logging &amp; Monitoring Failures</h3><span class="badge pass">PASS</span></div>
+    <table>
+      <tr><th>Check</th><th>Finding</th><th>Status</th></tr>
+      <tr><td>Action token parse errors logged</td><td>Malformed ACTION tokens logged at WARN level with sanitised context (no user message content).</td><td class="status-pass">✓ Pass</td></tr>
+      <tr><td>No sensitive data in logs</td><td>User messages, leave dates, task IDs not logged beyond what was already in F-036.</td><td class="status-pass">✓ Pass</td></tr>
+    </table>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><h3>SEC-10 — SSRF</h3><span class="badge pass">PASS</span></div>
+    <table>
+      <tr><th>Check</th><th>Finding</th><th>Status</th></tr>
+      <tr><td>Outbound URL</td><td>Groq URL remains hardcoded constant. No new outbound HTTP calls introduced.</td><td class="status-pass">✓ Pass</td></tr>
+    </table>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><h3>SEC-11 — XSS</h3><span class="badge na">N/A</span></div>
+    <table>
+      <tr><th>Check</th><th>Finding</th><th>Status</th></tr>
+      <tr><td>ActionConfirmCard rendering</td><td>Card renders task title, dates, and labels as plain React text nodes — no HTML injection. <code>dangerouslySetInnerHTML</code> not used.</td><td class="status-pass">✓ Pass</td></tr>
+    </table>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><h3>Overall Verdict</h3><span class="badge pass">APPROVED</span></div>
+    <table>
+      <tr><td style="font-size:15px;font-weight:700;color:#16a34a;">APPROVED — 9 Pass, 2 N/A, 0 Failures. Write actions are gated by explicit user confirmation and standard RBAC guards.</td></tr>
+    </table>
+  </div>
+</div>
+</body>
+</html>

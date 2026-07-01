@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<title>Test Summary Report — F-035 CI/CD On-Premise Deployment</title>
+<style>
+  body{font-family:system-ui,sans-serif;margin:0;padding:24px;background:#f8fafc;color:#1e293b}
+  h1{font-size:1.4rem;font-weight:700;margin-bottom:4px}
+  .meta{color:#64748b;font-size:.85rem;margin-bottom:24px}
+  table{width:100%;border-collapse:collapse;background:#fff;border-radius:10px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.08);margin-bottom:24px}
+  th{background:#1e293b;color:#fff;padding:10px 14px;text-align:left;font-size:.82rem;text-transform:uppercase;letter-spacing:.04em}
+  td{padding:10px 14px;font-size:.88rem;border-bottom:1px solid #f1f5f9;vertical-align:top}
+  tr:last-child td{border-bottom:none}
+  .pass{background:#dcfce7;color:#166534;padding:2px 10px;border-radius:99px;font-size:.78rem;font-weight:600}
+  .summary{display:flex;gap:16px;margin-bottom:20px;flex-wrap:wrap}
+  .chip{background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:12px 20px;font-size:.85rem;box-shadow:0 1px 3px rgba(0,0,0,.05)}
+  .chip b{display:block;font-size:1.4rem;font-weight:700;color:#0f172a}
+  h2{font-size:1rem;font-weight:600;margin:24px 0 12px}
+  .badge{display:inline-block;padding:1px 8px;border-radius:99px;font-size:.75rem;font-weight:600}
+  .badge-blue{background:#dbeafe;color:#1d4ed8}
+  .badge-purple{background:#ede9fe;color:#6d28d9}
+</style>
+</head>
+<body>
+<h1>Test Summary Report</h1>
+<div class="meta">F-035 — CI/CD On-Premise Deployment &nbsp;|&nbsp; Date: 2026-06-03 &nbsp;|&nbsp; Branch: feature/F-035-cicd-on-premise-deployment</div>
+
+<div class="summary">
+  <div class="chip"><b>18</b> Total Cases</div>
+  <div class="chip"><b style="color:#166534">18</b> Passed</div>
+  <div class="chip"><b style="color:#991b1b">0</b> Failed</div>
+  <div class="chip"><b style="color:#1d4ed8">8</b> Unit</div>
+  <div class="chip"><b style="color:#6d28d9">10</b> E2E</div>
+</div>
+
+<h2>Unit Test Cases <span class="badge badge-blue">8</span></h2>
+<table>
+  <thead><tr><th>ID</th><th>Description</th><th>Layer</th><th>Result</th></tr></thead>
+  <tbody>
+    <tr><td>UTC-035-01</td><td>Health endpoint returns { status: 'ok', timestamp, uptime }</td><td>Controller</td><td><span class="pass">PASS</span></td></tr>
+    <tr><td>UTC-035-02</td><td>Health endpoint uptime is a positive number</td><td>Controller</td><td><span class="pass">PASS</span></td></tr>
+    <tr><td>UTC-035-03</td><td>Health endpoint timestamp is a valid ISO 8601 string</td><td>Controller</td><td><span class="pass">PASS</span></td></tr>
+    <tr><td>UTC-035-04</td><td>GET /api/v1/health returns HTTP 200</td><td>E2E-unit</td><td><span class="pass">PASS</span></td></tr>
+    <tr><td>UTC-035-05</td><td>Health endpoint is public — no JWT required</td><td>Controller</td><td><span class="pass">PASS</span></td></tr>
+    <tr><td>UTC-035-06</td><td>Workflow YAML is valid and parses without error</td><td>CI config</td><td><span class="pass">PASS</span></td></tr>
+    <tr><td>UTC-035-07</td><td>Workflow has test job before deploy job (needs: test)</td><td>CI config</td><td><span class="pass">PASS</span></td></tr>
+    <tr><td>UTC-035-08</td><td>Workflow secrets are not hard-coded — only ${{ secrets.* }} references</td><td>CI config</td><td><span class="pass">PASS</span></td></tr>
+  </tbody>
+</table>
+
+<h2>E2E Test Cases <span class="badge badge-purple">10</span></h2>
+<table>
+  <thead><tr><th>ID</th><th>Description</th><th>AC</th><th>Result</th></tr></thead>
+  <tbody>
+    <tr><td>TC-035-01</td><td>Push to main triggers workflow automatically</td><td>AC-1</td><td><span class="pass">PASS</span></td></tr>
+    <tr><td>TC-035-02</td><td>Test failure prevents deploy job from running</td><td>AC-2</td><td><span class="pass">PASS</span></td></tr>
+    <tr><td>TC-035-03</td><td>Health check returns 200 after successful deploy</td><td>AC-3</td><td><span class="pass">PASS</span></td></tr>
+    <tr><td>TC-035-04</td><td>PM2 shows both processes online after deploy</td><td>AC-4</td><td><span class="pass">PASS</span></td></tr>
+    <tr><td>TC-035-05</td><td>Prisma migrate deploy runs idempotently on redeploy</td><td>AC-5</td><td><span class="pass">PASS</span></td></tr>
+    <tr><td>TC-035-06</td><td>Manual workflow_dispatch triggers full pipeline</td><td>AC-6</td><td><span class="pass">PASS</span></td></tr>
+    <tr><td>TC-035-07</td><td>Secrets are masked (***) in workflow logs</td><td>AC-7</td><td><span class="pass">PASS</span></td></tr>
+    <tr><td>TC-035-08</td><td>Health check retries up to 3 times on slow start</td><td>AC-9</td><td><span class="pass">PASS</span></td></tr>
+    <tr><td>TC-035-09</td><td>Deployment summary step outputs PM2 list</td><td>AC-10</td><td><span class="pass">PASS</span></td></tr>
+    <tr><td>TC-035-10</td><td>SETUP.md guide leads to successful first deploy on fresh machine</td><td>AC-8</td><td><span class="pass">PASS</span></td></tr>
+  </tbody>
+</table>
+
+<h2>Coverage Summary</h2>
+<table>
+  <thead><tr><th>Layer</th><th>Total</th><th>Passed</th><th>Failed</th></tr></thead>
+  <tbody>
+    <tr><td>Unit (Backend / CI config)</td><td>8</td><td>8</td><td>0</td></tr>
+    <tr><td>Unit (Frontend)</td><td>0</td><td>0</td><td>0</td></tr>
+    <tr><td>E2E</td><td>10</td><td>10</td><td>0</td></tr>
+    <tr><td><strong>Total</strong></td><td><strong>18</strong></td><td><strong>18</strong></td><td><strong>0</strong></td></tr>
+  </tbody>
+</table>
+
+<p style="font-size:.82rem;color:#64748b;margin-top:8px">
+  <strong>Migration:</strong> Not required — no new Prisma models. Health endpoint already existed; uptime field added.<br/>
+  <strong>Infrastructure change:</strong> <code>deploy-local.yml</code> updated with two-job structure (test gate + deploy). <code>SETUP.md</code> updated with PowerShell 7 and troubleshooting additions.
+</p>
+</body>
+</html>

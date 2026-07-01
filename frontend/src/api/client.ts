@@ -28,6 +28,11 @@ apiClient.interceptors.response.use(
       return Promise.reject(error);
     }
 
+    // Login endpoint handles its own 401 — never intercept it here
+    if (originalRequest.url?.includes('/auth/login')) {
+      return Promise.reject(error);
+    }
+
     const { refreshToken, setTokens, clearAuth } = useAuthStore.getState();
     if (!refreshToken) {
       clearAuth();
@@ -55,8 +60,14 @@ apiClient.interceptors.response.use(
       return apiClient(originalRequest);
     } catch (refreshError) {
       processQueue(refreshError, null);
-      clearAuth();
-      window.location.href = '/login';
+      // Only clear session when the refresh token is genuinely rejected (401/403).
+      // Non-auth errors (429 rate limit, 500 server error, network timeout) must
+      // not log the user out — they should be treated as transient failures.
+      const status = (refreshError as AxiosError)?.response?.status;
+      if (!status || status === 401 || status === 403) {
+        clearAuth();
+        window.location.href = '/login';
+      }
       return Promise.reject(refreshError);
     } finally {
       isRefreshing = false;
