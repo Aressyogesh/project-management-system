@@ -4,7 +4,6 @@ import { PrismaService } from '../prisma/prisma.service';
 import { BoardStatus, WorkItemType } from '@prisma/client';
 
 let _wiId = 0;
-// Helper to create a mock work item
 const wi = (
   status: BoardStatus,
   extras: Partial<{
@@ -14,7 +13,7 @@ const wi = (
     dueDate: Date | null;
     reopenCount: number;
     type: WorkItemType;
-    severity: string | null;
+    bugClassification: string | null;
   }> = {},
 ) => ({
   id: `wi-${++_wiId}`,
@@ -25,7 +24,7 @@ const wi = (
   dueDate: null,
   reopenCount: 0,
   type: WorkItemType.TASK,
-  severity: null,
+  bugClassification: null,
   ...extras,
 });
 
@@ -42,6 +41,7 @@ describe('AnalyticsService — KPI computation', () => {
   };
 
   beforeEach(async () => {
+    _wiId = 0;
     const module = await Test.createTestingModule({
       providers: [
         AnalyticsService,
@@ -54,11 +54,9 @@ describe('AnalyticsService — KPI computation', () => {
             timesheetEntry: { aggregate: jest.fn(), groupBy: jest.fn(), findMany: jest.fn() },
             kpiRecord: { findMany: jest.fn() },
             leaveRequest: { findMany: jest.fn() },
-            learningLog: { findMany: jest.fn() },
-            innovationLog: { findMany: jest.fn() },
+            upskillAssignment: { findFirst: jest.fn() },
             portalConfig: { findUnique: jest.fn() },
             holiday: { findMany: jest.fn() },
-            upskillAssignment: { findFirst: jest.fn() },
           },
         },
       ],
@@ -71,70 +69,78 @@ describe('AnalyticsService — KPI computation', () => {
   function setupUserKpiMocks({
     sprintItems = [],
     allItems = [],
-    timesheetHours = 0,
     bugItems = [],
     manualScores = [],
     leaveRequests = [],
-    learningLogs = [],
-    innovationLogs = [],
+    upskillApproved = null as { id: string } | null,
+    upskillAny = null as { id: string } | null,
+    totalHours = 40,
+    deliveryHours = 0,
   }: {
     sprintItems?: ReturnType<typeof wi>[];
     allItems?: ReturnType<typeof wi>[];
-    timesheetHours?: number;
-    bugItems?: { severity: string | null }[];
+    bugItems?: { id: string; bugClassification: string | null }[];
     manualScores?: { metricId: string; points: number }[];
-    leaveRequests?: { status: string; startDate: Date; endDate: Date }[];
-    learningLogs?: { hours: number }[];
-    innovationLogs?: { type: string }[];
+    leaveRequests?: { status: string; totalDays: number }[];
+    upskillApproved?: { id: string } | null;
+    upskillAny?: { id: string } | null;
+    totalHours?: number;
+    deliveryHours?: number;
   }) {
     (prisma.user.findMany as jest.Mock).mockResolvedValue([mockUser]);
     (prisma.project.findMany as jest.Mock).mockResolvedValue([{ id: 'active-project-1' }]);
+
+    // Phase 1: workItem.findMany called 3 times in order: sprintItems, allItems, bugItems
     (prisma.workItem.findMany as jest.Mock)
       .mockResolvedValueOnce(sprintItems)
       .mockResolvedValueOnce(allItems)
       .mockResolvedValueOnce(bugItems);
-    (prisma.timesheetEntry.aggregate as jest.Mock).mockResolvedValue({
-      _sum: { hours: timesheetHours },
-    });
+
     (prisma.kpiRecord.findMany as jest.Mock).mockResolvedValue(manualScores);
     (prisma.leaveRequest.findMany as jest.Mock).mockResolvedValue(leaveRequests);
-    (prisma.learningLog.findMany as jest.Mock).mockResolvedValue(learningLogs);
-    (prisma.innovationLog.findMany as jest.Mock).mockResolvedValue(innovationLogs);
-    (prisma.upskillAssignment.findFirst as jest.Mock).mockResolvedValue(null);
+
+    // Phase 1: upskillAssignment.findFirst called twice — approved LEARNING first, then any LEARNING
+    (prisma.upskillAssignment.findFirst as jest.Mock)
+      .mockResolvedValueOnce(upskillApproved)
+      .mockResolvedValueOnce(upskillAny);
+
+    // Phase 1: total working hours aggregate (call 1)
+    // Phase 2: delivery item hours aggregate and any conditional bug/rework aggregates (calls 2+)
+    (prisma.timesheetEntry.aggregate as jest.Mock)
+      .mockResolvedValueOnce({ _sum: { hours: totalHours } })
+      .mockResolvedValue({ _sum: { hours: deliveryHours } });
   }
 
-  it('Sprint Reliability: 100% delivery returns 15', async () => {
+  // ── Sprint Reliability ────────────────────────────────────────────────────────
+
+  it('Sprint Reliability: 100% in-QA returns 10', async () => {
     setupUserKpiMocks({
-      sprintItems: [
-        wi(BoardStatus.QA_DONE, { storyPoints: 5 }),
-        wi(BoardStatus.QA_DONE, { storyPoints: 5 }),
-      ],
+      sprintItems: [wi(BoardStatus.IN_QA), wi(BoardStatus.IN_QA)],
     });
     const [result] = await service.getKpi('2026-05', 'user-1', true);
     const metric = result.metrics.find((m) => m.metricId === 'sprint_reliability')!;
-    expect(metric.points).toBe(15);
+    expect(metric.points).toBe(10);
   });
 
-  it('Sprint Reliability: 50% delivery returns 7.5', async () => {
+  it('Sprint Reliability: 50% in-QA returns 5', async () => {
     setupUserKpiMocks({
-      sprintItems: [
-        wi(BoardStatus.QA_DONE, { storyPoints: 5 }),
-        wi(BoardStatus.TODO,    { storyPoints: 5 }),
-      ],
+      sprintItems: [wi(BoardStatus.IN_QA), wi(BoardStatus.TODO)],
     });
     const [result] = await service.getKpi('2026-05', 'user-1', true);
     const metric = result.metrics.find((m) => m.metricId === 'sprint_reliability')!;
-    expect(metric.points).toBe(7.5);
+    expect(metric.points).toBe(5);
   });
 
   it('Sprint Reliability: no sprint data returns 0', async () => {
-    setupUserKpiMocks({ sprintItems: [] });
+    setupUserKpiMocks({ sprintItems: [], allItems: [wi(BoardStatus.TODO)] });
     const [result] = await service.getKpi('2026-05', 'user-1', true);
     const metric = result.metrics.find((m) => m.metricId === 'sprint_reliability')!;
     expect(metric.points).toBe(0);
   });
 
-  it('Delivery Timeliness: all on time returns 15', async () => {
+  // ── Delivery Timeliness ───────────────────────────────────────────────────────
+
+  it('Delivery Timeliness: all on time returns 10', async () => {
     const now = new Date();
     const future = new Date(now.getTime() + 86_400_000);
     setupUserKpiMocks({
@@ -145,13 +151,15 @@ describe('AnalyticsService — KPI computation', () => {
     });
     const [result] = await service.getKpi('2026-05', 'user-1', true);
     const metric = result.metrics.find((m) => m.metricId === 'delivery_timeliness')!;
-    expect(metric.points).toBe(15);
+    expect(metric.points).toBe(10);
   });
+
+  // ── Estimation Accuracy ───────────────────────────────────────────────────────
 
   it('Estimation Accuracy: ≤15% variance returns 10', async () => {
     setupUserKpiMocks({
       sprintItems: [wi(BoardStatus.QA_DONE, { estimatedHours: 10 })],
-      timesheetHours: 10.5,
+      deliveryHours: 10.5,
     });
     const [result] = await service.getKpi('2026-05', 'user-1', true);
     const metric = result.metrics.find((m) => m.metricId === 'estimation_accuracy')!;
@@ -161,12 +169,14 @@ describe('AnalyticsService — KPI computation', () => {
   it('Estimation Accuracy: >50% variance returns 0', async () => {
     setupUserKpiMocks({
       sprintItems: [wi(BoardStatus.QA_DONE, { estimatedHours: 10 })],
-      timesheetHours: 16,
+      deliveryHours: 16,
     });
     const [result] = await service.getKpi('2026-05', 'user-1', true);
     const metric = result.metrics.find((m) => m.metricId === 'estimation_accuracy')!;
     expect(metric.points).toBe(0);
   });
+
+  // ── Rework Ratio ─────────────────────────────────────────────────────────────
 
   it('Rework Ratio: zero reopens returns 5', async () => {
     setupUserKpiMocks({
@@ -177,28 +187,28 @@ describe('AnalyticsService — KPI computation', () => {
     expect(metric.points).toBe(5);
   });
 
-  it('Defect Leakage: zero bugs returns 10', async () => {
+  // ── Defect Leakage ────────────────────────────────────────────────────────────
+
+  it('Technical Defect Leakage: zero code-review bugs returns 10', async () => {
     setupUserKpiMocks({ allItems: [wi(BoardStatus.QA_DONE)], bugItems: [] });
     const [result] = await service.getKpi('2026-05', 'user-1', true);
-    const metric = result.metrics.find((m) => m.metricId === 'defect_leakage')!;
+    const metric = result.metrics.find((m) => m.metricId === 'technical_defect_leakage')!;
     expect(metric.points).toBe(10);
   });
 
-  it('Defect Leakage: 1 CRITICAL bug returns 0', async () => {
-    setupUserKpiMocks({ allItems: [wi(BoardStatus.QA_DONE)], bugItems: [{ severity: 'CRITICAL' }] });
+  it('Functional Defect Leakage: zero functional bugs returns 10', async () => {
+    setupUserKpiMocks({ allItems: [wi(BoardStatus.QA_DONE)], bugItems: [] });
     const [result] = await service.getKpi('2026-05', 'user-1', true);
-    const metric = result.metrics.find((m) => m.metricId === 'defect_leakage')!;
-    expect(metric.points).toBe(0);
+    const metric = result.metrics.find((m) => m.metricId === 'functional_defect_leakage')!;
+    expect(metric.points).toBe(10);
   });
+
+  // ── Attendance ────────────────────────────────────────────────────────────────
 
   it('Attendance: rejected leave request returns 0', async () => {
     setupUserKpiMocks({
       allItems: [wi(BoardStatus.QA_DONE)],
-      leaveRequests: [{
-        status: 'REJECTED',
-        startDate: new Date('2026-05-10'),
-        endDate: new Date('2026-05-10'),
-      }],
+      leaveRequests: [{ status: 'REJECTED', totalDays: 1 }],
     });
     const [result] = await service.getKpi('2026-05', 'user-1', true);
     const metric = result.metrics.find((m) => m.metricId === 'attendance')!;
@@ -212,22 +222,45 @@ describe('AnalyticsService — KPI computation', () => {
     expect(metric.points).toBe(5);
   });
 
-  it('Learning Velocity: ≥4h returns 5', async () => {
-    setupUserKpiMocks({ learningLogs: [{ hours: 5 }] });
+  // ── Learning Velocity ─────────────────────────────────────────────────────────
+
+  it('Learning Velocity: approved assignment returns 5', async () => {
+    setupUserKpiMocks({
+      allItems: [wi(BoardStatus.TODO)],
+      upskillApproved: { id: 'asgn-1' },
+      upskillAny: { id: 'asgn-1' },
+    });
     const [result] = await service.getKpi('2026-05', 'user-1', true);
     const metric = result.metrics.find((m) => m.metricId === 'learning_velocity')!;
     expect(metric.points).toBe(5);
   });
 
-  it('Innovation: self-log alone returns 0 (only approved AUTOMATION upskill counts)', async () => {
-    setupUserKpiMocks({ innovationLogs: [{ type: 'AI_IMPLEMENTATION' }] });
+  it('Learning Velocity: pending/rejected assignment returns 3', async () => {
+    setupUserKpiMocks({
+      allItems: [wi(BoardStatus.TODO)],
+      upskillApproved: null,
+      upskillAny: { id: 'asgn-1' },
+    });
     const [result] = await service.getKpi('2026-05', 'user-1', true);
-    const metric = result.metrics.find((m) => m.metricId === 'automation_innovation')!;
+    const metric = result.metrics.find((m) => m.metricId === 'learning_velocity')!;
+    expect(metric.points).toBe(3);
+  });
+
+  it('Learning Velocity: no assignment returns 0', async () => {
+    setupUserKpiMocks({
+      allItems: [wi(BoardStatus.TODO)],
+      upskillApproved: null,
+      upskillAny: null,
+    });
+    const [result] = await service.getKpi('2026-05', 'user-1', true);
+    const metric = result.metrics.find((m) => m.metricId === 'learning_velocity')!;
     expect(metric.points).toBe(0);
   });
 
+  // ── Total score ───────────────────────────────────────────────────────────────
+
   it('totalScore is sum of all metric points', async () => {
-    setupUserKpiMocks({});
+    setupUserKpiMocks({ allItems: [wi(BoardStatus.TODO)] });
     const [result] = await service.getKpi('2026-05', 'user-1', true);
     const expectedTotal = result.metrics.reduce((s, m) => s + m.points, 0);
     expect(result.totalScore).toBeCloseTo(expectedTotal, 1);
