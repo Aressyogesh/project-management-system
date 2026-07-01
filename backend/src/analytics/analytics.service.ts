@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { BoardStatus, BugSeverity, LeaveStatus, ProjectRole, WorkItemType } from '@prisma/client';
+import { BoardStatus, BugClassification, LeaveStatus, ProjectRole, WorkItemType } from '@prisma/client';
 
 // ─── KPI Computation Helpers ──────────────────────────────────────────────────
 
@@ -11,37 +11,20 @@ function periodToRange(period: string): { start: Date; end: Date } {
   return { start, end };
 }
 
-function computeSprintReliability(
-  committed: number,
-  delivered: number,
-): number {
-  if (committed === 0) return 0;
-  return Math.min(Math.round((delivered / committed) * 15 * 10) / 10, 15);
+// ─── Scoring helpers ──────────────────────────────────────────────────────────
+
+function ratio10(numerator: number, denominator: number): number {
+  if (denominator === 0) return 0;
+  return Math.min(Math.round((numerator / denominator) * 10 * 10) / 10, 10);
 }
 
-function computeDeliveryTimeliness(
-  onTime: number,
-  total: number,
-): number {
-  if (total === 0) return 0;
-  return Math.min(Math.round((onTime / total) * 15 * 10) / 10, 15);
-}
-
-function computeEstimationAccuracy(
-  estimatedHours: number,
-  actualHours: number,
-): number {
+function computeEstimationAccuracy(estimatedHours: number, actualHours: number): number {
   if (estimatedHours === 0) return actualHours === 0 ? 10 : 0;
   const variance = Math.abs(actualHours - estimatedHours) / estimatedHours;
   if (variance <= 0.15) return 10;
-  if (variance <= 0.3) return 7;
-  if (variance <= 0.5) return 4;
+  if (variance <= 0.30) return 7;
+  if (variance <= 0.50) return 4;
   return 0;
-}
-
-function computeThroughput(completed: number, total: number): number {
-  if (total === 0) return 0;
-  return Math.min(Math.round((completed / total) * 10 * 10) / 10, 10);
 }
 
 function computeReworkRatio(totalReopens: number, totalCompleted: number): number {
@@ -52,64 +35,24 @@ function computeReworkRatio(totalReopens: number, totalCompleted: number): numbe
   return 0;
 }
 
-function computeDefectLeakage(
-  bugs: { severity: BugSeverity | null }[],
-): number {
-  const criticalOrBlocker = bugs.filter(
-    (b) =>
-      b.severity === 'SHOW_STOPPER' ||
-      b.severity === 'CRITICAL' ||
-      b.severity === 'BLOCKER',
-  ).length;
-  if (criticalOrBlocker > 0) return 0;
-  const minors = bugs.filter((b) => b.severity === 'MINOR' || b.severity === 'TRIVIAL').length;
-  const majors = bugs.filter((b) => b.severity === 'MAJOR').length;
-  const totalSevere = majors * 2 + minors;
-  if (totalSevere === 0) return 10;
-  if (totalSevere === 1) return 7;
-  if (totalSevere === 2) return 4;
-  return 0;
+// 10 - (bugHours / totalWorkingHours * 10), clamped to [0, 10]
+function computeDefectLeakageFromHours(bugHours: number, totalWorkingHours: number): number {
+  if (totalWorkingHours === 0) return 10;
+  const score = 10 - (bugHours / totalWorkingHours) * 10;
+  return Math.max(0, Math.min(10, Math.round(score * 10) / 10));
 }
 
-function computeDependencyAgile(
-  blockedCount: number,
-  totalItems: number,
-): number {
-  if (totalItems === 0) return 5;
-  const ratio = blockedCount / totalItems;
-  if (ratio === 0) return 5;
-  if (ratio <= 0.1) return 3;
-  return 0;
-}
-
-function computeAttendance(
-  leaveRequests: { status: string; totalDays: number }[],
-): number {
+function computeAttendance(leaveRequests: { status: string; totalDays: number }[]): number {
   const hasRejected = leaveRequests.some((r) => r.status === 'REJECTED');
   if (hasRejected) return 0;
-
   const approvedDays = leaveRequests
     .filter((r) => r.status === 'APPROVED')
     .reduce((s, r) => s + r.totalDays, 0);
-
   if (approvedDays > 1.5) return 0;
   if (approvedDays > 1) return 3;
   return 5;
 }
 
-function computeLearningVelocity(totalHours: number): number {
-  if (totalHours >= 4) return 5;
-  if (totalHours >= 1) return 3;
-  return 0;
-}
-
-function computeInnovation(
-  logs: { type: string }[],
-): number {
-  if (logs.length === 0) return 0;
-  const hasAi = logs.some((l) => l.type === 'AI_IMPLEMENTATION');
-  return hasAi ? 5 : 3;
-}
 
 @Injectable()
 export class AnalyticsService {
@@ -176,20 +119,18 @@ export class AnalyticsService {
   ) {
     const userId = user.id;
 
-    // Fetch all relevant data in parallel
+    // ── Phase 1: parallel fetch ─────────────────────────────────────────────────
     const [
       sprintItems,
       allAssignedItems,
       bugItems,
       manualScores,
       leaveRequests,
-      learningLogs,
-      innovationLogs,
       upskillLearningApproved,
       upskillLearningAny,
-      upskillAutomationApproved,
+      totalWorkingHoursAgg,
     ] = await Promise.all([
-      // Sprint items (for Sprint Reliability + Throughput)
+      // Sprint items (sprint reliability + throughput)
       this.prisma.workItem.findMany({
         where: {
           assigneeId: userId,
@@ -197,36 +138,18 @@ export class AnalyticsService {
           createdAt: { gte: start, lt: end },
           projectId: { in: activeProjectIds },
         },
-        select: {
-          id: true,
-          status: true,
-          storyPoints: true,
-          estimatedHours: true,
-          completedAt: true,
-          dueDate: true,
-          reopenCount: true,
-        },
+        select: { id: true, status: true, storyPoints: true, estimatedHours: true, completedAt: true, dueDate: true, reopenCount: true },
       }),
-      // All assigned items (for Delivery Timeliness + Rework + non-sprint fallback)
+      // All assigned items (delivery timeliness + rework)
       this.prisma.workItem.findMany({
         where: {
           assigneeId: userId,
           createdAt: { gte: start, lt: end },
           projectId: { in: activeProjectIds },
         },
-        select: {
-          id: true,
-          status: true,
-          completedAt: true,
-          dueDate: true,
-          reopenCount: true,
-          type: true,
-          severity: true,
-          storyPoints: true,
-          estimatedHours: true,
-        },
+        select: { id: true, status: true, completedAt: true, dueDate: true, reopenCount: true, type: true, storyPoints: true, estimatedHours: true },
       }),
-      // Bug items where this user is responsible (defects found in their work)
+      // Bug items the developer is responsible for (defect leakage)
       this.prisma.workItem.findMany({
         where: {
           responsibleUserId: userId,
@@ -234,14 +157,14 @@ export class AnalyticsService {
           createdAt: { gte: start, lt: end },
           projectId: { in: activeProjectIds },
         },
-        select: { severity: true },
+        select: { id: true, bugClassification: true },
       }),
-      // Manual KPI scores
+      // PM-entered manual KPI scores
       this.prisma.kpiRecord.findMany({
         where: { userId, period },
         select: { metricId: true, points: true },
       }),
-      // Approved/rejected leave requests overlapping this period (for Attendance)
+      // Leave requests overlapping the period
       this.prisma.leaveRequest.findMany({
         where: {
           userId,
@@ -251,126 +174,155 @@ export class AnalyticsService {
         },
         select: { status: true, totalDays: true },
       }),
-      // Learning logs
-      this.prisma.learningLog.findMany({
-        where: { userId, period },
-        select: { hours: true },
-      }),
-      // Innovation logs
-      this.prisma.innovationLog.findMany({
-        where: { userId, period },
-        select: { type: true },
-      }),
-      // Approved LEARNING upskill assignment overlapping this period
+      // Approved LEARNING upskill assignment
       this.prisma.upskillAssignment.findFirst({
         where: { assignedToId: userId, type: 'LEARNING', status: 'APPROVED', startDate: { lte: end }, endDate: { gte: start } },
         select: { id: true },
       }),
-      // Any LEARNING upskill assignment (any status) overlapping this period
+      // Any LEARNING upskill assignment (any status — for partial/pending = 3 pts)
       this.prisma.upskillAssignment.findFirst({
         where: { assignedToId: userId, type: 'LEARNING', startDate: { lte: end }, endDate: { gte: start } },
         select: { id: true },
       }),
-      // Approved AUTOMATION upskill assignment overlapping this period
-      this.prisma.upskillAssignment.findFirst({
-        where: { assignedToId: userId, type: 'AUTOMATION', status: 'APPROVED', startDate: { lte: end }, endDate: { gte: start } },
-        select: { id: true },
+      // Total timesheet hours for the user in the period (for defect leakage denominators)
+      this.prisma.timesheetEntry.aggregate({
+        where: { userId, date: { gte: start, lt: end } },
+        _sum: { hours: true },
       }),
     ]);
 
-    // Timesheet hours scoped to deliveryBase items only (accurate estimation comparison)
+    // ── Phase 2: dependent queries ──────────────────────────────────────────────
     const isSprintBased = sprintItems.length > 0;
     const deliveryBase = isSprintBased ? sprintItems : allAssignedItems;
     const deliveryItemIds = deliveryBase.map((i) => i.id);
-    const timesheetSum = await this.prisma.timesheetEntry.aggregate({
-      where: {
-        userId,
-        ...(deliveryItemIds.length > 0 ? { workItemId: { in: deliveryItemIds } } : { date: { gte: start, lt: end } }),
-      },
-      _sum: { hours: true },
-    });
 
-    // Sprint Reliability
-    const sprintCommitted = deliveryBase.reduce((s, i) => s + (i.storyPoints ?? 1), 0);
-    const sprintDelivered = deliveryBase
-      .filter((i) => i.status === BoardStatus.QA_DONE)
-      .reduce((s, i) => s + (i.storyPoints ?? 1), 0);
-    const sprintReliability = computeSprintReliability(sprintCommitted, sprintDelivered);
+    const codeReviewBugIds = bugItems
+      .filter((b) => b.bugClassification === BugClassification.CODE_REVIEW)
+      .map((b) => b.id);
+    const functionalBugIds = bugItems
+      .filter((b) => b.bugClassification !== null && b.bugClassification !== BugClassification.CODE_REVIEW)
+      .map((b) => b.id);
+    const reworkItemIds = allAssignedItems.filter((i) => i.reopenCount > 0).map((i) => i.id);
 
-    // Delivery Timeliness
-    const itemsWithDue = allAssignedItems.filter((i) => i.dueDate !== null && i.completedAt !== null);
-    const onTimeItems = itemsWithDue.filter(
-      (i) => i.completedAt! <= i.dueDate!,
-    );
-    const deliveryTimeliness = computeDeliveryTimeliness(onTimeItems.length, itemsWithDue.length);
+    const [timesheetSum, codeReviewHoursAgg, functionalBugHoursAgg, reworkHoursAgg] = await Promise.all([
+      // Timesheet hours on delivery items (for estimation accuracy)
+      this.prisma.timesheetEntry.aggregate({
+        where: {
+          userId,
+          ...(deliveryItemIds.length > 0
+            ? { workItemId: { in: deliveryItemIds } }
+            : { date: { gte: start, lt: end } }),
+        },
+        _sum: { hours: true },
+      }),
+      // Hours logged on CODE_REVIEW bugs
+      codeReviewBugIds.length > 0
+        ? this.prisma.timesheetEntry.aggregate({
+            where: { userId, workItemId: { in: codeReviewBugIds } },
+            _sum: { hours: true },
+          })
+        : Promise.resolve({ _sum: { hours: 0 } }),
+      // Hours logged on functional (non-CODE_REVIEW) bugs
+      functionalBugIds.length > 0
+        ? this.prisma.timesheetEntry.aggregate({
+            where: { userId, workItemId: { in: functionalBugIds } },
+            _sum: { hours: true },
+          })
+        : Promise.resolve({ _sum: { hours: 0 } }),
+      // Hours logged on reopened/rework items
+      reworkItemIds.length > 0
+        ? this.prisma.timesheetEntry.aggregate({
+            where: { userId, workItemId: { in: reworkItemIds } },
+            _sum: { hours: true },
+          })
+        : Promise.resolve({ _sum: { hours: 0 } }),
+    ]);
 
-    // Estimation Accuracy — uses same deliveryBase as sprint reliability
-    const totalEstimated = deliveryBase.reduce(
-      (s, i) => s + Number(i.estimatedHours ?? 0),
-      0,
-    );
+    // ── Compute metrics ─────────────────────────────────────────────────────────
+
+    const totalWorkingHours = Number(totalWorkingHoursAgg._sum.hours ?? 0);
+    const totalEstimated = deliveryBase.reduce((s, i) => s + Number(i.estimatedHours ?? 0), 0);
     const totalActual = Number(timesheetSum._sum.hours ?? 0);
+
+    // Diligent & Committed — auto metrics
+    // Sprint Reliability: items in "In QA" column / total non-BLOCKED * 10
+    const nonBlockedItems = deliveryBase.filter((i) => i.status !== BoardStatus.BLOCKED);
+    const inQaItems = nonBlockedItems.filter((i) => i.status === BoardStatus.IN_QA);
+    const sprintReliability = ratio10(inQaItems.length, nonBlockedItems.length);
+
+    // Delivery Timeliness: items completed on/before due date / total non-BLOCKED * 10
+    const nonBlockedAssigned = allAssignedItems.filter((i) => i.status !== BoardStatus.BLOCKED);
+    const itemsWithDue = nonBlockedAssigned.filter((i) => i.dueDate !== null && i.completedAt !== null);
+    const onTimeItems = itemsWithDue.filter((i) => i.completedAt! <= i.dueDate!);
+    const deliveryTimeliness = ratio10(onTimeItems.length, nonBlockedAssigned.length);
+
+    // Estimation Accuracy: variance-based stepped
     const estimationAccuracy = computeEstimationAccuracy(totalEstimated, totalActual);
 
-    // Throughput — uses same deliveryBase
-    const throughputTotal = deliveryBase.length;
-    const throughputCompleted = deliveryBase.filter((i) => i.status === BoardStatus.QA_DONE).length;
-    const throughput = computeThroughput(throughputCompleted, throughputTotal);
+    // Throughput: CLOSED items / total non-BLOCKED * 10
+    const closedItems = nonBlockedAssigned.filter((i) => i.status === BoardStatus.CLOSED);
+    const throughput = ratio10(closedItems.length, nonBlockedAssigned.length);
 
-    // Rework Ratio
+    // Collaboration — auto + manual
+    // Internal Rework Ratio: reopened count vs completed → 0%=5, ≤10%=3, >10%=0
     const totalReopens = allAssignedItems.reduce((s, i) => s + i.reopenCount, 0);
-    const totalCompleted = allAssignedItems.filter((i) => i.status === BoardStatus.QA_DONE).length;
-    const reworkRatio = computeReworkRatio(totalReopens, totalCompleted);
+    const DONE_STAGES = new Set<string>([BoardStatus.QA_DONE, BoardStatus.CLOSED]);
+    const totalCompleted = allAssignedItems.filter((i) => DONE_STAGES.has(i.status)).length;
+    const internalReworkRatio = computeReworkRatio(totalReopens, totalCompleted);
 
-    // Defect Leakage
-    const defectLeakage = computeDefectLeakage(bugItems);
+    // Technical Defect Leakage: 10 - (CODE_REVIEW bug hours / total working hours * 10)
+    const codeReviewBugHours = Number(codeReviewHoursAgg._sum.hours ?? 0);
+    const technicalDefectLeakage = computeDefectLeakageFromHours(codeReviewBugHours, totalWorkingHours);
 
-    // Dependency & Agile Management
-    const blockedCount = allAssignedItems.filter((i) => i.status === BoardStatus.BLOCKED).length;
-    const dependencyAgile = computeDependencyAgile(blockedCount, allAssignedItems.length);
+    // Functional Defect Leakage: 10 - ((rework hours + functional bug hours) / total working hours * 10)
+    const functionalBugHours = Number(functionalBugHoursAgg._sum.hours ?? 0);
+    const reworkHours = Number(reworkHoursAgg._sum.hours ?? 0);
+    const functionalDefectLeakage = computeDefectLeakageFromHours(functionalBugHours + reworkHours, totalWorkingHours);
 
-    // Manual scores
+    // Attendance
+    const attendance = computeAttendance(leaveRequests as { status: string; totalDays: number }[]);
+
+    // Continuous Learning: approved=5, submitted (pending OR rejected)=3, not submitted=0
+    const learningVelocity = upskillLearningApproved ? 5 : upskillLearningAny ? 3 : 0;
+
+    // Manual scores (PM entries)
     const getManual = (metricId: string) =>
       manualScores.find((s) => s.metricId === metricId)?.points ?? 0;
-    const engineeringHygiene = getManual('engineering_hygiene');
-    const reportingDocs = getManual('reporting_documentation');
-    const positiveBehaviour = getManual('positive_behaviour');
+    const timeliness         = getManual('timeliness');
+    const teamCollaboration  = getManual('team_collaboration');
+    const reportingDocs      = getManual('reporting_documentation');
+    const positiveBehaviour  = getManual('positive_behaviour');
+    const gratitude          = getManual('gratitude');
 
-    // Self-service
-    const attendance = computeAttendance(leaveRequests as { status: string; totalDays: number }[]);
-    // LEARNING assignment approved → 5; pending → 0; none → self-log fallback
-    const learningVelocity = upskillLearningApproved
-      ? 5
-      : upskillLearningAny
-        ? 0
-        : computeLearningVelocity(learningLogs.reduce((s, l) => s + l.hours, 0));
-    // AUTOMATION assignment approved → 5; anything else → 0 (self-logs no longer count)
-    const automationInnovation = upskillAutomationApproved ? 5 : 0;
+    // ── Assemble final result ────────────────────────────────────────────────────
 
     const hasNoActivity =
       sprintItems.length === 0 &&
       allAssignedItems.length === 0 &&
       manualScores.length === 0 &&
-      learningLogs.length === 0 &&
-      innovationLogs.length === 0 &&
-      !upskillLearningAny &&
-      !upskillAutomationApproved;
+      !upskillLearningAny;
 
-    // When the user has no assigned work and no manual scores for this period,
-    // zero out all metrics so the radar chart and category scores reflect reality.
-    const metricPoints = hasNoActivity
-      ? Array(13).fill(0)
-      : [sprintReliability, deliveryTimeliness, estimationAccuracy, throughput,
-         reworkRatio, defectLeakage, dependencyAgile, engineeringHygiene,
-         reportingDocs, learningVelocity, automationInnovation, attendance, positiveBehaviour];
-
-    const metricIds = [
+    const METRIC_IDS = [
       'sprint_reliability', 'delivery_timeliness', 'estimation_accuracy', 'throughput_complexity',
-      'internal_rework_ratio', 'defect_leakage', 'dependency_agile', 'engineering_hygiene',
-      'reporting_documentation', 'learning_velocity', 'automation_innovation', 'attendance', 'positive_behaviour',
+      'internal_rework_ratio', 'technical_defect_leakage', 'functional_defect_leakage',
+      'attendance', 'timeliness',
+      'team_collaboration', 'reporting_documentation',
+      'learning_velocity',
+      'positive_behaviour', 'gratitude',
     ];
 
-    const metrics = metricIds.map((metricId, i) => ({ metricId, points: metricPoints[i] }));
+    const METRIC_VALUES = hasNoActivity
+      ? Array(14).fill(0)
+      : [
+          sprintReliability, deliveryTimeliness, estimationAccuracy, throughput,
+          internalReworkRatio, technicalDefectLeakage, functionalDefectLeakage,
+          attendance, timeliness,
+          teamCollaboration, reportingDocs,
+          learningVelocity,
+          positiveBehaviour, gratitude,
+        ];
+
+    const metrics = METRIC_IDS.map((metricId, i) => ({ metricId, points: METRIC_VALUES[i] }));
     const totalScore = hasNoActivity ? 0 : Math.round(metrics.reduce((s, m) => s + m.points, 0) * 10) / 10;
 
     const role =
@@ -387,6 +339,48 @@ export class AnalyticsService {
       totalScore,
       hasNoActivity,
     };
+  }
+
+  // ─── KPI Notes ───────────────────────────────────────────────────────────────
+
+  async getKpiNotes(userId: string, period: string) {
+    return this.prisma.kpiNote.findMany({
+      where: { userId, period },
+      orderBy: { createdAt: 'asc' },
+      select: {
+        id: true,
+        metricId: true,
+        content: true,
+        createdAt: true,
+        author: { select: { id: true, fullName: true } },
+      },
+    });
+  }
+
+  async addKpiNote(authorId: string, body: { userId: string; metricId: string; period: string; content: string }) {
+    return this.prisma.kpiNote.create({
+      data: {
+        userId: body.userId,
+        metricId: body.metricId,
+        period: body.period,
+        content: body.content,
+        authorId,
+      },
+      select: {
+        id: true,
+        metricId: true,
+        content: true,
+        createdAt: true,
+        author: { select: { id: true, fullName: true } },
+      },
+    });
+  }
+
+  async deleteKpiNote(noteId: string, requesterId: string, isAdmin: boolean) {
+    const note = await this.prisma.kpiNote.findUnique({ where: { id: noteId }, select: { authorId: true } });
+    if (!note) throw new Error('Note not found');
+    if (!isAdmin && note.authorId !== requesterId) throw new Error('Forbidden');
+    return this.prisma.kpiNote.delete({ where: { id: noteId } });
   }
 
   // ─── Reports ─────────────────────────────────────────────────────────────────

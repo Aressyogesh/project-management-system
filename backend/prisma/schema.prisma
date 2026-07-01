@@ -258,6 +258,8 @@ model User {
   timesheetApprovals    TimesheetEntry[]     @relation("TimesheetApprovals")
   kpiRecords            KpiRecord[]          @relation("KpiRecords")
   enteredKpiRecords     KpiRecord[]          @relation("EnteredKpiRecords")
+  kpiNotes              KpiNote[]            @relation("KpiNotesForUser")
+  kpiNotesCreated       KpiNote[]            @relation("KpiNotesCreatedBy")
   leaveRequests         LeaveRequest[]       @relation("UserLeaveRequests")
   leaveRequestApprovals LeaveRequest[]       @relation("LeaveRequestApprovals")
   leaveLogs             LeaveLog[]           @relation("LeaveLogs")
@@ -797,6 +799,24 @@ model KpiRecord {
   @@unique([userId, period, metricId])
   @@index([userId, period])
   @@map("kpi_records")
+}
+
+// ─── KPI Note (multiple notes per metric per month, entered by PM) ────────────
+
+model KpiNote {
+  id        String   @id @default(uuid())
+  userId    String
+  metricId  String   @db.VarChar(50)
+  period    String   @db.VarChar(7)
+  content   String   @db.Text
+  authorId  String
+  createdAt DateTime @default(now())
+
+  user      User @relation("KpiNotesForUser", fields: [userId], references: [id], onDelete: Cascade)
+  author    User @relation("KpiNotesCreatedBy", fields: [authorId], references: [id])
+
+  @@index([userId, metricId, period])
+  @@map("kpi_notes")
 }
 
 // ─── Leave Request ────────────────────────────────────────────────────────────

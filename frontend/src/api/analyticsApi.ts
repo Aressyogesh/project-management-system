@@ -124,6 +124,14 @@ export interface KpiRecord {
   notes?: string;
 }
 
+export interface KpiNote {
+  id: string;
+  metricId: string;
+  content: string;
+  createdAt: string;
+  author: { id: string; fullName: string };
+}
+
 export const analyticsApi = {
   getMyProjectRole: (): Promise<{ isManager: boolean }> =>
     apiClient.get<{ isManager: boolean }>('/analytics/my-project-role').then((r) => r.data),
@@ -192,4 +200,15 @@ export const analyticsApi = {
     apiClient
       .get<KpiRecord[]>('/kpi-records', { params: { userId, period } })
       .then((r) => r.data),
+
+  getKpiNotes: (userId: string, period: string) =>
+    apiClient
+      .get<KpiNote[]>('/analytics/kpi/notes', { params: { userId, period } })
+      .then((r) => r.data),
+
+  addKpiNote: (data: { userId: string; metricId: string; period: string; content: string }) =>
+    apiClient.post<KpiNote>('/analytics/kpi/notes', data).then((r) => r.data),
+
+  deleteKpiNote: (noteId: string) =>
+    apiClient.delete(`/analytics/kpi/notes/${noteId}`).then((r) => r.data),
 };

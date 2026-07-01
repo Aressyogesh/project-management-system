@@ -28,6 +28,7 @@ import { ActivityLogPage } from './features/activity/ActivityLogPage';
 import { UpskillPage } from './features/upskill/pages/UpskillPage';
 import { AnnouncementsPage } from './features/announcements/pages/AnnouncementsPage';
 import { OrgStructurePage } from './features/org-structure/pages/OrgStructurePage';
+import { KpiPage } from './features/kpi/pages/KpiPage';
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 30_000 } },
@@ -101,6 +102,9 @@ export default function App() {
 
               {/* Org Structure */}
               <Route path="/org-structure" element={<OrgStructurePage />} />
+
+              {/* KPI Appraisal */}
+              <Route path="/kpi" element={<KpiPage />} />
             </Route>
           </Route>
 

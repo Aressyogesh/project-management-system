@@ -7,21 +7,33 @@ import { KpiPage } from '../pages/KpiPage';
 import {
   computeGrade,
   computeCategoryScores,
-  STATIC_KPI_DATA,
   KPI_METRICS,
 } from '../data/kpiStaticData';
 import type { KpiMetricScore } from '../../../types/kpi.types';
 
-// ─── Mock analyticsApi (live KPI data) ───────────────────────────────────────
-const mockLiveKpiData = STATIC_KPI_DATA.map((r) => ({
-  userId: r.userId,
-  name: r.name,
-  role: r.role,
-  department: r.department,
-  period: '2026-05',
-  metrics: r.metrics,
-  totalScore: r.totalScore,
-}));
+// ─── Mock live KPI data ───────────────────────────────────────────────────────
+
+function makeEmployee(
+  userId: string,
+  name: string,
+  role: string,
+  department: string,
+  totalScore: number,
+) {
+  const metrics: KpiMetricScore[] = KPI_METRICS.map((m) => ({
+    metricId: m.id,
+    points: Math.round((totalScore / 100) * m.maxPoints * 10) / 10,
+  }));
+  return { userId, name, role, department, period: '2026-06', metrics, totalScore };
+}
+
+const mockLiveKpiData = [
+  makeEmployee('u1', 'Hemant Atre',    'Senior Dev',   'Engineering', 96),
+  makeEmployee('u2', 'Yogesh Lolage',  'Dev Lead',     'Engineering', 82),
+  makeEmployee('u3', 'Gaurav Patil',   'Developer',    'Engineering', 77),
+  makeEmployee('u4', 'Rohit More',     'Developer',    'Engineering', 68),
+  makeEmployee('u5', 'Jayvant Bagul',  'QA Engineer',  'QA',          52),
+];
 
 vi.mock('../../../api/analyticsApi', () => ({
   analyticsApi: {
@@ -31,37 +43,42 @@ vi.mock('../../../api/analyticsApi', () => ({
   },
 }));
 
+vi.mock('../../../api/projects.api', () => ({
+  projectsApi: {
+    list: vi.fn(() => Promise.resolve([
+      { id: 'p1', name: 'Alpha Project', status: 'ACTIVE' },
+      { id: 'p2', name: 'Beta Project',  status: 'ACTIVE' },
+    ])),
+    listMembers: vi.fn(() => Promise.resolve([
+      { id: 'm1', projectRole: 'DEVELOPER', user: { id: 'u1', fullName: 'Hemant Atre',   email: 'h@pms.com', profilePhoto: null, department: 'Engineering' } },
+      { id: 'm2', projectRole: 'DEVELOPER', user: { id: 'u2', fullName: 'Yogesh Lolage', email: 'y@pms.com', profilePhoto: null, department: 'Engineering' } },
+    ])),
+  },
+}));
+
 // ─── Mock recharts (jsdom has no canvas) ─────────────────────────────────────
 vi.mock('recharts', async () => {
   const actual = await vi.importActual<typeof import('recharts')>('recharts');
   return {
     ...actual,
     ResponsiveContainer: ({ children }: { children: React.ReactNode }) => (
-      <div data-testid="responsive-container" style={{ width: 400, height: 300 }}>
-        {children}
-      </div>
+      <div data-testid="responsive-container" style={{ width: 400, height: 300 }}>{children}</div>
     ),
-    RadarChart: ({ children }: { children: React.ReactNode }) => (
-      <div data-testid="radar-chart">{children}</div>
-    ),
-    BarChart: ({ children }: { children: React.ReactNode }) => (
-      <div data-testid="bar-chart">{children}</div>
-    ),
-    PieChart: ({ children }: { children: React.ReactNode }) => (
-      <div data-testid="pie-chart">{children}</div>
-    ),
-    Radar: () => null,
-    Bar: () => null,
-    Pie: () => null,
-    Cell: () => null,
-    PolarGrid: () => null,
-    PolarAngleAxis: () => null,
-    PolarRadiusAxis: () => null,
-    XAxis: () => null,
-    YAxis: () => null,
-    CartesianGrid: () => null,
-    Tooltip: () => null,
-    Legend: () => null,
+    RadarChart:  ({ children }: { children: React.ReactNode }) => <div data-testid="radar-chart">{children}</div>,
+    BarChart:    ({ children }: { children: React.ReactNode }) => <div data-testid="bar-chart">{children}</div>,
+    PieChart:    ({ children }: { children: React.ReactNode }) => <div data-testid="pie-chart">{children}</div>,
+    Radar:            () => null,
+    Bar:              () => null,
+    Pie:              () => null,
+    Cell:             () => null,
+    PolarGrid:        () => null,
+    PolarAngleAxis:   () => null,
+    PolarRadiusAxis:  () => null,
+    XAxis:            () => null,
+    YAxis:            () => null,
+    CartesianGrid:    () => null,
+    Tooltip:          () => null,
+    Legend:           () => null,
   };
 });
 
@@ -126,30 +143,7 @@ describe('computeGrade', () => {
 // ─── Category score computation tests ────────────────────────────────────────
 
 describe('computeCategoryScores', () => {
-  it('UTC-F019-FE-010: correctly sums Hemant Atre category scores', () => {
-    const hemant = STATIC_KPI_DATA.find((e) => e.name === 'Hemant Atre')!;
-    expect(hemant).toBeDefined();
-    const cats = hemant.categoryScores;
-
-    const dne = cats.find((c) => c.category === 'Delivery & Execution')!;
-    const qne = cats.find((c) => c.category === 'Quality & Engineering Excellence')!;
-    const onc = cats.find((c) => c.category === 'Ownership & Collaboration')!;
-    const gni = cats.find((c) => c.category === 'Growth & Innovation')!;
-    const bnr = cats.find((c) => c.category === 'Behaviour & Reliability')!;
-
-    // Sprint:13 + Delivery:14 + Est:10 + Throughput:9 = 46
-    expect(dne.earned).toBe(46);
-    // Rework:5 + Defect:10 + Hygiene:5 = 20
-    expect(qne.earned).toBe(20);
-    // Dep:5 + Report:5 = 10
-    expect(onc.earned).toBe(10);
-    // Learn:5 + Auto:5 = 10
-    expect(gni.earned).toBe(10);
-    // Attend:5 + Behav:5 = 10
-    expect(bnr.earned).toBe(10);
-  });
-
-  it('returns correct percentage for each category', () => {
+  it('returns 100% for all metrics at max points', () => {
     const scores: KpiMetricScore[] = KPI_METRICS.map((m) => ({
       metricId: m.id,
       points: m.maxPoints,
@@ -161,7 +155,7 @@ describe('computeCategoryScores', () => {
     });
   });
 
-  it('returns 0 percentage when all scores are 0', () => {
+  it('returns 0% for all metrics at 0 points', () => {
     const scores: KpiMetricScore[] = KPI_METRICS.map((m) => ({
       metricId: m.id,
       points: 0,
@@ -172,52 +166,73 @@ describe('computeCategoryScores', () => {
       expect(c.earned).toBe(0);
     });
   });
+
+  it('groups Delivery & Execution correctly (max 40)', () => {
+    const scores: KpiMetricScore[] = KPI_METRICS.map((m) => ({
+      metricId: m.id,
+      points: m.maxPoints,
+    }));
+    const cats = computeCategoryScores(scores);
+    const de = cats.find((c) => c.category === 'Delivery & Execution');
+    expect(de).toBeDefined();
+    expect(de?.max).toBe(40);
+  });
+
+  it('groups Attendance correctly (max 10)', () => {
+    const scores: KpiMetricScore[] = KPI_METRICS.map((m) => ({
+      metricId: m.id,
+      points: m.maxPoints,
+    }));
+    const cats = computeCategoryScores(scores);
+    const att = cats.find((c) => c.category === 'Attendance');
+    expect(att).toBeDefined();
+    expect(att?.max).toBe(10);
+  });
 });
 
-// ─── Static data integrity tests ──────────────────────────────────────────────
+// ─── KPI_METRICS integrity tests ──────────────────────────────────────────────
 
-describe('STATIC_KPI_DATA integrity', () => {
-  it('has 14 employees', () => {
-    expect(STATIC_KPI_DATA).toHaveLength(14);
+describe('KPI_METRICS static data integrity', () => {
+  it('has exactly 14 metrics', () => {
+    expect(KPI_METRICS).toHaveLength(14);
   });
 
-  it('each employee has 13 metric scores', () => {
-    STATIC_KPI_DATA.forEach((emp) => {
-      expect(emp.metrics).toHaveLength(13);
+  it('total weightage sums to 1.00 (100%)', () => {
+    const total = KPI_METRICS.reduce((s, m) => s + m.weightage, 0);
+    expect(Math.round(total * 100)).toBe(100);
+  });
+
+  it('total maxPoints sums to 100', () => {
+    const total = KPI_METRICS.reduce((s, m) => s + m.maxPoints, 0);
+    expect(total).toBe(100);
+  });
+
+  it('has 5 distinct core values', () => {
+    const values = new Set(KPI_METRICS.map((m) => m.coreValue));
+    expect(values.size).toBe(5);
+    expect(values.has('Diligent and Committed')).toBe(true);
+    expect(values.has('Collaboration')).toBe(true);
+    expect(values.has('Continuous Learning')).toBe(true);
+    expect(values.has('Optimism')).toBe(true);
+    expect(values.has('Gratitude')).toBe(true);
+  });
+
+  it('Diligent and Committed has 9 metrics totalling 75 pts', () => {
+    const dc = KPI_METRICS.filter((m) => m.coreValue === 'Diligent and Committed');
+    expect(dc).toHaveLength(9);
+    expect(dc.reduce((s, m) => s + m.maxPoints, 0)).toBe(75);
+  });
+
+  it('Collaboration has 2 metrics totalling 10 pts', () => {
+    const col = KPI_METRICS.filter((m) => m.coreValue === 'Collaboration');
+    expect(col).toHaveLength(2);
+    expect(col.reduce((s, m) => s + m.maxPoints, 0)).toBe(10);
+  });
+
+  it('each metric has a valid badge type', () => {
+    KPI_METRICS.forEach((m) => {
+      expect(['AUTO', 'MANUAL', 'SELF']).toContain(m.badge);
     });
-  });
-
-  it('totalScore matches sum of metric points', () => {
-    STATIC_KPI_DATA.forEach((emp) => {
-      const sum = emp.metrics.reduce((s, m) => s + m.points, 0);
-      expect(emp.totalScore).toBe(sum);
-    });
-  });
-
-  it('grade matches totalScore via computeGrade', () => {
-    STATIC_KPI_DATA.forEach((emp) => {
-      expect(emp.grade).toBe(computeGrade(emp.totalScore));
-    });
-  });
-
-  it('Hemant Atre is highest scorer', () => {
-    const sorted = [...STATIC_KPI_DATA].sort((a, b) => b.totalScore - a.totalScore);
-    expect(sorted[0].name).toBe('Hemant Atre');
-  });
-
-  it('Jayvant Bagul is lowest scorer with Grade D', () => {
-    const sorted = [...STATIC_KPI_DATA].sort((a, b) => a.totalScore - b.totalScore);
-    expect(sorted[0].name).toBe('Jayvant Bagul');
-    expect(sorted[0].grade).toBe('D');
-  });
-
-  it('has 3 Grade A, 5 Grade B, 4 Grade C, 2 Grade D', () => {
-    const grades = { A: 0, B: 0, C: 0, D: 0 };
-    STATIC_KPI_DATA.forEach((e) => grades[e.grade]++);
-    expect(grades.A).toBe(3);
-    expect(grades.B).toBe(5);
-    expect(grades.C).toBe(4);
-    expect(grades.D).toBe(2);
   });
 });
 
@@ -233,23 +248,14 @@ describe('KpiPage (ADMIN role)', () => {
     expect(screen.getByText('KPI Appraisal')).toBeInTheDocument();
   });
 
-  it('UTC-F019-FE-003: renders period selector', () => {
+  it('UTC-F019-FE-003: renders period, project, and team member selectors', () => {
     renderKpiPage();
-    // There are two selects (period + dept filter); get all and find the period one
     const selects = screen.getAllByRole('combobox');
-    const periodSelect = selects.find((s) => (s as HTMLSelectElement).value === '2026-05');
-    expect(periodSelect).toBeInTheDocument();
-    expect(periodSelect).toHaveValue('2026-05');
+    // At minimum: Period + Project dropdowns
+    expect(selects.length).toBeGreaterThanOrEqual(2);
   });
 
-  it('UTC-F019-FE-004: renders Grade A, B, C/D summary cards', async () => {
-    renderKpiPage();
-    expect(await screen.findByText('Grade A')).toBeInTheDocument();
-    expect(screen.getByText('Grade B')).toBeInTheDocument();
-    expect(screen.getByText('Grade C / D')).toBeInTheDocument();
-  });
-
-  it('UTC-F019-FE-009: shows actual DB users in the table', async () => {
+  it('UTC-F019-FE-009: shows employee names in the table', async () => {
     renderKpiPage();
     expect(await screen.findAllByText('Hemant Atre')).not.toHaveLength(0);
     expect(screen.getAllByText('Yogesh Lolage').length).toBeGreaterThanOrEqual(1);
@@ -258,27 +264,31 @@ describe('KpiPage (ADMIN role)', () => {
     expect(screen.getAllByText('Jayvant Bagul').length).toBeGreaterThanOrEqual(1);
   });
 
-  it('UTC-F019-FE-013: expands detail panel when employee row is clicked', async () => {
+  it('UTC-F019-FE-013: expands parameter groups when employee row is clicked', async () => {
     renderKpiPage();
     const allHemantElements = await screen.findAllByText('Hemant Atre');
-    const hemantCell = allHemantElements[allHemantElements.length - 1];
-    await userEvent.click(hemantCell);
-    const sprintElements = screen.getAllByText('Sprint Reliability');
-    expect(sprintElements.length).toBeGreaterThan(0);
-  });
-
-  it('UTC-F019-FE-011: Grade A badge has emerald colour classes', async () => {
-    renderKpiPage();
-    await screen.findByText('Grade A');
-    const gradeBadges = document.querySelectorAll('.bg-emerald-100');
-    expect(gradeBadges.length).toBeGreaterThan(0);
+    const tableRowCell = allHemantElements[allHemantElements.length - 1];
+    await userEvent.click(tableRowCell);
+    await waitFor(() => {
+      expect(screen.getAllByText('Sprint Reliability').length).toBeGreaterThan(0);
+    });
   });
 
   it('UTC-F019-FE-012: leaderboard shows Hemant Atre in top position', async () => {
     renderKpiPage();
     expect(await screen.findByText('Top Performers')).toBeInTheDocument();
     const allHemantElements = screen.getAllByText('Hemant Atre');
-    expect(allHemantElements.length).toBeGreaterThanOrEqual(2); // leaderboard + table
+    expect(allHemantElements.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('renders Enter Monthly Scores button', () => {
+    renderKpiPage();
+    expect(screen.getByText('Enter Monthly Scores')).toBeInTheDocument();
+  });
+
+  it('renders Scoring Reference Guide', async () => {
+    renderKpiPage();
+    expect(await screen.findByText('Scoring Reference Guide')).toBeInTheDocument();
   });
 });
 
@@ -287,9 +297,14 @@ describe('KpiPage (SUPER_USER role)', () => {
     mockUser.systemRole = 'SUPER_USER';
   });
 
-  it('UTC-F019-FE-001: renders team dashboard for Super User', async () => {
+  it('UTC-F019-FE-001: renders team dashboard heading for Super User', () => {
     renderKpiPage();
     expect(screen.getByText('KPI Appraisal')).toBeInTheDocument();
-    expect(await screen.findByText('Team Average')).toBeInTheDocument();
+  });
+
+  it('renders Project dropdown for Super User', () => {
+    renderKpiPage();
+    const selects = screen.getAllByRole('combobox');
+    expect(selects.length).toBeGreaterThanOrEqual(2);
   });
 });

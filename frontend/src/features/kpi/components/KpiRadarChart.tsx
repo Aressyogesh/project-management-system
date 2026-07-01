@@ -7,18 +7,24 @@ import {
   ResponsiveContainer,
   Tooltip,
 } from 'recharts';
-import type { EmployeeKpiRecord } from '../../../types/kpi.types';
+import type { KpiCategoryScore } from '../../../types/kpi.types';
 
 interface Props {
-  employee: EmployeeKpiRecord;
+  categoryScores: KpiCategoryScore[];
+  name: string;
+  color?: string;
 }
 
-const SHORT_CATEGORY: Record<string, string> = {
-  'Delivery & Execution': 'D & E',
+const SHORT_LABEL: Record<string, string> = {
+  'Diligent and Committed': 'Diligent',
+  'Collaboration':          'Collab.',
+  'Continuous Learning':    'Learning',
+  'Optimism':               'Optimism',
+  'Gratitude':              'Gratitude',
+  // legacy sub-category labels (kept for backward compat)
+  'Delivery & Execution':           'D & E',
   'Quality & Engineering Excellence': 'Q & E',
-  'Ownership & Collaboration': 'O & C',
-  'Growth & Innovation': 'G & I',
-  'Behaviour & Reliability': 'B & R',
+  'Attendance':                       'Attendance',
 };
 
 interface CustomTooltipProps {
@@ -40,9 +46,9 @@ function CustomTooltip({ active, payload }: CustomTooltipProps) {
   );
 }
 
-export function KpiRadarChart({ employee }: Props) {
-  const data = employee.categoryScores.map((c) => ({
-    category: SHORT_CATEGORY[c.category] ?? c.category,
+export function KpiRadarChart({ categoryScores, name, color = '#3B82F6' }: Props) {
+  const data = categoryScores.map((c) => ({
+    category: SHORT_LABEL[c.category] ?? c.category,
     fullName: c.category,
     score: c.percentage,
     earned: c.earned,
@@ -65,24 +71,24 @@ export function KpiRadarChart({ employee }: Props) {
             tickCount={5}
           />
           <Radar
-            name={employee.name}
+            name={name}
             dataKey="score"
-            stroke="#3B82F6"
-            fill="#3B82F6"
+            stroke={color}
+            fill={color}
             fillOpacity={0.18}
             strokeWidth={2}
-            dot={{ r: 3, fill: '#3B82F6', strokeWidth: 0 }}
+            dot={{ r: 3, fill: color, strokeWidth: 0 }}
           />
           <Tooltip content={<CustomTooltip />} />
         </RadarChart>
       </ResponsiveContainer>
 
-      <div className="w-full grid grid-cols-5 gap-1 mt-1">
-        {employee.categoryScores.map((c) => (
-          <div key={c.category} className="text-center">
+      <div className="w-full flex flex-wrap justify-center gap-x-4 gap-y-1 mt-1">
+        {categoryScores.map((c) => (
+          <div key={c.category} className="text-center min-w-[60px]">
             <p className="text-xs font-bold text-gray-800">{c.percentage}%</p>
             <p className="text-[10px] text-gray-400 leading-tight">
-              {SHORT_CATEGORY[c.category] ?? c.category}
+              {SHORT_LABEL[c.category] ?? c.category}
             </p>
           </div>
         ))}
