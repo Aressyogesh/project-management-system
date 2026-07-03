@@ -43,4 +43,9 @@ export class CreateUserDto {
   @IsOptional()
   @IsString()
   shiftId?: string;
+
+  @ApiPropertyOptional({ description: 'Required when systemRole is BU_HEAD' })
+  @IsOptional()
+  @IsString()
+  managedBusinessUnitId?: string;
 }
