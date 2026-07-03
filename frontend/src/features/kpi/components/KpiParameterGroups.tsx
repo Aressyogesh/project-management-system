@@ -179,6 +179,9 @@ function MetricRow({
               style={{ width: `${pct}%`, backgroundColor: score !== null ? barColor : '#E5E7EB' }}
             />
           </div>
+          <div className="text-right mt-0.5">
+            <span className="text-[10px] text-gray-400">{pct}%</span>
+          </div>
         </div>
 
         {/* Action icons */}

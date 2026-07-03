@@ -30,7 +30,7 @@ export class ProjectRoleGuard implements CanActivate {
     if (!requiredRoles?.length) return true;
 
     const request = context.switchToHttp().getRequest();
-    const user = request.user as { id: string; systemRole: SystemRole };
+    const user = request.user as { id: string; systemRole: SystemRole; managedBusinessUnitId?: string | null };
 
     // SUPER_USER and ADMIN bypass project-level check
     if (
@@ -48,6 +48,21 @@ export class ProjectRoleGuard implements CanActivate {
 
     const projectId = await this.resolveProjectId(request.params, source);
     if (!projectId) throw new ForbiddenException('Insufficient permissions');
+
+    // BU_HEAD gets PROJECT_MANAGER-level access to all projects in their managed BU
+    if (user.systemRole === SystemRole.BU_HEAD) {
+      if (user.managedBusinessUnitId) {
+        const project = await this.prisma.project.findUnique({
+          where: { id: projectId },
+          select: { department: { select: { businessUnitId: true } } },
+        });
+        if (project?.department?.businessUnitId === user.managedBusinessUnitId) {
+          request.user.projectRole = ProjectRole.PROJECT_MANAGER;
+          return true;
+        }
+      }
+      throw new ForbiddenException('Insufficient permissions');
+    }
 
     const membership = await this.prisma.projectMember.findFirst({
       where: { projectId, userId: user.id },

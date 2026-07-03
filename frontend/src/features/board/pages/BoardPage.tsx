@@ -167,7 +167,7 @@ export function BoardPage() {
 
   const systemRole = user?.systemRole;
   const myProjectRole = members.find((m) => m.user.id === user?.id)?.projectRole;
-  const isAdminOrSuper = systemRole === 'SUPER_USER' || systemRole === 'ADMIN';
+  const isAdminOrSuper = systemRole === 'SUPER_USER' || systemRole === 'ADMIN' || systemRole === 'BU_HEAD';
 
   const isMgmt = myProjectRole === 'PROJECT_MANAGER' || myProjectRole === 'TEAM_LEAD' || user?.hasManagementRole === true;
 

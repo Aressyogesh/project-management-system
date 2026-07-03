@@ -112,7 +112,7 @@ export class TimesheetEntriesService {
     to?: string,
     projectId?: string,
   ) {
-    const isAdmin = systemRole === SystemRole.SUPER_USER || systemRole === SystemRole.ADMIN;
+    const isAdmin = systemRole === SystemRole.SUPER_USER || systemRole === SystemRole.ADMIN || systemRole === SystemRole.BU_HEAD;
     let isManager = projectRole === ProjectRole.PROJECT_MANAGER || projectRole === ProjectRole.TEAM_LEAD;
 
     // projectRole is not included in the JWT payload, so check the DB for PM/TL memberships

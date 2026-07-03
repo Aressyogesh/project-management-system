@@ -102,7 +102,7 @@ export function ProjectDetailPage() {
   const { id: projectId } = useParams<{ id: string }>();
   const qc = useQueryClient();
   const user = useAuthStore((s) => s.user);
-  const isAdminOrSuper = user?.systemRole === 'SUPER_USER' || user?.systemRole === 'ADMIN';
+  const isAdminOrSuper = user?.systemRole === 'SUPER_USER' || user?.systemRole === 'ADMIN' || user?.systemRole === 'BU_HEAD';
 
   const [showAddMember, setShowAddMember] = useState(false);
   const [editingRole, setEditingRole] = useState<{ userId: string; role: ProjectRole } | null>(null);

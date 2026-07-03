@@ -42,14 +42,13 @@ function computeDefectLeakageFromHours(bugHours: number, totalWorkingHours: numb
   return Math.max(0, Math.min(10, Math.round(score * 10) / 10));
 }
 
-function computeAttendance(leaveRequests: { status: string; totalDays: number }[]): number {
-  const hasRejected = leaveRequests.some((r) => r.status === 'REJECTED');
-  if (hasRejected) return 0;
-  const approvedDays = leaveRequests
-    .filter((r) => r.status === 'APPROVED')
-    .reduce((s, r) => s + r.totalDays, 0);
-  if (approvedDays > 1.5) return 0;
-  if (approvedDays > 1) return 3;
+function computeAttendance(leaveRequests: { totalDays: number; isPlanned: boolean }[]): number {
+  // Unplanned leave (isPlanned = false) → 0 pts
+  if (leaveRequests.some((r) => !r.isPlanned)) return 0;
+  // Planned approved leaves — score based on total days
+  const plannedDays = leaveRequests.reduce((s, r) => s + r.totalDays, 0);
+  if (plannedDays > 1.5) return 0;
+  if (plannedDays > 1) return 3;
   return 5;
 }
 
@@ -121,33 +120,22 @@ export class AnalyticsService {
 
     // ── Phase 1: parallel fetch ─────────────────────────────────────────────────
     const [
-      sprintItems,
       allAssignedItems,
       bugItems,
       manualScores,
       leaveRequests,
       upskillLearningApproved,
-      upskillLearningAny,
+      upskillLearningRejected,
       totalWorkingHoursAgg,
     ] = await Promise.all([
-      // Sprint items (sprint reliability + throughput)
-      this.prisma.workItem.findMany({
-        where: {
-          assigneeId: userId,
-          sprintId: { not: null },
-          createdAt: { gte: start, lt: end },
-          projectId: { in: activeProjectIds },
-        },
-        select: { id: true, status: true, storyPoints: true, estimatedHours: true, completedAt: true, dueDate: true, reopenCount: true },
-      }),
-      // All assigned items (delivery timeliness + rework)
+      // All assigned items — used for ALL delivery metrics regardless of sprint presence
       this.prisma.workItem.findMany({
         where: {
           assigneeId: userId,
           createdAt: { gte: start, lt: end },
           projectId: { in: activeProjectIds },
         },
-        select: { id: true, status: true, completedAt: true, dueDate: true, reopenCount: true, type: true, storyPoints: true, estimatedHours: true },
+        select: { id: true, status: true, completedAt: true, inReviewAt: true, dueDate: true, reopenCount: true, qaReopenCount: true, type: true, storyPoints: true, estimatedHours: true },
       }),
       // Bug items the developer is responsible for (defect leakage)
       this.prisma.workItem.findMany({
@@ -164,24 +152,24 @@ export class AnalyticsService {
         where: { userId, period },
         select: { metricId: true, points: true },
       }),
-      // Leave requests overlapping the period
+      // Leave requests overlapping the period — only APPROVED leaves affect scoring
       this.prisma.leaveRequest.findMany({
         where: {
           userId,
-          status: { in: ['APPROVED', 'REJECTED'] },
+          status: 'APPROVED',
           startDate: { lte: end },
           endDate: { gte: start },
         },
-        select: { status: true, totalDays: true },
+        select: { totalDays: true, isPlanned: true },
       }),
-      // Approved LEARNING upskill assignment
+      // APPROVED LEARNING assignment → 5 pts
       this.prisma.upskillAssignment.findFirst({
         where: { assignedToId: userId, type: 'LEARNING', status: 'APPROVED', startDate: { lte: end }, endDate: { gte: start } },
         select: { id: true },
       }),
-      // Any LEARNING upskill assignment (any status — for partial/pending = 3 pts)
+      // REJECTED (declined) LEARNING assignment → 3 pts. SUBMITTED/IN_PROGRESS/ASSIGNED = 0 pts per spec.
       this.prisma.upskillAssignment.findFirst({
-        where: { assignedToId: userId, type: 'LEARNING', startDate: { lte: end }, endDate: { gte: start } },
+        where: { assignedToId: userId, type: 'LEARNING', status: 'REJECTED', startDate: { lte: end }, endDate: { gte: start } },
         select: { id: true },
       }),
       // Total timesheet hours for the user in the period (for defect leakage denominators)
@@ -192,9 +180,8 @@ export class AnalyticsService {
     ]);
 
     // ── Phase 2: dependent queries ──────────────────────────────────────────────
-    const isSprintBased = sprintItems.length > 0;
-    const deliveryBase = isSprintBased ? sprintItems : allAssignedItems;
-    const deliveryItemIds = deliveryBase.map((i) => i.id);
+    // All metrics use allAssignedItems regardless of sprint existence.
+    const allAssignedItemIds = allAssignedItems.map((i) => i.id);
 
     const codeReviewBugIds = bugItems
       .filter((b) => b.bugClassification === BugClassification.CODE_REVIEW)
@@ -202,15 +189,16 @@ export class AnalyticsService {
     const functionalBugIds = bugItems
       .filter((b) => b.bugClassification !== null && b.bugClassification !== BugClassification.CODE_REVIEW)
       .map((b) => b.id);
-    const reworkItemIds = allAssignedItems.filter((i) => i.reopenCount > 0).map((i) => i.id);
+    // Rework = items dragged specifically from IN_QA → IN_PROGRESS (same definition as Internal Rework Ratio)
+    const reworkItemIds = allAssignedItems.filter((i) => i.qaReopenCount > 0).map((i) => i.id);
 
     const [timesheetSum, codeReviewHoursAgg, functionalBugHoursAgg, reworkHoursAgg] = await Promise.all([
-      // Timesheet hours on delivery items (for estimation accuracy)
+      // Timesheet hours on all assigned work items (for estimation accuracy actual hours)
       this.prisma.timesheetEntry.aggregate({
         where: {
           userId,
-          ...(deliveryItemIds.length > 0
-            ? { workItemId: { in: deliveryItemIds } }
+          ...(allAssignedItemIds.length > 0
+            ? { workItemId: { in: allAssignedItemIds } }
             : { date: { gte: start, lt: end } }),
         },
         _sum: { hours: true },
@@ -241,34 +229,56 @@ export class AnalyticsService {
     // ── Compute metrics ─────────────────────────────────────────────────────────
 
     const totalWorkingHours = Number(totalWorkingHoursAgg._sum.hours ?? 0);
-    const totalEstimated = deliveryBase.reduce((s, i) => s + Number(i.estimatedHours ?? 0), 0);
+    const totalEstimated = allAssignedItems.reduce((s, i) => s + Number(i.estimatedHours ?? 0), 0);
     const totalActual = Number(timesheetSum._sum.hours ?? 0);
 
     // Diligent & Committed — auto metrics
-    // Sprint Reliability: items in "In QA" column / total non-BLOCKED * 10
-    const nonBlockedItems = deliveryBase.filter((i) => i.status !== BoardStatus.BLOCKED);
-    const inQaItems = nonBlockedItems.filter((i) => i.status === BoardStatus.IN_QA);
-    const sprintReliability = ratio10(inQaItems.length, nonBlockedItems.length);
+    // Sprint Reliability: items that have entered IN_QA / Total Assigned (non-EPIC, non-BLOCKED) * 10
+    // Cards in QA_DONE or CLOSED moved forward from IN_QA — score unaffected, still counted.
+    // Cards pulled back below IN_QA (to IN_REVIEW or IN_PROGRESS) — recalculate: status leaves the set.
+    const QA_OR_BEYOND = new Set<BoardStatus>([BoardStatus.IN_QA, BoardStatus.QA_DONE, BoardStatus.CLOSED]);
+    const srBase = allAssignedItems.filter(
+      (i) => i.type !== WorkItemType.EPIC && i.status !== BoardStatus.BLOCKED,
+    );
+    const sprintReliability = ratio10(
+      srBase.filter((i) => QA_OR_BEYOND.has(i.status)).length,
+      srBase.length,
+    );
 
-    // Delivery Timeliness: items completed on/before due date / total non-BLOCKED * 10
-    const nonBlockedAssigned = allAssignedItems.filter((i) => i.status !== BoardStatus.BLOCKED);
-    const itemsWithDue = nonBlockedAssigned.filter((i) => i.dueDate !== null && i.completedAt !== null);
-    const onTimeItems = itemsWithDue.filter((i) => i.completedAt! <= i.dueDate!);
-    const deliveryTimeliness = ratio10(onTimeItems.length, nonBlockedAssigned.length);
+    // Delivery Timeliness: items moved from In-Progress to In-Review on or before due date
+    // Completion trigger = inReviewAt (when card entered IN_REVIEW).
+    // Score persists as card moves forward (IN_REVIEW → IN_QA → QA_DONE → CLOSED): inReviewAt stays set.
+    // Recalculate if pulled back from IN_REVIEW to IN_PROGRESS: inReviewAt is cleared in work-items.service.
+    // Excludes EPICs and BLOCKED items per Excel.
+    const dtBase = allAssignedItems.filter(
+      (i) => i.type !== WorkItemType.EPIC && i.status !== BoardStatus.BLOCKED,
+    );
+    const onTimeItems = dtBase.filter(
+      (i) => i.inReviewAt !== null && i.dueDate !== null && i.inReviewAt <= i.dueDate,
+    );
+    const deliveryTimeliness = ratio10(onTimeItems.length, dtBase.length);
 
     // Estimation Accuracy: variance-based stepped
     const estimationAccuracy = computeEstimationAccuracy(totalEstimated, totalActual);
 
-    // Throughput: CLOSED items / total non-BLOCKED * 10
-    const closedItems = nonBlockedAssigned.filter((i) => i.status === BoardStatus.CLOSED);
-    const throughput = ratio10(closedItems.length, nonBlockedAssigned.length);
+    // Throughput: items in CLOSED / Total Assigned (non-BLOCKED, non-EPIC) * 10
+    // Persist: card in CLOSED stays counted. Recalculate: if moved back from CLOSED to any earlier
+    // column, status is no longer CLOSED so it drops from numerator automatically.
+    // Exclude BLOCKED and EPIC per Notes column.
+    const throughputBase = allAssignedItems.filter(
+      (i) => i.status !== BoardStatus.BLOCKED && i.type !== WorkItemType.EPIC,
+    );
+    const closedItems = throughputBase.filter((i) => i.status === BoardStatus.CLOSED);
+    const throughput = ratio10(closedItems.length, throughputBase.length);
 
     // Collaboration — auto + manual
-    // Internal Rework Ratio: reopened count vs completed → 0%=5, ≤10%=3, >10%=0
-    const totalReopens = allAssignedItems.reduce((s, i) => s + i.reopenCount, 0);
-    const DONE_STAGES = new Set<string>([BoardStatus.QA_DONE, BoardStatus.CLOSED]);
+    // Internal Rework Ratio: tasks dragged from IN_QA → IN_PROGRESS (qaReopenCount > 0) / total completed
+    // Only IN_QA→IN_PROGRESS moves count as rework per Excel spec. General reopenCount (any backward move)
+    // is NOT used here — that would overcount moves from IN_REVIEW, QA_DONE, etc.
+    const DONE_STAGES = new Set<BoardStatus>([BoardStatus.QA_DONE, BoardStatus.CLOSED]);
+    const qaReopenedTaskCount = allAssignedItems.filter((i) => i.qaReopenCount > 0).length;
     const totalCompleted = allAssignedItems.filter((i) => DONE_STAGES.has(i.status)).length;
-    const internalReworkRatio = computeReworkRatio(totalReopens, totalCompleted);
+    const internalReworkRatio = computeReworkRatio(qaReopenedTaskCount, totalCompleted);
 
     // Technical Defect Leakage: 10 - (CODE_REVIEW bug hours / total working hours * 10)
     const codeReviewBugHours = Number(codeReviewHoursAgg._sum.hours ?? 0);
@@ -280,10 +290,10 @@ export class AnalyticsService {
     const functionalDefectLeakage = computeDefectLeakageFromHours(functionalBugHours + reworkHours, totalWorkingHours);
 
     // Attendance
-    const attendance = computeAttendance(leaveRequests as { status: string; totalDays: number }[]);
+    const attendance = computeAttendance(leaveRequests);
 
-    // Continuous Learning: approved=5, submitted (pending OR rejected)=3, not submitted=0
-    const learningVelocity = upskillLearningApproved ? 5 : upskillLearningAny ? 3 : 0;
+    // Learning Velocity: approved=5, declined (REJECTED)=3, not submitted or any other status=0
+    const learningVelocity = upskillLearningApproved ? 5 : upskillLearningRejected ? 3 : 0;
 
     // Manual scores (PM entries)
     const getManual = (metricId: string) =>
@@ -297,10 +307,10 @@ export class AnalyticsService {
     // ── Assemble final result ────────────────────────────────────────────────────
 
     const hasNoActivity =
-      sprintItems.length === 0 &&
       allAssignedItems.length === 0 &&
       manualScores.length === 0 &&
-      !upskillLearningAny;
+      !upskillLearningApproved &&
+      !upskillLearningRejected;
 
     const METRIC_IDS = [
       'sprint_reliability', 'delivery_timeliness', 'estimation_accuracy', 'throughput_complexity',

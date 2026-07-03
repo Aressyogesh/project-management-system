@@ -287,8 +287,11 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
               <UserAvatar name={user?.fullName ?? 'U'} photo={user?.profilePhoto} size="md" />
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-medium text-white truncate">{user?.fullName}</p>
-                <p className="text-xs text-blue-200 truncate capitalize">
-                  {user?.systemRole.replace(/_/g, ' ').toLowerCase()}
+                <p className="text-xs text-blue-200 truncate">
+                  {user?.systemRole === 'BU_HEAD' ? 'BU Head'
+                    : user?.systemRole === 'SUPER_USER' ? 'Super User'
+                    : user?.systemRole === 'ADMIN' ? 'Admin'
+                    : 'Employee'}
                 </p>
               </div>
             </div>
@@ -356,8 +359,11 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
                   <UserAvatar name={user?.fullName ?? 'U'} photo={user?.profilePhoto} size="md" />
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium text-white truncate">{user?.fullName}</p>
-                    <p className="text-xs text-blue-200 truncate capitalize">
-                      {user?.systemRole.replace(/_/g, ' ').toLowerCase()}
+                    <p className="text-xs text-blue-200 truncate">
+                      {user?.systemRole === 'BU_HEAD' ? 'BU Head'
+                        : user?.systemRole === 'SUPER_USER' ? 'Super User'
+                        : user?.systemRole === 'ADMIN' ? 'Admin'
+                        : 'Employee'}
                     </p>
                   </div>
                 </div>

@@ -628,12 +628,17 @@ function EmployeeRow({
           {employee.hasNoActivity ? (
             <p className="font-bold text-gray-400 text-base">—</p>
           ) : (
-            <>
-              <p className="font-bold text-gray-900 text-base">{employee.totalScore}</p>
-              <div className="w-12 mx-auto h-1 bg-gray-100 rounded-full mt-1 overflow-hidden">
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-sm font-bold" style={{ color: grade.color }}>
+                  {Number(employee.totalScore).toFixed(1)}%
+                </span>
+                <span className="text-[10px] text-gray-400">/ 100</span>
+              </div>
+              <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
                 <div className="h-full rounded-full" style={{ width: `${employee.totalScore}%`, backgroundColor: grade.color }} />
               </div>
-            </>
+            </div>
           )}
         </td>
         <td className="px-3 py-3.5 text-center">

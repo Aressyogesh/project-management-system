@@ -294,7 +294,7 @@ export class WorkItemsService implements OnModuleInit {
     if (item.type === WorkItemType.BUG || dto.type === WorkItemType.BUG) {
       dto.billingStatus = BillingStatus.NON_BILLABLE;
     } else if (dto.billingStatus !== undefined && dto.billingStatus !== item.billingStatus) {
-      if (!isAdmin) {
+      if (!isAdmin && !isPm) {
         const membership = await this.prisma.projectMember.findUnique({
           where: { projectId_userId: { projectId: item.projectId, userId } },
           select: { projectRole: true },
@@ -318,6 +318,8 @@ export class WorkItemsService implements OnModuleInit {
     const { startDate, dueDate, ...restDto } = dto;
     const isCompletingViaEdit = !!dto.status && TERMINAL_STATUSES.has(dto.status) && !TERMINAL_STATUSES.has(item.status);
     const isUncompletingViaEdit = TERMINAL_STATUSES.has(item.status) && !!dto.status && !TERMINAL_STATUSES.has(dto.status);
+    const enteringReviewViaEdit = !!dto.status && dto.status === BoardStatus.IN_REVIEW && item.status !== BoardStatus.IN_REVIEW;
+    const pulledBackFromReviewViaEdit = !!dto.status && item.status === BoardStatus.IN_REVIEW && dto.status === BoardStatus.IN_PROGRESS;
     const updated = await this.prisma.workItem.update({
       where: { id },
       data: {
@@ -328,6 +330,8 @@ export class WorkItemsService implements OnModuleInit {
         ...(dueDate !== undefined && { dueDate: dueDate ? new Date(dueDate) : null }),
         ...(isCompletingViaEdit && { completedAt: new Date() }),
         ...(isUncompletingViaEdit && { completedAt: null }),
+        ...(enteringReviewViaEdit && { inReviewAt: new Date() }),
+        ...(pulledBackFromReviewViaEdit && { inReviewAt: null }),
       },
       include: {
         assignee: { select: { id: true, fullName: true, profilePhoto: true } },
@@ -562,6 +566,12 @@ export class WorkItemsService implements OnModuleInit {
       await this.requireTimeLogForForwardMove(id, item.type);
     }
 
+    // inReviewAt: set when card enters IN_REVIEW; cleared when pulled back to IN_PROGRESS.
+    const enteringReview = dto.status === BoardStatus.IN_REVIEW && item.status !== BoardStatus.IN_REVIEW;
+    const pulledBackFromReview = item.status === BoardStatus.IN_REVIEW && dto.status === BoardStatus.IN_PROGRESS;
+    // qaReopenCount: incremented only for IN_QA → IN_PROGRESS (rework per KPI spec).
+    const isQaReopen = item.status === BoardStatus.IN_QA && dto.status === BoardStatus.IN_PROGRESS;
+
     const result = await this.prisma.workItem.update({
       where: { id },
       data: {
@@ -570,6 +580,9 @@ export class WorkItemsService implements OnModuleInit {
         ...(isCompletingNow && { completedAt: new Date() }),
         ...(isUncompletingNow && { completedAt: null }),
         ...(isBackward && { reopenCount: { increment: 1 } }),
+        ...(enteringReview && { inReviewAt: new Date() }),
+        ...(pulledBackFromReview && { inReviewAt: null }),
+        ...(isQaReopen && { qaReopenCount: { increment: 1 } }),
       },
     });
 

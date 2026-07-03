@@ -637,7 +637,9 @@ model WorkItem {
   stepsToRepro         String?            @db.VarChar(3000)
   definitionOfDone     String?            @db.VarChar(3000)
   completedAt          DateTime?
+  inReviewAt           DateTime?
   reopenCount          Int                @default(0)
+  qaReopenCount        Int                @default(0)
   position             Int                @default(0)
   startDate            DateTime?          @db.Date
   dueDate              DateTime?          @db.Date
