@@ -7,6 +7,7 @@ import { projectsApi } from '../../../api/projects.api';
 import type { Project, ProjectType } from '../../../types/projects.types';
 import { RichTextEditor } from '../../../components/shared/RichTextEditor';
 import { futureDateStr, pastDateStr } from '../../../utils/dateUtils';
+import { useAuthStore } from '../../../store/authStore';
 
 interface Props {
   project?: Project;
@@ -27,9 +28,11 @@ const sel = (v: string, hasErr?: boolean) =>
 
 export function ProjectFormModal({ project, onClose, onSuccess }: Props) {
   const qc = useQueryClient();
+  const user = useAuthStore((s) => s.user);
+  const isBuHead = user?.systemRole === 'BU_HEAD';
   const [name, setName] = useState(project?.name ?? '');
   const [projectType, setProjectType] = useState<ProjectType>(project?.projectType ?? 'DEDICATED');
-  const [businessUnitId, setBusinessUnitId] = useState('');
+  const [businessUnitId, setBusinessUnitId] = useState(isBuHead && !project ? (user?.managedBusinessUnitId ?? '') : '');
   const [buInitialised, setBuInitialised] = useState(false);
   const [clientId, setClientId] = useState(project?.client?.id ?? '');
   const [departmentId, setDepartmentId] = useState(project?.department?.id ?? '');
@@ -162,11 +165,15 @@ export function ProjectFormModal({ project, onClose, onSuccess }: Props) {
 
           {/* Business Unit — filters client & department on selection */}
           <div>
-            <label className={labelCls}>Business Unit <span className="text-red-500">*</span></label>
+            <label className={labelCls}>
+              Business Unit <span className="text-red-500">*</span>
+              {isBuHead && <span className="ml-1 text-[10px] text-gray-400 font-normal">(auto-assigned)</span>}
+            </label>
             <select
               value={businessUnitId}
               onChange={(e) => { handleBusinessUnitChange(e.target.value); setFieldErrors((p) => ({ ...p, businessUnitId: '' })); }}
-              className={sel(businessUnitId, !!fieldErrors.businessUnitId)}
+              className={`${sel(businessUnitId, !!fieldErrors.businessUnitId)} ${isBuHead ? 'bg-gray-50 cursor-not-allowed' : ''}`}
+              disabled={isBuHead}
             >
               <option value="">Select Business Unit</option>
               {businessUnits.map((bu) => (
@@ -174,7 +181,7 @@ export function ProjectFormModal({ project, onClose, onSuccess }: Props) {
               ))}
             </select>
             {fieldErrors.businessUnitId && <p className="mt-1 text-xs text-red-500">{fieldErrors.businessUnitId}</p>}
-            {businessUnitId && !fieldErrors.businessUnitId && (
+            {businessUnitId && !fieldErrors.businessUnitId && !isBuHead && (
               <p className="text-[11px] text-primary-600 mt-1">Client and department filtered to this business unit.</p>
             )}
           </div>

@@ -52,7 +52,7 @@ describe('ProjectsService', () => {
   it('CreateProject_ValidData_ReturnsCreatedProject', async () => {
     mockPrisma.project.create.mockResolvedValue(mockProject);
 
-    const result = await service.create({ name: 'Alpha App', projectType: 'DEDICATED' as any });
+    const result = await service.create({ name: 'Alpha App', projectType: 'DEDICATED' as any, departmentId: 'dept-001' });
 
     expect(result.name).toBe('Alpha App');
     expect(mockPrisma.project.create).toHaveBeenCalledTimes(1);
@@ -61,7 +61,7 @@ describe('ProjectsService', () => {
   // UTC-F-007-B-002
   it('CreateProject_EndDateBeforeStartDate_ThrowsBadRequestException', async () => {
     await expect(
-      service.create({ name: 'X', projectType: 'FIXED' as any, startDate: '2026-07-10', endDate: '2026-07-01' }),
+      service.create({ name: 'X', projectType: 'FIXED' as any, departmentId: 'dept-001', startDate: '2026-07-10', endDate: '2026-07-01' }),
     ).rejects.toThrow(BadRequestException);
     expect(mockPrisma.project.create).not.toHaveBeenCalled();
   });
