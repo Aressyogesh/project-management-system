@@ -51,7 +51,7 @@ export function ProjectsPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const user = useAuthStore((s) => s.user);
-  const canEdit = user?.systemRole === 'SUPER_USER' || user?.systemRole === 'ADMIN';
+  const canEdit = user?.systemRole === 'SUPER_USER' || user?.systemRole === 'ADMIN' || user?.systemRole === 'BU_HEAD';
   const isAdminOrSuper = canEdit;
 
   const [showForm, setShowForm] = useState(false);

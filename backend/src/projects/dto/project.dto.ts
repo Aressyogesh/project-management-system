@@ -24,8 +24,8 @@ export class CreateProjectDto {
   @IsOptional() @IsUUID()
   clientId?: string;
 
-  @IsOptional() @IsUUID()
-  departmentId?: string;
+  @IsUUID()
+  departmentId: string;
 
   @IsOptional() @IsString() @MaxLength(10000)
   description?: string;

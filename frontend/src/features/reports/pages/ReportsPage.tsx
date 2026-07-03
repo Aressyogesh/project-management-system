@@ -1335,7 +1335,7 @@ export function ReportsPage() {
   const [activeTab, setActiveTab] = useState<Tab>('productivity');
   const [period, setPeriod] = useState(DEFAULT_PERIOD);
 
-  const isAdmin = user?.systemRole === 'ADMIN' || user?.systemRole === 'SUPER_USER';
+  const isAdmin = user?.systemRole === 'ADMIN' || user?.systemRole === 'SUPER_USER' || user?.systemRole === 'BU_HEAD';
   const [project, setProject] = useState(isAdmin ? 'all' : '');
 
   const { data: projectRoleData } = useQuery({

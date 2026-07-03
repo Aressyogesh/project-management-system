@@ -22,7 +22,8 @@ const TYPE_OPTIONS: { value: ProjectType; label: string }[] = [
 
 const inputCls = 'w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent';
 const labelCls = 'block text-xs font-medium text-gray-600 mb-1';
-const sel = (v: string) => `${inputCls} bg-white ${!v ? 'text-gray-400' : 'text-gray-900'}`;
+const sel = (v: string, hasErr?: boolean) =>
+  `${inputCls} bg-white ${!v ? 'text-gray-400' : 'text-gray-900'} ${hasErr ? 'border-red-300 focus:ring-red-400' : ''}`;
 
 export function ProjectFormModal({ project, onClose, onSuccess }: Props) {
   const qc = useQueryClient();
@@ -37,6 +38,7 @@ export function ProjectFormModal({ project, onClose, onSuccess }: Props) {
   const [endDate, setEndDate] = useState(project?.endDate?.split('T')[0] ?? '');
   const [isOngoing, setIsOngoing] = useState(project ? (project.projectType === 'DEDICATED' && !project.endDate) : false);
   const [error, setError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   const { data: businessUnits = [] } = useQuery({
     queryKey: ['business-units-active'],
@@ -103,8 +105,13 @@ export function ProjectFormModal({ project, onClose, onSuccess }: Props) {
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError('');
-    if (!name.trim()) { setError('Project name is required'); return; }
-    if (!isOngoing && startDate && endDate && endDate < startDate) { setError('End date must be on or after start date'); return; }
+    const errs: Record<string, string> = {};
+    if (!name.trim()) errs.name = 'Project name is required';
+    if (!businessUnitId) errs.businessUnitId = 'Business unit is required';
+    if (!departmentId) errs.departmentId = 'Department is required';
+    if (!isOngoing && startDate && endDate && endDate < startDate) errs.endDate = 'End date must be on or after start date';
+    if (Object.keys(errs).length) { setFieldErrors(errs); return; }
+    setFieldErrors({});
     mutation.mutate();
   }
 
@@ -127,8 +134,10 @@ export function ProjectFormModal({ project, onClose, onSuccess }: Props) {
 
           <div>
             <label className={labelCls}>Project Name <span className="text-red-500">*</span></label>
-            <input type="text" value={name} onChange={(e) => setName(e.target.value)}
-              required maxLength={200} placeholder="e.g. Alpha Mobile App" autoFocus className={inputCls} />
+            <input type="text" value={name} onChange={(e) => { setName(e.target.value); setFieldErrors((p) => ({ ...p, name: '' })); }}
+              maxLength={200} placeholder="e.g. Alpha Mobile App" autoFocus
+              className={`${inputCls} ${fieldErrors.name ? 'border-red-300 focus:ring-red-400' : ''}`} />
+            {fieldErrors.name && <p className="mt-1 text-xs text-red-500">{fieldErrors.name}</p>}
           </div>
 
           <div>
@@ -152,26 +161,23 @@ export function ProjectFormModal({ project, onClose, onSuccess }: Props) {
           </div>
 
           {/* Business Unit — filters client & department on selection */}
-          {businessUnits.length > 0 && (
-            <div>
-              <label className={labelCls}>Business Unit</label>
-              <select
-                value={businessUnitId}
-                onChange={(e) => handleBusinessUnitChange(e.target.value)}
-                className={sel(businessUnitId)}
-              >
-                <option value="">Select Business Unit</option>
-                {businessUnits.map((bu) => (
-                  <option key={bu.id} value={bu.id}>{bu.name}</option>
-                ))}
-              </select>
-              {businessUnitId && (
-                <p className="text-[11px] text-primary-600 mt-1">
-                  Client and department filtered to this business unit.
-                </p>
-              )}
-            </div>
-          )}
+          <div>
+            <label className={labelCls}>Business Unit <span className="text-red-500">*</span></label>
+            <select
+              value={businessUnitId}
+              onChange={(e) => { handleBusinessUnitChange(e.target.value); setFieldErrors((p) => ({ ...p, businessUnitId: '' })); }}
+              className={sel(businessUnitId, !!fieldErrors.businessUnitId)}
+            >
+              <option value="">Select Business Unit</option>
+              {businessUnits.map((bu) => (
+                <option key={bu.id} value={bu.id}>{bu.name}</option>
+              ))}
+            </select>
+            {fieldErrors.businessUnitId && <p className="mt-1 text-xs text-red-500">{fieldErrors.businessUnitId}</p>}
+            {businessUnitId && !fieldErrors.businessUnitId && (
+              <p className="text-[11px] text-primary-600 mt-1">Client and department filtered to this business unit.</p>
+            )}
+          </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -185,12 +191,17 @@ export function ProjectFormModal({ project, onClose, onSuccess }: Props) {
               )}
             </div>
             <div>
-              <label className={labelCls}>Department</label>
-              <select value={departmentId} onChange={(e) => setDepartmentId(e.target.value)} className={sel(departmentId)}>
+              <label className={labelCls}>Department <span className="text-red-500">*</span></label>
+              <select
+                value={departmentId}
+                onChange={(e) => { setDepartmentId(e.target.value); setFieldErrors((p) => ({ ...p, departmentId: '' })); }}
+                className={sel(departmentId, !!fieldErrors.departmentId)}
+              >
                 <option value="">Select Department</option>
                 {filteredDepartments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
               </select>
-              {businessUnitId && filteredDepartments.length === 0 && (
+              {fieldErrors.departmentId && <p className="mt-1 text-xs text-red-500">{fieldErrors.departmentId}</p>}
+              {businessUnitId && filteredDepartments.length === 0 && !fieldErrors.departmentId && (
                 <p className="text-[11px] text-amber-500 mt-1">No departments linked to this BU.</p>
               )}
             </div>

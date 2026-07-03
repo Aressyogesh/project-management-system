@@ -30,14 +30,14 @@ export class ProjectsController {
   }
 
   @Post()
-  @Roles(SystemRole.SUPER_USER, SystemRole.ADMIN)
+  @Roles(SystemRole.SUPER_USER, SystemRole.ADMIN, SystemRole.BU_HEAD)
   @ApiOperation({ summary: 'Create a project' })
   create(@Body() dto: CreateProjectDto, @Request() req: any) {
     return this.projectsService.create(dto, req.user.id);
   }
 
   @Patch(':id')
-  @Roles(SystemRole.SUPER_USER, SystemRole.ADMIN)
+  @Roles(SystemRole.SUPER_USER, SystemRole.ADMIN, SystemRole.BU_HEAD)
   @ApiOperation({ summary: 'Update project details' })
   update(@Param('id') id: string, @Body() dto: UpdateProjectDto, @Request() req: any) {
     return this.projectsService.update(id, dto, req.user.id);

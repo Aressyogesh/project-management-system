@@ -166,7 +166,7 @@ function KpiScoreEntryPanel({
 
 export function KpiPage() {
   const user = useAuthStore((s) => s.user);
-  const isAdminOrSuper = user?.systemRole === 'SUPER_USER' || user?.systemRole === 'ADMIN';
+  const isAdminOrSuper = user?.systemRole === 'SUPER_USER' || user?.systemRole === 'ADMIN' || user?.systemRole === 'BU_HEAD';
 
   const [selectedPeriod, setSelectedPeriod] = useState(DEFAULT_PERIOD);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);

@@ -21,6 +21,12 @@ function CelebrantChip({ entry }: { entry: CelebrationEntry }) {
   const initials = entry.user.fullName.split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase();
   const isBirthday = entry.type === 'BIRTHDAY';
 
+  const initialsDiv = (
+    <div className="w-6 h-6 rounded-full bg-primary-100 text-primary-700 text-[9px] flex items-center justify-center font-bold ring-2 ring-white">
+      {initials}
+    </div>
+  );
+
   return (
     <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full border shadow-sm backdrop-blur-sm ${
       isBirthday
@@ -28,12 +34,14 @@ function CelebrantChip({ entry }: { entry: CelebrationEntry }) {
         : 'bg-white/80 border-purple-200'
     }`}>
       {src ? (
-        <img src={src} alt={entry.user.fullName} className="w-6 h-6 rounded-full object-cover ring-2 ring-white" />
-      ) : (
-        <div className="w-6 h-6 rounded-full bg-primary-100 text-primary-700 text-[9px] flex items-center justify-center font-bold ring-2 ring-white">
-          {initials}
-        </div>
-      )}
+        <img
+          src={src}
+          alt={entry.user.fullName}
+          className="w-6 h-6 rounded-full object-cover ring-2 ring-white"
+          onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; e.currentTarget.nextElementSibling?.classList.remove('hidden'); }}
+        />
+      ) : null}
+      <div className={src ? 'hidden' : ''}>{initialsDiv}</div>
       <span className="text-sm font-semibold text-gray-800">{entry.user.fullName}</span>
       {entry.type === 'ANNIVERSARY' && (
         <span className="text-xs font-bold text-purple-600 bg-purple-100 px-1.5 py-0.5 rounded-full">
