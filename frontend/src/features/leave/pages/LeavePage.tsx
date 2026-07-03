@@ -122,7 +122,7 @@ function RecordLeaveModal({
                 onClick={() => setIsPlanned(true)}
                 className={`flex-1 py-2 text-sm rounded-lg border font-medium transition ${
                   isPlanned
-                    ? 'bg-blue-600 text-white border-blue-600'
+                    ? 'bg-primary-600 text-white border-primary-600'
                     : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
                 }`}
               >
@@ -253,6 +253,7 @@ export function LeavePage() {
   const isAllowed =
     user?.systemRole === 'SUPER_USER' ||
     user?.systemRole === 'ADMIN' ||
+    user?.systemRole === 'BU_HEAD' ||
     user?.hasPmRole === true;
 
   if (!isAllowed) {
@@ -373,7 +374,7 @@ export function LeavePage() {
               className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${
                 typeFilter === f
                   ? f === 'PLANNED'
-                    ? 'bg-blue-600 text-white'
+                    ? 'bg-primary-600 text-white'
                     : f === 'UNPLANNED'
                       ? 'bg-orange-500 text-white'
                       : 'bg-primary-600 text-white'

@@ -13,6 +13,7 @@ export class DepartmentsController {
   constructor(private departmentsService: DepartmentsService) {}
 
   @Get()
+  @Roles(SystemRole.SUPER_USER, SystemRole.ADMIN, SystemRole.BU_HEAD)
   @ApiOperation({ summary: 'List departments' })
   @ApiQuery({ name: 'includeInactive', required: false, type: Boolean })
   findAll(@Query('includeInactive') includeInactive?: string) {

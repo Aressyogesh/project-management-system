@@ -28,10 +28,6 @@ export const usersApi = {
   getCelebrationsToday: () =>
     apiClient.get<CelebrationEntry[]>('/users/celebrations/today').then((r) => r.data),
 
-  postCelebrationAnnouncement: () =>
-    apiClient.post('/users/celebrations/announce').then((r) => r.data),
-
-
   list: (params: { page?: number; limit?: number; search?: string; departmentId?: string }) =>
     apiClient.get<UsersPage>('/users', { params }).then((r) => r.data),
 

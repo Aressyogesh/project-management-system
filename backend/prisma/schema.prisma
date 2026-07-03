@@ -13,6 +13,7 @@ datasource db {
 enum SystemRole {
   SUPER_USER
   ADMIN
+  BU_HEAD
   EMPLOYEE
 }
 
@@ -193,8 +194,9 @@ model BusinessUnit {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  departments Department[]
-  clients     Client[]
+  departments    Department[]
+  clients        Client[]
+  managedByUsers User[]       @relation("ManagedBusinessUnit")
 
   @@map("business_units")
 }
@@ -228,16 +230,18 @@ model User {
   employeeId   String?    @db.VarChar(50)
   joinDate     DateTime?  @db.Date
   dateOfBirth  DateTime?  @db.Date
-  profilePhoto String?
-  departmentId String?
-  shiftId      String?
+  profilePhoto          String?
+  departmentId          String?
+  shiftId               String?
+  managedBusinessUnitId String?
   isActive          Boolean    @default(true)
   mustResetPassword Boolean    @default(false)
   createdAt         DateTime   @default(now())
   lastLoginAt       DateTime?
 
-  department    Department?  @relation(fields: [departmentId], references: [id])
-  shift         Shift?       @relation(fields: [shiftId], references: [id])
+  department           Department?   @relation(fields: [departmentId], references: [id])
+  shift                Shift?        @relation(fields: [shiftId], references: [id])
+  managedBusinessUnit  BusinessUnit? @relation("ManagedBusinessUnit", fields: [managedBusinessUnitId], references: [id], onDelete: SetNull)
   refreshTokens         RefreshToken[]
   passwordResetTokens   PasswordResetToken[]
   projectMembers        ProjectMember[]
@@ -258,6 +262,8 @@ model User {
   timesheetApprovals    TimesheetEntry[]     @relation("TimesheetApprovals")
   kpiRecords            KpiRecord[]          @relation("KpiRecords")
   enteredKpiRecords     KpiRecord[]          @relation("EnteredKpiRecords")
+  kpiNotes              KpiNote[]            @relation("KpiNotesForUser")
+  kpiNotesCreated       KpiNote[]            @relation("KpiNotesCreatedBy")
   leaveRequests         LeaveRequest[]       @relation("UserLeaveRequests")
   leaveRequestApprovals LeaveRequest[]       @relation("LeaveRequestApprovals")
   leaveLogs             LeaveLog[]           @relation("LeaveLogs")
@@ -631,7 +637,9 @@ model WorkItem {
   stepsToRepro         String?            @db.VarChar(3000)
   definitionOfDone     String?            @db.VarChar(3000)
   completedAt          DateTime?
+  inReviewAt           DateTime?
   reopenCount          Int                @default(0)
+  qaReopenCount        Int                @default(0)
   position             Int                @default(0)
   startDate            DateTime?          @db.Date
   dueDate              DateTime?          @db.Date
@@ -797,6 +805,24 @@ model KpiRecord {
   @@unique([userId, period, metricId])
   @@index([userId, period])
   @@map("kpi_records")
+}
+
+// ─── KPI Note (multiple notes per metric per month, entered by PM) ────────────
+
+model KpiNote {
+  id        String   @id @default(uuid())
+  userId    String
+  metricId  String   @db.VarChar(50)
+  period    String   @db.VarChar(7)
+  content   String   @db.Text
+  authorId  String
+  createdAt DateTime @default(now())
+
+  user      User @relation("KpiNotesForUser", fields: [userId], references: [id], onDelete: Cascade)
+  author    User @relation("KpiNotesCreatedBy", fields: [authorId], references: [id])
+
+  @@index([userId, metricId, period])
+  @@map("kpi_notes")
 }
 
 // ─── Leave Request ────────────────────────────────────────────────────────────

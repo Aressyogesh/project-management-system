@@ -8,6 +8,7 @@ import { timesheetApi, type TimesheetEntryFull } from '../../../api/timesheetApi
 import { projectsApi } from '../../../api/projects.api';
 import { usersApi } from '../../../api/users.api';
 import { useAuthStore } from '../../../store/authStore';
+import { avatarUrl } from '../../../utils/avatarUrl';
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -31,12 +32,32 @@ interface Metrics {
 
 function computeMetrics(entries: TimesheetEntryFull[]): Metrics {
   const m: Metrics = { total: 0, billable: 0, nonBillable: 0, rework: 0, bugFix: 0 };
+
+  // Group billable work items to cap at estimatedHours
+  const billableItemHours = new Map<string, { logged: number; cap: number | null }>();
+  for (const e of entries) {
+    if (!e.isRework && !e.isBugFix && e.workItem.billingStatus === 'BILLABLE') {
+      const prev = billableItemHours.get(e.workItem.id) ?? { logged: 0, cap: e.workItem.estimatedHours };
+      billableItemHours.set(e.workItem.id, { logged: prev.logged + Number(e.hours), cap: prev.cap });
+    }
+  }
+
   for (const e of entries) {
     const h = Number(e.hours);
     m.total += h;
     if (e.isRework) { m.nonBillable += h; m.rework += h; }
     else if (e.isBugFix) { m.nonBillable += h; m.bugFix += h; }
-    else if (e.workItem.billingStatus === 'BILLABLE') { m.billable += h; }
+    else if (e.workItem.billingStatus === 'BILLABLE') {
+      const item = billableItemHours.get(e.workItem.id);
+      if (item?.cap != null && item.logged > item.cap) {
+        // Hours beyond estimatedHours are non-billable; distribute proportionally per entry
+        const billableFraction = Math.min(h, Math.max(0, item.cap - (item.logged - h)));
+        m.billable += billableFraction;
+        m.nonBillable += h - billableFraction;
+      } else {
+        m.billable += h;
+      }
+    }
     else { m.nonBillable += h; }
   }
   return m;
@@ -73,6 +94,16 @@ export function BillingReportPage() {
     enabled: isAdmin,
   });
   const allUsers = usersPage?.data ?? [];
+
+  const { data: projectMembers = [] } = useQuery({
+    queryKey: ['project-members', projectId],
+    queryFn: () => projectsApi.listMembers(projectId),
+    enabled: isAdmin && !!projectId,
+  });
+  const memberUserIds = new Set(projectMembers.map((m: { user: { id: string } }) => m.user.id));
+  const filteredUsers = isAdmin && projectId
+    ? allUsers.filter((u) => memberUserIds.has(u.id))
+    : allUsers;
 
   const { data: entries = [], isLoading } = useQuery({
     queryKey: ['billing-report', from, to, projectId, userId],
@@ -186,8 +217,8 @@ export function BillingReportPage() {
               onChange={(e) => setUserId(e.target.value)}
               className="border border-gray-200 rounded-lg px-3 py-1.5 text-xs bg-white focus:outline-none focus:border-indigo-400"
             >
-              <option value="">All Users</option>
-              {allUsers.map((u) => <option key={u.id} value={u.id}>{u.fullName}</option>)}
+              <option value="">{projectId ? 'All Project Members' : 'All Users'}</option>
+              {filteredUsers.map((u) => <option key={u.id} value={u.id}>{u.fullName}</option>)}
             </select>
           )}
 
@@ -286,8 +317,8 @@ export function BillingReportPage() {
                     <tr key={u.name} className="hover:bg-gray-50 transition-colors">
                       <td className="px-4 py-3 font-medium text-gray-800">
                         <div className="flex items-center gap-2">
-                          {u.photo
-                            ? <img src={`/uploads/avatars/${u.photo}`} alt="" className="w-6 h-6 rounded-full object-cover" />
+                          {avatarUrl(u.photo)
+                            ? <img src={avatarUrl(u.photo)} alt="" className="w-6 h-6 rounded-full object-cover" />
                             : <span className="w-6 h-6 rounded-full bg-indigo-100 text-indigo-700 text-[9px] font-bold flex items-center justify-center">
                                 {u.name.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()}
                               </span>

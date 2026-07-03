@@ -1,4 +1,4 @@
-import { Controller, Get, Query, Request } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Post, Query, Request } from '@nestjs/common';
 import { AnalyticsService } from './analytics.service';
 import { SystemRole } from '@prisma/client';
 
@@ -7,6 +7,31 @@ type AuthUser = { id: string; systemRole: SystemRole };
 @Controller('analytics')
 export class AnalyticsController {
   constructor(private readonly analyticsService: AnalyticsService) {}
+
+  @Get('kpi/notes')
+  getKpiNotes(
+    @Query('userId') userId: string,
+    @Query('period') period: string,
+  ) {
+    return this.analyticsService.getKpiNotes(userId, period);
+  }
+
+  @Post('kpi/notes')
+  addKpiNote(
+    @Body() body: { userId: string; metricId: string; period: string; content: string },
+    @Request() req: { user: { id: string; systemRole: SystemRole } },
+  ) {
+    return this.analyticsService.addKpiNote(req.user.id, body);
+  }
+
+  @Delete('kpi/notes/:id')
+  deleteKpiNote(
+    @Param('id') id: string,
+    @Request() req: { user: { id: string; systemRole: SystemRole } },
+  ) {
+    const isAdmin = req.user.systemRole === SystemRole.ADMIN || req.user.systemRole === SystemRole.SUPER_USER;
+    return this.analyticsService.deleteKpiNote(id, req.user.id, isAdmin);
+  }
 
   @Get('kpi')
   getKpi(

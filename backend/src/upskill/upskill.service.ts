@@ -32,7 +32,7 @@ export class UpskillService {
   ) {}
 
   async isManager(userId: string, systemRole: SystemRole): Promise<boolean> {
-    if (systemRole === SystemRole.ADMIN || systemRole === SystemRole.SUPER_USER) return true;
+    if (systemRole === SystemRole.ADMIN || systemRole === SystemRole.SUPER_USER || systemRole === SystemRole.BU_HEAD) return true;
     const pm = await this.prisma.projectMember.findFirst({
       where: { userId, projectRole: ProjectRole.PROJECT_MANAGER },
     });
@@ -40,7 +40,7 @@ export class UpskillService {
   }
 
   async assignableUsers(callerId: string, systemRole: SystemRole) {
-    const isPrivileged = systemRole === SystemRole.ADMIN || systemRole === SystemRole.SUPER_USER;
+    const isPrivileged = systemRole === SystemRole.ADMIN || systemRole === SystemRole.SUPER_USER || systemRole === SystemRole.BU_HEAD;
     if (isPrivileged) {
       return this.prisma.user.findMany({
         where: { isActive: true },
@@ -141,7 +141,7 @@ export class UpskillService {
     if (assignment.status !== UpskillStatus.ASSIGNED) {
       throw new ConflictException('Only assignments that have not started can be edited');
     }
-    const isPrivileged = systemRole === SystemRole.ADMIN || systemRole === SystemRole.SUPER_USER;
+    const isPrivileged = systemRole === SystemRole.ADMIN || systemRole === SystemRole.SUPER_USER || systemRole === SystemRole.BU_HEAD;
     if (!isPrivileged) {
       const canManage = assignment.createdById === callerId ||
         await this.isManagedMember(callerId, assignment.assignedToId);
@@ -197,7 +197,7 @@ export class UpskillService {
     if (assignment.status !== UpskillStatus.ASSIGNED) {
       throw new ConflictException('Only assignments that have not started can be deleted');
     }
-    const isPrivileged = systemRole === SystemRole.ADMIN || systemRole === SystemRole.SUPER_USER;
+    const isPrivileged = systemRole === SystemRole.ADMIN || systemRole === SystemRole.SUPER_USER || systemRole === SystemRole.BU_HEAD;
     if (!isPrivileged) {
       const canManage = assignment.createdById === callerId ||
         await this.isManagedMember(callerId, assignment.assignedToId);
@@ -225,7 +225,7 @@ export class UpskillService {
     systemRole: SystemRole,
     options: { mine?: boolean; status?: UpskillStatus; assignedToId?: string; period?: string; page?: number; limit?: number },
   ) {
-    const isPrivileged = systemRole === SystemRole.ADMIN || systemRole === SystemRole.SUPER_USER;
+    const isPrivileged = systemRole === SystemRole.ADMIN || systemRole === SystemRole.SUPER_USER || systemRole === SystemRole.BU_HEAD;
     const page = Math.max(1, options.page ?? 1);
     const limit = Math.min(50, Math.max(1, options.limit ?? 10));
     const skip = (page - 1) * limit;
@@ -297,7 +297,7 @@ export class UpskillService {
     });
     if (!assignment) throw new NotFoundException('Assignment not found');
 
-    const isPrivileged = systemRole === SystemRole.ADMIN || systemRole === SystemRole.SUPER_USER;
+    const isPrivileged = systemRole === SystemRole.ADMIN || systemRole === SystemRole.SUPER_USER || systemRole === SystemRole.BU_HEAD;
     const isOwner = assignment.assignedToId === callerId;
     const isCreator = assignment.createdById === callerId;
     if (!isPrivileged && !isOwner && !isCreator) {
@@ -381,7 +381,7 @@ export class UpskillService {
       throw new ConflictException('Assignment must be in SUBMITTED state to approve');
     }
 
-    const isPrivileged = systemRole === SystemRole.ADMIN || systemRole === SystemRole.SUPER_USER;
+    const isPrivileged = systemRole === SystemRole.ADMIN || systemRole === SystemRole.SUPER_USER || systemRole === SystemRole.BU_HEAD;
     if (!isPrivileged) {
       const canManage = assignment.createdById === approverId ||
         await this.isManagedMember(approverId, assignment.assignedToId);
@@ -412,7 +412,7 @@ export class UpskillService {
       throw new ConflictException('Assignment must be in SUBMITTED state to reject');
     }
 
-    const isPrivileged = systemRole === SystemRole.ADMIN || systemRole === SystemRole.SUPER_USER;
+    const isPrivileged = systemRole === SystemRole.ADMIN || systemRole === SystemRole.SUPER_USER || systemRole === SystemRole.BU_HEAD;
     if (!isPrivileged) {
       const canManage = assignment.createdById === rejectorId ||
         await this.isManagedMember(rejectorId, assignment.assignedToId);
@@ -435,7 +435,7 @@ export class UpskillService {
   }
 
   async getEvidence(assignmentId: string, callerId: string, systemRole: SystemRole) {
-    const isPrivileged = systemRole === SystemRole.ADMIN || systemRole === SystemRole.SUPER_USER;
+    const isPrivileged = systemRole === SystemRole.ADMIN || systemRole === SystemRole.SUPER_USER || systemRole === SystemRole.BU_HEAD;
     const assignment = await this.prisma.upskillAssignment.findUnique({ where: { id: assignmentId } });
     if (!assignment) throw new NotFoundException('Assignment not found');
 

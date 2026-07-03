@@ -26,6 +26,8 @@ export interface User {
   createdAt: string;
   department: Pick<Department, 'id' | 'name'> | null;
   shift: ShiftSummary | null;
+  managedBusinessUnitId?: string | null;
+  managedBusinessUnit?: { id: string; name: string } | null;
 }
 
 export interface UsersPage {
@@ -44,6 +46,7 @@ export interface CreateUserPayload {
   joinDate?: string;
   departmentId?: string;
   shiftId?: string;
+  managedBusinessUnitId?: string;
 }
 
 export interface UpdateUserPayload {
@@ -55,4 +58,5 @@ export interface UpdateUserPayload {
   joinDate?: string;
   departmentId?: string | null;
   shiftId?: string | null;
+  managedBusinessUnitId?: string | null;
 }

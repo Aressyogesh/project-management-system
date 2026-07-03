@@ -51,4 +51,9 @@ export class UpdateUserDto {
   @IsOptional()
   @IsString()
   shiftId?: string;
+
+  @ApiPropertyOptional({ nullable: true })
+  @IsOptional()
+  @IsString()
+  managedBusinessUnitId?: string | null;
 }

@@ -10,6 +10,7 @@ export class AuthUserDto {
   @ApiProperty() hasManagementRole: boolean;
   @ApiProperty() hasPmRole: boolean;
   @ApiProperty() mustResetPassword: boolean;
+  @ApiProperty({ required: false, nullable: true }) managedBusinessUnitId?: string | null;
 }
 
 export class AuthResponseDto {

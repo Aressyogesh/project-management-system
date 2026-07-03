@@ -150,7 +150,7 @@ export function TaskListFormModal({ projectId, editTaskList, onClose }: Props) {
             <button
               type="submit"
               disabled={mutation.isPending}
-              className="px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 disabled:opacity-50"
+              className="px-4 py-2 bg-primary-600 text-white text-sm font-semibold rounded-lg hover:bg-primary-700 disabled:opacity-50"
             >
               {mutation.isPending ? 'Saving…' : isEdit ? 'Save Changes' : 'Add Task List'}
             </button>

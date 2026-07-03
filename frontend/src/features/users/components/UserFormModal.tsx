@@ -20,6 +20,7 @@ interface Props {
 const ROLES: { value: SystemRole; label: string }[] = [
   { value: 'SUPER_USER', label: 'Super User' },
   { value: 'ADMIN', label: 'Admin' },
+  { value: 'BU_HEAD', label: 'BU Head' },
   { value: 'EMPLOYEE', label: 'Employee' },
 ];
 
@@ -142,6 +143,7 @@ export function UserFormModal({ mode, user, onClose, onSuccess }: Props) {
         joinDate: joinDate || undefined,
         departmentId,
         shiftId,
+        managedBusinessUnitId: systemRole === 'BU_HEAD' ? businessUnitId : undefined,
       });
     } else {
       updateMutation.mutate({
@@ -153,6 +155,7 @@ export function UserFormModal({ mode, user, onClose, onSuccess }: Props) {
         joinDate: joinDate || undefined,
         departmentId,
         shiftId,
+        managedBusinessUnitId: systemRole === 'BU_HEAD' ? businessUnitId : null,
       });
     }
   }

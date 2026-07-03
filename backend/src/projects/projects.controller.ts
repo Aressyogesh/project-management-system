@@ -14,13 +14,13 @@ export class ProjectsController {
   @Get()
   @ApiOperation({ summary: 'List projects with optional filters' })
   findAll(@Query() query: ProjectsQueryDto, @Request() req: any) {
-    return this.projectsService.findAll(query, req.user.id, req.user.systemRole);
+    return this.projectsService.findAll(query, req.user.id, req.user.systemRole, req.user.managedBusinessUnitId);
   }
 
   @Get('summary')
   @ApiOperation({ summary: 'Project summary counts' })
   getSummary(@Request() req: any) {
-    return this.projectsService.getSummary(req.user.id, req.user.systemRole);
+    return this.projectsService.getSummary(req.user.id, req.user.systemRole, req.user.managedBusinessUnitId);
   }
 
   @Get(':id')
@@ -30,14 +30,14 @@ export class ProjectsController {
   }
 
   @Post()
-  @Roles(SystemRole.SUPER_USER, SystemRole.ADMIN)
+  @Roles(SystemRole.SUPER_USER, SystemRole.ADMIN, SystemRole.BU_HEAD)
   @ApiOperation({ summary: 'Create a project' })
   create(@Body() dto: CreateProjectDto, @Request() req: any) {
     return this.projectsService.create(dto, req.user.id);
   }
 
   @Patch(':id')
-  @Roles(SystemRole.SUPER_USER, SystemRole.ADMIN)
+  @Roles(SystemRole.SUPER_USER, SystemRole.ADMIN, SystemRole.BU_HEAD)
   @ApiOperation({ summary: 'Update project details' })
   update(@Param('id') id: string, @Body() dto: UpdateProjectDto, @Request() req: any) {
     return this.projectsService.update(id, dto, req.user.id);

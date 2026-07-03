@@ -55,7 +55,7 @@ export function KpiEmployeeDetailPanel({ employee }: Props) {
               <p className="text-[10px] text-gray-300">Assign work items to start tracking KPI</p>
             </div>
           ) : (
-            <KpiRadarChart employee={employee} />
+            <KpiRadarChart categoryScores={employee.categoryScores} name={employee.name} />
           )}
         </div>
       </div>
@@ -63,7 +63,7 @@ export function KpiEmployeeDetailPanel({ employee }: Props) {
       {/* Right: All 13 metrics grouped by category */}
       <div className="lg:col-span-2 space-y-4">
         {KPI_CATEGORIES.map((cat) => {
-          const catMetrics = KPI_METRICS.filter((m) => m.category === cat.name);
+          const catMetrics = KPI_METRICS.filter((m) => (m.subCategory ?? m.coreValue) === cat.name);
           const catScore = employee.categoryScores.find((c) => c.category === cat.name);
           const color = CAT_COLORS[cat.name] ?? '#6B7280';
 

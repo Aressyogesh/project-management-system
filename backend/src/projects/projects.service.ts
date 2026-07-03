@@ -25,13 +25,18 @@ export class ProjectsService {
     private readonly auditLogs: AuditLogsService,
   ) {}
 
-  findAll(query: ProjectsQueryDto = {}, userId?: string, systemRole?: SystemRole) {
+  findAll(query: ProjectsQueryDto = {}, userId?: string, systemRole?: SystemRole, managedBusinessUnitId?: string | null) {
     const isAdmin = systemRole === SystemRole.SUPER_USER || systemRole === SystemRole.ADMIN;
+    const isBuHead = systemRole === SystemRole.BU_HEAD;
     return this.prisma.project.findMany({
       where: {
         ...(query.status ? { status: query.status } : {}),
         ...(query.type ? { projectType: query.type } : {}),
-        ...(!isAdmin && userId ? { members: { some: { userId } } } : {}),
+        ...(isBuHead && managedBusinessUnitId
+          ? { department: { businessUnitId: managedBusinessUnitId } }
+          : !isAdmin && userId
+          ? { members: { some: { userId } } }
+          : {}),
       },
       select: PROJECT_SELECT,
       orderBy: { createdAt: 'desc' },
@@ -44,10 +49,15 @@ export class ProjectsService {
     return project;
   }
 
-  async getSummary(userId?: string, systemRole?: SystemRole) {
+  async getSummary(userId?: string, systemRole?: SystemRole, managedBusinessUnitId?: string | null) {
     const isAdmin = systemRole === SystemRole.SUPER_USER || systemRole === SystemRole.ADMIN;
+    const isBuHead = systemRole === SystemRole.BU_HEAD;
     const projects = await this.prisma.project.findMany({
-      where: !isAdmin && userId ? { members: { some: { userId } } } : undefined,
+      where: isBuHead && managedBusinessUnitId
+        ? { department: { businessUnitId: managedBusinessUnitId } }
+        : !isAdmin && userId
+        ? { members: { some: { userId } } }
+        : undefined,
       select: { status: true, projectType: true, endDate: true },
     });
     const today = new Date();

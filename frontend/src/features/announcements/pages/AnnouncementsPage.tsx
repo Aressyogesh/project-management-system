@@ -227,7 +227,8 @@ export function AnnouncementsPage() {
   const [showModal, setShowModal] = useState(false);
   const [page, setPage] = useState(1);
 
-  const isAdmin = user?.systemRole === 'SUPER_USER' || user?.systemRole === 'ADMIN';
+  const isAdmin = user?.systemRole === 'SUPER_USER' || user?.systemRole === 'ADMIN' || user?.systemRole === 'BU_HEAD';
+  const isBuHead = user?.systemRole === 'BU_HEAD';
   const isPm = user?.hasPmRole === true;
 
   useEffect(() => {
@@ -278,7 +279,7 @@ export function AnnouncementsPage() {
         <div>
           <h1 className="text-xl font-bold text-gray-900">Announcements</h1>
           <p className="text-sm text-gray-400 mt-0.5">
-            {isAdmin ? 'Manage all announcements for the organisation' : 'Post and manage announcements for your project team'}
+            {isBuHead ? 'Manage all announcements for your business unit' : isAdmin ? 'Manage all announcements for the organisation' : 'Post and manage announcements for your project team'}
           </p>
         </div>
         <button

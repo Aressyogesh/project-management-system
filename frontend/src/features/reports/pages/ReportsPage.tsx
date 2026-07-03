@@ -112,7 +112,7 @@ function PaginationBar({
         {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
           <button key={p} onClick={() => onPageChange(p)}
             className={`w-7 h-7 text-xs rounded-lg border transition-colors ${
-              p === page ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-200 hover:bg-gray-50 text-gray-600'
+              p === page ? 'bg-primary-600 text-white border-primary-600' : 'border-gray-200 hover:bg-gray-50 text-gray-600'
             }`}>
             {p}
           </button>
@@ -1335,7 +1335,7 @@ export function ReportsPage() {
   const [activeTab, setActiveTab] = useState<Tab>('productivity');
   const [period, setPeriod] = useState(DEFAULT_PERIOD);
 
-  const isAdmin = user?.systemRole === 'ADMIN' || user?.systemRole === 'SUPER_USER';
+  const isAdmin = user?.systemRole === 'ADMIN' || user?.systemRole === 'SUPER_USER' || user?.systemRole === 'BU_HEAD';
   const [project, setProject] = useState(isAdmin ? 'all' : '');
 
   const { data: projectRoleData } = useQuery({

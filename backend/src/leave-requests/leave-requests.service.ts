@@ -11,7 +11,14 @@ import { PrismaService } from '../prisma/prisma.service';
 import { ApproveLeaveRequestDto, CreateLeaveRequestDto, RejectLeaveRequestDto } from './dto/leave-request.dto';
 
 const LEAVE_INCLUDE = {
-  user: { select: { id: true, fullName: true, profilePhoto: true } },
+  user: {
+    select: {
+      id: true,
+      fullName: true,
+      profilePhoto: true,
+      department: { select: { businessUnitId: true } },
+    },
+  },
   approvedBy: { select: { id: true, fullName: true } },
 };
 
@@ -22,8 +29,8 @@ export class LeaveRequestsService {
     private readonly auditLogs: AuditLogsService,
   ) {}
 
-  async create(requestingUserId: string, systemRole: SystemRole, dto: CreateLeaveRequestDto) {
-    const isAdmin = systemRole === SystemRole.SUPER_USER || systemRole === SystemRole.ADMIN;
+  async create(requestingUserId: string, systemRole: SystemRole, dto: CreateLeaveRequestDto, managedBuId?: string | null) {
+    const isAdmin = systemRole === SystemRole.SUPER_USER || systemRole === SystemRole.ADMIN || systemRole === SystemRole.BU_HEAD;
 
     // Only admins and project managers can record leaves
     if (!isAdmin) {
@@ -93,12 +100,20 @@ export class LeaveRequestsService {
     return leave;
   }
 
-  async getManageableMembers(requestingUserId: string, systemRole: SystemRole): Promise<{ id: string; fullName: string }[]> {
+  async getManageableMembers(requestingUserId: string, systemRole: SystemRole, managedBuId?: string | null): Promise<{ id: string; fullName: string }[]> {
     const isAdmin = systemRole === SystemRole.SUPER_USER || systemRole === SystemRole.ADMIN;
 
     if (isAdmin) {
       return this.prisma.user.findMany({
         where: { isActive: true },
+        select: { id: true, fullName: true },
+        orderBy: { fullName: 'asc' },
+      });
+    }
+
+    if (systemRole === SystemRole.BU_HEAD && managedBuId) {
+      return this.prisma.user.findMany({
+        where: { isActive: true, department: { businessUnitId: managedBuId } },
         select: { id: true, fullName: true },
         orderBy: { fullName: 'asc' },
       });
@@ -118,6 +133,7 @@ export class LeaveRequestsService {
     requestingUserId: string,
     systemRole: SystemRole,
     query: { status?: LeaveStatus; userId?: string },
+    managedBuId?: string | null,
   ) {
     const isAdmin =
       systemRole === SystemRole.SUPER_USER || systemRole === SystemRole.ADMIN;
@@ -125,6 +141,9 @@ export class LeaveRequestsService {
     const where: Record<string, unknown> = {};
 
     if (isAdmin) {
+      if (query.userId) where['userId'] = query.userId;
+    } else if (systemRole === SystemRole.BU_HEAD && managedBuId) {
+      where['user'] = { department: { businessUnitId: managedBuId } };
       if (query.userId) where['userId'] = query.userId;
     } else {
       const teamMemberIds = await this.getPmTeamMemberIds(requestingUserId);
@@ -159,9 +178,10 @@ export class LeaveRequestsService {
     approverId: string,
     systemRole: SystemRole,
     dto: ApproveLeaveRequestDto,
+    managedBuId?: string | null,
   ) {
     const leave = await this.findOneOrFail(id);
-    await this.assertCanManage(approverId, systemRole, leave.userId);
+    await this.assertCanManage(approverId, systemRole, leave.userId, managedBuId, leave);
     if (leave.status !== LeaveStatus.PENDING) {
       throw new BadRequestException('Only PENDING leave requests can be approved');
     }
@@ -191,9 +211,10 @@ export class LeaveRequestsService {
     approverId: string,
     systemRole: SystemRole,
     dto: RejectLeaveRequestDto,
+    managedBuId?: string | null,
   ) {
     const leave = await this.findOneOrFail(id);
-    await this.assertCanManage(approverId, systemRole, leave.userId);
+    await this.assertCanManage(approverId, systemRole, leave.userId, managedBuId, leave);
     if (leave.status === LeaveStatus.CANCELLED) {
       throw new BadRequestException('Cannot reject a cancelled leave request');
     }
@@ -253,9 +274,16 @@ export class LeaveRequestsService {
     return count > 0;
   }
 
-  private async assertCanManage(actorId: string, systemRole: SystemRole, targetUserId: string) {
+  private async assertCanManage(actorId: string, systemRole: SystemRole, targetUserId: string, managedBuId?: string | null, leave?: any) {
     const isAdmin = systemRole === SystemRole.SUPER_USER || systemRole === SystemRole.ADMIN;
     if (isAdmin) return;
+
+    if (systemRole === SystemRole.BU_HEAD && managedBuId) {
+      const leaveBuId = leave?.user?.department?.businessUnitId;
+      if (leaveBuId === managedBuId) return;
+      throw new ForbiddenException('You can only manage leaves for users in your Business Unit');
+    }
+
     const isPm = await this.isPmForUser(actorId, targetUserId);
     if (!isPm) throw new ForbiddenException('Only admins or project managers can perform this action');
   }

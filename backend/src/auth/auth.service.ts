@@ -66,6 +66,7 @@ export class AuthService {
         hasManagementRole,
         hasPmRole,
         mustResetPassword: user.mustResetPassword,
+        managedBusinessUnitId: user.managedBusinessUnitId ?? null,
       },
     };
   }
@@ -116,7 +117,7 @@ export class AuthService {
     });
 
     const frontendUrl =
-      this.configService.get<string>('APP_FRONTEND_URL') ?? 'http://localhost:5173';
+      this.configService.get<string>('APP_FRONTEND_URL') || 'http://localhost:5173';
     const resetLink = `${frontendUrl}/reset-password?token=${token}`;
 
     try {
@@ -124,6 +125,13 @@ export class AuthService {
     } catch (err) {
       this.logger.error('Failed to send password reset email', err);
       throw err;
+    }
+  }
+
+  async validateResetToken(token: string): Promise<void> {
+    const record = await this.prisma.passwordResetToken.findUnique({ where: { token } });
+    if (!record || record.usedAt !== null || record.expiresAt < new Date()) {
+      throw new BadRequestException('Invalid or expired reset token');
     }
   }
 

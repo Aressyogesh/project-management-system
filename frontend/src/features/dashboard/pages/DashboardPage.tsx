@@ -197,15 +197,24 @@ export function DashboardPage() {
     staleTime: 60_000,
   });
 
-  // PM/TL detection: backend returns project data only for PM/TL roles
+  // Non-admin / non-PM/TL members: fetch their own project memberships
   const isManager = isAdminOrSuper || ((projectsProgress?.length ?? 0) > 0);
+  const { data: memberProjects = [], isLoading: memberProjectsLoading } = useQuery({
+    queryKey: ['projects-list', 'member'],
+    queryFn:  () => projectsApi.list({ status: 'ACTIVE' }),
+    enabled:  !isAdminOrSuper,
+    staleTime: 120_000,
+  });
 
-  // Filter dropdown: admins see all projects; PMs/TLs see only their own (from projectsProgress)
+  // Filter dropdown: admins see all projects; PMs/TLs from projectsProgress; others from membership
   const projects = isAdminOrSuper
     ? adminProjects
-    : (projectsProgress ?? []).map((p) => ({ id: p.id, name: p.name }));
-  const projectsLoading = isAdminOrSuper ? adminProjectsLoading : projectsLoading2;
-  const hasFilter = isManager && !!selectedProject;
+    : isManager
+      ? (projectsProgress ?? []).map((p) => ({ id: p.id, name: p.name }))
+      : memberProjects.map((p) => ({ id: p.id, name: p.name }));
+  const projectsLoading = isAdminOrSuper ? adminProjectsLoading : isManager ? projectsLoading2 : memberProjectsLoading;
+  const canSeeTeamActivity = isManager || memberProjects.length > 0;
+  const hasFilter = canSeeTeamActivity && !!selectedProject;
 
   // Dashboard stats — scoped when project+month selected
   const statsParams = hasFilter ? { projectId: selectedProject, month: selectedMonth } : undefined;
@@ -237,8 +246,8 @@ export function DashboardPage() {
       {/* ── Celebration Banner ─────────────────────────────────────────────── */}
       <CelebrationBanner />
 
-      {/* ── Top filter bar (Admin / Super User / Project Manager / Team Lead) ─ */}
-      {isManager && (
+      {/* ── Top filter bar ──────────────────────────────────────────────────── */}
+      {canSeeTeamActivity && (
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm px-5 py-3 flex flex-wrap items-center gap-3">
           {/* Project combobox */}
           <ProjectCombobox
@@ -309,7 +318,7 @@ export function DashboardPage() {
       </div>
 
       {/* ── Projects Progress (Admin/Super/PM/TL, only when no project filter) ─ */}
-      {isManager && !hasFilter && (
+      {isManager && !hasFilter && projects.length > 0 && (
         <div>
           {projectsLoading2 ? (
             <div className="animate-pulse">

@@ -1877,7 +1877,6 @@ export function WorkItemModal({ item, sprints, members, milestones, canDelete = 
                         <option value="SUGGESTION">Suggestion</option>
                         <option value="PROJECT_MANAGEMENT">Project Management</option>
                         <option value="EXISTING_APPLICATION">Existing Application</option>
-                        <option value="TECHNICAL">Technical</option>
                         <option value="FUNCTIONAL">Functional</option>
                         <option value="OTHER">Other</option>
                       </select>
@@ -2099,8 +2098,9 @@ export function CreateWorkItemModal({
   const [assigneeId, setAssigneeId] = useState('');
   const [storyPoints, setStoryPoints] = useState('');
   const [estimatedHours, setEstimatedHours] = useState('');
-  const [startDate, setStartDate] = useState('');
-  const [dueDate, setDueDate] = useState('');
+  const todayIso = new Date().toISOString().slice(0, 10);
+  const [startDate, setStartDate] = useState(todayIso);
+  const [dueDate, setDueDate] = useState(todayIso);
   const [selectedParentId, setSelectedParentId] = useState(parentId ?? '');
   // Bug fields
   const [severity, setSeverity] = useState<BugSeverity | ''>('');
@@ -2472,9 +2472,9 @@ export function CreateWorkItemModal({
                 ))}
               </select>
             </div>
-            {milestones.length > 0 && (
+            {milestones.length > 0 ? (
               <div>
-                <label className={labelCls}>Milestone</label>
+                <label className={labelCls}>Release Milestone</label>
                 <select
                   value={milestoneLinkId}
                   onChange={(e) => {
@@ -2491,16 +2491,25 @@ export function CreateWorkItemModal({
                   {milestones.map((m) => <option key={m.id} value={m.id}>{m.name ?? m.description}</option>)}
                 </select>
               </div>
+            ) : <div />}
+            {milestones.length > 0 && (
+              <div>
+                <label className={labelCls}>Affected Milestone</label>
+                <select value={affectedMilestoneId} onChange={(e) => setAffectedMilestoneId(e.target.value)} className={inputCls}>
+                  <option value="">— none —</option>
+                  {milestones.map((m) => <option key={m.id} value={m.id}>{m.name ?? m.description}</option>)}
+                </select>
+              </div>
             )}
             <div>
               <label className={labelCls}>
                 Sprint
                 {milestoneLinkId && filteredSprints.length === 0 && (
-                  <span className="text-amber-500 font-normal ml-1">(no sprints linked to this milestone)</span>
+                  <span className="text-amber-500 font-normal ml-1">(no sprints in this milestone)</span>
                 )}
               </label>
               <select value={sprintId} onChange={(e) => setSprintId(e.target.value)} className={inputCls}>
-                <option value="">— none —</option>
+                <option value="">{milestoneLinkId ? '— select sprint —' : '— none —'}</option>
                 {filteredSprints.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
               </select>
             </div>
@@ -2625,7 +2634,6 @@ export function CreateWorkItemModal({
                     <option value="SUGGESTION">Suggestion</option>
                     <option value="PROJECT_MANAGEMENT">Project Management</option>
                     <option value="EXISTING_APPLICATION">Existing Application</option>
-                    <option value="TECHNICAL">Technical</option>
                     <option value="FUNCTIONAL">Functional</option>
                     <option value="OTHER">Other</option>
                   </select>
@@ -2683,15 +2691,6 @@ export function CreateWorkItemModal({
                   <label className={labelCls}>Fixed Build</label>
                   <input type="text" value={fixedBuildVersion} onChange={(e) => setFixedBuildVersion(e.target.value)} placeholder="e.g. 1.0.6" className={inputCls} />
                 </div>
-                {milestones.length > 0 && (
-                  <div>
-                    <label className={labelCls}>Affected Milestone</label>
-                    <select value={affectedMilestoneId} onChange={(e) => setAffectedMilestoneId(e.target.value)} className={inputCls}>
-                      <option value="">— none —</option>
-                      {milestones.map((m) => <option key={m.id} value={m.id}>{m.name ?? m.description}</option>)}
-                    </select>
-                  </div>
-                )}
               </div>
               <div>
                 <label className={labelCls}>Module</label>

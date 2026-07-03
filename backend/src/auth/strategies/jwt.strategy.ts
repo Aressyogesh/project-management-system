@@ -26,7 +26,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   async validate(payload: JwtPayload) {
     const user = await this.prisma.user.findUnique({
       where: { id: payload.sub },
-      select: { id: true, fullName: true, email: true, systemRole: true, isActive: true },
+      select: { id: true, fullName: true, email: true, systemRole: true, isActive: true, managedBusinessUnitId: true },
     });
 
     if (!user || !user.isActive) throw new UnauthorizedException('Invalid or expired token');

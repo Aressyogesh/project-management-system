@@ -163,7 +163,7 @@ export function LeavesPage() {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
 
-  const isAdmin = user?.systemRole === 'SUPER_USER' || user?.systemRole === 'ADMIN';
+  const isAdmin = user?.systemRole === 'SUPER_USER' || user?.systemRole === 'ADMIN' || user?.systemRole === 'BU_HEAD';
 
   useEffect(() => {
     if (!toast) return;

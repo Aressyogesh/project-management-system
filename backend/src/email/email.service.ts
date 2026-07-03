@@ -21,33 +21,51 @@ export class EmailService {
   }
 
   wrapHtml(title: string, bodyHtml: string): string {
+    const frontendUrl =
+      this.config.get<string>('APP_FRONTEND_URL') || 'http://localhost:5173';
+
     return `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 </head>
-<body style="margin:0;padding:0;background:#f3f4f6;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+<body style="margin:0;padding:0;background:#f0f2f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
   <table width="100%" cellpadding="0" cellspacing="0" style="padding:40px 16px;">
     <tr>
       <td align="center">
-        <table width="100%" style="max-width:520px;background:#ffffff;border-radius:16px;border:1px solid #e5e7eb;overflow:hidden;">
+        <table width="100%" style="max-width:540px;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
+          <!-- Header -->
           <tr>
-            <td style="background:#4f46e5;padding:28px 32px;text-align:center;">
-              <span style="display:inline-block;background:rgba(255,255,255,0.15);border-radius:10px;padding:8px 18px;color:#ffffff;font-size:18px;font-weight:700;letter-spacing:1px;">PMS</span>
-              <p style="margin:10px 0 0;color:rgba(255,255,255,0.85);font-size:13px;">Project Management System</p>
+            <td style="background:linear-gradient(135deg,#1a6ab1 0%,#0077CC 60%,#00A7E1 100%);padding:28px 32px 24px;text-align:center;">
+              <!-- White card mirroring the login screen logo card -->
+              <table cellpadding="0" cellspacing="0" border="0" style="margin:0 auto 12px auto;">
+                <tr>
+                  <td style="background:#ffffff;border-radius:12px;padding:12px 24px;text-align:center;">
+                    <img src="${frontendUrl}/pms-logo.png"
+                         alt="Aress PMS"
+                         width="140"
+                         style="height:auto;display:block;margin:0 auto;" />
+                  </td>
+                </tr>
+              </table>
+              <p style="margin:0;color:rgba(255,255,255,0.85);font-size:13px;letter-spacing:0.3px;">
+                Plan. Track. Deliver. <em>Successfully..</em>
+              </p>
             </td>
           </tr>
+          <!-- Body -->
           <tr>
-            <td style="padding:32px 32px 24px;">
+            <td style="padding:32px 36px 24px;">
               <h2 style="margin:0 0 20px;color:#111827;font-size:20px;font-weight:700;">${title}</h2>
               ${bodyHtml}
             </td>
           </tr>
+          <!-- Footer -->
           <tr>
-            <td style="padding:16px 32px 28px;border-top:1px solid #f3f4f6;">
-              <p style="margin:0;color:#9ca3af;font-size:12px;text-align:center;">
-                This email was sent by Project Management System. Please do not reply.
+            <td style="padding:16px 36px 28px;border-top:1px solid #f0f2f5;">
+              <p style="margin:0;color:#9ca3af;font-size:12px;text-align:center;line-height:1.6;">
+                This email was sent by <strong style="color:#6b7280;">Aress PMS</strong>. Please do not reply to this email.
               </p>
             </td>
           </tr>
@@ -85,13 +103,13 @@ export class EmailService {
       </p>
       <div style="text-align:center;margin:28px 0;">
         <a href="${resetLink}"
-           style="display:inline-block;background:#4f46e5;color:#ffffff;text-decoration:none;font-weight:600;font-size:15px;padding:14px 32px;border-radius:10px;">
+           style="display:inline-block;background:#1a6ab1;color:#ffffff;text-decoration:none;font-weight:600;font-size:15px;padding:14px 32px;border-radius:10px;">
           Reset Password
         </a>
       </div>
       <p style="margin:0 0 8px;color:#6b7280;font-size:13px;">Or copy and paste this link into your browser:</p>
       <p style="margin:0 0 24px;word-break:break-all;">
-        <a href="${resetLink}" style="color:#4f46e5;font-size:13px;">${resetLink}</a>
+        <a href="${resetLink}" style="color:#1a6ab1;font-size:13px;">${resetLink}</a>
       </p>
       <div style="background:#fef3c7;border:1px solid #fde68a;border-radius:8px;padding:14px 16px;">
         <p style="margin:0;color:#92400e;font-size:13px;">

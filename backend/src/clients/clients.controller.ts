@@ -14,6 +14,7 @@ export class ClientsController {
   constructor(private clientsService: ClientsService) {}
 
   @Get()
+  @Roles(SystemRole.SUPER_USER, SystemRole.ADMIN, SystemRole.BU_HEAD)
   @ApiOperation({ summary: 'List clients' })
   @ApiQuery({ name: 'includeInactive', required: false, type: Boolean })
   findAll(@Query('includeInactive') includeInactive?: string) {
