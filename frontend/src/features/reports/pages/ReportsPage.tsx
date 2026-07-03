@@ -112,7 +112,7 @@ function PaginationBar({
         {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
           <button key={p} onClick={() => onPageChange(p)}
             className={`w-7 h-7 text-xs rounded-lg border transition-colors ${
-              p === page ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-200 hover:bg-gray-50 text-gray-600'
+              p === page ? 'bg-primary-600 text-white border-primary-600' : 'border-gray-200 hover:bg-gray-50 text-gray-600'
             }`}>
             {p}
           </button>

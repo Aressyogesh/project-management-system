@@ -163,28 +163,26 @@ export function ProjectFormModal({ project, onClose, onSuccess }: Props) {
             </div>
           </div>
 
-          {/* Business Unit — filters client & department on selection */}
-          <div>
-            <label className={labelCls}>
-              Business Unit <span className="text-red-500">*</span>
-              {isBuHead && <span className="ml-1 text-[10px] text-gray-400 font-normal">(auto-assigned)</span>}
-            </label>
-            <select
-              value={businessUnitId}
-              onChange={(e) => { handleBusinessUnitChange(e.target.value); setFieldErrors((p) => ({ ...p, businessUnitId: '' })); }}
-              className={`${sel(businessUnitId, !!fieldErrors.businessUnitId)} ${isBuHead ? 'bg-gray-50 cursor-not-allowed' : ''}`}
-              disabled={isBuHead}
-            >
-              <option value="">Select Business Unit</option>
-              {businessUnits.map((bu) => (
-                <option key={bu.id} value={bu.id}>{bu.name}</option>
-              ))}
-            </select>
-            {fieldErrors.businessUnitId && <p className="mt-1 text-xs text-red-500">{fieldErrors.businessUnitId}</p>}
-            {businessUnitId && !fieldErrors.businessUnitId && !isBuHead && (
-              <p className="text-[11px] text-primary-600 mt-1">Client and department filtered to this business unit.</p>
-            )}
-          </div>
+          {/* Business Unit — visible to SUPER_USER/ADMIN only; BU_HEAD's BU is auto-set from their profile */}
+          {!isBuHead && (
+            <div>
+              <label className={labelCls}>Business Unit <span className="text-red-500">*</span></label>
+              <select
+                value={businessUnitId}
+                onChange={(e) => { handleBusinessUnitChange(e.target.value); setFieldErrors((p) => ({ ...p, businessUnitId: '' })); }}
+                className={sel(businessUnitId, !!fieldErrors.businessUnitId)}
+              >
+                <option value="">Select Business Unit</option>
+                {businessUnits.map((bu) => (
+                  <option key={bu.id} value={bu.id}>{bu.name}</option>
+                ))}
+              </select>
+              {fieldErrors.businessUnitId && <p className="mt-1 text-xs text-red-500">{fieldErrors.businessUnitId}</p>}
+              {businessUnitId && !fieldErrors.businessUnitId && (
+                <p className="text-[11px] text-primary-600 mt-1">Client and department filtered to this business unit.</p>
+              )}
+            </div>
+          )}
 
           <div className="grid grid-cols-2 gap-3">
             <div>
