@@ -25,13 +25,13 @@ export class LeaveRequestsController {
   @Get('members')
   @ApiOperation({ summary: 'List team members the requester can record leaves for' })
   getManageableMembers(@Request() req: any) {
-    return this.leaveRequestsService.getManageableMembers(req.user.id, req.user.systemRole);
+    return this.leaveRequestsService.getManageableMembers(req.user.id, req.user.systemRole, req.user.managedBusinessUnitId);
   }
 
   @Post()
-  @ApiOperation({ summary: 'Record a leave for a team member (PM/Admin/SuperAdmin only)' })
+  @ApiOperation({ summary: 'Record a leave for a team member (PM/Admin/BU_HEAD/SuperAdmin only)' })
   create(@Body() dto: CreateLeaveRequestDto, @Request() req: any) {
-    return this.leaveRequestsService.create(req.user.id, req.user.systemRole, dto);
+    return this.leaveRequestsService.create(req.user.id, req.user.systemRole, dto, req.user.managedBusinessUnitId);
   }
 
   @Get()
@@ -44,7 +44,7 @@ export class LeaveRequestsController {
     return this.leaveRequestsService.findAll(req.user.id, req.user.systemRole, {
       status,
       userId,
-    });
+    }, req.user.managedBusinessUnitId);
   }
 
   @Get(':id')
@@ -55,16 +55,16 @@ export class LeaveRequestsController {
 
   @Patch(':id/approve')
   @HttpCode(200)
-  @ApiOperation({ summary: 'Approve a leave request (admin only)' })
+  @ApiOperation({ summary: 'Approve a leave request (admin / BU_HEAD for own BU)' })
   approve(@Param('id') id: string, @Body() dto: ApproveLeaveRequestDto, @Request() req: any) {
-    return this.leaveRequestsService.approve(id, req.user.id, req.user.systemRole, dto);
+    return this.leaveRequestsService.approve(id, req.user.id, req.user.systemRole, dto, req.user.managedBusinessUnitId);
   }
 
   @Patch(':id/reject')
   @HttpCode(200)
-  @ApiOperation({ summary: 'Reject a leave request (admin only)' })
+  @ApiOperation({ summary: 'Reject a leave request (admin / BU_HEAD for own BU)' })
   reject(@Param('id') id: string, @Body() dto: RejectLeaveRequestDto, @Request() req: any) {
-    return this.leaveRequestsService.reject(id, req.user.id, req.user.systemRole, dto);
+    return this.leaveRequestsService.reject(id, req.user.id, req.user.systemRole, dto, req.user.managedBusinessUnitId);
   }
 
   @Patch(':id/cancel')

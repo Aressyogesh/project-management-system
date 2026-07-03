@@ -186,12 +186,16 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
     navigate('/login');
   }
 
+  const isBuHead = user?.systemRole === 'BU_HEAD';
+
   const baseNav = navItems.filter((item) => {
-    if (item.roles && !item.roles.includes(user?.systemRole as SystemRole)) return false;
+    // BU_HEAD cannot see admin-only sections
+    if (isBuHead && ['/business-units', '/departments', '/clients', '/org-structure', '/activity'].includes(item.path)) return false;
+    if (item.roles && !item.roles.includes(user?.systemRole as SystemRole) && !isBuHead) return false;
     if (item.path === '/kpi')        return canSee('KPI');
     if (item.path === '/reports')    return canSee('REPORTS');
-    if (item.path === '/leave-logs')    return user?.systemRole === 'SUPER_USER' || user?.systemRole === 'ADMIN' || user?.hasPmRole === true;
-    if (item.path === '/announcements') return user?.systemRole === 'SUPER_USER' || user?.systemRole === 'ADMIN' || user?.hasPmRole === true;
+    if (item.path === '/leave-logs')    return user?.systemRole === 'SUPER_USER' || user?.systemRole === 'ADMIN' || user?.systemRole === 'BU_HEAD' || user?.hasPmRole === true;
+    if (item.path === '/announcements') return user?.systemRole === 'SUPER_USER' || user?.systemRole === 'ADMIN' || user?.systemRole === 'BU_HEAD' || user?.hasPmRole === true;
     return true;
   });
 
@@ -203,32 +207,33 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
 
   const sidebarContent = (
     <aside
-      className={`flex flex-col shrink-0 h-full bg-white border-r border-gray-100 transition-all duration-200 ease-in-out ${
-        collapsed ? 'w-[68px]' : 'w-60'
+      className={`flex flex-col shrink-0 h-full transition-all duration-200 ease-in-out ${
+        collapsed ? 'w-[64px]' : 'w-[210px]'
       }`}
+      style={{ background: '#1060A3' }}
     >
-      {/* Logo + collapse toggle */}
-      <div className={`flex items-center border-b border-gray-100 h-[65px] ${collapsed ? 'justify-center px-3' : 'px-4'}`}>
+      {/* Logo + collapse toggle — h-[82px] matches Topbar height exactly */}
+      <div
+        className="flex items-center px-3 h-[82px] gap-2 shrink-0"
+        style={{ background: '#ffffff', borderBottom: '1px solid #f3f4f6' }}
+      >
         {collapsed ? (
-          <div className="flex flex-col items-center gap-1">
-            <div className="w-8 h-8 rounded-lg bg-gray-900 flex items-center justify-center">
-              <span className="text-white text-xs font-bold">P</span>
+          /* Clip to show only the icon square (left ~40px of the SVG) */
+          <div className="flex flex-1 items-center justify-center">
+            <div style={{ width: 40, height: 40, overflow: 'hidden', borderRadius: 8, flexShrink: 0 }}>
+              <img src="/pms-logo.svg" alt="PMS"
+                style={{ height: 40, width: 'auto', display: 'block' }} />
             </div>
           </div>
         ) : (
-          <div className="flex items-center gap-2.5 flex-1">
-            <div className="w-8 h-8 rounded-lg bg-gray-900 flex items-center justify-center shrink-0">
-              <span className="text-white text-xs font-bold">P</span>
-            </div>
-            <span className="text-gray-900 font-bold text-base tracking-tight">PMS</span>
+          <div className="flex flex-1 items-center min-w-0">
+            <img src="/pms-logo.svg" alt="Aress PMS" className="h-11 w-auto object-contain" />
           </div>
         )}
-        {/* Desktop toggle button */}
+        {/* Desktop collapse toggle */}
         <button
           onClick={onToggle}
-          className={`hidden lg:flex items-center justify-center w-6 h-6 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition ${
-            collapsed ? 'absolute left-[54px] top-[22px] bg-white border border-gray-200 shadow-sm z-10 rounded-full w-6 h-6' : 'ml-auto'
-          }`}
+          className="hidden lg:flex shrink-0 items-center justify-center w-5 h-5 rounded-full border border-gray-200 bg-white text-gray-400 hover:text-gray-600 hover:bg-gray-50 transition shadow-sm"
           title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
         >
           {collapsed ? <IconChevronRight /> : <IconChevronLeft />}
@@ -243,13 +248,14 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
             to={path}
             onClick={() => setMobileOpen(false)}
             title={collapsed ? label : undefined}
+            style={({ isActive }) => isActive ? { background: '#ffffff', color: '#1060A3' } : undefined}
             className={({ isActive }) =>
-              `flex items-center rounded-lg text-sm font-medium transition-colors ${
+              `flex items-center rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
                 collapsed ? 'justify-center px-0 py-2.5' : 'gap-3 px-3 py-2.5'
               } ${
                 isActive
-                  ? 'bg-gray-900 text-white'
-                  : 'text-gray-500 hover:bg-gray-50 hover:text-gray-800'
+                  ? ''
+                  : 'text-white/80 hover:bg-white/10 hover:text-white'
               }`
             }
           >
@@ -260,14 +266,17 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
       </nav>
 
       {/* User section */}
-      <div className={`py-3 border-t border-gray-100 ${collapsed ? 'px-2' : 'px-3'}`}>
+      <div
+        className={`py-3 ${collapsed ? 'px-2' : 'px-3'}`}
+        style={{ borderTop: '1px solid rgba(255,255,255,0.12)' }}
+      >
         {collapsed ? (
           <div className="flex flex-col items-center gap-2">
             <UserAvatar name={user?.fullName ?? 'U'} photo={user?.profilePhoto} size="md" title={user?.fullName} />
             <button
               onClick={handleLogout}
               title="Sign out"
-              className="flex items-center justify-center w-full py-2 rounded-lg text-gray-500 hover:bg-gray-50 hover:text-gray-800 transition-colors"
+              className="flex items-center justify-center w-full py-2 rounded-lg text-white/60 hover:bg-white/10 hover:text-white transition-colors"
             >
               <IconLogout />
             </button>
@@ -277,15 +286,15 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
             <div className="flex items-center gap-3 px-2 mb-2">
               <UserAvatar name={user?.fullName ?? 'U'} photo={user?.profilePhoto} size="md" />
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium text-gray-800 truncate">{user?.fullName}</p>
-                <p className="text-xs text-gray-400 truncate capitalize">
+                <p className="text-sm font-medium text-white truncate">{user?.fullName}</p>
+                <p className="text-xs text-blue-200 truncate capitalize">
                   {user?.systemRole.replace(/_/g, ' ').toLowerCase()}
                 </p>
               </div>
             </div>
             <button
               onClick={handleLogout}
-              className="flex items-center gap-2 w-full px-3 py-2 rounded-lg text-sm text-gray-500 hover:bg-gray-50 hover:text-gray-800 transition-colors"
+              className="flex items-center gap-2 w-full px-3 py-2 rounded-lg text-sm text-white/70 hover:bg-white/10 hover:text-white transition-colors"
             >
               <IconLogout />
               Sign out
@@ -320,12 +329,9 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
             onClick={() => setMobileOpen(false)}
           />
           <div className="relative flex h-full">
-            <aside className="flex flex-col w-60 shrink-0 h-full bg-white border-r border-gray-100">
-              <div className="flex items-center gap-2.5 px-5 py-5 border-b border-gray-100">
-                <div className="w-8 h-8 rounded-lg bg-gray-900 flex items-center justify-center">
-                  <span className="text-white text-xs font-bold">P</span>
-                </div>
-                <span className="text-gray-900 font-bold text-base tracking-tight">PMS</span>
+            <aside className="flex flex-col w-60 shrink-0 h-full" style={{ background: '#1060A3' }}>
+              <div className="flex items-center px-3 h-[82px] shrink-0" style={{ background: '#ffffff', borderBottom: '1px solid #f3f4f6' }}>
+                <img src="/pms-logo.svg" alt="Aress PMS" className="h-9 w-auto object-contain" />
               </div>
               <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-0.5">
                 {visibleNav.map(({ path, label, Icon: NavIcon }) => (
@@ -333,9 +339,10 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
                     key={path}
                     to={path}
                     onClick={() => setMobileOpen(false)}
+                    style={({ isActive }) => isActive ? { background: '#ffffff', color: '#1060A3' } : undefined}
                     className={({ isActive }) =>
-                      `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                        isActive ? 'bg-gray-900 text-white' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-800'
+                      `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
+                        isActive ? '' : 'text-white/80 hover:bg-white/10 hover:text-white'
                       }`
                     }
                   >
@@ -344,19 +351,19 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
                   </NavLink>
                 ))}
               </nav>
-              <div className="px-3 py-4 border-t border-gray-100">
+              <div className="px-3 py-4" style={{ borderTop: '1px solid rgba(255,255,255,0.12)' }}>
                 <div className="flex items-center gap-3 px-2 mb-2">
                   <UserAvatar name={user?.fullName ?? 'U'} photo={user?.profilePhoto} size="md" />
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-gray-800 truncate">{user?.fullName}</p>
-                    <p className="text-xs text-gray-400 truncate capitalize">
+                    <p className="text-sm font-medium text-white truncate">{user?.fullName}</p>
+                    <p className="text-xs text-blue-200 truncate capitalize">
                       {user?.systemRole.replace(/_/g, ' ').toLowerCase()}
                     </p>
                   </div>
                 </div>
                 <button
                   onClick={handleLogout}
-                  className="flex items-center gap-2 w-full px-3 py-2 rounded-lg text-sm text-gray-500 hover:bg-gray-50 hover:text-gray-800 transition-colors"
+                  className="flex items-center gap-2 w-full px-3 py-2 rounded-lg text-sm text-white/70 hover:bg-white/10 hover:text-white transition-colors"
                 >
                   <IconLogout />
                   Sign out

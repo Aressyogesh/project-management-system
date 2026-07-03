@@ -16,6 +16,7 @@ export function useFeatureVisibility() {
   function canSee(feature: VisibleFeature): boolean {
     if (!user) return false;
     if (user.systemRole === 'SUPER_USER') return true;
+    if (user.systemRole === 'BU_HEAD') return true;
     const entry = data.find((e) => e.feature === feature && e.role === user.systemRole);
     // If no row found yet (first load), default ADMIN=true, EMPLOYEE=false
     if (!entry) return user.systemRole === 'ADMIN';

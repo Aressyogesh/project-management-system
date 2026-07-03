@@ -1,9 +1,11 @@
 import {
   Body,
   Controller,
+  Get,
   HttpCode,
   HttpStatus,
   Post,
+  Query,
   Request,
   UseGuards,
 } from '@nestjs/common';
@@ -72,6 +74,16 @@ export class AuthController {
   @ApiResponse({ status: 204, description: 'Reset email sent if address is registered' })
   async forgotPassword(@Body() dto: ForgotPasswordDto): Promise<void> {
     await this.authService.forgotPassword(dto.email);
+  }
+
+  @Public()
+  @Get('validate-reset-token')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Validate a password reset token without consuming it' })
+  @ApiResponse({ status: 204, description: 'Token is valid' })
+  @ApiResponse({ status: 400, description: 'Token is invalid or expired' })
+  async validateResetToken(@Query('token') token: string): Promise<void> {
+    await this.authService.validateResetToken(token);
   }
 
   @Public()

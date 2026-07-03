@@ -87,24 +87,32 @@ const MONTH_ABBR = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep
 export class DashboardService {
   constructor(private prisma: PrismaService) {}
 
-  async getStats(userId: string, role: SystemRole, projectId?: string, month?: string): Promise<DashboardStats> {
+  async getStats(userId: string, role: SystemRole, projectId?: string, month?: string, managedBuId?: string | null): Promise<DashboardStats> {
     if (projectId && month) {
       return this.getProjectStats(userId, role, projectId, month);
     }
-    return this.getGlobalStats(userId, role);
+    return this.getGlobalStats(userId, role, managedBuId);
   }
 
-  private async getGlobalStats(userId: string, role: SystemRole): Promise<DashboardStats> {
+  private async getGlobalStats(userId: string, role: SystemRole, managedBuId?: string | null): Promise<DashboardStats> {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
 
     // SUPER_USER and ADMIN always see global (unscoped) stats regardless of any project memberships.
+    // BU_HEAD sees stats scoped to their managed Business Unit's projects.
     // EMPLOYEE is scoped to projects where they hold PM or TL role; if they hold no such role they
     // get a personal (self-only) view.
     let scopedProjectIds: string[] | null = null;
-    if (role === SystemRole.EMPLOYEE) {
+
+    if (role === SystemRole.BU_HEAD && managedBuId) {
+      const buProjects = await this.prisma.project.findMany({
+        where: { status: ProjectStatus.ACTIVE, department: { businessUnitId: managedBuId } },
+        select: { id: true },
+      });
+      scopedProjectIds = buProjects.map((p) => p.id);
+    } else if (role === SystemRole.EMPLOYEE) {
       const mgmtRows = await this.prisma.projectMember.findMany({
         where: { userId, projectRole: { in: [ProjectRole.PROJECT_MANAGER, ProjectRole.TEAM_LEAD] } },
         select: { projectId: true },
@@ -112,6 +120,7 @@ export class DashboardService {
       scopedProjectIds = mgmtRows.length > 0 ? mgmtRows.map((r) => r.projectId) : null;
     }
 
+    const isBuHeadView = role === SystemRole.BU_HEAD;
     const isPersonalView = role === SystemRole.EMPLOYEE && scopedProjectIds === null;
 
     const projectActiveWhere = scopedProjectIds !== null
@@ -202,16 +211,23 @@ export class DashboardService {
 
     const cards: StatCard[] = isPersonalView
       ? [
-          { label: 'All Projects',   value: memberProjectCount,  change: 0, trend: 'up', color: 'green'  },
-          { label: 'My Tasks',       value: rawMyTasks.length,   change: 0, trend: 'up', color: 'blue'   },
+          { label: 'All Projects',   value: memberProjectCount,  change: 0, trend: 'up', color: 'blue'   },
+          { label: 'My Tasks',       value: rawMyTasks.length,   change: 0, trend: 'up', color: 'rose'   },
           { label: 'Assigned To Me', value: rawMyTasks.length,   change: 0, trend: 'up', color: 'purple' },
-          { label: 'Completed',      value: completedWorkItems,  change: 0, trend: 'up', color: 'rose'   },
+          { label: 'Completed',      value: completedWorkItems,  change: 0, trend: 'up', color: 'green'  },
+        ]
+      : isBuHeadView
+      ? [
+          { label: 'All Projects',    value: activeProjectCount,  change: 0, trend: 'up', color: 'blue'   },
+          { label: 'Total Tasks',     value: totalWorkItems,      change: 0, trend: 'up', color: 'rose'   },
+          { label: 'Team Members',    value: activeUserCount,     change: 0, trend: 'up', color: 'purple' },
+          { label: 'Completed Tasks', value: completedWorkItems,  change: 0, trend: 'up', color: 'green'  },
         ]
       : [
-          { label: 'All Projects',   value: activeProjectCount,  change: 0, trend: 'up', color: 'green'  },
-          { label: 'Total Tasks',    value: totalWorkItems,       change: 0, trend: 'up', color: 'blue'   },
+          { label: 'All Projects',   value: activeProjectCount,  change: 0, trend: 'up', color: 'blue'   },
+          { label: 'Total Tasks',    value: totalWorkItems,       change: 0, trend: 'up', color: 'rose'   },
           { label: scopedProjectIds !== null ? 'Team Members' : 'Total Users', value: activeUserCount, change: 0, trend: 'up', color: 'purple' },
-          { label: 'Completed Tasks',value: completedWorkItems,  change: 0, trend: 'up', color: 'rose'   },
+          { label: 'Completed Tasks',value: completedWorkItems,  change: 0, trend: 'up', color: 'green'  },
         ];
 
     return {
@@ -279,9 +295,9 @@ export class DashboardService {
     const progress = totalWorkItems === 0 ? 0 : Math.round((doneCount / totalWorkItems) * 100);
 
     const cards: StatCard[] = [
-      { label: 'Team Members',    value: teamSize,          change: 0, trend: 'up',                         color: 'green'  },
-      { label: 'Work Items',      value: totalWorkItems,    change: 0, trend: 'up',                         color: 'blue'   },
-      { label: 'Completed',       value: completedThisMonth,change: 0, trend: completedThisMonth > 0 ? 'up' : 'down', color: 'rose' },
+      { label: 'Team Members',    value: teamSize,          change: 0, trend: 'up',                         color: 'blue'   },
+      { label: 'Work Items',      value: totalWorkItems,    change: 0, trend: 'up',                         color: 'rose'   },
+      { label: 'Completed',       value: completedThisMonth,change: 0, trend: completedThisMonth > 0 ? 'up' : 'down', color: 'green' },
       { label: 'Open Bugs',       value: openBugs,          change: 0, trend: openBugs === 0 ? 'up' : 'down', color: 'purple' },
     ];
 
@@ -307,8 +323,15 @@ export class DashboardService {
     };
   }
 
-  async getProjectsProgress(userId: string, role: SystemRole): Promise<ProjectProgress[]> {
+  async getProjectsProgress(userId: string, role: SystemRole, managedBuId?: string | null): Promise<ProjectProgress[]> {
     const isAdmin = role === SystemRole.ADMIN || role === SystemRole.SUPER_USER;
+    const isBuHead = role === SystemRole.BU_HEAD;
+
+    if (isBuHead && managedBuId) {
+      const where = { status: ProjectStatus.ACTIVE, department: { businessUnitId: managedBuId } };
+      return this.buildProjectsProgress(where);
+    }
+
     const memberProjectIds = await this.prisma.projectMember
       .findMany({
         where: {
@@ -326,6 +349,10 @@ export class DashboardService {
       ? { id: { in: memberProjectIds }, status: ProjectStatus.ACTIVE }
       : { status: ProjectStatus.ACTIVE };
 
+    return this.buildProjectsProgress(where);
+  }
+
+  private async buildProjectsProgress(where: Record<string, unknown>): Promise<ProjectProgress[]> {
     const projects = await this.prisma.project.findMany({
       where,
       select: {
@@ -382,22 +409,30 @@ export class DashboardService {
 
   async getTeamActivity(projectId: string, month: string, requestingUserId?: string, role?: SystemRole): Promise<MemberActivity[]> {
     const isAdmin = !role || role === SystemRole.ADMIN || role === SystemRole.SUPER_USER;
+    let selfOnlyUserId: string | null = null;
+
     if (!isAdmin && requestingUserId) {
-      const isMember = await this.prisma.projectMember.findFirst({
-        where: {
-          projectId,
-          userId: requestingUserId,
-          projectRole: { in: [ProjectRole.PROJECT_MANAGER, ProjectRole.TEAM_LEAD] },
-        },
+      const membership = await this.prisma.projectMember.findFirst({
+        where: { projectId, userId: requestingUserId },
+        select: { projectRole: true },
       });
-      if (!isMember) throw new ForbiddenException('Access denied');
+      if (!membership) throw new ForbiddenException('Access denied');
+      const isManagerialRole =
+        membership.projectRole === ProjectRole.PROJECT_MANAGER ||
+        membership.projectRole === ProjectRole.TEAM_LEAD;
+      if (!isManagerialRole) {
+        selfOnlyUserId = requestingUserId;
+      }
     }
+
     const [year, monthNum] = month.split('-').map(Number);
     const startDate = new Date(year, monthNum - 1, 1);
     const endDate   = new Date(year, monthNum, 1);
 
     const members = await this.prisma.projectMember.findMany({
-      where: { projectId },
+      where: selfOnlyUserId
+        ? { projectId, userId: selfOnlyUserId }
+        : { projectId },
       select: {
         projectRole: true,
         user: { select: { id: true, fullName: true, profilePhoto: true } },

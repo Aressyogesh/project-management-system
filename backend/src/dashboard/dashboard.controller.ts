@@ -15,6 +15,7 @@ interface JwtUser {
   id: string;
   email: string;
   systemRole: SystemRole;
+  managedBusinessUnitId?: string | null;
 }
 
 @ApiTags('Dashboard')
@@ -32,13 +33,13 @@ export class DashboardController {
     @Query('projectId') projectId?: string,
     @Query('month')     month?: string,
   ): Promise<DashboardStats> {
-    return this.dashboardService.getStats(user.id, user.systemRole, projectId, month);
+    return this.dashboardService.getStats(user.id, user.systemRole, projectId, month, user.managedBusinessUnitId);
   }
 
   @Get('projects-progress')
-  @ApiOperation({ summary: 'Get project-wise team progress (Admin+ or Project Manager/Team Lead)' })
+  @ApiOperation({ summary: 'Get project-wise team progress (Admin+ / BU_HEAD / Project Manager/Team Lead)' })
   getProjectsProgress(@CurrentUser() user: JwtUser): Promise<ProjectProgress[]> {
-    return this.dashboardService.getProjectsProgress(user.id, user.systemRole);
+    return this.dashboardService.getProjectsProgress(user.id, user.systemRole, user.managedBusinessUnitId);
   }
 
   @Get('team-activity')

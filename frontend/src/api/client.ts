@@ -36,7 +36,9 @@ apiClient.interceptors.response.use(
     const { refreshToken, setTokens, clearAuth } = useAuthStore.getState();
     if (!refreshToken) {
       clearAuth();
-      window.location.href = '/login';
+      if (!window.location.pathname.startsWith('/login') && !window.location.pathname.startsWith('/reset-password')) {
+        window.location.href = '/login';
+      }
       return Promise.reject(error);
     }
 
