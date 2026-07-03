@@ -24,7 +24,7 @@ export class AnnouncementsService {
   ) {}
 
   private isAdminOrSuper(role: SystemRole) {
-    return role === SystemRole.SUPER_USER || role === SystemRole.ADMIN;
+    return role === SystemRole.SUPER_USER || role === SystemRole.ADMIN || role === SystemRole.BU_HEAD;
   }
 
   private async getPmProjectIds(userId: string): Promise<string[]> {
