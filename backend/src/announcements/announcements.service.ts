@@ -81,6 +81,10 @@ export class AnnouncementsService {
     return result;
   }
 
+  private celebrationFilter() {
+    return { NOT: { title: { startsWith: 'Team Celebrations — ' } } };
+  }
+
   async findAll(
     query: { page?: number; limit?: number },
     userId: string,
@@ -91,14 +95,20 @@ export class AnnouncementsService {
     const safeLimit = Math.min(limit, 50);
     const skip = (page - 1) * safeLimit;
 
-    let where: object = {};
+    const celebration = this.celebrationFilter();
+    let where: object = celebration;
     if (!isAdmin) {
       const pmIds = await this.getPmProjectIds(userId);
       if (pmIds.length === 0) throw new ForbiddenException('Access denied');
       where = {
-        OR: [
-          { scope: AnnouncementScope.GLOBAL },
-          { scope: AnnouncementScope.PROJECT, projectId: { in: pmIds } },
+        AND: [
+          celebration,
+          {
+            OR: [
+              { scope: AnnouncementScope.GLOBAL },
+              { scope: AnnouncementScope.PROJECT, projectId: { in: pmIds } },
+            ],
+          },
         ],
       };
     }
@@ -113,11 +123,14 @@ export class AnnouncementsService {
 
   async findLatestForWidget(userId: string) {
     const projectIds = await this.getUserProjectIds(userId);
+    const celebration = this.celebrationFilter();
 
-    const where =
+    const scopeFilter =
       projectIds.length > 0
         ? { OR: [{ scope: AnnouncementScope.GLOBAL }, { scope: AnnouncementScope.PROJECT, projectId: { in: projectIds } }] }
         : { scope: AnnouncementScope.GLOBAL };
+
+    const where = { AND: [celebration, scopeFilter] };
 
     const data = await this.prisma.announcement.findMany({
       where,

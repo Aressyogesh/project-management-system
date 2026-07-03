@@ -190,7 +190,7 @@ export function CelebrationBanner() {
 
           {/* Bottom tagline */}
           <p className="relative mt-3 text-[11px] text-gray-400 font-medium tracking-wide">
-            🎗 Join us in making today extra special for our amazing team!
+            🎗 Join us in making today extra special for our amazing team mate!
           </p>
         </div>
       </div>

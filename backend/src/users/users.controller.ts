@@ -49,14 +49,14 @@ export class UsersController {
   constructor(private usersService: UsersService) {}
 
   @Get()
-  @Roles(SystemRole.SUPER_USER, SystemRole.ADMIN, SystemRole.EMPLOYEE)
+  @Roles(SystemRole.SUPER_USER, SystemRole.ADMIN, SystemRole.BU_HEAD, SystemRole.EMPLOYEE)
   @ApiOperation({ summary: 'List users with search and pagination' })
-  findAll(@Query() query: UsersQueryDto) {
-    return this.usersService.findAll(query);
+  findAll(@Query() query: UsersQueryDto, @Request() req: { user: { systemRole: SystemRole; managedBusinessUnitId?: string | null } }) {
+    return this.usersService.findAll(query, req.user.systemRole, req.user.managedBusinessUnitId);
   }
 
   @Get('profile')
-  @Roles(SystemRole.SUPER_USER, SystemRole.ADMIN, SystemRole.EMPLOYEE)
+  @Roles(SystemRole.SUPER_USER, SystemRole.ADMIN, SystemRole.BU_HEAD, SystemRole.EMPLOYEE)
   @ApiOperation({ summary: 'Get current user profile' })
   getProfile(@Request() req: { user: { id: string } }) {
     return this.usersService.getProfile(req.user.id);
@@ -64,7 +64,7 @@ export class UsersController {
 
   @Patch('profile')
   @HttpCode(200)
-  @Roles(SystemRole.SUPER_USER, SystemRole.ADMIN, SystemRole.EMPLOYEE)
+  @Roles(SystemRole.SUPER_USER, SystemRole.ADMIN, SystemRole.BU_HEAD, SystemRole.EMPLOYEE)
   @ApiOperation({ summary: 'Update current user profile' })
   @ApiConsumes('multipart/form-data')
   @UseInterceptors(FileInterceptor('photo', { storage: photoStorage, limits: { fileSize: 2 * 1024 * 1024 } }))
@@ -118,17 +118,10 @@ export class UsersController {
   }
 
   @Get('celebrations/today')
-  @Roles(SystemRole.SUPER_USER, SystemRole.ADMIN, SystemRole.EMPLOYEE)
-  @ApiOperation({ summary: 'Get today\'s birthdays and work anniversaries' })
-  getCelebrationsToday() {
-    return this.usersService.getCelebrationsToday();
+  @Roles(SystemRole.SUPER_USER, SystemRole.ADMIN, SystemRole.BU_HEAD, SystemRole.EMPLOYEE)
+  @ApiOperation({ summary: 'Get today\'s birthdays and work anniversaries within caller\'s business unit' })
+  getCelebrationsToday(@Request() req: { user: { id: string; systemRole: SystemRole; managedBusinessUnitId?: string | null } }) {
+    return this.usersService.getCelebrationsToday(req.user.id, req.user.systemRole, req.user.managedBusinessUnitId);
   }
 
-  @Post('celebrations/announce')
-  @HttpCode(200)
-  @Roles(SystemRole.SUPER_USER, SystemRole.ADMIN, SystemRole.EMPLOYEE)
-  @ApiOperation({ summary: 'Auto-post celebration announcement (idempotent)' })
-  postCelebrationAnnouncement(@Request() req: { user: { id: string } }) {
-    return this.usersService.postCelebrationAnnouncement(req.user.id);
-  }
 }

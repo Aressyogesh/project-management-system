@@ -4,8 +4,9 @@ import {
   Injectable,
   Logger,
   NotFoundException,
+  UnprocessableEntityException,
 } from '@nestjs/common';
-import { AuditAction, AuditEntity } from '@prisma/client';
+import { AuditAction, AuditEntity, SystemRole } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
 import * as crypto from 'crypto';
 import { ConfigService } from '@nestjs/config';
@@ -29,8 +30,10 @@ const USER_SELECT = {
   profilePhoto: true,
   isActive: true,
   createdAt: true,
+  managedBusinessUnitId: true,
   department: { select: { id: true, name: true } },
   shift: { select: { id: true, name: true, shiftType: true } },
+  managedBusinessUnit: { select: { id: true, name: true } },
 };
 
 @Injectable()
@@ -44,11 +47,17 @@ export class UsersService {
     private config: ConfigService,
   ) {}
 
-  async findAll(query: UsersQueryDto) {
+  async findAll(query: UsersQueryDto, callerRole?: SystemRole, callerManagedBuId?: string | null) {
     const { page = 1, limit = 25, search, departmentId } = query;
     const skip = (page - 1) * limit;
 
     const where: Record<string, unknown> = {};
+
+    // BU_HEAD sees only users in their managed BU (via department → business unit)
+    if (callerRole === SystemRole.BU_HEAD && callerManagedBuId) {
+      where.department = { businessUnitId: callerManagedBuId };
+    }
+
     if (departmentId) where.departmentId = departmentId;
     if (search) {
       where.OR = [
@@ -81,6 +90,10 @@ export class UsersService {
   }
 
   async createUser(dto: CreateUserDto, adminUserId?: string) {
+    if (dto.systemRole === SystemRole.BU_HEAD && !dto.managedBusinessUnitId) {
+      throw new UnprocessableEntityException('managedBusinessUnitId is required for BU_HEAD role');
+    }
+
     const existing = await this.prisma.user.findUnique({ where: { email: dto.email } });
     if (existing) throw new ConflictException('Email already in use');
 
@@ -100,6 +113,7 @@ export class UsersService {
         departmentId: dto.departmentId || undefined,
         shiftId: dto.shiftId || undefined,
         mustResetPassword: true,
+        managedBusinessUnitId: dto.systemRole === SystemRole.BU_HEAD ? (dto.managedBusinessUnitId ?? null) : null,
       },
       select: USER_SELECT,
     });
@@ -118,7 +132,7 @@ export class UsersService {
         </tbody>
       </table>
       <p style="margin:0 0 16px;color:#374151;font-size:13px;">This is a system-generated temporary password. <strong>You will be required to change it on your first login before you can access the system.</strong></p>
-      <a href="${loginUrl}/login" style="display:inline-block;background:#4f46e5;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:700;font-size:14px;">
+      <a href="${loginUrl}/login" style="display:inline-block;background:#1a6ab1;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:700;font-size:14px;">
         Log In to PMS
       </a>
       <p style="margin:16px 0 0;color:#6b7280;font-size:13px;">
@@ -159,6 +173,10 @@ export class UsersService {
       if (conflict && conflict.id !== id) throw new ConflictException('Email already in use');
     }
 
+    if (dto.systemRole === SystemRole.BU_HEAD && !dto.managedBusinessUnitId) {
+      throw new UnprocessableEntityException('managedBusinessUnitId is required for BU_HEAD role');
+    }
+
     const result = await this.prisma.user.update({
       where: { id },
       data: {
@@ -168,6 +186,10 @@ export class UsersService {
         dateOfBirth: dto.dateOfBirth !== undefined ? (dto.dateOfBirth ? new Date(dto.dateOfBirth) : null) : undefined,
         departmentId: dto.departmentId !== undefined ? (dto.departmentId || null) : undefined,
         shiftId: dto.shiftId !== undefined ? (dto.shiftId || null) : undefined,
+        // Clear managedBusinessUnitId when role changes away from BU_HEAD
+        managedBusinessUnitId: dto.systemRole !== undefined
+          ? (dto.systemRole === SystemRole.BU_HEAD ? (dto.managedBusinessUnitId ?? undefined) : null)
+          : (dto.managedBusinessUnitId !== undefined ? (dto.managedBusinessUnitId || null) : undefined),
       },
       select: USER_SELECT,
     });
@@ -297,13 +319,32 @@ export class UsersService {
     return updated;
   }
 
-  async getCelebrationsToday() {
+  async getCelebrationsToday(requesterId: string, requesterRole: SystemRole, requesterManagedBuId?: string | null) {
     const today = new Date();
     const mm = String(today.getMonth() + 1).padStart(2, '0');
     const dd = String(today.getDate()).padStart(2, '0');
 
+    let buId: string | null = null;
+
+    if (requesterRole !== SystemRole.SUPER_USER && requesterRole !== SystemRole.ADMIN) {
+      if (requesterRole === SystemRole.BU_HEAD && requesterManagedBuId) {
+        buId = requesterManagedBuId;
+      } else {
+        const requester = await this.prisma.user.findUnique({
+          where: { id: requesterId },
+          select: { department: { select: { businessUnitId: true } } },
+        });
+        buId = requester?.department?.businessUnitId ?? null;
+      }
+    }
+
+    const where: Record<string, unknown> = { isActive: true };
+    if (buId) {
+      where.department = { businessUnitId: buId };
+    }
+
     const users = await this.prisma.user.findMany({
-      where: { isActive: true },
+      where,
       select: { id: true, fullName: true, profilePhoto: true, dateOfBirth: true, joinDate: true },
     });
 
@@ -329,56 +370,4 @@ export class UsersService {
     return celebrations;
   }
 
-  async postCelebrationAnnouncement(_requesterId: string) {
-    const celebrations = await this.getCelebrationsToday();
-    if (celebrations.length === 0) return null;
-
-    const today = new Date();
-    const dateStr = today.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
-    const title = `Team Celebrations — ${dateStr}`;
-
-    const birthdayPeople = celebrations.filter((c) => c.type === 'BIRTHDAY');
-    const anniversaryPeople = celebrations.filter((c) => c.type === 'ANNIVERSARY');
-
-    const birthdayLines = birthdayPeople.map(
-      (c) => `<li>🎂 <strong>${c.user.fullName}</strong> — Wishing you a wonderful birthday filled with joy! May this year bring you great success and happiness! 🎊</li>`,
-    );
-    const anniversaryLines = anniversaryPeople.map(
-      (c) => `<li>🏆 <strong>${c.user.fullName}</strong> — Celebrating <strong>${c.yearsCount} incredible year${c.yearsCount !== 1 ? 's' : ''}</strong> with us! Thank you for your dedication and hard work. Here's to many more! 🌟</li>`,
-    );
-
-    const sections: string[] = [];
-    if (birthdayLines.length > 0) {
-      sections.push(`<p><strong>🎂 Birthday Celebrations</strong></p><ul>${birthdayLines.join('')}</ul>`);
-    }
-    if (anniversaryLines.length > 0) {
-      sections.push(`<p><strong>🏆 Work Anniversary Celebrations</strong></p><ul>${anniversaryLines.join('')}</ul>`);
-    }
-
-    const opener =
-      birthdayPeople.length > 0 && anniversaryPeople.length === 0
-        ? `Let's celebrate our amazing team member's birthday today! 🎂`
-        : anniversaryPeople.length > 0 && birthdayPeople.length === 0
-          ? `Let's celebrate our amazing team member's work anniversary today! 🏆`
-          : `Let's celebrate our amazing team members today! 🎉`;
-
-    const content = `<p>🥳 <strong>Hip Hip Hooray!</strong> ${opener}</p>${sections.join('')}<p>Please join us in wishing them a fantastic day! 💐</p>`;
-
-    const existing = await this.prisma.announcement.findFirst({ where: { title } });
-
-    if (existing) {
-      return this.prisma.announcement.update({
-        where: { id: existing.id },
-        data: { content },
-      });
-    }
-
-    return this.prisma.announcement.create({
-      data: {
-        title,
-        content,
-        scope: 'GLOBAL',
-      },
-    });
-  }
 }
