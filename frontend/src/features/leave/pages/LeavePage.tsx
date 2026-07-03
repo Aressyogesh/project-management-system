@@ -253,6 +253,7 @@ export function LeavePage() {
   const isAllowed =
     user?.systemRole === 'SUPER_USER' ||
     user?.systemRole === 'ADMIN' ||
+    user?.systemRole === 'BU_HEAD' ||
     user?.hasPmRole === true;
 
   if (!isAllowed) {
