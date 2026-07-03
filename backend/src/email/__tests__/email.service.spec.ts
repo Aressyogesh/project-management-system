@@ -79,8 +79,7 @@ describe('EmailService', () => {
       expect(result).toContain('<!DOCTYPE html>');
       expect(result).toContain('Welcome');
       expect(result).toContain('<p>Hello World</p>');
-      expect(result).toContain('PMS');
-      expect(result).toContain('Project Management System');
+      expect(result).toContain('Aress PMS');
     });
   });
 
