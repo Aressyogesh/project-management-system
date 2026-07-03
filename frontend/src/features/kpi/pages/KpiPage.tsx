@@ -710,11 +710,11 @@ function ScoreCell({ score, max }: { score: number; max: number }) {
 
 function ScoreGuideCard() {
   const coreValues = [
-    { name: 'Diligent and Committed', max: 75, color: '#1D4ED8', detail: 'Delivery · Quality · Attendance' },
+    { name: 'Diligent and Committed', max: 75, color: '#16A34A', detail: 'Delivery · Quality · Attendance' },
     { name: 'Collaboration',          max: 10, color: '#7C3AED', detail: 'Team Collaboration · Reporting & Docs' },
-    { name: 'Continuous Learning',    max: 5,  color: '#059669', detail: 'Learning Velocity' },
-    { name: 'Optimism',               max: 5,  color: '#D97706', detail: 'Positive Behaviour & Conduct' },
-    { name: 'Gratitude',              max: 5,  color: '#BE123C', detail: 'Team Recognition' },
+    { name: 'Continuous Learning',    max: 5,  color: '#1D4ED8', detail: 'Learning Velocity' },
+    { name: 'Optimism',               max: 5,  color: '#DC2626', detail: 'Positive Behaviour & Conduct' },
+    { name: 'Gratitude',              max: 5,  color: '#EA580C', detail: 'Team Recognition' },
   ];
 
   const grades = [
