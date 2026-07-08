@@ -452,6 +452,10 @@ export function WorkItemModal({ item, sprints, members, milestones, canDelete = 
   const [bugStepsToReproLocal, setBugStepsToReproLocal] = useState(item?.stepsToRepro ?? '');
   const [bugDetailError, setBugDetailError] = useState('');
   const [showBugCloseGuard, setShowBugCloseGuard] = useState(false);
+  const [estHoursError, setEstHoursError] = useState(false);
+  const [startDateError, setStartDateError] = useState(false);
+  const [dueDateError, setDueDateError] = useState(false);
+  const [billingStatusError, setBillingStatusDetailError] = useState(false);
   // @mention in comments
   const [mentionSearch, setMentionSearch] = useState('');
   const [showMentionMenu, setShowMentionMenu] = useState(false);
@@ -1266,10 +1270,20 @@ export function WorkItemModal({ item, sprints, members, milestones, canDelete = 
                         <p className="text-[10px] text-gray-500">Remaining</p>
                       </div>
                     </div>
-                    <div className="grid grid-cols-3 gap-2">
+                    <div className="grid grid-cols-2 gap-2">
                       <input type="date" value={logDate} min={pastDateStr(1)} max={todayStr()} onChange={(e) => setLogDate(e.target.value)} className="input-sm" />
                       <input type="number" min={0.25} max={24} step={0.25} placeholder="Hours" value={logHours} onChange={(e) => setLogHours(e.target.value)} className="input-sm" />
-                      <input type="text" placeholder="Description" value={logDesc} onChange={(e) => setLogDesc(e.target.value)} className="input-sm" />
+                    </div>
+                    <div>
+                      <textarea
+                        placeholder="Description (optional)"
+                        value={logDesc}
+                        onChange={(e) => setLogDesc(e.target.value)}
+                        maxLength={1000}
+                        rows={2}
+                        className="input-sm w-full text-xs resize-none"
+                      />
+                      <p className="text-[10px] text-gray-400 text-right mt-0.5">{logDesc.length}/1000</p>
                     </div>
                     <button
                       onClick={() => {
@@ -1549,14 +1563,25 @@ export function WorkItemModal({ item, sprints, members, milestones, canDelete = 
               </SidebarRow>
 
               {/* Estimated Hours */}
-              <SidebarRow label="Est. Hours">
+              <SidebarRow label={item.type !== 'EPIC' ? <span>Est. Hours <span className="text-red-500">*</span></span> : 'Est. Hours'}>
                 {canEditSidebar ? (
-                  <input
-                    type="number" min={0} step={0.5}
-                    defaultValue={detail.estimatedHours ?? ''}
-                    onBlur={(e) => updateMut.mutate({ estimatedHours: Number(e.target.value) || undefined })}
-                    className="input-sm w-24 text-xs"
-                  />
+                  <div>
+                    <input
+                      type="number" min={0} step={0.5}
+                      defaultValue={detail.estimatedHours ?? ''}
+                      required={item.type !== 'EPIC'}
+                      onBlur={(e) => {
+                        if (item.type !== 'EPIC' && !e.target.value) {
+                          setEstHoursError(true);
+                          return;
+                        }
+                        setEstHoursError(false);
+                        updateMut.mutate({ estimatedHours: Number(e.target.value) || undefined });
+                      }}
+                      className={`input-sm w-24 text-xs ${estHoursError ? 'border-red-500 focus:ring-red-500' : ''}`}
+                    />
+                    {estHoursError && <p className="text-[10px] text-red-500 mt-0.5">Required</p>}
+                  </div>
                 ) : (
                   <span className="text-xs text-gray-700">{detail.estimatedHours != null ? `${detail.estimatedHours}h` : '—'}</span>
                 )}
@@ -1570,18 +1595,26 @@ export function WorkItemModal({ item, sprints, members, milestones, canDelete = 
                     <span className="text-[10px] text-gray-400">(bugs are always non-billable)</span>
                   </div>
                 ) : canChangeBilling ? (
-                  <select
-                    value={billingStatusLocal}
-                    onChange={(e) => {
-                      setBillingStatusLocal(e.target.value as BillingStatus);
-                      updateMut.mutate({ billingStatus: e.target.value as BillingStatus });
-                    }}
-                    className="input-sm w-full text-xs"
-                  >
-                    <option value="">— select —</option>
-                    <option value="BILLABLE">Billable</option>
-                    <option value="NON_BILLABLE">Non-Billable</option>
-                  </select>
+                  <div>
+                    <select
+                      value={billingStatusLocal}
+                      onChange={(e) => {
+                        if (!e.target.value) {
+                          setBillingStatusDetailError(true);
+                          return;
+                        }
+                        setBillingStatusDetailError(false);
+                        setBillingStatusLocal(e.target.value as BillingStatus);
+                        updateMut.mutate({ billingStatus: e.target.value as BillingStatus });
+                      }}
+                      className={`input-sm w-full text-xs ${billingStatusError ? 'border-red-500 focus:ring-red-500' : ''}`}
+                    >
+                      <option value="">— select —</option>
+                      <option value="BILLABLE">Billable</option>
+                      <option value="NON_BILLABLE">Non-Billable</option>
+                    </select>
+                    {billingStatusError && <p className="text-[10px] text-red-500 mt-0.5">Required</p>}
+                  </div>
                 ) : (
                   <div className="flex items-center gap-1.5">
                     <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
@@ -1597,32 +1630,48 @@ export function WorkItemModal({ item, sprints, members, milestones, canDelete = 
               </SidebarRow>
 
               {/* Start Date */}
-              <SidebarRow label="Start Date">
+              <SidebarRow label={<span>Start Date <span className="text-red-500">*</span></span>}>
                 {canEditSidebar ? (
-                  <input
-                    type="date"
-                    defaultValue={detail.startDate?.slice(0, 10) ?? ''}
-                    min={pastDateStr(5)}
-                    max={futureDateStr(10)}
-                    onBlur={(e) => updateMut.mutate({ startDate: e.target.value || undefined })}
-                    className="input-sm w-full text-xs"
-                  />
+                  <div>
+                    <input
+                      type="date"
+                      defaultValue={detail.startDate?.slice(0, 10) ?? ''}
+                      min={pastDateStr(5)}
+                      max={futureDateStr(10)}
+                      required
+                      onBlur={(e) => {
+                        if (!e.target.value) { setStartDateError(true); return; }
+                        setStartDateError(false);
+                        updateMut.mutate({ startDate: e.target.value });
+                      }}
+                      className={`input-sm w-full text-xs ${startDateError ? 'border-red-500 focus:ring-red-500' : ''}`}
+                    />
+                    {startDateError && <p className="text-[10px] text-red-500 mt-0.5">Required</p>}
+                  </div>
                 ) : (
                   <span className="text-xs text-gray-700">{detail.startDate ? fmtDate(detail.startDate) : '—'}</span>
                 )}
               </SidebarRow>
 
               {/* Due Date */}
-              <SidebarRow label="Due Date">
+              <SidebarRow label={<span>Due Date <span className="text-red-500">*</span></span>}>
                 {canEditSidebar ? (
-                  <input
-                    type="date"
-                    defaultValue={detail.dueDate?.slice(0, 10) ?? ''}
-                    min={pastDateStr(5)}
-                    max={futureDateStr(10)}
-                    onBlur={(e) => updateMut.mutate({ dueDate: e.target.value || undefined })}
-                    className="input-sm w-full text-xs"
-                  />
+                  <div>
+                    <input
+                      type="date"
+                      defaultValue={detail.dueDate?.slice(0, 10) ?? ''}
+                      min={pastDateStr(5)}
+                      max={futureDateStr(10)}
+                      required
+                      onBlur={(e) => {
+                        if (!e.target.value) { setDueDateError(true); return; }
+                        setDueDateError(false);
+                        updateMut.mutate({ dueDate: e.target.value });
+                      }}
+                      className={`input-sm w-full text-xs ${dueDateError ? 'border-red-500 focus:ring-red-500' : ''}`}
+                    />
+                    {dueDateError && <p className="text-[10px] text-red-500 mt-0.5">Required</p>}
+                  </div>
                 ) : (
                   <span className="text-xs text-gray-700">{detail.dueDate ? fmtDate(detail.dueDate) : '—'}</span>
                 )}
