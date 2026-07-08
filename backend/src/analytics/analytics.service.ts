@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { BoardStatus, BugClassification, LeaveStatus, ProjectRole, WorkItemType } from '@prisma/client';
+import { BoardStatus, BugClassification, LeaveStatus, ProjectRole, SystemRole, WorkItemType } from '@prisma/client';
 
 // ─── KPI Computation Helpers ──────────────────────────────────────────────────
 
@@ -67,7 +67,10 @@ export class AnalyticsService {
       select: { id: true },
     })).map((p) => p.id);
 
-    let userWhere: object = isAdmin ? { isActive: true } : { id: currentUserId, isActive: true };
+    const adminSystemRoles = [SystemRole.SUPER_USER, SystemRole.ADMIN];
+    let userWhere: object = isAdmin
+      ? { isActive: true, systemRole: { notIn: adminSystemRoles } }
+      : { id: currentUserId, isActive: true };
 
     if (!isAdmin) {
       const pmMemberships = await this.prisma.projectMember.findMany({
