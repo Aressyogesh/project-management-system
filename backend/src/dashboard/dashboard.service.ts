@@ -533,7 +533,7 @@ export class DashboardService {
             },
             select: { workItemId: true },
           }),
-          // FIX 2: fetch entries to apply forced non-billable overrides
+          // FIX 2: fetch entries to apply forced non-billable overrides + estimatedHours cap
           this.prisma.timesheetEntry.findMany({
             where: {
               userId: uid,
@@ -542,7 +542,7 @@ export class DashboardService {
             },
             select: {
               hours: true,
-              workItem: { select: { id: true, type: true, billingStatus: true } },
+              workItem: { select: { id: true, type: true, billingStatus: true, estimatedHours: true } },
             },
           }),
         ]);
@@ -552,6 +552,17 @@ export class DashboardService {
 
         // FIX 2: BUG type and rework items are always non-billable regardless of billing flag
         const reworkWorkItemIds = new Set(reworkActivitiesAllTime.map((a) => a.workItemId));
+
+        // Pre-compute total logged per BILLABLE work item so we can cap at estimatedHours
+        const itemLoggedTotals = new Map<string, { total: number; cap: number | null }>();
+        for (const entry of timesheetEntries) {
+          const wi = entry.workItem;
+          if (wi.type !== WorkItemType.BUG && !reworkWorkItemIds.has(wi.id) && wi.billingStatus === BillingStatus.BILLABLE) {
+            const prev = itemLoggedTotals.get(wi.id) ?? { total: 0, cap: wi.estimatedHours != null ? Number(wi.estimatedHours) : null };
+            itemLoggedTotals.set(wi.id, { total: prev.total + Number(entry.hours), cap: prev.cap });
+          }
+        }
+
         let billableHours = 0;
         let nonBillableHours = 0;
         for (const entry of timesheetEntries) {
@@ -561,7 +572,15 @@ export class DashboardService {
           if (isBug || isRework) {
             nonBillableHours += h;
           } else if (entry.workItem.billingStatus === BillingStatus.BILLABLE) {
-            billableHours += h;
+            const item = itemLoggedTotals.get(entry.workItem.id);
+            if (item && item.cap != null && item.total > item.cap) {
+              // Proportional split: each entry's share of the cap
+              const billableFraction = h * (item.cap / item.total);
+              billableHours    += billableFraction;
+              nonBillableHours += h - billableFraction;
+            } else {
+              billableHours += h;
+            }
           } else {
             nonBillableHours += h;
           }

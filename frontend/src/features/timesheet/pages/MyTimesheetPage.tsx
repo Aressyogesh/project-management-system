@@ -55,6 +55,16 @@ interface DayMetrics {
 
 function computeMetrics(entries: TimesheetEntryFull[]): DayMetrics {
   const m: DayMetrics = { total: 0, billable: 0, nonBillable: 0, rework: 0, bugFix: 0 };
+
+  // Pre-compute total logged per BILLABLE work item to cap at estimatedHours
+  const itemTotals = new Map<string, { total: number; cap: number | null }>();
+  for (const e of entries) {
+    if (!e.isRework && !e.isBugFix && e.workItem.billingStatus === 'BILLABLE') {
+      const prev = itemTotals.get(e.workItem.id) ?? { total: 0, cap: e.workItem.estimatedHours };
+      itemTotals.set(e.workItem.id, { total: prev.total + Number(e.hours), cap: prev.cap });
+    }
+  }
+
   for (const e of entries) {
     const h = Number(e.hours);
     m.total += h;
@@ -66,7 +76,14 @@ function computeMetrics(entries: TimesheetEntryFull[]): DayMetrics {
       m.nonBillable += h;
       m.bugFix += h;
     } else if (e.workItem.billingStatus === 'BILLABLE') {
-      m.billable += h;
+      const item = itemTotals.get(e.workItem.id);
+      if (item && item.cap != null && item.total > item.cap) {
+        const billableFraction = h * (item.cap / item.total);
+        m.billable    += billableFraction;
+        m.nonBillable += h - billableFraction;
+      } else {
+        m.billable += h;
+      }
     } else {
       m.nonBillable += h;
     }

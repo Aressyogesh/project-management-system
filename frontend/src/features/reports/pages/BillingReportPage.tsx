@@ -50,9 +50,9 @@ function computeMetrics(entries: TimesheetEntryFull[]): Metrics {
     else if (e.workItem.billingStatus === 'BILLABLE') {
       const item = billableItemHours.get(e.workItem.id);
       if (item?.cap != null && item.logged > item.cap) {
-        // Hours beyond estimatedHours are non-billable; distribute proportionally per entry
-        const billableFraction = Math.min(h, Math.max(0, item.cap - (item.logged - h)));
-        m.billable += billableFraction;
+        // Proportional split: each entry's share of the estimatedHours cap
+        const billableFraction = h * (item.cap / item.logged);
+        m.billable    += billableFraction;
         m.nonBillable += h - billableFraction;
       } else {
         m.billable += h;
