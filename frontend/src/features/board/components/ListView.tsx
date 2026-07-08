@@ -58,7 +58,7 @@ const STATUS_STYLES: Record<string, string> = {
 };
 
 function fmtDate(iso: string) {
-  return new Date(iso + 'T00:00:00').toLocaleDateString('en-GB', {
+  return new Date(iso.slice(0, 10) + 'T00:00:00').toLocaleDateString('en-GB', {
     day: '2-digit', month: 'short', year: 'numeric',
   });
 }
@@ -132,7 +132,7 @@ export function ListView({ columns, onCardClick, onDelete, canReassign, members 
             {items.map((item) => {
               const isOverdue =
                 item.dueDate &&
-                new Date(item.dueDate + 'T00:00:00') < today &&
+                new Date(item.dueDate.slice(0, 10) + 'T00:00:00') < today &&
                 item.status !== 'QA_DONE' &&
                 item.status !== 'CLOSED';
 
