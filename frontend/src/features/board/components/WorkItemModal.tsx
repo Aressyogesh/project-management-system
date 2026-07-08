@@ -1002,7 +1002,7 @@ export function WorkItemModal({ item, sprints, members, milestones, canDelete = 
                             {logOpen && (
                               <div className="ml-4 mb-2 bg-blue-50/60 border border-blue-100 rounded-lg p-3 space-y-2">
                                 <p className="text-[11px] font-semibold text-blue-700 mb-1.5">Log time — {child.title}</p>
-                                <div className="grid grid-cols-3 gap-2">
+                                <div className="grid grid-cols-2 gap-2">
                                   <div>
                                     <label className="text-[10px] text-gray-500 mb-0.5 block">Date</label>
                                     <input
@@ -1025,16 +1025,18 @@ export function WorkItemModal({ item, sprints, members, milestones, canDelete = 
                                       className="input-sm w-full text-xs"
                                     />
                                   </div>
-                                  <div>
-                                    <label className="text-[10px] text-gray-500 mb-0.5 block">Description</label>
-                                    <input
-                                      type="text"
-                                      value={logForm.desc}
-                                      placeholder="What did you work on?"
-                                      onChange={(e) => setChildLogForms((prev) => ({ ...prev, [child.id]: { ...logForm, desc: e.target.value } }))}
-                                      className="input-sm w-full text-xs"
-                                    />
-                                  </div>
+                                </div>
+                                <div>
+                                  <label className="text-[10px] text-gray-500 mb-0.5 block">Description</label>
+                                  <textarea
+                                    value={logForm.desc}
+                                    placeholder="What did you work on?"
+                                    maxLength={1000}
+                                    rows={2}
+                                    onChange={(e) => setChildLogForms((prev) => ({ ...prev, [child.id]: { ...logForm, desc: e.target.value } }))}
+                                    className="input-sm w-full text-xs resize-none"
+                                  />
+                                  <p className="text-[10px] text-gray-400 text-right mt-0.5">{logForm.desc.length}/1000</p>
                                 </div>
                                 <div className="flex gap-2">
                                   <button
