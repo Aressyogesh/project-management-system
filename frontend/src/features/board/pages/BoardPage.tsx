@@ -101,9 +101,6 @@ export function BoardPage() {
 
   function handleViewModeChange(mode: 'kanban' | 'list') {
     setViewMode(mode);
-    if (mode === 'list') {
-      setFilters((f) => ({ ...f, assigneeId: f.assigneeId ?? user?.id }));
-    }
   }
   const [selectedItem, setSelectedItem] = useState<WorkItem | null>(null);
   const [showCreate, setShowCreate] = useState(false);
