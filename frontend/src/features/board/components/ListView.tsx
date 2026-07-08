@@ -124,6 +124,7 @@ export function ListView({ columns, onCardClick, onDelete, canReassign, members 
               <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide w-28">Due Date</th>
               <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide w-32">Assignee</th>
               <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wide w-20">Est. Hrs</th>
+              <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wide w-24">Logged Hrs</th>
               <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wide w-12">SP</th>
               {onDelete && <th className="w-10 px-4 py-3" />}
             </tr>
@@ -231,6 +232,18 @@ export function ListView({ columns, onCardClick, onDelete, canReassign, members 
                     <span className="text-xs text-gray-600">
                       {item.estimatedHours != null ? `${item.estimatedHours}h` : '—'}
                     </span>
+                  </td>
+
+                  {/* Logged Hours */}
+                  <td className="px-4 py-3 text-center whitespace-nowrap">
+                    {(() => {
+                      const logged = item.timesheetEntries
+                        ? item.timesheetEntries.reduce((s, e) => s + Number(e.hours), 0)
+                        : 0;
+                      return logged > 0
+                        ? <span className="text-xs text-emerald-600 font-medium">{logged}h</span>
+                        : <span className="text-xs text-gray-300">—</span>;
+                    })()}
                   </td>
 
                   {/* Story Points */}
