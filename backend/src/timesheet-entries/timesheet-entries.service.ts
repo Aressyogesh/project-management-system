@@ -160,14 +160,32 @@ export class TimesheetEntriesService {
       orderBy: [{ date: 'desc' }, { createdAt: 'desc' }],
     });
 
-    // Classify BUG entries as rework (code-review phase) or bug-fix (QA phase).
-    // Non-BUG entries are always billable — QA regression history on the task is not penalised.
+    const REWORK_EARLIER = ['TODO', 'IN_PROGRESS', 'IN_REVIEW', 'READY_FOR_QA'];
+
     const bugWorkItemIds = [...new Set(
       entries.filter(e => e.workItem.type === 'BUG').map(e => e.workItemId),
     )];
+    const nonBugWorkItemIds = [...new Set(
+      entries.filter(e => e.workItem.type !== 'BUG').map(e => e.workItemId),
+    )];
 
+    // Non-BUG rework: any item moved IN_QA → earlier status (all-time) per SCENARIO.md
+    const reworkItemIds = new Set<string>();
+    if (nonBugWorkItemIds.length > 0) {
+      const reworkActs = await this.prisma.workItemActivity.findMany({
+        where: {
+          workItemId: { in: nonBugWorkItemIds },
+          action: 'status_changed',
+          oldValue: 'IN_QA',
+          newValue: { in: REWORK_EARLIER },
+        },
+        select: { workItemId: true },
+      });
+      reworkActs.forEach(a => reworkItemIds.add(a.workItemId));
+    }
+
+    // BUG classification: rework (code-review phase) vs bug-fix (QA phase)
     const bugClassMap = new Map<string, { isRework: boolean; isBugFix: boolean }>();
-
     if (bugWorkItemIds.length > 0) {
       const bugItems = await this.prisma.workItem.findMany({
         where: { id: { in: bugWorkItemIds } },
@@ -190,7 +208,6 @@ export class TimesheetEntriesService {
           bugClassMap.set(bug.id, { isRework: false, isBugFix: true });
           continue;
         }
-        // Parent's most recent status at or before this bug was created
         const prior = parentStatusActivities.filter(
           a => a.workItemId === bug.parentId && a.createdAt <= bug.createdAt,
         );
@@ -204,7 +221,7 @@ export class TimesheetEntriesService {
 
     return entries.map((e) => {
       if (e.workItem.type !== 'BUG') {
-        return { ...e, isRework: false, isBugFix: false };
+        return { ...e, isRework: reworkItemIds.has(e.workItemId), isBugFix: false };
       }
       const cls = bugClassMap.get(e.workItemId) ?? { isRework: false, isBugFix: true };
       return { ...e, ...cls };

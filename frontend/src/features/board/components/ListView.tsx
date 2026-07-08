@@ -1,3 +1,5 @@
+import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import type { WorkItem } from '../types/board.types';
 
 interface Column {
@@ -6,10 +8,19 @@ interface Column {
   items: WorkItem[];
 }
 
+interface MemberOption { id: string; fullName: string; }
+
 interface Props {
   columns: Column[];
   onCardClick: (item: WorkItem) => void;
   onDelete?: (itemId: string) => void;
+  canReassign?: boolean;
+  members?: MemberOption[];
+  onAssigneeChange?: (itemId: string, assigneeId: string | null) => void;
+}
+
+function getInitials(name: string) {
+  return name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2);
 }
 
 const TYPE_STYLES: Record<string, string> = {
@@ -52,7 +63,32 @@ function fmtDate(iso: string) {
   });
 }
 
-export function ListView({ columns, onCardClick, onDelete }: Props) {
+export function ListView({ columns, onCardClick, onDelete, canReassign, members = [], onAssigneeChange }: Props) {
+  const [reassignOpenId, setReassignOpenId] = useState<string | null>(null);
+  const [dropPos, setDropPos] = useState({ top: 0, left: 0 });
+  const dropRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!reassignOpenId) return;
+    function handleOutside(e: MouseEvent) {
+      if (!dropRef.current?.contains(e.target as Node)) setReassignOpenId(null);
+    }
+    document.addEventListener('mousedown', handleOutside);
+    return () => document.removeEventListener('mousedown', handleOutside);
+  }, [reassignOpenId]);
+
+  function openReassign(e: React.MouseEvent, itemId: string) {
+    e.stopPropagation();
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    setDropPos({ top: rect.bottom + 4, left: rect.left });
+    setReassignOpenId((id) => (id === itemId ? null : itemId));
+  }
+
+  function selectAssignee(e: React.MouseEvent, itemId: string, assigneeId: string | null) {
+    e.stopPropagation();
+    setReassignOpenId(null);
+    onAssigneeChange?.(itemId, assigneeId);
+  }
   const items = columns.flatMap((col) =>
     col.items.map((item) => ({ ...item, _columnLabel: col.label })),
   );
@@ -73,6 +109,7 @@ export function ListView({ columns, onCardClick, onDelete }: Props) {
   today.setHours(0, 0, 0, 0);
 
   return (
+    <>
     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
@@ -161,17 +198,28 @@ export function ListView({ columns, onCardClick, onDelete }: Props) {
                   </td>
 
                   {/* Assignee */}
-                  <td className="px-4 py-3 whitespace-nowrap">
-                    {item.assignee ? (
-                      <div className="flex items-center gap-1.5">
-                        <div className="w-6 h-6 rounded-full bg-gray-700 flex items-center justify-center shrink-0">
+                  <td className="px-4 py-3 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                    {canReassign ? (
+                      <button
+                        onClick={(e) => openReassign(e, item.id)}
+                        title={item.assignee ? `${item.assignee.fullName} — click to reassign` : 'Unassigned — click to assign'}
+                        className="flex items-center gap-1.5 hover:opacity-80 transition"
+                      >
+                        <div className="w-6 h-6 rounded-full bg-gray-700 flex items-center justify-center shrink-0 ring-2 ring-transparent hover:ring-primary-300 transition">
                           <span className="text-white text-[9px] font-semibold">
-                            {item.assignee.fullName.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2)}
+                            {item.assignee ? getInitials(item.assignee.fullName) : '?'}
                           </span>
                         </div>
-                        <span className="text-xs text-gray-700 truncate max-w-[90px]">
-                          {item.assignee.fullName.split(' ')[0]}
+                        <span className="text-xs text-gray-700 truncate max-w-[80px]">
+                          {item.assignee ? item.assignee.fullName.split(' ')[0] : <span className="text-gray-300">Unassigned</span>}
                         </span>
+                      </button>
+                    ) : item.assignee ? (
+                      <div className="flex items-center gap-1.5">
+                        <div className="w-6 h-6 rounded-full bg-gray-700 flex items-center justify-center shrink-0">
+                          <span className="text-white text-[9px] font-semibold">{getInitials(item.assignee.fullName)}</span>
+                        </div>
+                        <span className="text-xs text-gray-700 truncate max-w-[90px]">{item.assignee.fullName.split(' ')[0]}</span>
                       </div>
                     ) : (
                       <span className="text-xs text-gray-300">—</span>
@@ -216,9 +264,55 @@ export function ListView({ columns, onCardClick, onDelete }: Props) {
 
       <div className="px-4 py-2.5 border-t border-gray-50 bg-gray-50/40">
         <p className="text-[10px] text-gray-400">
-          {items.length} item{items.length !== 1 ? 's' : ''} assigned to you
+          {items.length} item{items.length !== 1 ? 's' : ''}
         </p>
       </div>
     </div>
+
+    {/* Reassign dropdown portal */}
+    {reassignOpenId && createPortal(
+      <div
+        ref={dropRef}
+        style={{ position: 'fixed', top: dropPos.top, left: dropPos.left, zIndex: 9999 }}
+        className="bg-white rounded-xl shadow-xl border border-gray-100 py-1 min-w-[190px] max-h-72 overflow-y-auto"
+      >
+        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-1.5 border-b border-gray-100">
+          Assign to
+        </p>
+        {items.find((i) => i.id === reassignOpenId)?.assignee && (
+          <button
+            onClick={(e) => selectAssignee(e, reassignOpenId, null)}
+            className="flex items-center gap-2.5 w-full px-3 py-2 text-xs text-gray-500 hover:bg-gray-50 transition"
+          >
+            <span className="w-6 h-6 rounded-full border border-dashed border-gray-300 flex items-center justify-center text-[9px] text-gray-400 shrink-0">—</span>
+            Unassign
+          </button>
+        )}
+        {members.map((m) => {
+          const currentAssignee = items.find((i) => i.id === reassignOpenId)?.assignee;
+          return (
+            <button
+              key={m.id}
+              onClick={(e) => selectAssignee(e, reassignOpenId, m.id)}
+              className={`flex items-center gap-2.5 w-full px-3 py-2.5 text-xs hover:bg-gray-50 transition ${
+                currentAssignee?.id === m.id ? 'font-semibold text-primary-700' : 'text-gray-700'
+              }`}
+            >
+              <span className="w-6 h-6 rounded-full bg-primary-600 flex items-center justify-center text-[9px] text-white font-bold shrink-0">
+                {getInitials(m.fullName)}
+              </span>
+              <span className="flex-1 text-left">{m.fullName}</span>
+              {currentAssignee?.id === m.id && (
+                <svg className="w-3 h-3 shrink-0 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              )}
+            </button>
+          );
+        })}
+      </div>,
+      document.body,
+    )}
+    </>
   );
 }

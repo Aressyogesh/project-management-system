@@ -98,6 +98,13 @@ export function BoardPage() {
 
   const [filters, setFilters] = useState<BoardFiltersQuery>({});
   const [viewMode, setViewMode] = useState<'kanban' | 'list'>('kanban');
+
+  function handleViewModeChange(mode: 'kanban' | 'list') {
+    setViewMode(mode);
+    if (mode === 'list') {
+      setFilters((f) => ({ ...f, assigneeId: f.assigneeId ?? user?.id }));
+    }
+  }
   const [selectedItem, setSelectedItem] = useState<WorkItem | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [showImport, setShowImport] = useState(false);
@@ -106,12 +113,8 @@ export function BoardPage() {
   const [showEditLabels, setShowEditLabels] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
 
-  const effectiveFilters: BoardFiltersQuery = viewMode === 'list'
-    ? { ...filters, assigneeId: user?.id ?? undefined }
-    : filters;
-
   const qc = useQueryClient();
-  const { columns: rawColumns, move } = useBoard(projectId!, effectiveFilters);
+  const { columns: rawColumns, move } = useBoard(projectId!, filters);
   const { sprints, activeSprint } = useSprints(projectId!);
 
   const assignMut = useMutation({
@@ -282,7 +285,7 @@ export function BoardPage() {
             onAddMilestone={() => setShowMilestoneModal(true)}
             canManageSprints={canManageSprints}
             viewMode={viewMode}
-            onViewModeChange={setViewMode}
+            onViewModeChange={handleViewModeChange}
           />
         </div>
       </div>
@@ -294,6 +297,9 @@ export function BoardPage() {
             columns={columns}
             onCardClick={setSelectedItem}
             onDelete={canDeleteWorkItem ? (itemId) => deleteMut.mutate(itemId) : undefined}
+            canReassign={isAdminOrSuper || myProjectRole === 'PROJECT_MANAGER'}
+            members={memberOptions}
+            onAssigneeChange={(itemId, assigneeId) => assignMut.mutate({ itemId, assigneeId })}
           />
         ) : (
           <DragDropContext onDragEnd={handleDragEnd}>
