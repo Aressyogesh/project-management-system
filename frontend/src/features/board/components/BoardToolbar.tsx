@@ -1,5 +1,6 @@
 import type { BoardFiltersQuery } from '../api/boardApi';
-import type { Sprint, TaskPriority, WorkItemType } from '../types/board.types';
+import type { BoardStatus, Sprint, TaskPriority, WorkItemType } from '../types/board.types';
+import { DEFAULT_BOARD_COLUMNS } from '../types/board.types';
 
 const TYPE_OPTIONS: { value: WorkItemType; label: string }[] = [
   { value: 'EPIC', label: 'Epic' },
@@ -161,19 +162,29 @@ export function BoardToolbar({
         ))}
       </select>
 
-      {/* Assignee filter — hidden in list mode (auto-filtered to current user) */}
-      {viewMode === 'kanban' && (
-        <select
-          value={filters.assigneeId ?? ''}
-          onChange={(e) => onFiltersChange({ ...filters, assigneeId: e.target.value || undefined })}
-          className={selectClass}
-        >
-          <option value="">All Assignees</option>
-          {members.map((m) => (
-            <option key={m.id} value={m.id}>{m.fullName}</option>
-          ))}
-        </select>
-      )}
+      {/* Assignee filter */}
+      <select
+        value={filters.assigneeId ?? ''}
+        onChange={(e) => onFiltersChange({ ...filters, assigneeId: e.target.value || undefined })}
+        className={selectClass}
+      >
+        <option value="">All Assignees</option>
+        {members.map((m) => (
+          <option key={m.id} value={m.id}>{m.fullName}</option>
+        ))}
+      </select>
+
+      {/* Status filter */}
+      <select
+        value={filters.status ?? ''}
+        onChange={(e) => onFiltersChange({ ...filters, status: (e.target.value as BoardStatus) || undefined })}
+        className={selectClass}
+      >
+        <option value="">All Statuses</option>
+        {DEFAULT_BOARD_COLUMNS.map((col) => (
+          <option key={col.status} value={col.status}>{col.label}</option>
+        ))}
+      </select>
 
       {/* Priority filter */}
       <select

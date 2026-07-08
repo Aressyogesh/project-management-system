@@ -198,6 +198,13 @@ export function WorkItemCard({ item, index, members = [], onClick, onAssigneeCha
               </div>
             )}
 
+            {/* Estimated hours */}
+            {item.estimatedHours != null && (
+              <div className="text-[10px] text-gray-400 mb-2">
+                Est. {Number(item.estimatedHours)}h
+              </div>
+            )}
+
             {/* Footer: logged hours, children count, assignee */}
             <div className="flex items-center justify-between gap-2 mt-2">
               <div className="flex items-center gap-2">
