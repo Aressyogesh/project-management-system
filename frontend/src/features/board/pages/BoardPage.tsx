@@ -11,6 +11,7 @@ import { boardApi } from '../api/boardApi';
 import type { BoardFiltersQuery } from '../api/boardApi';
 import { BoardToolbar } from '../components/BoardToolbar';
 import { KanbanColumn } from '../components/KanbanColumn';
+import { ListView } from '../components/ListView';
 import { SprintManager } from '../components/SprintManager';
 import { CreateWorkItemModal, WorkItemModal } from '../components/WorkItemModal';
 import { ImportWorkItemsModal } from '../components/ImportWorkItemsModal';
@@ -96,6 +97,7 @@ export function BoardPage() {
   const user = useAuthStore((s) => s.user);
 
   const [filters, setFilters] = useState<BoardFiltersQuery>({});
+  const [viewMode, setViewMode] = useState<'kanban' | 'list'>('kanban');
   const [selectedItem, setSelectedItem] = useState<WorkItem | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [showImport, setShowImport] = useState(false);
@@ -104,8 +106,12 @@ export function BoardPage() {
   const [showEditLabels, setShowEditLabels] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
 
+  const effectiveFilters: BoardFiltersQuery = viewMode === 'list'
+    ? { ...filters, assigneeId: user?.id ?? undefined }
+    : filters;
+
   const qc = useQueryClient();
-  const { columns: rawColumns, move } = useBoard(projectId!, filters);
+  const { columns: rawColumns, move } = useBoard(projectId!, effectiveFilters);
   const { sprints, activeSprint } = useSprints(projectId!);
 
   const assignMut = useMutation({
@@ -275,29 +281,39 @@ export function BoardPage() {
             onManageSprints={() => setShowSprintManager(true)}
             onAddMilestone={() => setShowMilestoneModal(true)}
             canManageSprints={canManageSprints}
+            viewMode={viewMode}
+            onViewModeChange={setViewMode}
           />
         </div>
       </div>
 
-      {/* Kanban board */}
+      {/* Board content */}
       <div className="flex-1 overflow-auto min-h-0 pb-4">
-        <DragDropContext onDragEnd={handleDragEnd}>
-          <div className="flex gap-3 items-stretch min-h-[500px] px-1">
-            {columns.map((col) => (
-              <KanbanColumn
-                key={col.status}
-                status={col.status}
-                label={col.label}
-                headerClass={col.headerClass}
-                items={col.items}
-                members={memberOptions}
-                onCardClick={setSelectedItem}
-                onAssigneeChange={(itemId, assigneeId) => assignMut.mutate({ itemId, assigneeId })}
-                onDelete={canDeleteWorkItem ? (itemId) => deleteMut.mutate(itemId) : undefined}
-              />
-            ))}
-          </div>
-        </DragDropContext>
+        {viewMode === 'list' ? (
+          <ListView
+            columns={columns}
+            onCardClick={setSelectedItem}
+            onDelete={canDeleteWorkItem ? (itemId) => deleteMut.mutate(itemId) : undefined}
+          />
+        ) : (
+          <DragDropContext onDragEnd={handleDragEnd}>
+            <div className="flex gap-3 items-stretch min-h-[500px] px-1">
+              {columns.map((col) => (
+                <KanbanColumn
+                  key={col.status}
+                  status={col.status}
+                  label={col.label}
+                  headerClass={col.headerClass}
+                  items={col.items}
+                  members={memberOptions}
+                  onCardClick={setSelectedItem}
+                  onAssigneeChange={(itemId, assigneeId) => assignMut.mutate({ itemId, assigneeId })}
+                  onDelete={canDeleteWorkItem ? (itemId) => deleteMut.mutate(itemId) : undefined}
+                />
+              ))}
+            </div>
+          </DragDropContext>
+        )}
       </div>
 
       {/* Modals */}

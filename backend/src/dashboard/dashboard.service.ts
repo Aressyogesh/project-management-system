@@ -442,29 +442,28 @@ export class DashboardService {
 
     if (members.length === 0) return [];
 
-    const STATUS_ORDER: Record<string, number> = {
-      TODO: 0, IN_PROGRESS: 1, IN_REVIEW: 2, READY_FOR_QA: 3, IN_QA: 4, QA_DONE: 5,
-    };
-
     return Promise.all(
       members.map(async (m) => {
         const uid = m.user.id;
+        const reworkEarlierStatuses = ['TODO', 'IN_PROGRESS', 'IN_REVIEW', 'READY_FOR_QA'];
 
         const [
           tasksAssigned,
           delivered,
           bugsFixed,
-          billableTimeAgg,
-          nonBillableTimeAgg,
           bugsReported,
           plannedLeaveAgg,
           unplannedLeaveAgg,
-          reworkActivities,
+          reworkActivitiesThisMonth,
+          reworkActivitiesAllTime,
+          timesheetEntries,
         ] = await Promise.all([
+          // FIX 1: scope to month so denominator matches the numerator's time window
           this.prisma.workItem.count({
             where: {
               projectId,
               assigneeId: uid,
+              createdAt: { gte: startDate, lt: endDate },
             },
           }),
           this.prisma.workItem.count({
@@ -484,22 +483,6 @@ export class DashboardService {
               type: WorkItemType.BUG,
               updatedAt: { gte: startDate, lt: endDate },
             },
-          }),
-          this.prisma.timesheetEntry.aggregate({
-            where: {
-              userId: uid,
-              workItem: { projectId, billingStatus: BillingStatus.BILLABLE },
-              date: { gte: startDate, lt: endDate },
-            },
-            _sum: { hours: true },
-          }),
-          this.prisma.timesheetEntry.aggregate({
-            where: {
-              userId: uid,
-              workItem: { projectId, billingStatus: BillingStatus.NON_BILLABLE },
-              date: { gte: startDate, lt: endDate },
-            },
-            _sum: { hours: true },
           }),
           this.prisma.workItem.count({
             where: {
@@ -529,31 +512,62 @@ export class DashboardService {
             },
             _sum: { totalDays: true },
           }),
+          // FIX 3: rework = IN_QA → earlier status only, within the month
           this.prisma.workItemActivity.findMany({
             where: {
               workItem: { projectId, assigneeId: uid },
               action: 'status_changed',
               createdAt: { gte: startDate, lt: endDate },
-              oldValue: { not: 'BLOCKED' },
-              newValue: { not: 'BLOCKED' },
+              oldValue: 'IN_QA',
+              newValue: { in: reworkEarlierStatuses },
             },
-            select: { workItemId: true, oldValue: true, newValue: true },
+            select: { workItemId: true },
+          }),
+          // FIX 2: all-time rework items for billing classification
+          this.prisma.workItemActivity.findMany({
+            where: {
+              workItem: { projectId, assigneeId: uid },
+              action: 'status_changed',
+              oldValue: 'IN_QA',
+              newValue: { in: reworkEarlierStatuses },
+            },
+            select: { workItemId: true },
+          }),
+          // FIX 2: fetch entries to apply forced non-billable overrides
+          this.prisma.timesheetEntry.findMany({
+            where: {
+              userId: uid,
+              workItem: { projectId },
+              date: { gte: startDate, lt: endDate },
+            },
+            select: {
+              hours: true,
+              workItem: { select: { id: true, type: true, billingStatus: true } },
+            },
           }),
         ]);
 
-        const reworkedItems = new Set(
-          reworkActivities
-            .filter((a) => {
-              const oldOrder = STATUS_ORDER[a.oldValue ?? ''];
-              const newOrder = STATUS_ORDER[a.newValue ?? ''];
-              return oldOrder !== undefined && newOrder !== undefined && newOrder < oldOrder;
-            })
-            .map((a) => a.workItemId),
-        );
+        // FIX 3: rework ratio counts unique items dragged back from IN_QA this month
+        const reworkedItems = new Set(reworkActivitiesThisMonth.map((a) => a.workItemId));
 
-        const billableHours    = Number(billableTimeAgg._sum.hours ?? 0);
-        const nonBillableHours = Number(nonBillableTimeAgg._sum.hours ?? 0);
-        const tasksCompleted   = delivered + bugsFixed;
+        // FIX 2: BUG type and rework items are always non-billable regardless of billing flag
+        const reworkWorkItemIds = new Set(reworkActivitiesAllTime.map((a) => a.workItemId));
+        let billableHours = 0;
+        let nonBillableHours = 0;
+        for (const entry of timesheetEntries) {
+          const h = Number(entry.hours);
+          const isBug    = entry.workItem.type === WorkItemType.BUG;
+          const isRework = reworkWorkItemIds.has(entry.workItem.id);
+          if (isBug || isRework) {
+            nonBillableHours += h;
+          } else if (entry.workItem.billingStatus === BillingStatus.BILLABLE) {
+            billableHours += h;
+          } else {
+            nonBillableHours += h;
+          }
+        }
+
+        const tasksCompleted     = delivered + bugsFixed;
         const plannedLeaveDays   = Number(plannedLeaveAgg._sum.totalDays ?? 0);
         const unplannedLeaveDays = Number(unplannedLeaveAgg._sum.totalDays ?? 0);
 

@@ -258,7 +258,7 @@
 
 ---
 
-**Metric 12 — Learning Velocity · 5 pts · SELF**
+**Metric 12 — Learning Velocity · 5 pts · SELF**there are issues
 
 | Field   | Detail |
 |---------|--------|

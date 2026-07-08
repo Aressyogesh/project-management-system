@@ -154,7 +154,11 @@ export class LeaveRequestsService {
       }
     }
 
-    if (query.status) where['status'] = query.status;
+    if (query.status) {
+      where['status'] = query.status;
+    } else {
+      where['status'] = { not: LeaveStatus.CANCELLED };
+    }
 
     return this.prisma.leaveRequest.findMany({
       where,
