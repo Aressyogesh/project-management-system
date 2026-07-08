@@ -1421,7 +1421,7 @@ export function ReportsPage() {
       {activeTab === 'timesheet'    && <TimesheetTab       key={`ts-${period}-${project}`}      currentUserId={user?.id} period={period} project={project} />}
       {activeTab === 'planned-actual' && <PlannedVsActualTab key={`pva-${period}-${project}`}  currentUserId={user?.id} period={period} project={project} />}
       {activeTab === 'capacity' && isManager && <CapacityReportTab project={project} />}
-      {activeTab === 'billing'      && <BillingReportPage />}
+      {activeTab === 'billing'      && <BillingReportPage project={project} />}
     </div>
   );
 }

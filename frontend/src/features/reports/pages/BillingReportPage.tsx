@@ -70,23 +70,19 @@ const PIE_COLORS = ['#4f46e5', '#e5e7eb', '#ef4444', '#f59e0b'];
 
 // ── component ─────────────────────────────────────────────────────────────────
 
-export function BillingReportPage() {
+export function BillingReportPage({ project }: { project?: string }) {
   const { user } = useAuthStore();
   const isAdmin = user?.systemRole === 'SUPER_USER' || user?.systemRole === 'ADMIN';
 
   const now = new Date();
   const [year, setYear]       = useState(now.getFullYear());
   const [month, setMonth]     = useState(now.getMonth() + 1);
-  const [projectId, setProjectId] = useState('');
   const [userId, setUserId]   = useState('');
+
+  const projectId = project && project !== 'all' ? project : '';
 
   const from = `${year}-${String(month).padStart(2, '0')}-01`;
   const to   = `${year}-${String(month).padStart(2, '0')}-${String(new Date(year, month, 0).getDate()).padStart(2, '0')}`;
-
-  const { data: projects = [] } = useQuery({
-    queryKey: ['projects-list'],
-    queryFn: () => projectsApi.list(),
-  });
 
   const { data: usersPage } = useQuery({
     queryKey: ['users-all'],
@@ -201,15 +197,6 @@ export function BillingReportPage() {
               {MONTHS.map((m) => <option key={m.v} value={m.v}>{m.l}</option>)}
             </select>
           </div>
-
-          <select
-            value={projectId}
-            onChange={(e) => setProjectId(e.target.value)}
-            className="border border-gray-200 rounded-lg px-3 py-1.5 text-xs bg-white focus:outline-none focus:border-indigo-400"
-          >
-            <option value="">All Projects</option>
-            {projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-          </select>
 
           {isAdmin && (
             <select
