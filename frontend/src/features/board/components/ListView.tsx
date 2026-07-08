@@ -100,7 +100,7 @@ export function ListView({ columns, onCardClick, onDelete, canReassign, members 
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
             d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
         </svg>
-        <p className="text-sm text-gray-400">No work items assigned to you match the current filters.</p>
+        <p className="text-sm text-gray-400">No work items match the current filters.</p>
       </div>
     );
   }
