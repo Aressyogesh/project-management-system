@@ -158,7 +158,7 @@ const navItems: NavItem[] = [
   { path: '/users',           label: 'Users',           Icon: IconUsers,         roles: ['SUPER_USER', 'ADMIN'] },
   { path: '/projects',        label: 'Projects',        Icon: IconProjects },
   { path: '/timesheet',       label: 'Timesheet',       Icon: IconTimesheet },
-  { path: '/leave-logs',      label: 'Leaves Management', Icon: IconLeave },
+  { path: '/leave-logs',      label: 'Leave Management',  Icon: IconLeave },
   { path: '/kpi',             label: 'KPI',             Icon: IconKpi },
   { path: '/reports',         label: 'Reports',         Icon: IconReports },
   { path: '/announcements',   label: 'Announcements',   Icon: IconAnnouncements },
@@ -207,7 +207,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
 
   const sidebarContent = (
     <aside
-      className={`flex flex-col shrink-0 h-full transition-all duration-200 ease-in-out ${
+      className={`relative flex flex-col shrink-0 h-full transition-all duration-200 ease-in-out overflow-visible ${
         collapsed ? 'w-[64px]' : 'w-[230px]'
       }`}
       style={{ background: '#1060A3' }}
@@ -218,16 +218,9 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
         style={{ background: '#ffffff', borderBottom: '1px solid #f3f4f6' }}
       >
         {collapsed ? (
-          /* Collapsed: blue rounded icon + expand button stacked, no branding */
-          <div className="flex flex-col flex-1 items-center justify-center gap-2">
+          /* Collapsed: favicon only, centered */
+          <div className="flex flex-1 items-center justify-center">
             <img src="/favicon.svg" alt="PMS" style={{ width: 36, height: 36 }} />
-            <button
-              onClick={onToggle}
-              className="hidden lg:flex shrink-0 items-center justify-center w-5 h-5 rounded-full border border-gray-200 bg-white text-gray-400 hover:text-gray-600 hover:bg-gray-50 transition shadow-sm"
-              title="Expand sidebar"
-            >
-              <IconChevronRight />
-            </button>
           </div>
         ) : (
           <>
@@ -245,6 +238,17 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
           </>
         )}
       </div>
+
+      {/* Expand button — floats on the right edge of the sidebar, centered in the header row */}
+      {collapsed && (
+        <button
+          onClick={onToggle}
+          className="hidden lg:flex absolute -right-2.5 top-[41px] -translate-y-1/2 z-20 items-center justify-center w-5 h-5 rounded-full border border-gray-200 bg-white text-gray-400 hover:text-gray-600 hover:bg-gray-50 transition shadow-sm"
+          title="Expand sidebar"
+        >
+          <IconChevronRight />
+        </button>
+      )}
 
       {/* Navigation */}
       <nav className={`flex-1 overflow-y-auto sidebar-scroll py-4 space-y-0.5 ${collapsed ? 'px-2' : 'px-3'}`}>

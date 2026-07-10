@@ -256,7 +256,7 @@ export function LoginPage() {
                   <button
                     type="submit"
                     disabled={isSubmitting}
-                    className="text-base font-semibold text-gray-800 bg-transparent border-none cursor-pointer hover:underline disabled:opacity-60 disabled:cursor-not-allowed"
+                    className="text-base font-semibold text-gray-800 bg-transparent border-none cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
                   >
                     {isSubmitting ? 'Signing in…' : 'Sign in'}
                   </button>
@@ -271,7 +271,7 @@ export function LoginPage() {
               <button
                 type="button"
                 onClick={goToLogin}
-                className="flex items-center gap-1.5 text-sm font-medium mb-6 w-fit transition-colors hover:underline"
+                className="flex items-center gap-1.5 text-sm font-medium mb-6 w-fit transition-colors"
                 style={{ color: '#1a6ab1' }}
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -328,7 +328,7 @@ export function LoginPage() {
                       <button
                         type="submit"
                         disabled={forgotStatus === 'loading'}
-                        className="text-base font-semibold text-gray-800 bg-transparent border-none cursor-pointer hover:underline disabled:opacity-60 disabled:cursor-not-allowed"
+                        className="text-base font-semibold text-gray-800 bg-transparent border-none cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
                       >
                         {forgotStatus === 'loading' ? 'Sending…' : 'Send Reset Link'}
                       </button>
@@ -364,7 +364,7 @@ export function LoginPage() {
                     <button
                       type="button"
                       onClick={goToLogin}
-                      className="text-base font-semibold text-gray-800 bg-transparent border-none cursor-pointer hover:underline"
+                      className="text-base font-semibold text-gray-800 bg-transparent border-none cursor-pointer"
                     >
                       Back to Sign in
                     </button>
