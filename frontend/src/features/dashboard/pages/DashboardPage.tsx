@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+﻿import { useQuery } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { dashboardApi } from '../../../api/dashboard.api';
@@ -42,15 +42,15 @@ const MONTH_OPTIONS = buildMonthOptions();
 function LoadingSkeleton() {
   return (
     <div className="space-y-6 animate-pulse">
-      <div className="h-10 bg-white rounded-2xl border border-gray-100 w-full" />
+      <div className="h-10 bg-white rounded-2xl border border-[#cccccc] w-full" />
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className="bg-white rounded-2xl p-5 h-36 border border-gray-100" />
+          <div key={i} className="bg-white rounded-2xl p-5 h-36 border border-[#cccccc]" />
         ))}
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
         {Array.from({ length: 3 }).map((_, i) => (
-          <div key={i} className="bg-white rounded-2xl h-40 border border-gray-100" />
+          <div key={i} className="bg-white rounded-2xl h-40 border border-[#cccccc]" />
         ))}
       </div>
     </div>
@@ -248,7 +248,7 @@ export function DashboardPage() {
 
       {/* ── Top filter bar ──────────────────────────────────────────────────── */}
       {canSeeTeamActivity && (
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm px-5 py-3 flex flex-wrap items-center gap-3">
+        <div className="bg-white rounded-2xl border border-[#cccccc] shadow-sm px-5 py-3 flex flex-wrap items-center gap-3">
           {/* Project combobox */}
           <ProjectCombobox
             projects={projects as { id: string; name: string }[]}
@@ -325,7 +325,7 @@ export function DashboardPage() {
               <div className="h-6 w-40 bg-gray-100 rounded mb-4" />
               <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
                 {Array.from({ length: 3 }).map((_, i) => (
-                  <div key={i} className="bg-white rounded-2xl h-40 border border-gray-100" />
+                  <div key={i} className="bg-white rounded-2xl h-40 border border-[#cccccc]" />
                 ))}
               </div>
             </div>

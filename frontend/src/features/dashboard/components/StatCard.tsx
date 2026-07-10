@@ -80,7 +80,7 @@ export function StatCard({ label, value, color }: StatCardProps) {
   return (
     <div
       className="rounded-2xl p-5 flex flex-col gap-3"
-      style={{ background: c.cardBg }}
+      style={{ background: c.cardBg, border: '1px solid #cccccc' }}
     >
       {/* Label + icon row */}
       <div className="flex items-start justify-between">

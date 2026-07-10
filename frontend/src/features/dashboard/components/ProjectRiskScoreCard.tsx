@@ -1,4 +1,4 @@
-import { MemberActivity } from '../../../types/dashboard.types';
+﻿import { MemberActivity } from '../../../types/dashboard.types';
 
 interface Props {
   activity: MemberActivity[];
@@ -34,7 +34,7 @@ export function ProjectRiskScoreCard({ activity }: Props) {
   const risk          = riskLevel(completionPct, reworkRatio);
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+    <div className="bg-white rounded-2xl border border-[#cccccc] shadow-sm p-5">
       <div className="flex items-center justify-between mb-4">
         <div>
           <h3 className="text-sm font-semibold text-gray-800">Project Risk Score</h3>

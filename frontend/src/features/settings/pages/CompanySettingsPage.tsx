@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+﻿import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { CompanySettings, settingsApi } from '../../../api/settings.api';
@@ -73,7 +73,7 @@ export function CompanySettingsPage() {
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
       {/* Company Info */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+      <div className="bg-white rounded-2xl border border-[#cccccc] shadow-sm p-6">
         <h2 className="text-base font-semibold text-gray-800 mb-5">Company Information</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           <Field label="Company Name" required error={errors.companyName?.message}>
@@ -128,7 +128,7 @@ export function CompanySettingsPage() {
       </div>
 
       {/* Email Domains */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+      <div className="bg-white rounded-2xl border border-[#cccccc] shadow-sm p-6">
         <h2 className="text-base font-semibold text-gray-800 mb-1">Email Domain</h2>
         <p className="text-xs text-gray-400 mb-4">Allowed domains for user registration</p>
         <DomainList domains={domains} onChange={setDomains} />
@@ -163,8 +163,8 @@ export function CompanySettingsPage() {
 function PageSkeleton() {
   return (
     <div className="space-y-4 animate-pulse">
-      <div className="bg-white rounded-2xl border border-gray-100 h-64" />
-      <div className="bg-white rounded-2xl border border-gray-100 h-36" />
+      <div className="bg-white rounded-2xl border border-[#cccccc] h-64" />
+      <div className="bg-white rounded-2xl border border-[#cccccc] h-36" />
     </div>
   );
 }

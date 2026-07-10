@@ -1,4 +1,4 @@
-import { keepPreviousData, useQuery } from '@tanstack/react-query';
+﻿import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { UserAvatar } from '../../components/shared/UserAvatar';
 import { auditLogsApi, type AuditAction, type AuditEntity } from '../../api/auditLogsApi';
@@ -145,7 +145,7 @@ export function ActivityLogPage() {
   return (
     <div className="flex flex-col h-full min-h-0">
       {/* Header */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm px-5 py-4 mb-4 shrink-0">
+      <div className="bg-white rounded-2xl border border-[#cccccc] shadow-sm px-5 py-4 mb-4 shrink-0">
         <h1 className="text-base font-semibold text-gray-900 mb-1">Activity Log</h1>
         <p className="text-xs text-gray-400">Track all user actions across the system</p>
 
@@ -229,7 +229,7 @@ export function ActivityLogPage() {
             <p className="text-sm text-gray-400">No activity found matching your filters</p>
           </div>
         ) : (
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+          <div className="bg-white rounded-2xl border border-[#cccccc] shadow-sm overflow-hidden">
             <ul className="divide-y divide-gray-50">
               {data.data.map((entry) => (
                 <li key={entry.id} className="flex items-start gap-3 px-5 py-3 hover:bg-gray-50 transition">

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+﻿import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Draggable } from '@hello-pangea/dnd';
 import { PRIORITY_CONFIG, TYPE_CONFIG, type WorkItem } from '../types/board.types';
@@ -114,7 +114,7 @@ export function WorkItemCard({ item, index, members = [], onClick, onAssigneeCha
             className={`group relative bg-white border border-l-4 rounded-lg p-3 cursor-pointer transition-all select-none ${
               snapshot.isDragging
                 ? 'shadow-lg rotate-1'
-                : 'border-gray-200 hover:border-primary-300 hover:shadow-sm'
+                : 'border-[#cccccc] hover:border-primary-300 hover:shadow-sm'
             }`}
           >
             {/* Parent breadcrumb */}
@@ -278,7 +278,7 @@ export function WorkItemCard({ item, index, members = [], onClick, onAssigneeCha
         <div
           ref={ctxMenuRef}
           style={{ position: 'fixed', top: ctxPos.top, right: ctxPos.right, zIndex: 9999 }}
-          className="bg-white rounded-xl shadow-xl border border-gray-100 py-1 min-w-[160px]"
+          className="bg-white rounded-xl shadow-xl border border-[#cccccc] py-1 min-w-[160px]"
         >
           {item.displayId && (
             <button
@@ -329,7 +329,7 @@ export function WorkItemCard({ item, index, members = [], onClick, onAssigneeCha
             right: menuPos.right,
             zIndex: 9999,
           }}
-          className="bg-white rounded-xl shadow-xl border border-gray-100 py-1 min-w-[190px] max-h-72 overflow-y-auto"
+          className="bg-white rounded-xl shadow-xl border border-[#cccccc] py-1 min-w-[190px] max-h-72 overflow-y-auto"
         >
           <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-1.5 border-b border-gray-100">
             Assign to

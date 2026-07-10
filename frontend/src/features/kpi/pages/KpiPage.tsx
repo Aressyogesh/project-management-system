@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+﻿import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 import { analyticsApi } from '../../../api/analyticsApi';
 import { projectsApi } from '../../../api/projects.api';
@@ -287,7 +287,7 @@ export function KpiPage() {
             currentUserId={user?.id}
           />
         ) : (
-          <div className="bg-white rounded-2xl border border-gray-100 p-8 shadow-sm text-center text-sm text-gray-400">
+          <div className="bg-white rounded-2xl border border-[#cccccc] p-8 shadow-sm text-center text-sm text-gray-400">
             No KPI data found for this period — auto-computed metrics will appear once work items are logged.
           </div>
         )}
@@ -407,7 +407,7 @@ export function KpiPage() {
         /* ── Individual Member KPI View ── */
         <div className="space-y-4">
           {/* Member info bar */}
-          <div className="bg-white rounded-xl border border-gray-100 shadow-sm px-5 py-3 flex items-center gap-4">
+          <div className="bg-white rounded-xl border border-[#cccccc] shadow-sm px-5 py-3 flex items-center gap-4">
             <div className="w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center shrink-0">
               <span className="text-white text-sm font-semibold">
                 {selectedEmployee.name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2)}
@@ -458,7 +458,7 @@ export function KpiPage() {
           )}
 
           {/* Employee KPI Table */}
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+          <div className="bg-white rounded-2xl border border-[#cccccc] shadow-sm overflow-hidden">
             <div className="px-5 py-4 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center gap-3">
               <div>
                 <h3 className="text-sm font-semibold text-gray-800">
@@ -725,7 +725,7 @@ function ScoreGuideCard() {
   ];
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm h-full">
+    <div className="bg-white rounded-2xl border border-[#cccccc] p-5 shadow-sm h-full">
       <div className="mb-4">
         <h3 className="text-sm font-semibold text-gray-800">Scoring Reference Guide</h3>
         <p className="text-xs text-gray-400 mt-0.5">

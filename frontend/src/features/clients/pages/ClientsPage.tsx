@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+﻿import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { businessUnitsApi } from '../../../api/businessUnits.api';
@@ -212,7 +212,7 @@ function ClientFormModal({ client, onClose, onSuccess }: FormModalProps) {
 
           {/* Additional contacts */}
           {additionalContacts.map((contact, idx) => (
-            <div key={idx} className="border border-gray-100 rounded-xl p-4 space-y-3 bg-gray-50/50 relative">
+            <div key={idx} className="border border-[#cccccc] rounded-xl p-4 space-y-3 bg-gray-50/50 relative">
               <div className="flex items-center justify-between mb-1">
                 <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Contact {idx + 2}</span>
                 <button
@@ -358,7 +358,7 @@ export function ClientsPage() {
   return (
     <div className="space-y-4">
       {/* Header */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+      <div className="bg-white rounded-2xl border border-[#cccccc] shadow-sm p-5">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
             <h1 className="text-base font-semibold text-gray-900">Client Management</h1>
@@ -387,7 +387,7 @@ export function ClientsPage() {
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-2xl border border-[#cccccc] shadow-sm overflow-hidden">
         {isLoading ? (
           <div className="flex items-center justify-center py-16 text-sm text-gray-400">Loading…</div>
         ) : error ? (
@@ -403,15 +403,15 @@ export function ClientsPage() {
         ) : (
           <>
             <table className="min-w-full divide-y divide-gray-50">
-              <thead className="bg-gray-50/60">
+              <thead style={{ backgroundColor: '#d9dce1' }}>
                 <tr>
-                  <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Client</th>
-                  <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Business Unit</th>
-                  <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contact</th>
-                  <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-                  <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phone</th>
-                  <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                  <th className="px-5 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                  <th className="px-5 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Client</th>
+                  <th className="px-5 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Business Unit</th>
+                  <th className="px-5 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Contact</th>
+                  <th className="px-5 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Email</th>
+                  <th className="px-5 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Phone</th>
+                  <th className="px-5 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Status</th>
+                  <th className="px-5 py-3 text-right text-xs font-medium text-white uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-50">

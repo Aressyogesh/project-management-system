@@ -1,4 +1,4 @@
-import { NavLink, Outlet } from 'react-router-dom';
+﻿import { NavLink, Outlet } from 'react-router-dom';
 import { useAuthStore } from '../../../store/authStore';
 
 const baseTabs = [
@@ -73,7 +73,7 @@ export function SettingsLayout() {
       <div className="flex flex-col lg:flex-row gap-6">
         {/* Sidebar tabs */}
         <aside className="lg:w-56 shrink-0">
-          <nav className="bg-white rounded-2xl border border-gray-100 shadow-sm p-2 flex flex-row lg:flex-col gap-1">
+          <nav className="bg-white rounded-2xl border border-[#cccccc] shadow-sm p-2 flex flex-row lg:flex-col gap-1">
             {tabs.map(({ to, label, icon }) => (
               <NavLink
                 key={to}

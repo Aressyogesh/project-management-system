@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { leaveApi, type LeaveRequest } from '../../../api/leaveApi';
 import { useAuthStore } from '../../../store/authStore';
@@ -315,7 +315,7 @@ export function LeavePage() {
   return (
     <div className="space-y-4">
       {/* ── Header ── */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+      <div className="bg-white rounded-2xl border border-[#cccccc] shadow-sm p-5">
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div>
             <h1 className="text-base font-semibold text-gray-900">Leave Management</h1>
@@ -334,7 +334,7 @@ export function LeavePage() {
 
         {/* Summary chips */}
         <div className="flex items-center gap-3 mt-4 flex-wrap">
-          <div className="flex items-center gap-2 px-4 py-2.5 bg-gray-50 border border-gray-100 rounded-xl">
+          <div className="flex items-center gap-2 px-4 py-2.5 bg-gray-50 border border-[#cccccc] rounded-xl">
             <span className="text-lg font-bold text-gray-700">{totalRecorded}</span>
             <span className="text-xs text-gray-500">Total Recorded</span>
           </div>
@@ -388,7 +388,7 @@ export function LeavePage() {
       </div>
 
       {/* ── Table ── */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-2xl border border-[#cccccc] shadow-sm overflow-hidden">
         {isLoading ? (
           <div className="flex items-center justify-center py-16 text-sm text-gray-400">Loading…</div>
         ) : error ? (

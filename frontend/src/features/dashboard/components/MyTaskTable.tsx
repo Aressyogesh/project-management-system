@@ -1,4 +1,4 @@
-import { MyTask, TaskPriority, TaskStatus } from '../../../types/dashboard.types';
+﻿import { MyTask, TaskPriority, TaskStatus } from '../../../types/dashboard.types';
 
 interface MyTaskTableProps {
   tasks: MyTask[];
@@ -52,7 +52,7 @@ export function MyTaskTable({ tasks }: MyTaskTableProps) {
   const overdueCount = tasks.filter((t) => isOverdue(t.dueDate)).length;
 
   return (
-    <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+    <div className="bg-white rounded-2xl p-5 shadow-sm border border-[#cccccc]">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <h2 className="font-semibold text-gray-800 text-base">Current Tasks</h2>

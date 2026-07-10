@@ -1,4 +1,4 @@
-import { AxiosError } from 'axios';
+﻿import { AxiosError } from 'axios';
 import { useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useNavigate } from 'react-router-dom';
@@ -243,7 +243,7 @@ export function LoginPage() {
       {/* ── Forgot Password Modal ────────────────────────────────────────── */}
       {forgotOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-          <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-8 w-full max-w-sm">
+          <div className="bg-white rounded-2xl shadow-xl border border-[#cccccc] p-8 w-full max-w-sm">
             {forgotStatus !== 'sent' ? (
               <>
                 <div className="flex items-center gap-3 mb-4">

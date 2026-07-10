@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { KpiMetricScore } from '../../../types/kpi.types';
 import type { KpiCoreValueGroup, KpiSubCategoryGroup } from '../data/kpiStaticData';
@@ -464,7 +464,7 @@ export function KpiParameterGroups({
         const barColor =
           pct >= 90 ? '#10B981' : pct >= 75 ? '#3B82F6' : pct >= 60 ? '#F59E0B' : '#EF4444';
         return (
-          <div className="bg-white rounded-xl border border-gray-100 shadow-sm px-5 py-4">
+          <div className="bg-white rounded-xl border border-[#cccccc] shadow-sm px-5 py-4">
             <div className="flex items-center justify-between mb-3">
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
                 Overall KPI Score

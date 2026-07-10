@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+﻿import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { boardApi } from '../api/boardApi';
@@ -2332,7 +2332,7 @@ export function CreateWorkItemModal({
             </button>
 
             {showTypeMenu && (
-              <div className="absolute top-full left-0 mt-1.5 bg-white rounded-xl shadow-lg border border-gray-100 py-1 min-w-[160px] z-10">
+              <div className="absolute top-full left-0 mt-1.5 bg-white rounded-xl shadow-lg border border-[#cccccc] py-1 min-w-[160px] z-10">
                 {CREATABLE_TYPES.map((t) => {
                   const tcfg = TYPE_CONFIG[t];
                   return (
@@ -2417,7 +2417,7 @@ export function CreateWorkItemModal({
 
                   {/* Dropdown list */}
                   {showParentMenu && (
-                    <div className="absolute top-full left-0 right-0 mt-1 bg-white rounded-xl shadow-lg border border-gray-100 py-1 z-20 max-h-52 overflow-y-auto">
+                    <div className="absolute top-full left-0 right-0 mt-1 bg-white rounded-xl shadow-lg border border-[#cccccc] py-1 z-20 max-h-52 overflow-y-auto">
                       <button
                         type="button"
                         onClick={() => { setSelectedParentId(''); setShowParentMenu(false); }}

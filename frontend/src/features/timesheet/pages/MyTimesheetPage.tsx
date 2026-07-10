@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { timesheetApi, type TimesheetEntryFull } from '../../../api/timesheetApi';
 import { projectsApi } from '../../../api/projects.api';
@@ -166,7 +166,7 @@ export function MyTimesheetPage() {
     <div className="space-y-5">
 
       {/* ── Header + Filters ── */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm px-6 py-5">
+      <div className="bg-white rounded-2xl border border-[#cccccc] shadow-sm px-6 py-5">
         <div className="flex items-center justify-between gap-4 flex-wrap mb-5">
           <div>
             <h1 className="text-lg font-bold text-gray-900">Timesheet</h1>
@@ -236,7 +236,7 @@ export function MyTimesheetPage() {
 
         {/* Summary bar */}
         <div className="mt-5">
-          <div className="inline-flex items-center gap-5 bg-gray-50 rounded-xl px-6 py-4 border border-gray-100 flex-wrap">
+          <div className="inline-flex items-center gap-5 bg-gray-50 rounded-xl px-6 py-4 border border-[#cccccc] flex-wrap">
             <div className="text-center">
               <p className="text-2xl font-bold text-gray-900">{monthMetrics.total.toFixed(1)}h</p>
               <p className="text-xs text-gray-500 mt-0.5">Total Logged</p>
@@ -293,7 +293,7 @@ export function MyTimesheetPage() {
 
       {/* ── Team breakdown (managers, project selected, no member filter) ── */}
       {memberSummary.length > 0 && (
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+        <div className="bg-white rounded-2xl border border-[#cccccc] shadow-sm overflow-hidden">
           <div className="px-5 py-3 border-b border-gray-100">
             <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
               Team Hours — {monthLabel} {year}
@@ -327,7 +327,7 @@ export function MyTimesheetPage() {
       )}
 
       {/* ── Calendar ── */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-2xl border border-[#cccccc] shadow-sm overflow-hidden">
         <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
           <h2 className="text-sm font-semibold text-gray-800">{monthLabel} {year}</h2>
           {isLoading && <span className="text-xs text-gray-400 animate-pulse">Loading…</span>}

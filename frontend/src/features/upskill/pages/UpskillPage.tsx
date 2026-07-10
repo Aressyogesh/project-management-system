@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+﻿import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 import { upskillApi, type CreateAssignmentDto, type UpskillAssignment, type UpskillStatus } from '../../../api/upskillApi';
 import { useAuthStore } from '../../../store/authStore';
@@ -673,7 +673,7 @@ function UpskillCard({ asgn, onRefresh }: { asgn: UpskillAssignment; onRefresh: 
   const inputCls = 'w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500';
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
+    <div className="bg-white rounded-2xl border border-[#cccccc] shadow-sm p-4">
       <div className="flex items-start justify-between gap-3 mb-3">
         <div>
           <div className="flex items-center gap-2 mb-1">
@@ -875,7 +875,7 @@ export function UpskillPage() {
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-2xl border border-[#cccccc] shadow-sm overflow-hidden">
         {isLoading ? (
           <div className="flex items-center justify-center py-16 text-sm text-gray-400">Loading…</div>
         ) : assignments.length === 0 ? (

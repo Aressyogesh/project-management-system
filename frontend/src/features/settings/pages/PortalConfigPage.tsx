@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+﻿import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { PortalConfig, settingsApi } from '../../../api/settings.api';
@@ -36,13 +36,13 @@ export function PortalConfigPage() {
   const workingDays = watch('workingDays') ?? {};
 
   if (isLoading) {
-    return <div className="animate-pulse space-y-4"><div className="bg-white rounded-2xl border border-gray-100 h-64" /><div className="bg-white rounded-2xl border border-gray-100 h-64" /></div>;
+    return <div className="animate-pulse space-y-4"><div className="bg-white rounded-2xl border border-[#cccccc] h-64" /><div className="bg-white rounded-2xl border border-[#cccccc] h-64" /></div>;
   }
 
   return (
     <form onSubmit={handleSubmit((d) => mutation.mutate(d))} className="space-y-4">
       {/* Formats Card */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+      <div className="bg-white rounded-2xl border border-[#cccccc] shadow-sm p-6">
         <p className="text-xs text-gray-400 mb-5">Set date format and business hours based on your work culture</p>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           {/* Date Format */}
@@ -97,7 +97,7 @@ export function PortalConfigPage() {
       </div>
 
       {/* Business Hours Card */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+      <div className="bg-white rounded-2xl border border-[#cccccc] shadow-sm p-6">
         <h2 className="text-base font-semibold text-gray-800 mb-1">Business hours</h2>
         <p className="text-xs text-gray-400 mb-5">Work duration calculated based on business hours.</p>
 

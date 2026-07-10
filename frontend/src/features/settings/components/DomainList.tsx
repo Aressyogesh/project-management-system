@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 
 interface DomainListProps {
   domains: string[];
@@ -44,7 +44,7 @@ export function DomainList({ domains, onChange }: DomainListProps) {
       {domains.length === 0 ? (
         <p className="text-sm text-gray-400 italic py-4 text-center">No email domains added yet</p>
       ) : (
-        <div className="border border-gray-100 rounded-xl overflow-hidden">
+        <div className="border border-[#cccccc] rounded-xl overflow-hidden">
           <table className="w-full text-sm">
             <thead className="bg-gray-50">
               <tr>

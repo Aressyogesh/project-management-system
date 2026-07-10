@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+﻿import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Cell, RadialBar, RadialBarChart, ResponsiveContainer } from 'recharts';
 import { dashboardApi } from '../../../api/dashboard.api';
@@ -42,7 +42,7 @@ export function TasksProgressChart({ projectId }: TasksProgressChartProps) {
   }));
 
   return (
-    <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+    <div className="bg-white rounded-2xl p-5 shadow-sm border border-[#cccccc]">
       <div className="flex items-center justify-between mb-4">
         <h2 className="font-semibold text-gray-800 text-base">Tasks Progress</h2>
         <select

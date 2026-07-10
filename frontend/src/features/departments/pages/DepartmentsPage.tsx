@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+﻿import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { businessUnitsApi } from '../../../api/businessUnits.api';
 import { departmentsApi } from '../../../api/departments.api';
@@ -198,7 +198,7 @@ export function DepartmentsPage() {
   return (
     <div className="space-y-4">
       {/* Header */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+      <div className="bg-white rounded-2xl border border-[#cccccc] shadow-sm p-5">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
             <h1 className="text-base font-semibold text-gray-900">Department Management</h1>
@@ -229,7 +229,7 @@ export function DepartmentsPage() {
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-2xl border border-[#cccccc] shadow-sm overflow-hidden">
         {isLoading ? (
           <div className="flex items-center justify-center py-16 text-sm text-gray-400">Loading…</div>
         ) : error ? (

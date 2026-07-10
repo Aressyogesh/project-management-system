@@ -208,7 +208,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const sidebarContent = (
     <aside
       className={`flex flex-col shrink-0 h-full transition-all duration-200 ease-in-out ${
-        collapsed ? 'w-[64px]' : 'w-[210px]'
+        collapsed ? 'w-[64px]' : 'w-[230px]'
       }`}
       style={{ background: '#1060A3' }}
     >
@@ -218,30 +218,36 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
         style={{ background: '#ffffff', borderBottom: '1px solid #f3f4f6' }}
       >
         {collapsed ? (
-          /* Clip to show only the icon square (left ~40px of the SVG) */
-          <div className="flex flex-1 items-center justify-center">
-            <div style={{ width: 40, height: 40, overflow: 'hidden', borderRadius: 8, flexShrink: 0 }}>
-              <img src="/pms-logo.svg" alt="PMS"
-                style={{ height: 40, width: 'auto', display: 'block' }} />
-            </div>
+          /* Collapsed: blue rounded icon + expand button stacked, no branding */
+          <div className="flex flex-col flex-1 items-center justify-center gap-2">
+            <img src="/favicon.svg" alt="PMS" style={{ width: 36, height: 36 }} />
+            <button
+              onClick={onToggle}
+              className="hidden lg:flex shrink-0 items-center justify-center w-5 h-5 rounded-full border border-gray-200 bg-white text-gray-400 hover:text-gray-600 hover:bg-gray-50 transition shadow-sm"
+              title="Expand sidebar"
+            >
+              <IconChevronRight />
+            </button>
           </div>
         ) : (
-          <div className="flex flex-1 items-center min-w-0">
-            <img src="/pms-logo.svg" alt="Aress PMS" className="h-11 w-auto object-contain" />
-          </div>
+          <>
+            <div className="flex flex-1 items-center min-w-0">
+              <img src="/pms-logo.svg" alt="Aress PMS" className="h-11 w-auto object-contain" />
+            </div>
+            {/* Desktop collapse toggle */}
+            <button
+              onClick={onToggle}
+              className="hidden lg:flex shrink-0 items-center justify-center w-5 h-5 rounded-full border border-gray-200 bg-white text-gray-400 hover:text-gray-600 hover:bg-gray-50 transition shadow-sm"
+              title="Collapse sidebar"
+            >
+              <IconChevronLeft />
+            </button>
+          </>
         )}
-        {/* Desktop collapse toggle */}
-        <button
-          onClick={onToggle}
-          className="hidden lg:flex shrink-0 items-center justify-center w-5 h-5 rounded-full border border-gray-200 bg-white text-gray-400 hover:text-gray-600 hover:bg-gray-50 transition shadow-sm"
-          title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-        >
-          {collapsed ? <IconChevronRight /> : <IconChevronLeft />}
-        </button>
       </div>
 
       {/* Navigation */}
-      <nav className={`flex-1 overflow-y-auto py-4 space-y-0.5 ${collapsed ? 'px-2' : 'px-3'}`}>
+      <nav className={`flex-1 overflow-y-auto sidebar-scroll py-4 space-y-0.5 ${collapsed ? 'px-2' : 'px-3'}`}>
         {visibleNav.map(({ path, label, Icon: NavIcon }) => (
           <NavLink
             key={path}

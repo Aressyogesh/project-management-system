@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+﻿import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '../../store/authStore';
@@ -127,7 +127,7 @@ export function Topbar() {
           {showNotifs && (
             <div
               ref={panelRef}
-              className="absolute right-0 top-full mt-2 w-80 bg-white rounded-2xl shadow-xl border border-gray-100 z-50 overflow-hidden"
+              className="absolute right-0 top-full mt-2 w-80 bg-white rounded-2xl shadow-xl border border-[#cccccc] z-50 overflow-hidden"
             >
               <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
                 <span className="text-sm font-semibold text-gray-800">Notifications</span>
@@ -176,7 +176,7 @@ export function Topbar() {
           </button>
 
           {showGearMenu && (
-            <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-xl shadow-xl border border-gray-100 z-50 py-1 overflow-hidden">
+            <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-xl shadow-xl border border-[#cccccc] z-50 py-1 overflow-hidden">
               <button
                 onClick={() => { setShowGearMenu(false); navigate('/profile'); }}
                 className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition flex items-center gap-2"

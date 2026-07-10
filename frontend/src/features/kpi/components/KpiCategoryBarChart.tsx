@@ -1,4 +1,4 @@
-import {
+﻿import {
   BarChart,
   Bar,
   XAxis,
@@ -51,7 +51,7 @@ export function KpiCategoryBarChart({ categoryAverages }: Props) {
   }));
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm h-full">
+    <div className="bg-white rounded-2xl border border-[#cccccc] p-5 shadow-sm h-full">
       <div className="mb-4">
         <h3 className="text-sm font-semibold text-gray-800">Team Category Performance</h3>
         <p className="text-xs text-gray-400 mt-0.5">Average score per category as % of maximum</p>

@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+﻿import { useQuery } from '@tanstack/react-query';
 import { dashboardApi } from '../../../api/dashboard.api';
 import { MemberActivity } from '../../../types/dashboard.types';
 
@@ -147,7 +147,7 @@ export function TeamActivityPanel({ projectId, month }: TeamActivityPanelProps) 
   });
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+    <div className="bg-white rounded-2xl border border-[#cccccc] shadow-sm overflow-hidden">
       <div className="px-5 py-4 border-b border-gray-50">
         <h3 className="text-sm font-semibold text-gray-800">Team Activity</h3>
         <p className="text-xs text-gray-400 mt-0.5">Per-member breakdown for the selected project and month</p>

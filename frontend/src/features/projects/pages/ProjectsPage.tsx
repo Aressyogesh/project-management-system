@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+﻿import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { businessUnitsApi } from '../../../api/businessUnits.api';
@@ -168,7 +168,7 @@ export function ProjectsPage() {
   return (
     <div className="space-y-5">
       {/* Header */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+      <div className="bg-white rounded-2xl border border-[#cccccc] shadow-sm p-5">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-base font-semibold text-gray-900">Projects</h1>
@@ -235,7 +235,7 @@ export function ProjectsPage() {
           ] as { label: string; value: number; color: string; ring: string; filter: QuickFilter }[]).map((card) => (
             <button key={card.filter} onClick={() => handleFilterChange(card.filter)}
               className={`bg-white rounded-xl border shadow-sm p-4 flex flex-col gap-1 text-left transition hover:shadow-md ${
-                quickFilter === card.filter ? `border-transparent ring-2 ${card.ring}` : 'border-gray-100'
+                quickFilter === card.filter ? `border-transparent ring-2 ${card.ring}` : 'border-[#cccccc]'
               }`}>
               <span className="text-2xl font-bold text-gray-800">{card.value}</span>
               <span className={`text-xs font-medium ${card.color}`}>{card.label}</span>
@@ -250,7 +250,7 @@ export function ProjectsPage() {
       ) : error ? (
         <div className="flex items-center justify-center py-20 text-sm text-red-500">Failed to load projects.</div>
       ) : !filtered.length ? (
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm flex flex-col items-center justify-center py-20 gap-3 text-sm text-gray-400">
+        <div className="bg-white rounded-2xl border border-[#cccccc] shadow-sm flex flex-col items-center justify-center py-20 gap-3 text-sm text-gray-400">
           <svg className="w-12 h-12 text-gray-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
               d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
@@ -262,7 +262,7 @@ export function ProjectsPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {paged.map((project) => (
               <div key={project.id}
-                className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+                className="bg-white rounded-2xl border border-[#cccccc] shadow-sm hover:shadow-md transition-shadow cursor-pointer"
                 onClick={() => navigate(isAdminOrSuper ? `/dashboard?projectId=${project.id}` : `/projects/${project.id}/board`)}>
                 <div className="px-5 pt-5 pb-3">
                   <div className="flex items-start justify-between gap-2">
@@ -353,7 +353,7 @@ export function ProjectsPage() {
           </div>
 
           {/* Pagination footer */}
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between px-5 py-3 flex-wrap gap-3">
+          <div className="bg-white rounded-2xl border border-[#cccccc] shadow-sm flex items-center justify-between px-5 py-3 flex-wrap gap-3">
             <div className="flex items-center gap-2 text-xs text-gray-500">
               <span>Per page:</span>
               <select value={pageSize} onChange={(e) => handlePageSizeChange(Number(e.target.value))}

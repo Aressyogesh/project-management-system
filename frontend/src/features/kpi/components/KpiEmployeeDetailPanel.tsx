@@ -1,4 +1,4 @@
-import type { EmployeeKpiRecord } from '../../../types/kpi.types';
+﻿import type { EmployeeKpiRecord } from '../../../types/kpi.types';
 import { KPI_METRICS, KPI_CATEGORIES, GRADE_CONFIG } from '../data/kpiStaticData';
 import { KpiRadarChart } from './KpiRadarChart';
 
@@ -21,7 +21,7 @@ export function KpiEmployeeDetailPanel({ employee }: Props) {
     <div className="bg-gray-50 border-t border-gray-100 p-5 grid grid-cols-1 lg:grid-cols-3 gap-6">
       {/* Left: Radar chart */}
       <div className="lg:col-span-1">
-        <div className="bg-white rounded-xl border border-gray-100 p-4">
+        <div className="bg-white rounded-xl border border-[#cccccc] p-4">
           <div className="flex items-center justify-between mb-2">
             <div>
               <p className="text-sm font-semibold text-gray-800">{employee.name}</p>
@@ -68,7 +68,7 @@ export function KpiEmployeeDetailPanel({ employee }: Props) {
           const color = CAT_COLORS[cat.name] ?? '#6B7280';
 
           return (
-            <div key={cat.name} className="bg-white rounded-xl border border-gray-100 p-4">
+            <div key={cat.name} className="bg-white rounded-xl border border-[#cccccc] p-4">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
                   <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: color }} />

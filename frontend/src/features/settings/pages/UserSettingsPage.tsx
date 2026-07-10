@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+﻿import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { Pagination } from '../../../components/shared/Pagination';
 import { UserAvatar } from '../../../components/shared/UserAvatar';
@@ -57,7 +57,7 @@ export function UserSettingsPage() {
   return (
     <div className="space-y-4">
       {/* Search + Add */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+      <div className="bg-white rounded-2xl border border-[#cccccc] shadow-sm p-5">
         <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-end">
           <div className="flex-1">
             <label className="block text-sm font-medium text-gray-700 mb-1.5">Name / Email</label>
@@ -75,7 +75,7 @@ export function UserSettingsPage() {
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-2xl border border-[#cccccc] shadow-sm overflow-hidden">
         {isLoading ? (
           <div className="animate-pulse p-6 space-y-3">
             {[1, 2, 3].map((i) => <div key={i} className="h-12 bg-gray-100 rounded-xl" />)}

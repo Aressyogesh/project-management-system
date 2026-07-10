@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+﻿import { useState, useMemo } from 'react';
 import { useQueries } from '@tanstack/react-query';
 import * as XLSX from 'xlsx-js-style';
 import { apiClient } from '../../../api/client';
@@ -422,7 +422,7 @@ export function CapacityReportTab({ project }: { project?: string }) {
 
   return (
     <div className="space-y-4">
-      <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
+      <div className="bg-white rounded-2xl border border-[#cccccc] p-5 shadow-sm">
 
         {/* Header + Filters */}
         <div className="flex flex-wrap items-start gap-4 mb-4">

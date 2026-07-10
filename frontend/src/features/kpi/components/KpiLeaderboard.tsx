@@ -1,4 +1,4 @@
-import type { EmployeeKpiRecord } from '../../../types/kpi.types';
+﻿import type { EmployeeKpiRecord } from '../../../types/kpi.types';
 import { GRADE_CONFIG } from '../data/kpiStaticData';
 
 interface Props {
@@ -17,7 +17,7 @@ export function KpiLeaderboard({ employees }: Props) {
   const top5 = [...employees].sort((a, b) => b.totalScore - a.totalScore).slice(0, 5);
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
+    <div className="bg-white rounded-2xl border border-[#cccccc] p-5 shadow-sm">
       <div className="mb-4">
         <h3 className="text-sm font-semibold text-gray-800">Top Performers</h3>
         <p className="text-xs text-gray-400 mt-0.5">Ranked by total KPI score</p>

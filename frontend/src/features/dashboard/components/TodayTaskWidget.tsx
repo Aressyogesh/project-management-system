@@ -1,4 +1,4 @@
-interface TodayTaskWidgetProps {
+﻿interface TodayTaskWidgetProps {
   todayTask: { name: string; progress: number } | null;
   teamPerformance: { score: number; change: number };
 }
@@ -10,7 +10,7 @@ export function TodayTaskWidget({ todayTask, teamPerformance }: TodayTaskWidgetP
   return (
     <div className="space-y-4">
       {/* Today Task */}
-      <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+      <div className="bg-white rounded-2xl p-5 shadow-sm border border-[#cccccc]">
         <h2 className="font-semibold text-gray-800 text-base mb-3">Today Task</h2>
         {todayTask ? (
           <div>
@@ -31,7 +31,7 @@ export function TodayTaskWidget({ todayTask, teamPerformance }: TodayTaskWidgetP
       </div>
 
       {/* Team Performance */}
-      <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+      <div className="bg-white rounded-2xl p-5 shadow-sm border border-[#cccccc]">
         <h2 className="font-semibold text-gray-800 text-base mb-3">Today Team Performance</h2>
         <p className="text-xs text-gray-400 mb-0.5">Score</p>
         <p className="text-3xl font-bold text-gray-900 tabular-nums">

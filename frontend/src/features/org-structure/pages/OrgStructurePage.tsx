@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+﻿import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { businessUnitsApi } from '../../../api/businessUnits.api';
 import { departmentsApi } from '../../../api/departments.api';
@@ -19,7 +19,7 @@ const ROLE_LABELS: Record<string, string> = {
 
 function IconChevron({ open }: { open: boolean }) {
   return (
-    <svg className={`w-3.5 h-3.5 text-gray-400 transition-transform duration-150 shrink-0 ${open ? 'rotate-90' : ''}`}
+    <svg className={`w-3.5 h-3.5 text-white transition-transform duration-150 shrink-0 ${open ? 'rotate-90' : ''}`}
       fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
     </svg>
@@ -94,7 +94,7 @@ function DeptNode({ dept, users, query, forceOpen }: { dept: Department; users: 
   const isOpen = forceOpen || open;
 
   return (
-    <div className="border border-gray-100 rounded-xl overflow-hidden">
+    <div className="border border-[#cccccc] rounded-xl overflow-hidden">
       <button
         onClick={() => setOpen((o) => !o)}
         className="w-full flex items-center gap-2 px-4 py-2.5 bg-gray-50/60 hover:bg-gray-100/60 transition-colors text-left"
@@ -160,11 +160,12 @@ function BUNode({ node, query, forceOpen }: { node: OrgBU; forceOpen: boolean; q
   const totalUsers = node.departments.reduce((s, d) => s + d.users.length, 0);
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+    <div className="bg-white rounded-2xl border border-[#cccccc] shadow-sm overflow-hidden">
       {/* BU header */}
       <button
         onClick={() => setOpen((o) => !o)}
-        className="w-full flex items-center gap-3 px-5 py-4 bg-gray-900 text-left hover:bg-gray-800 transition-colors"
+        className="w-full flex items-center gap-3 px-5 py-4 text-left transition-colors"
+        style={{ background: isOpen ? '#1060a3' : '#9fa8af' }}
       >
         <IconChevron open={isOpen} />
         <IconBU />
@@ -203,7 +204,7 @@ function BUNode({ node, query, forceOpen }: { node: OrgBU; forceOpen: boolean; q
               <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2">
                 Clients ({node.clients.length})
               </p>
-              <div className="border border-gray-100 rounded-xl overflow-hidden divide-y divide-gray-50">
+              <div className="border border-[#cccccc] rounded-xl overflow-hidden divide-y divide-gray-50">
                 {node.clients.map((c) => (
                   <ClientRow key={c.id} client={c} query={query} />
                 ))}
@@ -311,7 +312,7 @@ export function OrgStructurePage() {
   return (
     <div className="space-y-5">
       {/* Header */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+      <div className="bg-white rounded-2xl border border-[#cccccc] shadow-sm p-5">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
             <h1 className="text-base font-semibold text-gray-900">Organisation Structure</h1>
@@ -345,7 +346,7 @@ export function OrgStructurePage() {
       {isLoading ? (
         <div className="space-y-4">
           {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="bg-white rounded-2xl border border-gray-100 shadow-sm h-32 animate-pulse" />
+            <div key={i} className="bg-white rounded-2xl border border-[#cccccc] shadow-sm h-32 animate-pulse" />
           ))}
         </div>
       ) : (
@@ -359,7 +360,7 @@ export function OrgStructurePage() {
 
           {/* No results */}
           {q && visibleTree.length === 0 ? (
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm py-16 text-center text-sm text-gray-400">
+            <div className="bg-white rounded-2xl border border-[#cccccc] shadow-sm py-16 text-center text-sm text-gray-400">
               No results for "<span className="font-medium text-gray-600">{search}</span>"
             </div>
           ) : (
@@ -370,7 +371,7 @@ export function OrgStructurePage() {
 
               {/* Unassigned section */}
               {!q && (unassignedDepts.length > 0 || unassignedClients.length > 0 || unassignedUsers.length > 0) && (
-                <div className="bg-white rounded-2xl border border-dashed border-gray-200 shadow-sm overflow-hidden">
+                <div className="bg-white rounded-2xl border border-[#cccccc] shadow-sm overflow-hidden">
                   <div className="px-5 py-4 bg-gray-50 border-b border-gray-100">
                     <p className="text-sm font-semibold text-gray-500">Unassigned</p>
                     <p className="text-xs text-gray-400 mt-0.5">Not linked to any Business Unit</p>
@@ -393,7 +394,7 @@ export function OrgStructurePage() {
                     {unassignedClients.length > 0 && (
                       <div className="px-5 py-4">
                         <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2">Clients</p>
-                        <div className="border border-gray-100 rounded-xl overflow-hidden divide-y divide-gray-50">
+                        <div className="border border-[#cccccc] rounded-xl overflow-hidden divide-y divide-gray-50">
                           {unassignedClients.map((c) => <ClientRow key={c.id} client={c} query="" />)}
                         </div>
                       </div>
