@@ -543,11 +543,11 @@ export class AnalyticsService {
       const breakdown = TYPES.map((type) => {
         const items = p.workItems.filter((w) => w.type === type);
         const total = items.length;
-        const done = items.filter((w) => w.status === BoardStatus.QA_DONE).length;
+        const done = items.filter((w) => w.status === BoardStatus.QA_DONE || w.status === BoardStatus.CLOSED).length;
         return { type, total, done, completePct: total > 0 ? Math.round((done / total) * 100) : 0 };
       });
       const totalAll = p.workItems.length;
-      const doneAll = p.workItems.filter((w) => w.status === BoardStatus.QA_DONE).length;
+      const doneAll = p.workItems.filter((w) => w.status === BoardStatus.QA_DONE || w.status === BoardStatus.CLOSED).length;
       return {
         id: p.id,
         name: p.name,

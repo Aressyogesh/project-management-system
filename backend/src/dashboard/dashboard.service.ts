@@ -161,7 +161,7 @@ export class DashboardService {
 
       // Current user's own assigned open work items (used for myTasks response field)
       this.prisma.workItem.findMany({
-        where: { assigneeId: userId, project: { status: ProjectStatus.ACTIVE }, status: { not: BoardStatus.QA_DONE } },
+        where: { assigneeId: userId, project: { status: ProjectStatus.ACTIVE }, status: { notIn: [BoardStatus.QA_DONE, BoardStatus.CLOSED] } },
         select: {
           id: true, title: true, priority: true, status: true, dueDate: true,
           assignee: { select: { fullName: true } },
@@ -184,7 +184,7 @@ export class DashboardService {
 
       // Today's due work item for the requesting user
       this.prisma.workItem.findFirst({
-        where: { assigneeId: userId, dueDate: { gte: today, lt: tomorrow }, status: { not: BoardStatus.QA_DONE }, ...workItemWhere },
+        where: { assigneeId: userId, dueDate: { gte: today, lt: tomorrow }, status: { notIn: [BoardStatus.QA_DONE, BoardStatus.CLOSED] }, ...workItemWhere },
         select: { title: true, status: true },
         orderBy: { dueDate: 'asc' },
       }),
@@ -194,7 +194,7 @@ export class DashboardService {
         where: projectActiveWhere,
         select: {
           _count: { select: { workItems: true } },
-          workItems: { where: { status: BoardStatus.QA_DONE }, select: { id: true } },
+          workItems: { where: { status: { in: [BoardStatus.QA_DONE, BoardStatus.CLOSED] } }, select: { id: true } },
         },
       }),
     ]);
@@ -266,22 +266,22 @@ export class DashboardService {
       this.prisma.projectMember.count({ where: { projectId } }),
       this.prisma.workItem.count({ where: { projectId } }),
       this.prisma.workItem.count({
-        where: { projectId, status: BoardStatus.QA_DONE, updatedAt: { gte: startDate, lt: endDate } },
+        where: { projectId, status: { in: [BoardStatus.QA_DONE, BoardStatus.CLOSED] }, completedAt: { gte: startDate, lt: endDate } },
       }),
       this.prisma.workItem.count({
-        where: { projectId, type: WorkItemType.BUG, status: { not: BoardStatus.QA_DONE } },
+        where: { projectId, type: WorkItemType.BUG, status: { notIn: [BoardStatus.QA_DONE, BoardStatus.CLOSED] } },
       }),
       this.prisma.workItem.count({ where: { projectId, status: BoardStatus.TODO } }),
       this.prisma.workItem.count({ where: { projectId, status: { in: [BoardStatus.IN_PROGRESS, BoardStatus.BLOCKED] } } }),
       this.prisma.workItem.count({ where: { projectId, status: { in: [BoardStatus.IN_REVIEW, BoardStatus.READY_FOR_QA, BoardStatus.IN_QA] } } }),
-      this.prisma.workItem.count({ where: { projectId, status: BoardStatus.QA_DONE } }),
+      this.prisma.workItem.count({ where: { projectId, status: { in: [BoardStatus.QA_DONE, BoardStatus.CLOSED] } } }),
       this.prisma.workItem.findFirst({
-        where: { projectId, assigneeId: userId, dueDate: { gte: today, lt: tomorrow }, status: { not: BoardStatus.QA_DONE } },
+        where: { projectId, assigneeId: userId, dueDate: { gte: today, lt: tomorrow }, status: { notIn: [BoardStatus.QA_DONE, BoardStatus.CLOSED] } },
         select: { title: true, status: true },
         orderBy: { dueDate: 'asc' },
       }),
       this.prisma.workItem.findMany({
-        where: { projectId, assigneeId: { not: null }, status: { not: BoardStatus.QA_DONE } },
+        where: { projectId, assigneeId: { not: null }, status: { notIn: [BoardStatus.QA_DONE, BoardStatus.CLOSED] } },
         select: {
           id: true, title: true, priority: true, status: true, dueDate: true,
           project: { select: { name: true } },
@@ -375,9 +375,9 @@ export class DashboardService {
     return projects.map((project) => {
       const pm = project.members.find((m) => m.projectRole === ProjectRole.PROJECT_MANAGER);
       const totalTasks = project.workItems.length;
-      const completedTasks = project.workItems.filter((wi) => wi.status === BoardStatus.QA_DONE).length;
+      const completedTasks = project.workItems.filter((wi) => wi.status === BoardStatus.QA_DONE || wi.status === BoardStatus.CLOSED).length;
       const openBugs = project.workItems.filter(
-        (wi) => wi.type === WorkItemType.BUG && wi.status !== BoardStatus.QA_DONE,
+        (wi) => wi.type === WorkItemType.BUG && wi.status !== BoardStatus.QA_DONE && wi.status !== BoardStatus.CLOSED,
       ).length;
       const progress = totalTasks === 0 ? 0 : Math.round((completedTasks / totalTasks) * 100);
 
@@ -636,7 +636,7 @@ export class DashboardService {
       this.prisma.workItem.count({ where: { ...base, status: BoardStatus.TODO } }),
       this.prisma.workItem.count({ where: { ...base, status: { in: [BoardStatus.IN_PROGRESS, BoardStatus.BLOCKED] } } }),
       this.prisma.workItem.count({ where: { ...base, status: { in: [BoardStatus.IN_REVIEW, BoardStatus.READY_FOR_QA, BoardStatus.IN_QA] } } }),
-      this.prisma.workItem.count({ where: { ...base, status: BoardStatus.QA_DONE } }),
+      this.prisma.workItem.count({ where: { ...base, status: { in: [BoardStatus.QA_DONE, BoardStatus.CLOSED] } } }),
     ]);
 
     return { notStarted, inProgress, onReview, completed };
@@ -675,7 +675,7 @@ export class DashboardService {
 
       const [created, completed] = await Promise.all([
         this.prisma.workItem.count({ where: { projectId: { in: activeProjectIds }, createdAt: { gte: weekStart, lt: weekEnd } } }),
-        this.prisma.workItem.count({ where: { projectId: { in: activeProjectIds }, status: BoardStatus.QA_DONE, updatedAt: { gte: weekStart, lt: weekEnd } } }),
+        this.prisma.workItem.count({ where: { projectId: { in: activeProjectIds }, status: { in: [BoardStatus.QA_DONE, BoardStatus.CLOSED] }, completedAt: { gte: weekStart, lt: weekEnd } } }),
       ]);
 
       const label = `${MONTH_ABBR[weekStart.getMonth()]} W${Math.ceil(weekStart.getDate() / 7)}`;
@@ -820,7 +820,7 @@ export class DashboardService {
 
       const [created, completed] = await Promise.all([
         this.prisma.workItem.count({ where: { projectId: { in: activeProjectIds }, createdAt: { gte: date, lt: nextDate } } }),
-        this.prisma.workItem.count({ where: { projectId: { in: activeProjectIds }, status: BoardStatus.QA_DONE, updatedAt: { gte: date, lt: nextDate } } }),
+        this.prisma.workItem.count({ where: { projectId: { in: activeProjectIds }, status: { in: [BoardStatus.QA_DONE, BoardStatus.CLOSED] }, completedAt: { gte: date, lt: nextDate } } }),
       ]);
 
       points.push({ month: MONTH_ABBR[date.getMonth()], high: created, low: completed });
