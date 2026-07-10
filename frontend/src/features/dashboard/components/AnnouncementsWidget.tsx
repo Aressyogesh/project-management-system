@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+﻿import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { dashboardApi } from '../../../api/dashboard.api';
 import { announcementsApi, AnnouncementRecord } from '../../../api/announcementsApi';
@@ -81,7 +81,7 @@ export function AnnouncementsWidget({ projectId, month }: { projectId?: string; 
   const hasAny = systemItems.length > 0 || manualItems.length > 0;
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+    <div className="bg-white rounded-2xl border border-[#cccccc] shadow-sm overflow-hidden">
       <div className="px-5 py-4 border-b border-gray-50 flex items-center justify-between">
         <div>
           <h3 className="text-sm font-semibold text-gray-800">Announcements</h3>

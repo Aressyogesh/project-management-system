@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '../../../store/authStore';
@@ -170,7 +170,7 @@ function AnnouncementCard({
   const [confirming, setConfirming] = useState(false);
 
   return (
-    <div className="bg-white border border-gray-100 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow">
+    <div className="bg-white border border-[#cccccc] rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow">
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-start gap-3 min-w-0 flex-1">
           <div className="mt-0.5 w-2.5 h-2.5 rounded-full bg-blue-400 shrink-0" />
@@ -296,7 +296,7 @@ export function AnnouncementsPage() {
       {isLoading ? (
         <div className="space-y-4">
           {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="bg-white border border-gray-100 rounded-xl p-5 animate-pulse">
+            <div key={i} className="bg-white border border-[#cccccc] rounded-xl p-5 animate-pulse">
               <div className="h-4 bg-gray-100 rounded w-1/3 mb-3" />
               <div className="h-3 bg-gray-100 rounded w-full mb-1.5" />
               <div className="h-3 bg-gray-100 rounded w-3/4" />
@@ -304,7 +304,7 @@ export function AnnouncementsPage() {
           ))}
         </div>
       ) : items.length === 0 ? (
-        <div className="bg-white border border-gray-100 rounded-xl py-16 text-center">
+        <div className="bg-white border border-[#cccccc] rounded-xl py-16 text-center">
           <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-4">
             <svg className="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" />

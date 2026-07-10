@@ -1,4 +1,4 @@
-import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
+﻿import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
 import type { KpiTeamSummary } from '../../../types/kpi.types';
 
 interface Props {
@@ -47,7 +47,7 @@ export function KpiGradePieChart({ summary }: Props) {
   const total = data.reduce((s, d) => s + d.value, 0);
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm h-full">
+    <div className="bg-white rounded-2xl border border-[#cccccc] p-5 shadow-sm h-full">
       <div className="mb-4">
         <h3 className="text-sm font-semibold text-gray-800">Grade Distribution</h3>
         <p className="text-xs text-gray-400 mt-0.5">{total} employees this period</p>

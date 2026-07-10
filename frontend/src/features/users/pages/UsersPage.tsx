@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+﻿import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { usersApi } from '../../../api/users.api';
 import { departmentsApi } from '../../../api/departments.api';
@@ -118,7 +118,7 @@ export function UsersPage() {
   return (
     <div className="space-y-4">
       {/* Header card */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+      <div className="bg-white rounded-2xl border border-[#cccccc] shadow-sm p-5">
         <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
           <div>
             <h1 className="text-base font-semibold text-gray-900">User Management</h1>
@@ -157,7 +157,7 @@ export function UsersPage() {
       </div>
 
       {/* Table card */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-2xl border border-[#cccccc] shadow-sm overflow-hidden">
         {isLoading ? (
           <div className="flex items-center justify-center py-16 text-sm text-gray-400">Loading users…</div>
         ) : error ? (

@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+﻿import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import {
   Bar,
@@ -31,7 +31,7 @@ export function ActivityChart({ data, projectId }: ActivityChartProps) {
   const chartData = period === 'monthly' ? data : (weeklyData ?? []);
 
   return (
-    <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+    <div className="bg-white rounded-2xl p-5 shadow-sm border border-[#cccccc]">
       <div className="flex items-center justify-between mb-5">
         <h2 className="font-semibold text-gray-800 text-base">Work Item Activity</h2>
         <select

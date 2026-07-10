@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+﻿import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { WorkItem } from '../types/board.types';
 
@@ -95,7 +95,7 @@ export function ListView({ columns, onCardClick, onDelete, canReassign, members 
 
   if (items.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center h-48 bg-white rounded-2xl border border-gray-100 shadow-sm gap-2">
+      <div className="flex flex-col items-center justify-center h-48 bg-white rounded-2xl border border-[#cccccc] shadow-sm gap-2">
         <svg className="w-8 h-8 text-gray-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
             d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
@@ -110,7 +110,7 @@ export function ListView({ columns, onCardClick, onDelete, canReassign, members 
 
   return (
     <>
-    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+    <div className="bg-white rounded-2xl border border-[#cccccc] shadow-sm overflow-hidden">
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
@@ -287,7 +287,7 @@ export function ListView({ columns, onCardClick, onDelete, canReassign, members 
       <div
         ref={dropRef}
         style={{ position: 'fixed', top: dropPos.top, left: dropPos.left, zIndex: 9999 }}
-        className="bg-white rounded-xl shadow-xl border border-gray-100 py-1 min-w-[190px] max-h-72 overflow-y-auto"
+        className="bg-white rounded-xl shadow-xl border border-[#cccccc] py-1 min-w-[190px] max-h-72 overflow-y-auto"
       >
         <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-1.5 border-b border-gray-100">
           Assign to

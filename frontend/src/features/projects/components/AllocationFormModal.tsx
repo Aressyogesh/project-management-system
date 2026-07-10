@@ -1,4 +1,4 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+﻿import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { taskAllocationsApi } from '../../../api/taskAllocations.api';
 import type { TaskAllocation } from '../../../types/taskAllocation.types';
@@ -102,7 +102,7 @@ export function AllocationFormModal({ projectId, tasks, members, allocation, onC
           {allocation && (
             <div>
               <label className={labelCls}>Task</label>
-              <p className="text-sm text-gray-700 px-3 py-2 bg-gray-50 rounded-lg border border-gray-100">
+              <p className="text-sm text-gray-700 px-3 py-2 bg-gray-50 rounded-lg border border-[#cccccc]">
                 {allocation.task.title}
               </p>
             </div>
@@ -123,7 +123,7 @@ export function AllocationFormModal({ projectId, tasks, members, allocation, onC
           {allocation && (
             <div>
               <label className={labelCls}>Member</label>
-              <p className="text-sm text-gray-700 px-3 py-2 bg-gray-50 rounded-lg border border-gray-100">
+              <p className="text-sm text-gray-700 px-3 py-2 bg-gray-50 rounded-lg border border-[#cccccc]">
                 {allocation.user.fullName}
               </p>
             </div>

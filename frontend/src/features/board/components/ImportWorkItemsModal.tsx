@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+﻿import { useRef, useState } from 'react';
 import { boardApi, type ImportRowResult } from '../api/boardApi';
 
 type Step = 'upload' | 'preview' | 'done';
@@ -143,7 +143,7 @@ export function ImportWorkItemsModal({ projectId, onClose, onSuccess }: Props) {
               <input ref={fileRef} type="file" accept=".xlsx" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); }} />
 
               {/* Column reference */}
-              <div className="p-3 rounded-xl bg-gray-50 border border-gray-100">
+              <div className="p-3 rounded-xl bg-gray-50 border border-[#cccccc]">
                 <p className="text-[11px] font-semibold text-gray-500 mb-2">REQUIRED COLUMNS (in order)</p>
                 <div className="flex flex-wrap gap-1.5">
                   {[
@@ -195,7 +195,7 @@ export function ImportWorkItemsModal({ projectId, onClose, onSuccess }: Props) {
               </div>
 
               {/* Table */}
-              <div className="border border-gray-100 rounded-xl overflow-hidden">
+              <div className="border border-[#cccccc] rounded-xl overflow-hidden">
                 <table className="w-full text-xs">
                   <thead>
                     <tr className="bg-gray-50 border-b border-gray-100">

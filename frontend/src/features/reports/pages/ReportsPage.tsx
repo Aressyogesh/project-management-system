@@ -1,4 +1,4 @@
-import { useQueries, useQuery } from '@tanstack/react-query';
+﻿import { useQueries, useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 import {
   Bar,
@@ -188,7 +188,7 @@ function TeamProductivityTab({ currentUserId, period, project }: { currentUserId
         ])} />
       </div>
 
-      <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
+      <div className="bg-white rounded-2xl border border-[#cccccc] p-5 shadow-sm">
         <h3 className="text-sm font-semibold text-gray-800 mb-1">Tasks Completed — {periodLabel}</h3>
         <p className="text-xs text-gray-400 mb-4">
           {data.length > 10 ? 'Top 10 team members' : `${data.length} team members`} by tasks completed
@@ -205,7 +205,7 @@ function TeamProductivityTab({ currentUserId, period, project }: { currentUserId
         </ResponsiveContainer>
       </div>
 
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-2xl border border-[#cccccc] shadow-sm overflow-hidden">
         <div className="px-5 py-4 border-b border-gray-50">
           <h3 className="text-sm font-semibold text-gray-800">Team Productivity Details</h3>
         </div>
@@ -312,7 +312,7 @@ function ProjectSummaryTab({ period, project }: { period: string; project: strin
         const pct = proj.tasks > 0 ? Math.round((proj.done / proj.tasks) * 100) : 0;
         const sc = statusColors[proj.status] ?? { bg: 'bg-gray-100', text: 'text-gray-600' };
         return (
-          <div key={proj.id} className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
+          <div key={proj.id} className="bg-white rounded-2xl border border-[#cccccc] p-6 shadow-sm">
             <div className="flex items-start justify-between mb-4">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: `${proj.color}20` }}>
@@ -442,7 +442,7 @@ function BugSummaryTab({ period, project }: { period: string; project: string })
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
+        <div className="bg-white rounded-2xl border border-[#cccccc] p-5 shadow-sm">
           <h3 className="text-sm font-semibold text-gray-800 mb-1">Bug Severity Distribution</h3>
           <p className="text-xs text-gray-400 mb-3">
             Total: {total} bug{total !== 1 ? 's' : ''} — {PERIOD_OPTIONS.find((p) => p.value === period)?.label ?? period}
@@ -471,7 +471,7 @@ function BugSummaryTab({ period, project }: { period: string; project: string })
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
+        <div className="bg-white rounded-2xl border border-[#cccccc] p-5 shadow-sm">
           <h3 className="text-sm font-semibold text-gray-800 mb-4">Bug Classification</h3>
           {classificationData.length === 0 ? (
             <div className="flex items-center justify-center h-32 text-sm text-gray-400">
@@ -498,7 +498,7 @@ function BugSummaryTab({ period, project }: { period: string; project: string })
 
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
         {(data?.severity ?? []).map((d) => (
-          <div key={d.severity} className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm text-center">
+          <div key={d.severity} className="bg-white rounded-2xl border border-[#cccccc] p-4 shadow-sm text-center">
             <p className="text-2xl font-bold text-gray-800">{d.count}</p>
             <p className="text-xs text-gray-400 mt-1">{SEVERITY_LABELS[d.severity] ?? d.severity}</p>
             <div className="w-6 h-1 rounded-full mx-auto mt-2" style={{ backgroundColor: d.color }} />
@@ -537,21 +537,21 @@ function TaskAllocationTab({ currentUserId, period, project }: { currentUserId?:
       </div>
 
       <div className="grid grid-cols-3 gap-4">
-        <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm text-center">
+        <div className="bg-white rounded-2xl border border-[#cccccc] p-4 shadow-sm text-center">
           <p className="text-2xl font-bold text-gray-800">{totalHours}h</p>
           <p className="text-xs text-gray-400 mt-1">Total Hours Logged</p>
         </div>
-        <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm text-center">
+        <div className="bg-white rounded-2xl border border-[#cccccc] p-4 shadow-sm text-center">
           <p className="text-2xl font-bold text-gray-800">{avgUtilisation}%</p>
           <p className="text-xs text-gray-400 mt-1">Avg Utilisation</p>
         </div>
-        <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm text-center">
+        <div className="bg-white rounded-2xl border border-[#cccccc] p-4 shadow-sm text-center">
           <p className={`text-2xl font-bold ${overAllocated > 0 ? 'text-red-600' : 'text-gray-800'}`}>{overAllocated}</p>
           <p className="text-xs text-gray-400 mt-1">Over-Allocated</p>
         </div>
       </div>
 
-      <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
+      <div className="bg-white rounded-2xl border border-[#cccccc] p-5 shadow-sm">
         <h3 className="text-sm font-semibold text-gray-800 mb-1">Hours Allocated — {periodLabel}</h3>
         <p className="text-xs text-gray-400 mb-4">
           {data.length > 10 ? 'Top 10 team members' : `${data.length} team members`} by allocated hours
@@ -568,7 +568,7 @@ function TaskAllocationTab({ currentUserId, period, project }: { currentUserId?:
         </ResponsiveContainer>
       </div>
 
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-2xl border border-[#cccccc] shadow-sm overflow-hidden">
         <div className="px-5 py-4 border-b border-gray-50">
           <h3 className="text-sm font-semibold text-gray-800">Task Allocation Details</h3>
         </div>
@@ -663,15 +663,15 @@ function TimesheetTab({ currentUserId, period, project }: { currentUserId?: stri
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm text-center">
+        <div className="bg-white rounded-2xl border border-[#cccccc] p-4 shadow-sm text-center">
           <p className="text-2xl font-bold text-gray-800">{totalHours}h</p>
           <p className="text-xs text-gray-400 mt-1">Total Hours Logged</p>
         </div>
-        <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm text-center">
+        <div className="bg-white rounded-2xl border border-[#cccccc] p-4 shadow-sm text-center">
           <p className="text-2xl font-bold text-gray-700">{data.length}</p>
           <p className="text-xs text-gray-400 mt-1">Team Members</p>
         </div>
-        <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm text-center">
+        <div className="bg-white rounded-2xl border border-[#cccccc] p-4 shadow-sm text-center">
           <p className="text-2xl font-bold text-gray-700">
             {data.length > 0 ? Math.round(totalHours / data.length * 10) / 10 : 0}h
           </p>
@@ -679,7 +679,7 @@ function TimesheetTab({ currentUserId, period, project }: { currentUserId?: stri
         </div>
       </div>
 
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-2xl border border-[#cccccc] shadow-sm overflow-hidden">
         <div className="px-5 py-4 border-b border-gray-50">
           <h3 className="text-sm font-semibold text-gray-800">Timesheet Summary — {periodLabel}</h3>
         </div>
@@ -1008,7 +1008,7 @@ function PlannedVsActualTab({ currentUserId, project }: { currentUserId?: string
     <div className="space-y-5">
 
       {/* ── Header + selectors ── */}
-      <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
+      <div className="bg-white rounded-2xl border border-[#cccccc] p-5 shadow-sm">
         <div className="flex flex-wrap items-start gap-4">
           <div className="shrink-0">
             <h3 className="text-sm font-semibold text-gray-800">Planned vs Actual</h3>
@@ -1045,12 +1045,12 @@ function PlannedVsActualTab({ currentUserId, project }: { currentUserId?: string
 
       {/* ── KPI Hero Cards ── */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-        <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm text-center">
+        <div className="bg-white rounded-2xl border border-[#cccccc] p-4 shadow-sm text-center">
           <p className="text-xs text-gray-400 mb-1">Total Planned</p>
           <p className="text-2xl font-bold text-gray-800">{totalPlanned}h</p>
           <p className="text-xs text-gray-400 mt-1">{displayData.length} members</p>
         </div>
-        <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm text-center">
+        <div className="bg-white rounded-2xl border border-[#cccccc] p-4 shadow-sm text-center">
           <p className="text-xs text-gray-400 mb-1">Total Actual</p>
           <p className="text-2xl font-bold text-gray-800">{totalActual}h</p>
           <p className="text-xs text-gray-400 mt-1">{displayData.reduce((s, r) => s + r.taskCount, 0)} tasks</p>
@@ -1081,7 +1081,7 @@ function PlannedVsActualTab({ currentUserId, project }: { currentUserId?: string
 
       {/* ── Chart ── */}
       {barData.length > 0 && (
-        <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
+        <div className="bg-white rounded-2xl border border-[#cccccc] p-5 shadow-sm">
           <div className="flex items-center justify-between mb-4">
             <div>
               <h3 className="text-sm font-semibold text-gray-800">
@@ -1123,7 +1123,7 @@ function PlannedVsActualTab({ currentUserId, project }: { currentUserId?: string
       )}
 
       {/* ── Detail Table ── */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-2xl border border-[#cccccc] shadow-sm overflow-hidden">
         <div className="px-5 py-4 border-b border-gray-50 flex items-center justify-between">
           <div>
             <h3 className="text-sm font-semibold text-gray-800">{isSingle ? 'Member Breakdown' : 'Consolidated Breakdown'}</h3>
@@ -1290,26 +1290,26 @@ function MyPerformanceSummary({ userId, userName, period, project }: { userId: s
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm text-center">
+        <div className="bg-white rounded-2xl border border-[#cccccc] p-4 shadow-sm text-center">
           <p className="text-2xl font-bold text-gray-800">{myProd?.tasksDone ?? '—'}</p>
           <p className="text-xs text-gray-400 mt-1">Tasks Done</p>
         </div>
-        <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm text-center">
+        <div className="bg-white rounded-2xl border border-[#cccccc] p-4 shadow-sm text-center">
           <p className="text-2xl font-bold text-gray-800">{myProd ? `${myProd.hoursLogged}h` : '—'}</p>
           <p className="text-xs text-gray-400 mt-1">Hours Logged</p>
         </div>
-        <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm text-center">
+        <div className="bg-white rounded-2xl border border-[#cccccc] p-4 shadow-sm text-center">
           <p className="text-2xl font-bold text-gray-800">{myKpi ? myKpi.totalScore : '—'}</p>
           <p className="text-xs text-gray-400 mt-1">KPI Score{grade ? ` (Grade ${grade})` : ''}</p>
         </div>
-        <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm text-center">
+        <div className="bg-white rounded-2xl border border-[#cccccc] p-4 shadow-sm text-center">
           <p className="text-2xl font-bold text-gray-800">{myAlloc ? `${myAlloc.utilisationPct}%` : '—'}</p>
           <p className="text-xs text-gray-400 mt-1">Utilisation</p>
         </div>
       </div>
 
       {myTs && (
-        <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
+        <div className="bg-white rounded-2xl border border-[#cccccc] p-5 shadow-sm">
           <h3 className="text-sm font-semibold text-gray-800 mb-3">My Allocation &amp; Timesheet</h3>
           <div className="flex items-center justify-between">
             <div>
@@ -1403,9 +1403,10 @@ export function ReportsPage() {
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
+            style={activeTab === tab.id ? { background: '#1060A3' } : undefined}
             className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors ${
               activeTab === tab.id
-                ? 'bg-white text-gray-900 shadow-sm'
+                ? 'text-white shadow-sm'
                 : 'text-gray-500 hover:text-gray-700'
             }`}
           >

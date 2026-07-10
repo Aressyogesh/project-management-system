@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+﻿import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { settingsApi } from '../../../api/settings.api';
 
 type Feature = 'KPI' | 'REPORTS';
@@ -68,7 +68,7 @@ export function FeatureAccessPage() {
 
   if (isLoading) {
     return (
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8 flex items-center justify-center">
+      <div className="bg-white rounded-2xl border border-[#cccccc] shadow-sm p-8 flex items-center justify-center">
         <div className="w-6 h-6 border-2 border-primary-600 border-t-transparent rounded-full animate-spin" />
       </div>
     );
@@ -76,7 +76,7 @@ export function FeatureAccessPage() {
 
   return (
     <div className="space-y-5">
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+      <div className="bg-white rounded-2xl border border-[#cccccc] shadow-sm p-6">
         <div className="mb-6">
           <h2 className="text-base font-semibold text-gray-900">Feature Access Control</h2>
           <p className="text-sm text-gray-400 mt-1">

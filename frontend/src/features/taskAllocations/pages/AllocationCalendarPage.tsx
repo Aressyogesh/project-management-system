@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+﻿import { useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 import { taskAllocationsApi } from '../../../api/taskAllocations.api';
 import { usersApi } from '../../../api/users.api';
@@ -138,15 +138,15 @@ export function AllocationCalendarPage() {
 
       {/* Summary cards */}
       <div className="grid grid-cols-3 gap-4">
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm px-5 py-4">
+        <div className="bg-white rounded-2xl border border-[#cccccc] shadow-sm px-5 py-4">
           <p className="text-xs text-gray-400">Total Hours (Month)</p>
           <p className="text-2xl font-bold text-gray-900 mt-1">{totalMonthHours}h</p>
         </div>
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm px-5 py-4">
+        <div className="bg-white rounded-2xl border border-[#cccccc] shadow-sm px-5 py-4">
           <p className="text-xs text-gray-400">Days with Allocations</p>
           <p className="text-2xl font-bold text-gray-900 mt-1">{totalDaysAllocated}</p>
         </div>
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm px-5 py-4">
+        <div className="bg-white rounded-2xl border border-[#cccccc] shadow-sm px-5 py-4">
           <p className="text-xs text-gray-400">Avg Hours / Allocated Day</p>
           <p className="text-2xl font-bold text-gray-900 mt-1">
             {totalDaysAllocated > 0 ? (totalMonthHours / totalDaysAllocated).toFixed(1) : '—'}h
@@ -155,7 +155,7 @@ export function AllocationCalendarPage() {
       </div>
 
       {/* Calendar */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-2xl border border-[#cccccc] shadow-sm overflow-hidden">
         {/* Calendar Nav */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-50">
           <div className="flex items-center gap-3">

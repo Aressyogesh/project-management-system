@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+﻿import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Holiday, settingsApi } from '../../../api/settings.api';
 import { futureDateStr, pastDateStr } from '../../../utils/dateUtils';
@@ -154,7 +154,7 @@ export function HolidaySection() {
           No holidays for {year}. Add one above.
         </p>
       ) : (
-        <div className="border border-gray-100 rounded-xl overflow-hidden">
+        <div className="border border-[#cccccc] rounded-xl overflow-hidden">
           <table className="w-full text-sm">
             <thead className="bg-gray-50">
               <tr>

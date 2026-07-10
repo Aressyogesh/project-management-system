@@ -1,4 +1,4 @@
-import { ProjectProgress } from '../../../types/dashboard.types';
+﻿import { ProjectProgress } from '../../../types/dashboard.types';
 
 interface Props {
   projects: ProjectProgress[];
@@ -27,7 +27,7 @@ function ProjectCard({ project }: { project: ProjectProgress }) {
   return (
     <div
       data-testid="project-card"
-      className="bg-white rounded-2xl border border-gray-100 p-4 hover:shadow-md transition-shadow"
+      className="bg-white rounded-2xl border border-[#cccccc] p-4 hover:shadow-md transition-shadow"
     >
       <div className="flex items-start justify-between mb-3">
         <div className="flex-1 min-w-0">
@@ -86,7 +86,7 @@ function ProjectCard({ project }: { project: ProjectProgress }) {
 export function ProjectProgressPanel({ projects }: Props) {
   if (projects.length === 0) {
     return (
-      <div className="bg-white rounded-2xl border border-gray-100 p-6 text-center">
+      <div className="bg-white rounded-2xl border border-[#cccccc] p-6 text-center">
         <p className="text-sm text-gray-400">No active projects found.</p>
       </div>
     );

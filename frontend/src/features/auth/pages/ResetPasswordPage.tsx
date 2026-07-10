@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { authApi } from '../../../api/auth.api';
 
@@ -47,7 +47,7 @@ export function ResetPasswordPage() {
   if (!token || status === 'expired') {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 px-8 py-8 w-full max-w-sm text-center">
+        <div className="bg-white rounded-2xl shadow-sm border border-[#cccccc] px-8 py-8 w-full max-w-sm text-center">
           <div className="w-14 h-14 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-4">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-7 w-7 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -74,7 +74,7 @@ export function ResetPasswordPage() {
   if (status === 'checking') {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 px-8 py-10 w-full max-w-sm text-center">
+        <div className="bg-white rounded-2xl shadow-sm border border-[#cccccc] px-8 py-10 w-full max-w-sm text-center">
           <div className="w-8 h-8 border-2 border-primary-600 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
           <p className="text-sm text-gray-500">Validating reset link…</p>
         </div>
@@ -93,7 +93,7 @@ export function ResetPasswordPage() {
           <p className="text-gray-500 text-sm mt-1">Choose a strong new password</p>
         </div>
 
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 px-8 py-8">
+        <div className="bg-white rounded-2xl shadow-sm border border-[#cccccc] px-8 py-8">
           {status === 'done' ? (
             <div className="flex flex-col items-center text-center gap-3">
               <div className="w-14 h-14 rounded-full bg-green-100 flex items-center justify-center">

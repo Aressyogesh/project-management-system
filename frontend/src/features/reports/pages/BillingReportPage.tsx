@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+﻿import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
   Bar, BarChart, CartesianGrid, Cell, Legend, Pie, PieChart,
@@ -176,7 +176,7 @@ export function BillingReportPage({ project }: { project?: string }) {
   return (
     <div className="flex flex-col gap-5 min-h-0">
       {/* Header */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm px-5 py-4">
+      <div className="bg-white rounded-2xl border border-[#cccccc] shadow-sm px-5 py-4">
         <h1 className="text-base font-semibold text-gray-900 mb-3">Billing Report</h1>
 
         {/* Filters */}
@@ -216,7 +216,7 @@ export function BillingReportPage({ project }: { project?: string }) {
       {/* Summary cards */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         {metricCards.map((c) => (
-          <div key={c.label} className={`rounded-xl border border-gray-100 shadow-sm px-4 py-4 ${c.bg}`}>
+          <div key={c.label} className={`rounded-xl border border-[#cccccc] shadow-sm px-4 py-4 ${c.bg}`}>
             <p className="text-[10px] font-medium text-gray-500 uppercase tracking-wide mb-1">{c.label}</p>
             <p className={`text-xl font-bold ${c.text}`}>{c.value}</p>
           </div>
@@ -227,7 +227,7 @@ export function BillingReportPage({ project }: { project?: string }) {
       {entries.length > 0 && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {/* Donut */}
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+          <div className="bg-white rounded-2xl border border-[#cccccc] shadow-sm p-5">
             <h2 className="text-xs font-semibold text-gray-700 mb-4">Hours Breakdown</h2>
             <ResponsiveContainer width="100%" height={220}>
               <PieChart>
@@ -249,7 +249,7 @@ export function BillingReportPage({ project }: { project?: string }) {
           </div>
 
           {/* Stacked bar */}
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+          <div className="bg-white rounded-2xl border border-[#cccccc] shadow-sm p-5">
             <h2 className="text-xs font-semibold text-gray-700 mb-4">
               {isAdmin ? 'Hours by Team Member' : 'Hours by Project'}
             </h2>
@@ -271,7 +271,7 @@ export function BillingReportPage({ project }: { project?: string }) {
       )}
 
       {/* Details table */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-2xl border border-[#cccccc] shadow-sm overflow-hidden">
         <div className="px-5 py-3 border-b border-gray-100">
           <h2 className="text-xs font-semibold text-gray-700">
             {isAdmin ? 'Per-User Breakdown' : 'Per-Project Breakdown'}

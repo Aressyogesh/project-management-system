@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+﻿import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { Shift, ShiftType, settingsApi } from '../../../api/settings.api';
 
@@ -56,7 +56,7 @@ function ShiftRow({ shift, onSave, onReset, onDelete, isSaving }: ShiftRowProps)
     workHours !== shift.workHours;
 
   return (
-    <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
+    <div className="bg-white rounded-xl border border-[#cccccc] shadow-sm p-5">
       <div className="flex flex-wrap items-center gap-3 mb-4">
         <span className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${SHIFT_COLORS[shift.shiftType]}`}>
           {shift.shiftType}
@@ -250,7 +250,7 @@ export function ShiftConfigPage() {
   if (isLoading) {
     return (
       <div className="animate-pulse space-y-4">
-        {[1, 2, 3].map((i) => <div key={i} className="h-44 bg-white rounded-xl border border-gray-100" />)}
+        {[1, 2, 3].map((i) => <div key={i} className="h-44 bg-white rounded-xl border border-[#cccccc]" />)}
       </div>
     );
   }

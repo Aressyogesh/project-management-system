@@ -1,4 +1,4 @@
-import type { KpiTeamSummary } from '../../../types/kpi.types';
+﻿import type { KpiTeamSummary } from '../../../types/kpi.types';
 import { GRADE_CONFIG } from '../data/kpiStaticData';
 
 interface Props {
@@ -73,7 +73,7 @@ export function KpiSummaryCards({ summary }: Props) {
       {cards.map((card) => (
         <div
           key={card.label}
-          className="bg-white rounded-2xl border border-gray-100 p-5 flex flex-col gap-3 shadow-sm"
+          className="bg-white rounded-2xl border border-[#cccccc] p-5 flex flex-col gap-3 shadow-sm"
         >
           <div className="flex items-center justify-between">
             <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">

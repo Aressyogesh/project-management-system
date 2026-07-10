@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+﻿import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState, useMemo, useEffect } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { UserAvatar } from '../../../components/shared/UserAvatar';
@@ -207,7 +207,7 @@ export function ProjectDetailPage() {
       </div>
 
       {/* Project Header */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+      <div className="bg-white rounded-2xl border border-[#cccccc] shadow-sm p-6">
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div className="min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
@@ -250,7 +250,7 @@ export function ProjectDetailPage() {
       </div>
 
       {/* Team Members */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm">
+      <div className="bg-white rounded-2xl border border-[#cccccc] shadow-sm">
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-50">
           <div>
             <h2 className="text-sm font-semibold text-gray-900">Team Members</h2>
@@ -414,7 +414,7 @@ export function ProjectDetailPage() {
       </div>
 
       {/* Milestones */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm">
+      <div className="bg-white rounded-2xl border border-[#cccccc] shadow-sm">
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-50">
           <div>
             <h2 className="text-sm font-semibold text-gray-900">Milestones</h2>

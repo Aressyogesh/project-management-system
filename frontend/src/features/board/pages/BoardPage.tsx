@@ -1,4 +1,4 @@
-import { DragDropContext, type DropResult } from '@hello-pangea/dnd';
+﻿import { DragDropContext, type DropResult } from '@hello-pangea/dnd';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState, useEffect, useMemo } from 'react';
 import { Link, useParams } from 'react-router-dom';
@@ -216,7 +216,7 @@ export function BoardPage() {
   return (
     <div className="flex flex-col h-full min-h-0">
       {/* Page header */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm px-5 py-4 mb-4 shrink-0">
+      <div className="bg-white rounded-2xl border border-[#cccccc] shadow-sm px-5 py-4 mb-4 shrink-0">
         <div className="flex items-center gap-2 mb-1">
           <Link to="/projects" className="text-xs text-gray-400 hover:text-primary-600 transition">Projects</Link>
           <svg className="w-3 h-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">

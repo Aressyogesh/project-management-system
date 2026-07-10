@@ -12,6 +12,34 @@
   }
 }
 
+/* ── Global list table header styling ──────────────────────────────────── */
+thead tr {
+  background-color: #9fa8af !important;
+}
+thead tr th,
+thead tr td {
+  color: white !important;
+}
+
+/* ── Sidebar slim scrollbar ─────────────────────────────────────────────── */
+.sidebar-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.25) transparent;
+}
+.sidebar-scroll::-webkit-scrollbar {
+  width: 4px;
+}
+.sidebar-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.sidebar-scroll::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.25);
+  border-radius: 4px;
+}
+.sidebar-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.45);
+}
+
 @layer components {
   /* Compact input for dense sidebar / inline forms */
   .input-sm {
