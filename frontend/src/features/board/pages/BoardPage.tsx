@@ -289,7 +289,27 @@ export function BoardPage() {
 
       {/* Board content */}
       <div className="flex-1 overflow-auto min-h-0 pb-4">
-        {viewMode === 'list' ? (
+        {filters.backlog === 'sprint' && !activeSprint ? (
+          <div className="flex flex-col items-center justify-center h-full min-h-[400px] gap-4">
+            <div className="w-14 h-14 rounded-2xl bg-gray-100 flex items-center justify-center">
+              <svg className="w-7 h-7 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+              </svg>
+            </div>
+            <div className="text-center">
+              <p className="text-sm font-semibold text-gray-700">No active sprint</p>
+              <p className="text-xs text-gray-400 mt-1">Start a sprint from Sprint Manager to populate this view.</p>
+            </div>
+            {canManageSprints && (
+              <button
+                onClick={() => setShowSprintManager(true)}
+                className="px-4 py-2 text-xs font-medium rounded-lg bg-primary-600 text-white hover:bg-primary-700 transition"
+              >
+                Open Sprint Manager
+              </button>
+            )}
+          </div>
+        ) : viewMode === 'list' ? (
           <ListView
             columns={columns}
             onCardClick={setSelectedItem}
