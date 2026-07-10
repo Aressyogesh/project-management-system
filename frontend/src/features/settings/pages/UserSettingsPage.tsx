@@ -4,7 +4,7 @@ import { Pagination } from '../../../components/shared/Pagination';
 import { UserAvatar } from '../../../components/shared/UserAvatar';
 import { settingsApi } from '../../../api/settings.api';
 
-const PAGE_SIZE = 25;
+const PAGE_SIZE_OPTIONS = [10, 25, 50];
 
 type SystemRole = 'SUPER_USER' | 'ADMIN' | 'EMPLOYEE';
 
@@ -21,6 +21,7 @@ export function UserSettingsPage() {
   const qc = useQueryClient();
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
   const { data: users = [], isLoading, error } = useQuery({
@@ -49,10 +50,10 @@ export function UserSettingsPage() {
       u.email.toLowerCase().includes(search.toLowerCase()),
   );
 
-  // Reset to page 1 when search changes
-  useEffect(() => { setPage(1); }, [search]);
+  // Reset to page 1 when search or page size changes
+  useEffect(() => { setPage(1); }, [search, pageSize]);
 
-  const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const paginated = filtered.slice((page - 1) * pageSize, page * pageSize);
 
   return (
     <div className="space-y-4">
@@ -103,7 +104,7 @@ export function UserSettingsPage() {
                   </tr>
                 ) : paginated.map((user, i) => (
                   <tr key={user.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-4 py-3 text-gray-500">{(page - 1) * PAGE_SIZE + i + 1}</td>
+                    <td className="px-4 py-3 text-gray-500">{(page - 1) * pageSize + i + 1}</td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
                         <UserAvatar name={user.fullName} photo={user.profilePhoto} size="lg" />
@@ -142,20 +143,27 @@ export function UserSettingsPage() {
         )}
 
         {/* Pagination + summary */}
-        {!isLoading && !error && (
-          <div className="border-t border-gray-100">
-            {filtered.length > PAGE_SIZE ? (
-              <Pagination
-                page={page}
-                pageSize={PAGE_SIZE}
-                total={filtered.length}
-                onChange={setPage}
-              />
-            ) : filtered.length > 0 ? (
-              <div className="px-4 py-3 text-xs text-gray-400">
-                Showing {filtered.length} of {users.length} users
-              </div>
-            ) : null}
+        {!isLoading && !error && filtered.length > 0 && (
+          <div className="border-t border-gray-100 px-4 py-3 flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div className="flex items-center gap-2 text-xs text-gray-500">
+              <span>Rows per page:</span>
+              <select
+                value={pageSize}
+                onChange={(e) => setPageSize(Number(e.target.value))}
+                className="border border-gray-200 rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white"
+              >
+                {PAGE_SIZE_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
+              </select>
+              <span className="text-gray-400">
+                {(page - 1) * pageSize + 1}–{Math.min(page * pageSize, filtered.length)} of {filtered.length} users
+              </span>
+            </div>
+            <Pagination
+              page={page}
+              pageSize={pageSize}
+              total={filtered.length}
+              onChange={setPage}
+            />
           </div>
         )}
       </div>

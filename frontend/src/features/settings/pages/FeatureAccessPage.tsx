@@ -75,24 +75,26 @@ export function FeatureAccessPage() {
   }
 
   return (
-    <div className="space-y-5">
-      <div className="bg-white rounded-2xl border border-[#cccccc] shadow-sm p-6">
-        <div className="mb-6">
-          <h2 className="text-base font-semibold text-gray-900">Feature Access Control</h2>
-          <p className="text-sm text-gray-400 mt-1">
-            Control which roles can see KPI and Reports sections in the navigation. Changes take effect immediately.
-          </p>
-        </div>
+    <div className="space-y-4">
+      {/* Title card */}
+      <div className="bg-white rounded-2xl border border-[#cccccc] shadow-sm p-5">
+        <h2 className="text-base font-semibold text-gray-900">Feature Access Control</h2>
+        <p className="text-sm text-gray-400 mt-1">
+          Control which roles can see KPI and Reports sections in the navigation. Changes take effect immediately.
+        </p>
+      </div>
 
+      {/* Table card — edge-to-edge so thead gets rounded top corners */}
+      <div className="bg-white rounded-2xl border border-[#cccccc] shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-gray-100">
-                <th className="text-left py-3 pr-6 text-xs font-medium text-gray-400 w-64">Feature</th>
+              <tr>
+                <th className="text-left py-3 px-5 text-xs font-medium w-64">Feature</th>
                 {ROLES.map((r) => (
-                  <th key={r.key} className="text-center py-3 px-4 text-xs font-medium text-gray-500 min-w-[130px]">
+                  <th key={r.key} className="text-center py-3 px-4 text-xs font-medium min-w-[130px]">
                     <div>{r.label}</div>
-                    <div className="text-gray-400 font-normal mt-0.5 text-[11px] leading-tight">{r.sublabel}</div>
+                    <div className="text-white/60 font-normal mt-0.5 text-[11px] leading-tight">{r.sublabel}</div>
                   </th>
                 ))}
               </tr>
@@ -100,7 +102,7 @@ export function FeatureAccessPage() {
             <tbody className="divide-y divide-gray-50">
               {FEATURES.map((f) => (
                 <tr key={f.key} className="hover:bg-gray-50/50">
-                  <td className="py-4 pr-6">
+                  <td className="py-4 px-5">
                     <p className="font-medium text-gray-800">{f.label}</p>
                     <p className="text-xs text-gray-400 mt-0.5">{f.description}</p>
                   </td>
@@ -122,8 +124,7 @@ export function FeatureAccessPage() {
             </tbody>
           </table>
         </div>
-
-        <p className="mt-5 text-xs text-gray-400">
+        <p className="px-5 py-3 text-xs text-gray-400 border-t border-gray-50">
           Super User access is always enabled and cannot be restricted.
         </p>
       </div>

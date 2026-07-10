@@ -17,7 +17,7 @@ interface Props {
 
 export function KanbanColumn({ status, label, headerClass, items, members, onCardClick, onAssigneeChange, onDelete }: Props) {
   return (
-    <div className="flex flex-col min-w-[240px] w-[240px] shrink-0 border border-[#cccccc] rounded-xl bg-gray-100 p-2">
+    <div className="flex flex-col min-w-[240px] w-[240px] shrink-0 border border-[#cccccc] rounded-xl p-2" style={{ backgroundColor: '#757f87' }}>
       {/* Column header — sticky: stays visible while the board scrolls */}
       <div className={`sticky top-0 z-10 flex items-center justify-between px-3 py-2 rounded-lg mb-3 ${headerClass}`}>
         <span className="text-xs font-semibold">{label}</span>
