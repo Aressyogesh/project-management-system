@@ -62,7 +62,7 @@ export class MilestonesService {
     >`
       SELECT s."milestoneId",
              COUNT(wi.id)                                                   AS total,
-             COUNT(CASE WHEN wi.status = 'QA_DONE' THEN 1 END)             AS completed
+             COUNT(CASE WHEN wi.status IN ('QA_DONE', 'CLOSED') THEN 1 END) AS completed
       FROM   work_items wi
       JOIN   sprints s ON s.id = wi."sprintId"
       WHERE  s."milestoneId" = ANY(${milestoneIds}::text[])
