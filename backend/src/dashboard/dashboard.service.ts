@@ -470,18 +470,18 @@ export class DashboardService {
             where: {
               projectId,
               assigneeId: uid,
-              status: BoardStatus.QA_DONE,
+              status: { in: [BoardStatus.QA_DONE, BoardStatus.CLOSED] },
               type: { in: [WorkItemType.EPIC, WorkItemType.TASK, WorkItemType.SUB_TASK, WorkItemType.USER_STORY] },
-              updatedAt: { gte: startDate, lt: endDate },
+              completedAt: { gte: startDate, lt: endDate },
             },
           }),
           this.prisma.workItem.count({
             where: {
               projectId,
               assigneeId: uid,
-              status: BoardStatus.QA_DONE,
+              status: { in: [BoardStatus.QA_DONE, BoardStatus.CLOSED] },
               type: WorkItemType.BUG,
-              updatedAt: { gte: startDate, lt: endDate },
+              completedAt: { gte: startDate, lt: endDate },
             },
           }),
           this.prisma.workItem.count({
