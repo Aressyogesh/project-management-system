@@ -167,27 +167,12 @@ jobs:
       - name: Copy backend to fixed deploy folder
         run: |
           New-Item -ItemType Directory -Force -Path "D:\PMS\pms-backend" | Out-Null
-          robocopy "$env:GITHUB_WORKSPACE\backend\dist"   "D:\PMS\pms-backend\dist"   /MIR /NFL /NDL /NJH /NJS 2>$null; if ($LASTEXITCODE -le 7) { $LASTEXITCODE = 0 }
-          robocopy "$env:GITHUB_WORKSPACE\backend\prisma" "D:\PMS\pms-backend\prisma" /MIR /NFL /NDL /NJH /NJS 2>$null; if ($LASTEXITCODE -le 7) { $LASTEXITCODE = 0 }
-          Copy-Item "$env:GITHUB_WORKSPACE\backend\package.json"      "D:\PMS\pms-backend\package.json"      -Force
-          Copy-Item "$env:GITHUB_WORKSPACE\backend\package-lock.json" "D:\PMS\pms-backend\package-lock.json" -Force
-          Copy-Item "$env:GITHUB_WORKSPACE\backend\.env"              "D:\PMS\pms-backend\.env"              -Force
+          robocopy "$env:GITHUB_WORKSPACE\backend\dist"         "D:\PMS\pms-backend\dist"         /MIR /NFL /NDL /NJH /NJS 2>$null; if ($LASTEXITCODE -le 7) { $LASTEXITCODE = 0 }
+          robocopy "$env:GITHUB_WORKSPACE\backend\node_modules" "D:\PMS\pms-backend\node_modules" /MIR /NFL /NDL /NJH /NJS 2>$null; if ($LASTEXITCODE -le 7) { $LASTEXITCODE = 0 }
+          robocopy "$env:GITHUB_WORKSPACE\backend\prisma"       "D:\PMS\pms-backend\prisma"       /MIR /NFL /NDL /NJH /NJS 2>$null; if ($LASTEXITCODE -le 7) { $LASTEXITCODE = 0 }
+          Copy-Item "$env:GITHUB_WORKSPACE\backend\.env" "D:\PMS\pms-backend\.env" -Force
           Write-Host "Backend copied to D:\PMS\pms-backend"
         shell: pwsh
-
-      - name: Install production dependencies in deploy folder
-        working-directory: D:\PMS\pms-backend
-        run: npm ci --omit=dev
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          DIRECT_URL: ${{ secrets.DIRECT_URL }}
-
-      - name: Generate Prisma client in deploy folder
-        working-directory: D:\PMS\pms-backend
-        run: npx prisma generate
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          DIRECT_URL: ${{ secrets.DIRECT_URL }}
 
       - name: Restart backend via PM2
         working-directory: backend
