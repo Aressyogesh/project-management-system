@@ -20,8 +20,8 @@ services:
       - AP_REDIS_PORT=6379
       - AP_QUEUE_MODE=REDIS
       - AP_TRIGGER_DEFAULT_POLL_INTERVAL=5
-      - AP_BACKEND_URL=https://catalog-tubes-expanding-diagnostic.trycloudflare.com
-      - AP_FRONTEND_URL=https://catalog-tubes-expanding-diagnostic.trycloudflare.com
+      - AP_BACKEND_URL=http://203.193.165.229:9091
+      - AP_FRONTEND_URL=http://203.193.165.229:9091
     depends_on:
       postgres:
         condition: service_healthy
