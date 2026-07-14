@@ -174,6 +174,13 @@ jobs:
           Write-Host "Backend copied to D:\PMS\pms-backend"
         shell: pwsh
 
+      - name: Unblock native modules
+        run: |
+          Get-ChildItem "D:\PMS\pms-backend\node_modules" -Recurse -Include "*.node","*.dll" -ErrorAction SilentlyContinue |
+            Unblock-File -ErrorAction SilentlyContinue
+          Write-Host "Native modules unblocked"
+        shell: pwsh
+
       - name: Restart backend via PM2
         working-directory: backend
         run: |
