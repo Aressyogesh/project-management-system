@@ -22,7 +22,7 @@ const makeOverdueTask = (projectId: string, projectName: string) => ({
   title: 'Overdue Task',
   type: 'TASK',
   status: BoardStatus.IN_PROGRESS,
-  dueDate: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
+  dueDate: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
   assignee: { fullName: 'Alice' },
   project: { id: projectId, name: projectName },
 });
@@ -175,6 +175,24 @@ describe('NotificationsCronService', () => {
       mockEmail.sendEmail.mockRejectedValueOnce(new Error('SMTP down'));
 
       await expect(service.handleOverdueTaskEscalation()).resolves.not.toThrow();
+    });
+
+    it('UTC-F040-B-005: HandleOverdueTaskEscalation_ClosedTasksExcluded_SendsNoEmail', async () => {
+      // DB query already filters CLOSED via completedStatuses — simulate empty result
+      mockPrisma.workItem.findMany.mockResolvedValue([]);
+
+      await service.handleOverdueTaskEscalation();
+
+      expect(mockEmail.sendEmail).not.toHaveBeenCalled();
+    });
+
+    it('UTC-F040-B-006: HandleOverdueTaskEscalation_InactiveProjectTasksExcluded_SendsNoEmail', async () => {
+      // DB query filters project.status = ACTIVE — simulate empty result for inactive projects
+      mockPrisma.workItem.findMany.mockResolvedValue([]);
+
+      await service.handleOverdueTaskEscalation();
+
+      expect(mockEmail.sendEmail).not.toHaveBeenCalled();
     });
   });
 
