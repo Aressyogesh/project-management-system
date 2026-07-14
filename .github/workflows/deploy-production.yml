@@ -166,27 +166,12 @@ jobs:
       - name: Copy backend to fixed deploy folder
         run: |
           New-Item -ItemType Directory -Force -Path "D:\PMS\pms-prod-backend" | Out-Null
-          robocopy "$env:GITHUB_WORKSPACE\backend\dist"   "D:\PMS\pms-prod-backend\dist"   /MIR /NFL /NDL /NJH /NJS 2>$null; if ($LASTEXITCODE -le 7) { $LASTEXITCODE = 0 }
-          robocopy "$env:GITHUB_WORKSPACE\backend\prisma" "D:\PMS\pms-prod-backend\prisma" /MIR /NFL /NDL /NJH /NJS 2>$null; if ($LASTEXITCODE -le 7) { $LASTEXITCODE = 0 }
-          Copy-Item "$env:GITHUB_WORKSPACE\backend\package.json"      "D:\PMS\pms-prod-backend\package.json"      -Force
-          Copy-Item "$env:GITHUB_WORKSPACE\backend\package-lock.json" "D:\PMS\pms-prod-backend\package-lock.json" -Force
-          Copy-Item "$env:GITHUB_WORKSPACE\backend\.env"              "D:\PMS\pms-prod-backend\.env"              -Force
+          robocopy "$env:GITHUB_WORKSPACE\backend\dist"         "D:\PMS\pms-prod-backend\dist"         /MIR /NFL /NDL /NJH /NJS 2>$null; if ($LASTEXITCODE -le 7) { $LASTEXITCODE = 0 }
+          robocopy "$env:GITHUB_WORKSPACE\backend\node_modules" "D:\PMS\pms-prod-backend\node_modules" /MIR /NFL /NDL /NJH /NJS 2>$null; if ($LASTEXITCODE -le 7) { $LASTEXITCODE = 0 }
+          robocopy "$env:GITHUB_WORKSPACE\backend\prisma"       "D:\PMS\pms-prod-backend\prisma"       /MIR /NFL /NDL /NJH /NJS 2>$null; if ($LASTEXITCODE -le 7) { $LASTEXITCODE = 0 }
+          Copy-Item "$env:GITHUB_WORKSPACE\backend\.env" "D:\PMS\pms-prod-backend\.env" -Force
           Write-Host "Backend copied to D:\PMS\pms-prod-backend"
         shell: pwsh
-
-      - name: Install production dependencies in deploy folder
-        working-directory: D:\PMS\pms-prod-backend
-        run: npm ci --omit=dev
-        env:
-          DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
-          DIRECT_URL: ${{ secrets.PROD_DIRECT_URL }}
-
-      - name: Generate Prisma client in deploy folder
-        working-directory: D:\PMS\pms-prod-backend
-        run: npx prisma generate
-        env:
-          DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
-          DIRECT_URL: ${{ secrets.PROD_DIRECT_URL }}
 
       - name: Restart backend via PM2
         run: |
