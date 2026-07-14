@@ -242,14 +242,19 @@ export class NotificationsCronService {
     today.setHours(0, 0, 0, 0);
     const twoDaysAgo = new Date(today);
     twoDaysAgo.setDate(today.getDate() - 2);
+    const oneDayAgo = new Date(today);
+    oneDayAgo.setDate(today.getDate() - 1);
 
-    const completedStatuses: BoardStatus[] = [BoardStatus.QA_DONE, BoardStatus.QA];
+    const completedStatuses: BoardStatus[] = [BoardStatus.QA_DONE, BoardStatus.QA, BoardStatus.CLOSED];
 
     const overdueTasks = await this.prisma.workItem.findMany({
       where: {
-        dueDate: { lt: today, lte: twoDaysAgo },
+        dueDate: { gte: twoDaysAgo, lt: oneDayAgo },
         status: { notIn: completedStatuses },
         type: { in: [WorkItemType.TASK, WorkItemType.USER_STORY, WorkItemType.BUG] },
+        assigneeId: { not: null },
+        assignee: { isActive: true },
+        project: { status: ProjectStatus.ACTIVE },
       },
       include: {
         assignee: { select: { fullName: true } },
