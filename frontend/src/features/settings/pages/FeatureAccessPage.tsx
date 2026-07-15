@@ -2,7 +2,7 @@
 import { settingsApi } from '../../../api/settings.api';
 
 type Feature = 'KPI' | 'REPORTS';
-type Role = 'SUPER_USER' | 'ADMIN' | 'EMPLOYEE';
+type Role = 'BU_HEAD' | 'PROJECT_MANAGER' | 'TEAM_LEAD' | 'EMPLOYEE';
 
 const FEATURES: { key: Feature; label: string; description: string }[] = [
   {
@@ -17,10 +17,11 @@ const FEATURES: { key: Feature; label: string; description: string }[] = [
   },
 ];
 
-const ROLES: { key: Role; label: string; sublabel: string; locked?: boolean }[] = [
-  { key: 'SUPER_USER', label: 'Super User',  sublabel: 'Full access — cannot be restricted', locked: true },
-  { key: 'ADMIN',      label: 'Admin',       sublabel: 'Company administrators' },
-  { key: 'EMPLOYEE',   label: 'Employee',    sublabel: 'PM, TL, Developer, QA, Designer, DevOps' },
+const ROLES: { key: Role; label: string; sublabel: string }[] = [
+  { key: 'BU_HEAD',          label: 'BU Head',          sublabel: 'Data related to their BU' },
+  { key: 'PROJECT_MANAGER',  label: 'Project Manager',  sublabel: 'Data related to their assigned projects / team members' },
+  { key: 'TEAM_LEAD',        label: 'Team Lead',        sublabel: 'Data related to their assigned projects / team members' },
+  { key: 'EMPLOYEE',         label: 'Other Users',      sublabel: 'Developer, QA, Designer, DevOps' },
 ];
 
 function Toggle({ checked, locked, onChange }: { checked: boolean; locked?: boolean; onChange: (v: boolean) => void }) {
@@ -60,10 +61,8 @@ export function FeatureAccessPage() {
   });
 
   function getVisible(feature: Feature, role: Role): boolean {
-    if (role === 'SUPER_USER') return true;
     const entry = entries.find((e) => e.feature === feature && e.role === role);
-    if (!entry) return role === 'ADMIN';
-    return entry.visible;
+    return entry?.visible ?? false;
   }
 
   if (isLoading) {
@@ -111,7 +110,6 @@ export function FeatureAccessPage() {
                       <div className="flex justify-center">
                         <Toggle
                           checked={getVisible(f.key, r.key)}
-                          locked={r.locked || mutation.isPending}
                           onChange={(visible) =>
                             mutation.mutate({ feature: f.key, role: r.key, visible })
                           }
@@ -125,7 +123,7 @@ export function FeatureAccessPage() {
           </table>
         </div>
         <p className="px-5 py-3 text-xs text-gray-400 border-t border-gray-50">
-          Super User access is always enabled and cannot be restricted.
+          Super User and Admin always have full access to all features. Changes here apply to BU Head, Project Managers, Team Leads, and other employees.
         </p>
       </div>
     </div>

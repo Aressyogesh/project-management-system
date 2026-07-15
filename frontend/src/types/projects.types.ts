@@ -21,6 +21,7 @@ export interface Project {
   budget: string | null;
   projectType: ProjectType;
   status: ProjectStatus;
+  teamsWebhookUrl: string | null;
   createdAt: string;
   client: ProjectClient | null;
   department: ProjectDepartment | null;

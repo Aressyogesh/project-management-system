@@ -381,6 +381,7 @@ model Project {
   projectType      ProjectType
   status           ProjectStatus @default(ACTIVE)
   workItemCounter  Int           @default(10000)
+  teamsWebhookUrl  String?       @db.VarChar(2000)
   createdAt        DateTime      @default(now())
   updatedAt        DateTime      @updatedAt
 

@@ -228,6 +228,8 @@
 
 - **F-053 — Global Search** — Omnisearch bar in topbar (Ctrl+K / Cmd+K); searches work items (by display ID or title), bugs, projects, users in one query; results grouped by type; click navigates to detail page or board; `GET /search?q=&types[]=` with RBAC filtering; debounced 300 ms; uses existing `ILIKE` queries — no new Prisma model
 
+- ~~**F-054 — Per-Project Teams Webhook Configuration** — Store one Microsoft Teams channel webhook URL per project in DB (`teamsWebhookUrl VARCHAR(2000)` on `projects` table); `PATCH /api/v1/projects/:id/teams-webhook` (PM / Admin / Super / BU_HEAD only); "Integrations" section on Project Detail page; all 6 AP automation scenarios automatically route to the project's Teams channel via `teamsWebhookUrl` in AP payload root; AutomationService does async project lookup — zero changes to calling services~~
+
 ---
 
 ## QA Enhancements — Recommended

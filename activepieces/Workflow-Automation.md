@@ -8,12 +8,28 @@ Teams notifications are delivered via Power Automate webhooks to the **Developer
 ## Architecture
 
 ```
-PMS Backend → ActivePieces Webhook → Teams Power Automate → Developers EQ2 Chat
+PMS Backend → ActivePieces Webhook → Teams Power Automate → Project-Specific Teams Channel
 ```
 
 **AP Base URL:** `http://203.193.165.229:9091`  
-**Teams Power Automate Chat:** Developers EQ2  
 **AP Docker Network:** `activepieces_default`
+
+### F-054 — Per-Project Teams Webhook
+
+Each project now stores its own Teams channel webhook URL in the DB (`teamsWebhookUrl` field).
+
+- PMS backend resolves the project's `teamsWebhookUrl` asynchronously in `AutomationService`.
+- Every AP payload now includes `teamsWebhookUrl` at the **root level** (not inside `payload`).
+- Each AP flow's HTTP Request step uses `{{trigger.body.teamsWebhookUrl}}` as the URL.
+- If `teamsWebhookUrl` is `null` (project not configured), AP receives `null` and the HTTP step will fail gracefully (AP catches the error and logs it).
+
+**To configure a project's Teams channel:**
+1. Go to Project Detail page → "Integrations" section.
+2. Paste the Power Automate webhook URL for that project's Teams channel.
+3. Click Save.
+
+**After enabling F-054, update all 6 AP flows:**
+- In each flow's HTTP Request step, change the URL from the hardcoded Teams PA webhook to `{{trigger.body.teamsWebhookUrl}}`.
 
 ---
 

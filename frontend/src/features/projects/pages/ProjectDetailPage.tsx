@@ -140,6 +140,23 @@ export function ProjectDetailPage() {
   });
 
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [teamsWebhookInput, setTeamsWebhookInput] = useState<string>('');
+
+  useEffect(() => {
+    if (project) setTeamsWebhookInput(project.teamsWebhookUrl ?? '');
+  }, [project?.teamsWebhookUrl]);
+
+  const setWebhookMutation = useMutation({
+    mutationFn: (url: string | null) => projectsApi.setTeamsWebhook(projectId!, url),
+    onSuccess: (updated) => {
+      qc.setQueryData(['project', projectId], updated);
+      setTeamsWebhookInput(updated.teamsWebhookUrl ?? '');
+      setToast({ message: updated.teamsWebhookUrl ? 'Teams webhook saved' : 'Teams webhook cleared' });
+    },
+    onError: (err: any) => {
+      setToast({ message: err?.response?.data?.message ?? 'Failed to save webhook URL', variant: 'error' });
+    },
+  });
 
   const removeMilestoneMutation = useMutation({
     mutationFn: (id: string) => milestonesApi.remove(id),
@@ -552,6 +569,48 @@ export function ProjectDetailPage() {
           </div>
         )}
       </div>
+
+      {/* Integrations — Teams Webhook (PM / Admin / Super / BU_HEAD only) */}
+      {canEdit && (
+        <div className="bg-white rounded-2xl border border-[#cccccc] shadow-sm p-6">
+          <h2 className="text-sm font-semibold text-gray-900 mb-4">Integrations</h2>
+          <div className="space-y-3">
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1.5">
+                Teams Channel Webhook URL
+              </label>
+              <div className="flex gap-2">
+                <input
+                  type="url"
+                  value={teamsWebhookInput}
+                  onChange={(e) => setTeamsWebhookInput(e.target.value)}
+                  placeholder="https://powerautomate.../invoke?..."
+                  className="flex-1 text-sm border border-gray-200 rounded-lg px-3 py-2 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                />
+                <button
+                  onClick={() => setWebhookMutation.mutate(teamsWebhookInput.trim() || null)}
+                  disabled={setWebhookMutation.isPending}
+                  className="px-3 py-2 text-xs font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-lg transition disabled:opacity-50"
+                >
+                  Save
+                </button>
+                {(teamsWebhookInput || project.teamsWebhookUrl) && (
+                  <button
+                    onClick={() => { setTeamsWebhookInput(''); setWebhookMutation.mutate(null); }}
+                    disabled={setWebhookMutation.isPending}
+                    className="px-3 py-2 text-xs font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition disabled:opacity-50"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+              <p className="text-[11px] text-gray-400 mt-1.5">
+                Paste the Power Automate webhook URL for this project's Teams channel. All automation alerts (task assigned, bug created, etc.) will be routed here.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showAddMember && (
         <AddMemberModal

@@ -15,12 +15,25 @@ export function useFeatureVisibility() {
 
   function canSee(feature: VisibleFeature): boolean {
     if (!user) return false;
-    if (user.systemRole === 'SUPER_USER') return true;
-    if (user.systemRole === 'BU_HEAD') return true;
-    const entry = data.find((e) => e.feature === feature && e.role === user.systemRole);
-    // If no row found yet (first load), default ADMIN=true, EMPLOYEE=false
-    if (!entry) return user.systemRole === 'ADMIN';
-    return entry.visible;
+
+    // Super User and Admin always have full access
+    if (user.systemRole === 'SUPER_USER' || user.systemRole === 'ADMIN') return true;
+
+    // BU Head — check BU_HEAD row
+    if (user.systemRole === 'BU_HEAD') {
+      return data.find((e) => e.feature === feature && e.role === 'BU_HEAD')?.visible ?? false;
+    }
+
+    // Employee — determine effective role by project membership flags
+    if (user.hasPmRole) {
+      return data.find((e) => e.feature === feature && e.role === 'PROJECT_MANAGER')?.visible ?? false;
+    }
+    if (user.hasManagementRole) {
+      return data.find((e) => e.feature === feature && e.role === 'TEAM_LEAD')?.visible ?? false;
+    }
+
+    // Developer, QA, Designer, DevOps, etc.
+    return data.find((e) => e.feature === feature && e.role === 'EMPLOYEE')?.visible ?? false;
   }
 
   return { canSee };

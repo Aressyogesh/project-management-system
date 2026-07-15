@@ -915,9 +915,10 @@ export class AnalyticsService {
       if (managedIds.length > 0) scopedProjectIds = managedIds;
     }
 
+    const excludeSystemRoles = { notIn: [SystemRole.SUPER_USER, SystemRole.ADMIN] };
     const userWhere = scopedProjectIds !== undefined
-      ? { isActive: true, projectMembers: { some: { projectId: { in: scopedProjectIds } } } }
-      : { isActive: true };
+      ? { isActive: true, systemRole: excludeSystemRoles, projectMembers: { some: { projectId: { in: scopedProjectIds } } } }
+      : { isActive: true, systemRole: excludeSystemRoles };
 
     const [portalConfig, holidays, users, leaveRequests, timesheetEntries, workItems] =
       await Promise.all([
