@@ -1,10 +1,10 @@
 import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 import {
-  Bar,
-  BarChart,
   CartesianGrid,
-  Cell,
+  Line,
+  LineChart,
+  ReferenceLine,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -225,32 +225,55 @@ function TrendTooltip({ active, payload, label }: { active?: boolean; payload?: 
 }
 
 function KpiTrendChart({ data, memberName }: { data: TrendPoint[]; memberName: string }) {
+  const lineData = data.map((d) => ({ ...d, scoreVal: d.hasData ? d.score : null }));
+
   return (
     <div className="bg-white rounded-2xl border border-[#cccccc] shadow-sm p-5">
       <h3 className="text-sm font-semibold text-gray-800 mb-0.5">KPI Score Trend — {memberName}</h3>
-      <p className="text-xs text-gray-400 mb-4">Monthly KPI score across the year (0–100)</p>
-      <ResponsiveContainer width="100%" height={180}>
-        <BarChart data={data} margin={{ top: 4, right: 8, left: -16, bottom: 4 }} barSize={26}>
+      <p className="text-xs text-gray-400 mb-4">Monthly KPI score across the financial year (0–100)</p>
+      <ResponsiveContainer width="100%" height={200}>
+        <LineChart data={lineData} margin={{ top: 8, right: 16, left: -16, bottom: 4 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" vertical={false} />
           <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#6B7280' }} axisLine={false} tickLine={false} />
           <YAxis domain={[0, 100]} tick={{ fontSize: 11, fill: '#9CA3AF' }} axisLine={false} tickLine={false} />
-          <Tooltip content={<TrendTooltip />} cursor={{ fill: '#F9FAFB' }} />
-          <Bar dataKey="score" radius={[4, 4, 0, 0]}>
-            {data.map((entry, idx) => (
-              <Cell
-                key={idx}
-                fill={
-                  !entry.hasData ? '#E5E7EB'
-                  : entry.score >= 90 ? '#10B981'
-                  : entry.score >= 75 ? '#3B82F6'
-                  : entry.score >= 60 ? '#F59E0B'
-                  : '#EF4444'
-                }
-              />
-            ))}
-          </Bar>
-        </BarChart>
+          <Tooltip content={<TrendTooltip />} />
+          {/* Grade threshold reference lines */}
+          <ReferenceLine y={90} stroke="#10B981" strokeDasharray="4 3" strokeWidth={1} label={{ value: 'A', position: 'right', fontSize: 10, fill: '#10B981' }} />
+          <ReferenceLine y={75} stroke="#3B82F6" strokeDasharray="4 3" strokeWidth={1} label={{ value: 'B', position: 'right', fontSize: 10, fill: '#3B82F6' }} />
+          <ReferenceLine y={60} stroke="#F59E0B" strokeDasharray="4 3" strokeWidth={1} label={{ value: 'C', position: 'right', fontSize: 10, fill: '#F59E0B' }} />
+          <Line
+            type="monotone"
+            dataKey="scoreVal"
+            stroke="#6366F1"
+            strokeWidth={2}
+            dot={(props) => {
+              const { cx, cy, payload } = props;
+              if (!payload.hasData) return <g key={props.key} />;
+              const s = payload.score;
+              const color = s >= 90 ? '#10B981' : s >= 75 ? '#3B82F6' : s >= 60 ? '#F59E0B' : '#EF4444';
+              return (
+                <circle key={props.key} cx={cx} cy={cy} r={4} fill={color} stroke="#fff" strokeWidth={2} />
+              );
+            }}
+            activeDot={{ r: 6, stroke: '#fff', strokeWidth: 2 }}
+            connectNulls={false}
+          />
+        </LineChart>
       </ResponsiveContainer>
+      {/* Grade legend */}
+      <div className="flex items-center gap-4 mt-2 justify-end">
+        {[
+          { label: 'A ≥90', color: '#10B981' },
+          { label: 'B ≥75', color: '#3B82F6' },
+          { label: 'C ≥60', color: '#F59E0B' },
+          { label: 'D <60', color: '#EF4444' },
+        ].map((g) => (
+          <div key={g.label} className="flex items-center gap-1">
+            <span className="w-2.5 h-2.5 rounded-full inline-block" style={{ backgroundColor: g.color }} />
+            <span className="text-[10px] text-gray-400">{g.label}</span>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
