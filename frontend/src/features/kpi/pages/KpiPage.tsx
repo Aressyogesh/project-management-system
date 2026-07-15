@@ -30,52 +30,98 @@ import {
 
 type PeriodType = 'MONTHLY' | 'QUARTERLY' | 'HALF_YEARLY' | 'YEARLY';
 
+// ─── Financial year helpers (Apr → Mar) ──────────────────────────────────────
+// fyYear = calendar year when April falls (e.g. 2026 for FY2026-27).
+
+function getFyYear(date: Date): number {
+  return date.getMonth() + 1 >= 4 ? date.getFullYear() : date.getFullYear() - 1;
+}
+
+function fyLabel(fyYear: number): string {
+  return `FY${fyYear}-${String(fyYear + 1).slice(-2)}`;
+}
+
+function getFyQuarter(date: Date): number {
+  const m = date.getMonth() + 1;
+  if (m >= 4 && m <= 6) return 1;
+  if (m >= 7 && m <= 9) return 2;
+  if (m >= 10) return 3;
+  return 4; // Jan–Mar
+}
+
+function getFyHalf(date: Date): number {
+  const m = date.getMonth() + 1;
+  return m >= 4 && m <= 9 ? 1 : 2;
+}
+
+function fyQuarterMonths(fyYear: number, q: number): string[] {
+  switch (q) {
+    case 1: return [`${fyYear}-04`, `${fyYear}-05`, `${fyYear}-06`];
+    case 2: return [`${fyYear}-07`, `${fyYear}-08`, `${fyYear}-09`];
+    case 3: return [`${fyYear}-10`, `${fyYear}-11`, `${fyYear}-12`];
+    default: return [`${fyYear + 1}-01`, `${fyYear + 1}-02`, `${fyYear + 1}-03`];
+  }
+}
+
 // ─── Period option builders ───────────────────────────────────────────────────
 
 function buildPeriodOptions() {
   const now = new Date();
-  return Array.from({ length: 12 }, (_, i) => {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+  const fyYear = getFyYear(now);
+  // Months from FY start (April of fyYear) up to current month, newest first
+  const fyStartMonth = `${fyYear}-04`;
+  const opts: { value: string; label: string }[] = [];
+  let d = new Date(now.getFullYear(), now.getMonth(), 1);
+  while (true) {
     const value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    if (value < fyStartMonth) break;
     const label = d.toLocaleString('default', { month: 'long', year: 'numeric' });
-    return { value, label };
-  });
+    opts.push({ value, label });
+    d = new Date(d.getFullYear(), d.getMonth() - 1, 1);
+    if (opts.length > 12) break; // safety cap
+  }
+  return opts;
 }
 
 function buildQuarterOptions() {
   const now = new Date();
-  let year = now.getFullYear();
-  let q = Math.ceil((now.getMonth() + 1) / 3);
+  let fyYear = getFyYear(now);
+  let q = getFyQuarter(now);
+  const cap = nowYM();
   const opts: { value: string; label: string }[] = [];
   for (let i = 0; i < 8; i++) {
-    opts.push({ value: `${year}-Q${q}`, label: `Q${q} ${year}` });
+    const months = fyQuarterMonths(fyYear, q);
+    if (months[0] <= cap) {
+      opts.push({ value: `${fyYear}-Q${q}`, label: `Q${q} ${fyLabel(fyYear)}` });
+    }
     q--;
-    if (q === 0) { q = 4; year--; }
+    if (q === 0) { q = 4; fyYear--; }
   }
   return opts;
 }
 
 function buildHalfOptions() {
   const now = new Date();
-  const cy = now.getFullYear();
-  const inH2 = now.getMonth() + 1 >= 7;
+  const currentFyYear = getFyYear(now);
+  const currentH = getFyHalf(now);
   const opts: { value: string; label: string }[] = [];
-  if (inH2) {
-    opts.push({ value: `${cy}-H2`, label: `H2 ${cy}` });
-    opts.push({ value: `${cy}-H1`, label: `H1 ${cy}` });
-  } else {
-    opts.push({ value: `${cy}-H1`, label: `H1 ${cy}` });
+  // Current half
+  opts.push({ value: `${currentFyYear}-H${currentH}`, label: `H${currentH} ${fyLabel(currentFyYear)}` });
+  // If in H2, also add H1 of same FY (already completed)
+  if (currentH === 2) {
+    opts.push({ value: `${currentFyYear}-H1`, label: `H1 ${fyLabel(currentFyYear)}` });
   }
-  for (let y = cy - 1; y >= cy - 2; y--) {
-    opts.push({ value: `${y}-H2`, label: `H2 ${y}` });
-    opts.push({ value: `${y}-H1`, label: `H1 ${y}` });
+  // Previous 2 financial years
+  for (let y = currentFyYear - 1; y >= currentFyYear - 2; y--) {
+    opts.push({ value: `${y}-H2`, label: `H2 ${fyLabel(y)}` });
+    opts.push({ value: `${y}-H1`, label: `H1 ${fyLabel(y)}` });
   }
   return opts;
 }
 
 function buildYearOptions() {
-  const y = new Date().getFullYear();
-  return [y, y - 1, y - 2].map((yr) => ({ value: yr, label: String(yr) }));
+  const fyYear = getFyYear(new Date());
+  return [fyYear, fyYear - 1, fyYear - 2].map((y) => ({ value: y, label: fyLabel(y) }));
 }
 
 // ─── Month range helpers ───────────────────────────────────────────────────────
@@ -86,28 +132,34 @@ function nowYM(): string {
 }
 
 function getMonthsForQuarter(q: string): string[] {
-  const [year, qStr] = q.split('-');
-  const qNum = parseInt(qStr.replace('Q', ''));
-  const start = (qNum - 1) * 3 + 1;
+  // value: "2026-Q2" → fyYear=2026, quarter=2
+  const [fyYearStr, qStr] = q.split('-');
+  const months = fyQuarterMonths(parseInt(fyYearStr), parseInt(qStr.replace('Q', '')));
   const cap = nowYM();
-  return [0, 1, 2]
-    .map((i) => `${year}-${String(start + i).padStart(2, '0')}`)
-    .filter((m) => m <= cap);
+  return months.filter((m) => m <= cap);
 }
 
 function getMonthsForHalf(h: string): string[] {
-  const [year, hStr] = h.split('-');
-  const hNum = parseInt(hStr.replace('H', ''));
-  const start = (hNum - 1) * 6 + 1;
+  // value: "2026-H1" → fyYear=2026, half=1
+  const [fyYearStr, hStr] = h.split('-');
+  const fyYear = parseInt(fyYearStr);
+  const half = parseInt(hStr.replace('H', ''));
+  const months = half === 1
+    ? [...fyQuarterMonths(fyYear, 1), ...fyQuarterMonths(fyYear, 2)]
+    : [...fyQuarterMonths(fyYear, 3), ...fyQuarterMonths(fyYear, 4)];
   const cap = nowYM();
-  return Array.from({ length: 6 }, (_, i) => `${year}-${String(start + i).padStart(2, '0')}`)
-    .filter((m) => m <= cap);
+  return months.filter((m) => m <= cap);
 }
 
-function getMonthsForYear(year: number): string[] {
-  const now = new Date();
-  const max = year === now.getFullYear() ? now.getMonth() + 1 : 12;
-  return Array.from({ length: max }, (_, i) => `${year}-${String(i + 1).padStart(2, '0')}`);
+function getMonthsForYear(fyYear: number): string[] {
+  const allMonths = [
+    ...fyQuarterMonths(fyYear, 1),
+    ...fyQuarterMonths(fyYear, 2),
+    ...fyQuarterMonths(fyYear, 3),
+    ...fyQuarterMonths(fyYear, 4),
+  ];
+  const cap = nowYM();
+  return allMonths.filter((m) => m <= cap);
 }
 
 // ─── KPI aggregation ──────────────────────────────────────────────────────────
@@ -442,7 +494,7 @@ export function KpiPage() {
     if (periodType === 'MONTHLY') return PERIOD_OPTIONS.find((p) => p.value === selectedPeriod)?.label ?? selectedPeriod;
     if (periodType === 'QUARTERLY') return QUARTER_OPTIONS.find((q) => q.value === selectedQuarter)?.label ?? selectedQuarter;
     if (periodType === 'HALF_YEARLY') return HALF_OPTIONS.find((h) => h.value === selectedHalf)?.label ?? selectedHalf;
-    return String(selectedYear);
+    return fyLabel(selectedYear);
   }, [periodType, selectedPeriod, selectedQuarter, selectedHalf, selectedYear]);
 
   const { data: projects = [], isLoading: projectsLoading } = useQuery({
