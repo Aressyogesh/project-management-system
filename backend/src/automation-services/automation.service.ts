@@ -104,6 +104,7 @@ export class AutomationService {
     type: string;
     priority: string;
     dueDate?: Date | null;
+    estimatedHours?: any;
     projectId: string;
   }, assignee: { id: string; fullName: string }, assignedBy: { fullName: string }): void {
     const webhookId = this.config.get<string>('AP_TASK_ASSIGNED_WEBHOOK_ID');
@@ -117,7 +118,8 @@ export class AutomationService {
         title: item.title,
         type: item.type,
         priority: item.priority,
-        dueDate: item.dueDate,
+        dueDate: item.dueDate ? item.dueDate.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Not set',
+        estimatedHours: item.estimatedHours != null ? `${item.estimatedHours} hrs` : 'Not set',
         projectId: item.projectId,
         assignee,
         assignedBy: assignedBy.fullName,

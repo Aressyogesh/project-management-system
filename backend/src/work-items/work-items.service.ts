@@ -211,7 +211,7 @@ export class WorkItemsService implements OnModuleInit {
     if (dto.assigneeId && dto.assigneeId !== reporterId && item.assignee) {
       const reporter = await this.prisma.user.findUnique({ where: { id: reporterId }, select: { fullName: true } });
       this.automation.notifyTaskAssigned(
-        { id: item.id, displayId: item.displayId ?? '', title: item.title, type: item.type, priority: item.priority, dueDate: item.dueDate, projectId: item.projectId },
+        { id: item.id, displayId: item.displayId ?? '', title: item.title, type: item.type, priority: item.priority, dueDate: item.dueDate, estimatedHours: item.estimatedHours, projectId: item.projectId },
         item.assignee,
         { fullName: reporter?.fullName ?? 'Someone' },
       );
@@ -406,7 +406,7 @@ export class WorkItemsService implements OnModuleInit {
         // Scenario 7: Slack alert to new assignee
         if (updated.assignee) {
           this.automation.notifyTaskAssigned(
-            { id: updated.id, displayId: updated.displayId ?? '', title: updated.title, type: updated.type, priority: updated.priority, dueDate: item.dueDate, projectId: item.projectId },
+            { id: updated.id, displayId: updated.displayId ?? '', title: updated.title, type: updated.type, priority: updated.priority, dueDate: item.dueDate, estimatedHours: updated.estimatedHours, projectId: item.projectId },
             updated.assignee,
             { fullName: actorName },
           );
