@@ -169,8 +169,7 @@ export class AutomationService {
         title: item.title,
         projectId: item.projectId,
         reopenCount: item.reopenCount,
-        assignee: item.assignee,
-        reporter: item.reporter,
+        assigneeName: item.assignee?.fullName ?? 'Unassigned',
         reopenedBy: reopenedBy.fullName,
       },
     });
@@ -196,7 +195,7 @@ export class AutomationService {
         title: item.title,
         type: item.type,
         projectId: item.projectId,
-        assignee: item.assignee,
+        assigneeName: item.assignee?.fullName ?? 'Unassigned',
         blockedBy: blockedBy.fullName,
       },
     });

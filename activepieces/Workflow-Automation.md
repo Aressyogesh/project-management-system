@@ -73,7 +73,7 @@ POST http://203.193.165.229:9091/api/v1/webhooks/fW98HBa6CkWdUuXKemaLr
   "body": [
     {
       "type": "TextBlock",
-      "text": "📌 Task Assigned",
+      "text": "🎯 Task Assigned",
       "weight": "Bolder",
       "size": "Medium",
       "color": "Accent"
@@ -260,8 +260,7 @@ POST http://203.193.165.229:9091/api/v1/webhooks/Eulm1QGh6QyMUDXLmK1CL
     "title": "Bug title",
     "projectId": "...",
     "reopenCount": 2,
-    "assignee": { "id": "...", "fullName": "Shital Joshi" },
-    "reporter": null,
+    "assigneeName": "Shital Joshi",
     "reopenedBy": "Yogesh Lolage"
   }
 }
@@ -276,7 +275,7 @@ POST http://203.193.165.229:9091/api/v1/webhooks/Eulm1QGh6QyMUDXLmK1CL
   "body": [
     {
       "type": "TextBlock",
-      "text": "🔄 Bug Reopened",
+      "text": "🔁 Bug Reopened",
       "weight": "Bolder",
       "size": "Medium",
       "color": "Warning"
@@ -287,7 +286,7 @@ POST http://203.193.165.229:9091/api/v1/webhooks/Eulm1QGh6QyMUDXLmK1CL
         { "title": "Bug",          "value": "{{trigger.body.payload.title}}" },
         { "title": "ID",           "value": "{{trigger.body.payload.displayId}}" },
         { "title": "Reopen Count", "value": "{{trigger.body.payload.reopenCount}}" },
-        { "title": "Assignee",     "value": "{{trigger.body.payload.assignee.fullName}}" },
+        { "title": "Assignee",     "value": "{{trigger.body.payload.assigneeName}}" },
         { "title": "Reopened By",  "value": "{{trigger.body.payload.reopenedBy}}" }
       ]
     }
@@ -322,7 +321,7 @@ POST http://203.193.165.229:9091/api/v1/webhooks/I6QjRXubf7IP1Vpza7iVt
     "title": "Task title",
     "type": "TASK",
     "projectId": "...",
-    "assignee": { "id": "...", "fullName": "Shital Joshi" },
+    "assigneeName": "Shital Joshi",
     "blockedBy": "Yogesh Lolage"
   }
 }
@@ -337,7 +336,7 @@ POST http://203.193.165.229:9091/api/v1/webhooks/I6QjRXubf7IP1Vpza7iVt
   "body": [
     {
       "type": "TextBlock",
-      "text": "🚧 Item Blocked",
+      "text": "⛔ Item Blocked",
       "weight": "Bolder",
       "size": "Medium",
       "color": "Warning"
@@ -348,7 +347,7 @@ POST http://203.193.165.229:9091/api/v1/webhooks/I6QjRXubf7IP1Vpza7iVt
         { "title": "Item",       "value": "{{trigger.body.payload.title}}" },
         { "title": "ID",         "value": "{{trigger.body.payload.displayId}}" },
         { "title": "Type",       "value": "{{trigger.body.payload.type}}" },
-        { "title": "Assignee",   "value": "{{trigger.body.payload.assignee.fullName}}" },
+        { "title": "Assignee",   "value": "{{trigger.body.payload.assigneeName}}" },
         { "title": "Blocked By", "value": "{{trigger.body.payload.blockedBy}}" }
       ]
     }
