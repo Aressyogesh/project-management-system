@@ -2,7 +2,7 @@ import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Query, Req
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { ProjectStatus, SystemRole } from '@prisma/client';
 import { Roles } from '../common/decorators/roles.decorator';
-import { CreateProjectDto, ProjectsQueryDto, SetProjectStatusDto, UpdateProjectDto } from './dto/project.dto';
+import { CreateProjectDto, ProjectsQueryDto, SetProjectStatusDto, SetTeamsWebhookDto, UpdateProjectDto } from './dto/project.dto';
 import { ProjectsService } from './projects.service';
 
 @ApiTags('Projects')
@@ -49,6 +49,13 @@ export class ProjectsController {
   @ApiOperation({ summary: 'Set project status (ACTIVE / ARCHIVE / ON_HOLD)' })
   setStatus(@Param('id') id: string, @Body() dto: SetProjectStatusDto, @Request() req: any) {
     return this.projectsService.setStatus(id, dto.status, req.user.id);
+  }
+
+  @Patch(':id/teams-webhook')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Save or clear Teams channel webhook URL for a project' })
+  setTeamsWebhook(@Param('id') id: string, @Body() dto: SetTeamsWebhookDto, @Request() req: any) {
+    return this.projectsService.setTeamsWebhook(id, dto, req.user.id, req.user.systemRole);
   }
 
   @Delete(':id')

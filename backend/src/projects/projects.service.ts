@@ -1,8 +1,8 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { AuditAction, AuditEntity, ProjectStatus, SystemRole } from '@prisma/client';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { AuditAction, AuditEntity, ProjectRole, ProjectStatus, SystemRole } from '@prisma/client';
 import { AuditLogsService } from '../audit-logs/audit-logs.service';
 import { PrismaService } from '../prisma/prisma.service';
-import { CreateProjectDto, ProjectsQueryDto, UpdateProjectDto } from './dto/project.dto';
+import { CreateProjectDto, ProjectsQueryDto, SetTeamsWebhookDto, UpdateProjectDto } from './dto/project.dto';
 
 const PROJECT_SELECT = {
   id: true,
@@ -13,6 +13,7 @@ const PROJECT_SELECT = {
   budget: true,
   projectType: true,
   status: true,
+  teamsWebhookUrl: true,
   createdAt: true,
   client: { select: { id: true, name: true } },
   department: { select: { id: true, name: true, businessUnit: { select: { id: true, name: true } } } },
@@ -171,6 +172,32 @@ export class ProjectsService {
         entityTitle: project.name,
       });
     }
+  }
+
+  async setTeamsWebhook(id: string, dto: SetTeamsWebhookDto, actorId: string, systemRole: SystemRole) {
+    const isPrivileged =
+      systemRole === SystemRole.SUPER_USER ||
+      systemRole === SystemRole.ADMIN ||
+      systemRole === SystemRole.BU_HEAD;
+
+    if (!isPrivileged) {
+      const membership = await this.prisma.projectMember.findFirst({
+        where: { projectId: id, userId: actorId },
+        select: { projectRole: true },
+      });
+      if (!membership || membership.projectRole !== ProjectRole.PROJECT_MANAGER) {
+        throw new ForbiddenException('Only Project Managers, Admins, or Super Users can configure project integrations');
+      }
+    }
+
+    const existing = await this.prisma.project.findUnique({ where: { id } });
+    if (!existing) throw new NotFoundException('Project not found');
+
+    return this.prisma.project.update({
+      where: { id },
+      data: { teamsWebhookUrl: dto.teamsWebhookUrl ?? null },
+      select: PROJECT_SELECT,
+    });
   }
 
   private validateDates(startDate?: string, endDate?: string) {

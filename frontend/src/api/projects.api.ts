@@ -32,6 +32,9 @@ export const projectsApi = {
   removeMember: (projectId: string, userId: string) =>
     apiClient.delete(`/projects/${projectId}/members/${userId}`),
 
+  setTeamsWebhook: (id: string, teamsWebhookUrl: string | null) =>
+    apiClient.patch<Project>(`/projects/${id}/teams-webhook`, { teamsWebhookUrl }).then((r) => r.data),
+
   delete: (id: string) =>
     apiClient.delete(`/projects/${id}`),
 };

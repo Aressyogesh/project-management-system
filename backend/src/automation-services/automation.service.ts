@@ -11,7 +11,26 @@ export class AutomationService {
     private readonly prisma: PrismaService,
   ) {}
 
-  // Scenario 1 — Activepieces: new BUG work item created
+  private async getProjectWebhookUrl(projectId: string): Promise<string | null> {
+    const project = await this.prisma.project.findUnique({
+      where: { id: projectId },
+      select: { teamsWebhookUrl: true },
+    });
+    return project?.teamsWebhookUrl ?? null;
+  }
+
+  private itemMeta(type: string): { itemType: string; itemIcon: string } {
+    const map: Record<string, { itemType: string; itemIcon: string }> = {
+      BUG:        { itemType: 'Bug',        itemIcon: '🐛' },
+      TASK:       { itemType: 'Task',       itemIcon: '🎯' },
+      USER_STORY: { itemType: 'User Story', itemIcon: '📖' },
+      SUB_TASK:   { itemType: 'Sub Task',   itemIcon: '🔧' },
+      EPIC:       { itemType: 'Epic',       itemIcon: '⚡' },
+    };
+    return map[type] ?? { itemType: type, itemIcon: '📋' };
+  }
+
+  // Scenario 1 — Bug created
   notifyBugCreated(item: {
     id: string;
     displayId: string;
@@ -48,55 +67,68 @@ export class AutomationService {
     affectedMilestone?: { id: string; description: string | null } | null;
     createdAt: Date;
   }): void {
-    const webhookId = this.config.get<string>('AP_BUG_WEBHOOK_ID');
-    if (!webhookId) return;
-    const base = this.config.get<string>('AUTOMATION_AP_BASE', 'http://localhost:19102');
-    this.post(`${base}/api/v1/webhooks/${webhookId}`, { event: 'BUG_CREATED', payload: item });
+    this.getProjectWebhookUrl(item.projectId)
+      .then((url) => {
+        if (!url) return;
+        this.post(url, {
+          event: 'BUG_CREATED',
+          payload: {
+            id: item.id,
+            displayId: item.displayId,
+            title: item.title,
+            severity: item.severity,
+            priority: item.priority,
+            status: item.status,
+            projectId: item.projectId,
+            environment: item.environment,
+            assigneeName: item.assignee?.fullName ?? 'Unassigned',
+            reporterName: item.reporter?.fullName ?? 'Unknown',
+            dueDate: item.dueDate
+              ? item.dueDate.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+              : 'Not set',
+            createdAt: item.createdAt.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
+          },
+        });
+      })
+      .catch((err) => this.logger.warn(`notifyBugCreated failed: ${err.message}`));
   }
 
-  // Scenario 2 — Activepieces: sprint activated → email all members
+  // Scenario 2 — Sprint started
   notifySprintStarted(sprintId: string, projectId: string, activatedByUserId: string): void {
-    const webhookId = this.config.get<string>('AP_SPRINT_WEBHOOK_ID');
-    if (!webhookId) return;
-    const base = this.config.get<string>('AUTOMATION_AP_BASE', 'http://host.docker.internal:19102');
-
-    // Resolve sprint + members then fire — non-blocking
     Promise.all([
       this.prisma.sprint.findUnique({ where: { id: sprintId } }),
-      this.prisma.project.findUnique({ where: { id: projectId }, select: { name: true } }),
+      this.prisma.project.findUnique({ where: { id: projectId }, select: { name: true, teamsWebhookUrl: true } }),
       this.prisma.projectMember.findMany({
         where: { projectId },
         include: { user: { select: { id: true, fullName: true, email: true } } },
       }),
-      this.prisma.user.findUnique({
-        where: { id: activatedByUserId },
-        select: { fullName: true },
-      }),
+      this.prisma.user.findUnique({ where: { id: activatedByUserId }, select: { fullName: true } }),
     ])
       .then(([sprint, project, members, activatedBy]) => {
-        this.post(`${base}/api/v1/webhooks/${webhookId}`, {
+        if (!project?.teamsWebhookUrl) return;
+        this.post(project.teamsWebhookUrl, {
           event: 'SPRINT_STARTED',
           payload: {
             id: sprint?.id,
             name: sprint?.name,
-            goal: sprint?.goal,
-            startDate: sprint?.startDate,
-            endDate: sprint?.endDate,
+            goal: sprint?.goal ?? 'No goal set',
+            startDate: sprint?.startDate
+              ? new Date(sprint.startDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+              : 'Not set',
+            endDate: sprint?.endDate
+              ? new Date(sprint.endDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+              : 'Not set',
             projectId,
             projectName: project?.name,
             activatedBy: activatedBy?.fullName,
-            members: members.map((m) => ({
-              id: m.user.id,
-              fullName: m.user.fullName,
-              email: m.user.email,
-            })),
+            memberCount: members.length,
           },
         });
       })
-      .catch((err) => this.logger.warn(`notifySprintStarted lookup failed: ${err.message}`));
+      .catch((err) => this.logger.warn(`notifySprintStarted failed: ${err.message}`));
   }
 
-  // Scenario 7 — Activepieces: work item assigned to a user
+  // Scenario 7 — Task/item assigned
   notifyTaskAssigned(item: {
     id: string;
     displayId: string;
@@ -104,28 +136,35 @@ export class AutomationService {
     type: string;
     priority: string;
     dueDate?: Date | null;
+    estimatedHours?: any;
     projectId: string;
   }, assignee: { id: string; fullName: string }, assignedBy: { fullName: string }): void {
-    const webhookId = this.config.get<string>('AP_TASK_ASSIGNED_WEBHOOK_ID');
-    if (!webhookId) return;
-    const base = this.config.get<string>('AUTOMATION_AP_BASE', 'http://localhost:19102');
-    this.post(`${base}/api/v1/webhooks/${webhookId}`, {
-      event: 'TASK_ASSIGNED',
-      payload: {
-        id: item.id,
-        displayId: item.displayId,
-        title: item.title,
-        type: item.type,
-        priority: item.priority,
-        dueDate: item.dueDate,
-        projectId: item.projectId,
-        assignee,
-        assignedBy: assignedBy.fullName,
-      },
-    });
+    this.getProjectWebhookUrl(item.projectId)
+      .then((url) => {
+        if (!url) return;
+        this.post(url, {
+          event: 'TASK_ASSIGNED',
+          payload: {
+            id: item.id,
+            displayId: item.displayId,
+            title: item.title,
+            type: item.type,
+            ...this.itemMeta(item.type),
+            priority: item.priority,
+            dueDate: item.dueDate
+              ? item.dueDate.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+              : 'Not set',
+            estimatedHours: item.estimatedHours != null ? `${item.estimatedHours} hrs` : 'Not set',
+            projectId: item.projectId,
+            assigneeName: assignee.fullName,
+            assignedBy: assignedBy.fullName,
+          },
+        });
+      })
+      .catch((err) => this.logger.warn(`notifyTaskAssigned failed: ${err.message}`));
   }
 
-  // Scenario 8 — Activepieces: critical severity bug created
+  // Scenario 8 — Critical bug created
   notifyCriticalBug(item: {
     id: string;
     displayId: string;
@@ -140,13 +179,29 @@ export class AutomationService {
     reporter?: { id: string; fullName: string } | null;
     createdAt: Date;
   }): void {
-    const webhookId = this.config.get<string>('AP_CRITICAL_BUG_WEBHOOK_ID');
-    if (!webhookId) return;
-    const base = this.config.get<string>('AUTOMATION_AP_BASE', 'http://localhost:19102');
-    this.post(`${base}/api/v1/webhooks/${webhookId}`, { event: 'CRITICAL_BUG_CREATED', payload: item });
+    this.getProjectWebhookUrl(item.projectId)
+      .then((url) => {
+        if (!url) return;
+        this.post(url, {
+          event: 'CRITICAL_BUG_CREATED',
+          payload: {
+            id: item.id,
+            displayId: item.displayId,
+            title: item.title,
+            severity: item.severity,
+            priority: item.priority,
+            projectId: item.projectId,
+            environment: item.environment ?? 'Not specified',
+            stepsToRepro: item.stepsToRepro ?? 'Not provided',
+            assigneeName: item.assignee?.fullName ?? 'Unassigned',
+            reporterName: item.reporter?.fullName ?? 'Unknown',
+          },
+        });
+      })
+      .catch((err) => this.logger.warn(`notifyCriticalBug failed: ${err.message}`));
   }
 
-  // Scenario 9 — Activepieces: bug reopened (status moved back from QA_DONE)
+  // Scenario 9 — Bug reopened
   notifyBugReopened(item: {
     id: string;
     displayId: string;
@@ -156,25 +211,26 @@ export class AutomationService {
     assignee?: { id: string; fullName: string } | null;
     reporter?: { id: string; fullName: string } | null;
   }, reopenedBy: { fullName: string }): void {
-    const webhookId = this.config.get<string>('AP_BUG_REOPENED_WEBHOOK_ID');
-    if (!webhookId) return;
-    const base = this.config.get<string>('AUTOMATION_AP_BASE', 'http://localhost:19102');
-    this.post(`${base}/api/v1/webhooks/${webhookId}`, {
-      event: 'BUG_REOPENED',
-      payload: {
-        id: item.id,
-        displayId: item.displayId,
-        title: item.title,
-        projectId: item.projectId,
-        reopenCount: item.reopenCount,
-        assignee: item.assignee,
-        reporter: item.reporter,
-        reopenedBy: reopenedBy.fullName,
-      },
-    });
+    this.getProjectWebhookUrl(item.projectId)
+      .then((url) => {
+        if (!url) return;
+        this.post(url, {
+          event: 'BUG_REOPENED',
+          payload: {
+            id: item.id,
+            displayId: item.displayId,
+            title: item.title,
+            projectId: item.projectId,
+            reopenCount: item.reopenCount,
+            assigneeName: item.assignee?.fullName ?? 'Unassigned',
+            reopenedBy: reopenedBy.fullName,
+          },
+        });
+      })
+      .catch((err) => this.logger.warn(`notifyBugReopened failed: ${err.message}`));
   }
 
-  // Scenario 10 — Activepieces: work item status changed to BLOCKED
+  // Scenario 10 — Item blocked
   notifyItemBlocked(item: {
     id: string;
     displayId: string;
@@ -183,24 +239,27 @@ export class AutomationService {
     projectId: string;
     assignee?: { id: string; fullName: string } | null;
   }, blockedBy: { fullName: string }): void {
-    const webhookId = this.config.get<string>('AP_ITEM_BLOCKED_WEBHOOK_ID');
-    if (!webhookId) return;
-    const base = this.config.get<string>('AUTOMATION_AP_BASE', 'http://localhost:19102');
-    this.post(`${base}/api/v1/webhooks/${webhookId}`, {
-      event: 'ITEM_BLOCKED',
-      payload: {
-        id: item.id,
-        displayId: item.displayId,
-        title: item.title,
-        type: item.type,
-        projectId: item.projectId,
-        assignee: item.assignee,
-        blockedBy: blockedBy.fullName,
-      },
-    });
+    this.getProjectWebhookUrl(item.projectId)
+      .then((url) => {
+        if (!url) return;
+        this.post(url, {
+          event: 'ITEM_BLOCKED',
+          payload: {
+            id: item.id,
+            displayId: item.displayId,
+            title: item.title,
+            type: item.type,
+            ...this.itemMeta(item.type),
+            projectId: item.projectId,
+            assigneeName: item.assignee?.fullName ?? 'Unassigned',
+            blockedBy: blockedBy.fullName,
+          },
+        });
+      })
+      .catch((err) => this.logger.warn(`notifyItemBlocked failed: ${err.message}`));
   }
 
-  // Scenario 6 — Node-RED: work item status changed
+  // Scenario 6 — Node-RED: work item status changed (unchanged)
   notifyWorkItemStatusChanged(
     item: {
       id: string;

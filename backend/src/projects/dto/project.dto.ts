@@ -10,6 +10,7 @@ import {
   IsPositive,
   IsString,
   IsUUID,
+  IsUrl,
   MaxLength,
   ValidateIf,
 } from 'class-validator';
@@ -55,4 +56,12 @@ export class ProjectsQueryDto {
 
   @IsOptional() @IsEnum(ProjectType)
   type?: ProjectType;
+}
+
+export class SetTeamsWebhookDto {
+  @IsOptional()
+  @ValidateIf((o) => o.teamsWebhookUrl !== null)
+  @IsUrl({ require_protocol: true, protocols: ['https'] }, { message: 'teamsWebhookUrl must be an HTTPS URL' })
+  @MaxLength(2000)
+  teamsWebhookUrl: string | null;
 }

@@ -1,13 +1,24 @@
-﻿import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts';
 import { analyticsApi } from '../../../api/analyticsApi';
-import { projectsApi } from '../../../api/projects.api';
+import type { LiveEmployeeKpiRecord } from '../../../api/analyticsApi';
 import { dashboardApi } from '../../../api/dashboard.api';
+import { projectsApi } from '../../../api/projects.api';
 import { useAuthStore } from '../../../store/authStore';
 import type { EmployeeKpiRecord } from '../../../types/kpi.types';
-import { KpiParameterGroups } from '../components/KpiParameterGroups';
-import { KpiLeaderboard } from '../components/KpiLeaderboard';
 import { ProjectRiskScoreCard } from '../../dashboard/components/ProjectRiskScoreCard';
+import { KpiLeaderboard } from '../components/KpiLeaderboard';
+import { KpiParameterGroups } from '../components/KpiParameterGroups';
 import {
   GRADE_CONFIG,
   KPI_METRICS,
@@ -15,26 +26,234 @@ import {
   transformLiveKpi,
 } from '../data/kpiStaticData';
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// ─── Period types ─────────────────────────────────────────────────────────────
+
+type PeriodType = 'MONTHLY' | 'QUARTERLY' | 'HALF_YEARLY' | 'YEARLY';
+
+// ─── Financial year helpers (Apr → Mar) ──────────────────────────────────────
+// fyYear = calendar year when April falls (e.g. 2026 for FY2026-27).
+
+function getFyYear(date: Date): number {
+  return date.getMonth() + 1 >= 4 ? date.getFullYear() : date.getFullYear() - 1;
+}
+
+function fyLabel(fyYear: number): string {
+  return `FY${fyYear}-${String(fyYear + 1).slice(-2)}`;
+}
+
+function getFyQuarter(date: Date): number {
+  const m = date.getMonth() + 1;
+  if (m >= 4 && m <= 6) return 1;
+  if (m >= 7 && m <= 9) return 2;
+  if (m >= 10) return 3;
+  return 4; // Jan–Mar
+}
+
+function getFyHalf(date: Date): number {
+  const m = date.getMonth() + 1;
+  return m >= 4 && m <= 9 ? 1 : 2;
+}
+
+function fyQuarterMonths(fyYear: number, q: number): string[] {
+  switch (q) {
+    case 1: return [`${fyYear}-04`, `${fyYear}-05`, `${fyYear}-06`];
+    case 2: return [`${fyYear}-07`, `${fyYear}-08`, `${fyYear}-09`];
+    case 3: return [`${fyYear}-10`, `${fyYear}-11`, `${fyYear}-12`];
+    default: return [`${fyYear + 1}-01`, `${fyYear + 1}-02`, `${fyYear + 1}-03`];
+  }
+}
+
+// ─── Period option builders ───────────────────────────────────────────────────
 
 function buildPeriodOptions() {
   const now = new Date();
-  return Array.from({ length: 12 }, (_, i) => {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+  const fyYear = getFyYear(now);
+  // Months from FY start (April of fyYear) up to current month, newest first
+  const fyStartMonth = `${fyYear}-04`;
+  const opts: { value: string; label: string }[] = [];
+  let d = new Date(now.getFullYear(), now.getMonth(), 1);
+  while (true) {
     const value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    if (value < fyStartMonth) break;
     const label = d.toLocaleString('default', { month: 'long', year: 'numeric' });
-    return { value, label };
+    opts.push({ value, label });
+    d = new Date(d.getFullYear(), d.getMonth() - 1, 1);
+    if (opts.length > 12) break; // safety cap
+  }
+  return opts;
+}
+
+function buildQuarterOptions() {
+  const now = new Date();
+  let fyYear = getFyYear(now);
+  let q = getFyQuarter(now);
+  const cap = nowYM();
+  const opts: { value: string; label: string }[] = [];
+  for (let i = 0; i < 8; i++) {
+    const months = fyQuarterMonths(fyYear, q);
+    if (months[0] <= cap) {
+      opts.push({ value: `${fyYear}-Q${q}`, label: `Q${q} ${fyLabel(fyYear)}` });
+    }
+    q--;
+    if (q === 0) { q = 4; fyYear--; }
+  }
+  return opts;
+}
+
+function buildHalfOptions() {
+  const now = new Date();
+  const currentFyYear = getFyYear(now);
+  const currentH = getFyHalf(now);
+  const opts: { value: string; label: string }[] = [];
+  // Current half
+  opts.push({ value: `${currentFyYear}-H${currentH}`, label: `H${currentH} ${fyLabel(currentFyYear)}` });
+  // If in H2, also add H1 of same FY (already completed)
+  if (currentH === 2) {
+    opts.push({ value: `${currentFyYear}-H1`, label: `H1 ${fyLabel(currentFyYear)}` });
+  }
+  // Previous 2 financial years
+  for (let y = currentFyYear - 1; y >= currentFyYear - 2; y--) {
+    opts.push({ value: `${y}-H2`, label: `H2 ${fyLabel(y)}` });
+    opts.push({ value: `${y}-H1`, label: `H1 ${fyLabel(y)}` });
+  }
+  return opts;
+}
+
+function buildYearOptions() {
+  const fyYear = getFyYear(new Date());
+  return [fyYear, fyYear - 1, fyYear - 2].map((y) => ({ value: y, label: fyLabel(y) }));
+}
+
+// ─── Month range helpers ───────────────────────────────────────────────────────
+
+function nowYM(): string {
+  const n = new Date();
+  return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}`;
+}
+
+function getMonthsForQuarter(q: string): string[] {
+  // value: "2026-Q2" → fyYear=2026, quarter=2
+  const [fyYearStr, qStr] = q.split('-');
+  const months = fyQuarterMonths(parseInt(fyYearStr), parseInt(qStr.replace('Q', '')));
+  const cap = nowYM();
+  return months.filter((m) => m <= cap);
+}
+
+function getMonthsForHalf(h: string): string[] {
+  // value: "2026-H1" → fyYear=2026, half=1
+  const [fyYearStr, hStr] = h.split('-');
+  const fyYear = parseInt(fyYearStr);
+  const half = parseInt(hStr.replace('H', ''));
+  const months = half === 1
+    ? [...fyQuarterMonths(fyYear, 1), ...fyQuarterMonths(fyYear, 2)]
+    : [...fyQuarterMonths(fyYear, 3), ...fyQuarterMonths(fyYear, 4)];
+  const cap = nowYM();
+  return months.filter((m) => m <= cap);
+}
+
+function getMonthsForYear(fyYear: number): string[] {
+  const allMonths = [
+    ...fyQuarterMonths(fyYear, 1),
+    ...fyQuarterMonths(fyYear, 2),
+    ...fyQuarterMonths(fyYear, 3),
+    ...fyQuarterMonths(fyYear, 4),
+  ];
+  const cap = nowYM();
+  return allMonths.filter((m) => m <= cap);
+}
+
+// ─── KPI aggregation ──────────────────────────────────────────────────────────
+
+function aggregateKpiRecords(allRecords: LiveEmployeeKpiRecord[]): LiveEmployeeKpiRecord[] {
+  if (allRecords.length === 0) return [];
+  const byUser = new Map<string, LiveEmployeeKpiRecord[]>();
+  for (const r of allRecords) {
+    const arr = byUser.get(r.userId) ?? [];
+    arr.push(r);
+    byUser.set(r.userId, arr);
+  }
+  return Array.from(byUser.values()).map((records) => {
+    const first = records[0];
+    const active = records.filter((r) => !r.hasNoActivity);
+    if (active.length === 0) return { ...first, hasNoActivity: true, totalScore: 0, metrics: [] };
+    const avgTotal = active.reduce((s, r) => s + r.totalScore, 0) / active.length;
+    const metricMap = new Map<string, number[]>();
+    for (const r of active) {
+      for (const m of r.metrics) {
+        const pts = metricMap.get(m.metricId) ?? [];
+        pts.push(m.points);
+        metricMap.set(m.metricId, pts);
+      }
+    }
+    const avgMetrics = Array.from(metricMap.entries()).map(([metricId, pts]) => ({
+      metricId,
+      points: Math.round((pts.reduce((s, p) => s + p, 0) / pts.length) * 100) / 100,
+    }));
+    return { ...first, totalScore: Math.round(avgTotal * 10) / 10, metrics: avgMetrics, hasNoActivity: false };
   });
 }
 
+// ─── Static option arrays ─────────────────────────────────────────────────────
+
 const PERIOD_OPTIONS = buildPeriodOptions();
 const DEFAULT_PERIOD = PERIOD_OPTIONS[0].value;
+const QUARTER_OPTIONS = buildQuarterOptions();
+const HALF_OPTIONS = buildHalfOptions();
+const YEAR_OPTIONS = buildYearOptions();
 
 const MANUAL_METRICS = KPI_METRICS.filter((m) => m.badge === 'MANUAL').map((m) => ({
   id: m.id,
   label: m.name,
   max: m.maxPoints,
 }));
+
+// ─── Trend chart ──────────────────────────────────────────────────────────────
+
+interface TrendPoint { month: string; score: number; hasData: boolean; }
+
+function TrendTooltip({ active, payload, label }: { active?: boolean; payload?: { value: number; payload: TrendPoint }[]; label?: string }) {
+  if (!active || !payload?.length) return null;
+  const { hasData, score } = payload[0].payload;
+  return (
+    <div className="bg-white border border-gray-200 rounded-xl shadow-lg p-3 text-sm">
+      <p className="font-semibold text-gray-800 mb-1">{label}</p>
+      {hasData
+        ? <p className="text-gray-600">KPI Score: <span className="font-bold text-gray-900">{score.toFixed(1)}</span></p>
+        : <p className="text-gray-400 text-xs">No data</p>}
+    </div>
+  );
+}
+
+function KpiTrendChart({ data, memberName }: { data: TrendPoint[]; memberName: string }) {
+  return (
+    <div className="bg-white rounded-2xl border border-[#cccccc] shadow-sm p-5">
+      <h3 className="text-sm font-semibold text-gray-800 mb-0.5">KPI Score Trend — {memberName}</h3>
+      <p className="text-xs text-gray-400 mb-4">Monthly KPI score across the year (0–100)</p>
+      <ResponsiveContainer width="100%" height={180}>
+        <BarChart data={data} margin={{ top: 4, right: 8, left: -16, bottom: 4 }} barSize={26}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" vertical={false} />
+          <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#6B7280' }} axisLine={false} tickLine={false} />
+          <YAxis domain={[0, 100]} tick={{ fontSize: 11, fill: '#9CA3AF' }} axisLine={false} tickLine={false} />
+          <Tooltip content={<TrendTooltip />} cursor={{ fill: '#F9FAFB' }} />
+          <Bar dataKey="score" radius={[4, 4, 0, 0]}>
+            {data.map((entry, idx) => (
+              <Cell
+                key={idx}
+                fill={
+                  !entry.hasData ? '#E5E7EB'
+                  : entry.score >= 90 ? '#10B981'
+                  : entry.score >= 75 ? '#3B82F6'
+                  : entry.score >= 60 ? '#F59E0B'
+                  : '#EF4444'
+                }
+              />
+            ))}
+          </Bar>
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
 
 // ─── KPI Score Entry Panel ────────────────────────────────────────────────────
 
@@ -162,24 +381,121 @@ function KpiScoreEntryPanel({
   );
 }
 
+// ─── Period sub-selector ──────────────────────────────────────────────────────
+
+function PeriodSubSelector({
+  periodType,
+  selectedPeriod,
+  selectedQuarter,
+  selectedHalf,
+  selectedYear,
+  onPeriodChange,
+  onQuarterChange,
+  onHalfChange,
+  onYearChange,
+}: {
+  periodType: PeriodType;
+  selectedPeriod: string;
+  selectedQuarter: string;
+  selectedHalf: string;
+  selectedYear: number;
+  onPeriodChange: (v: string) => void;
+  onQuarterChange: (v: string) => void;
+  onHalfChange: (v: string) => void;
+  onYearChange: (v: number) => void;
+}) {
+  const cls = 'text-sm border border-gray-200 rounded-lg px-3 py-1.5 bg-white text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500';
+  if (periodType === 'MONTHLY') {
+    return (
+      <select value={selectedPeriod} onChange={(e) => onPeriodChange(e.target.value)} className={cls}>
+        {PERIOD_OPTIONS.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
+      </select>
+    );
+  }
+  if (periodType === 'QUARTERLY') {
+    return (
+      <select value={selectedQuarter} onChange={(e) => onQuarterChange(e.target.value)} className={cls}>
+        {QUARTER_OPTIONS.map((q) => <option key={q.value} value={q.value}>{q.label}</option>)}
+      </select>
+    );
+  }
+  if (periodType === 'HALF_YEARLY') {
+    return (
+      <select value={selectedHalf} onChange={(e) => onHalfChange(e.target.value)} className={cls}>
+        {HALF_OPTIONS.map((h) => <option key={h.value} value={h.value}>{h.label}</option>)}
+      </select>
+    );
+  }
+  return (
+    <select value={selectedYear} onChange={(e) => onYearChange(Number(e.target.value))} className={cls}>
+      {YEAR_OPTIONS.map((y) => <option key={y.value} value={y.value}>{y.label}</option>)}
+    </select>
+  );
+}
+
 // ─── Main KpiPage ─────────────────────────────────────────────────────────────
 
 export function KpiPage() {
   const user = useAuthStore((s) => s.user);
   const isAdminOrSuper = user?.systemRole === 'SUPER_USER' || user?.systemRole === 'ADMIN' || user?.systemRole === 'BU_HEAD';
 
+  // Period state
+  const [periodType, setPeriodType] = useState<PeriodType>('MONTHLY');
   const [selectedPeriod, setSelectedPeriod] = useState(DEFAULT_PERIOD);
+  const [selectedQuarter, setSelectedQuarter] = useState(QUARTER_OPTIONS[0].value);
+  const [selectedHalf, setSelectedHalf] = useState(HALF_OPTIONS[0].value);
+  const [selectedYear, setSelectedYear] = useState(YEAR_OPTIONS[0].value);
+
+  // Other filters
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
   const [showScoreEntry, setShowScoreEntry] = useState(false);
   const [expandedUserId, setExpandedUserId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
-  const { data: liveData = [], isLoading: kpiLoading } = useQuery({
-    queryKey: ['kpi-live', selectedPeriod],
-    queryFn: () => analyticsApi.getKpi(selectedPeriod),
-    staleTime: 60_000,
+  // Effective months to fetch
+  const effectiveMonths = useMemo(() => {
+    if (periodType === 'MONTHLY') return [selectedPeriod];
+    if (periodType === 'QUARTERLY') return getMonthsForQuarter(selectedQuarter);
+    if (periodType === 'HALF_YEARLY') return getMonthsForHalf(selectedHalf);
+    return getMonthsForYear(selectedYear);
+  }, [periodType, selectedPeriod, selectedQuarter, selectedHalf, selectedYear]);
+
+  // Parallel KPI queries for all effective months
+  const kpiQueries = useQueries({
+    queries: effectiveMonths.map((period) => ({
+      queryKey: ['kpi-live', period],
+      queryFn: () => analyticsApi.getKpi(period),
+      staleTime: 60_000,
+    })),
   });
+
+  const kpiLoading = kpiQueries.length > 0 && kpiQueries.some((q) => q.isLoading);
+
+  // Map monthKey → raw records (for trend chart)
+  const kpiDataByMonth = useMemo(() => {
+    const map = new Map<string, LiveEmployeeKpiRecord[]>();
+    effectiveMonths.forEach((month, i) => {
+      const d = kpiQueries[i]?.data;
+      if (d) map.set(month, d);
+    });
+    return map;
+  }, [effectiveMonths, kpiQueries]);
+
+  // Aggregate or passthrough
+  const liveData = useMemo(() => {
+    if (periodType === 'MONTHLY') return kpiQueries[0]?.data ?? [];
+    const all = kpiQueries.filter((q) => q.data).flatMap((q) => q.data!);
+    return aggregateKpiRecords(all);
+  }, [periodType, kpiQueries]);
+
+  // Period label for display
+  const periodLabel = useMemo(() => {
+    if (periodType === 'MONTHLY') return PERIOD_OPTIONS.find((p) => p.value === selectedPeriod)?.label ?? selectedPeriod;
+    if (periodType === 'QUARTERLY') return QUARTER_OPTIONS.find((q) => q.value === selectedQuarter)?.label ?? selectedQuarter;
+    if (periodType === 'HALF_YEARLY') return HALF_OPTIONS.find((h) => h.value === selectedHalf)?.label ?? selectedHalf;
+    return fyLabel(selectedYear);
+  }, [periodType, selectedPeriod, selectedQuarter, selectedHalf, selectedYear]);
 
   const { data: projects = [], isLoading: projectsLoading } = useQuery({
     queryKey: ['projects-list'],
@@ -198,45 +514,72 @@ export function KpiPage() {
   const { data: projectActivity = [] } = useQuery({
     queryKey: ['team-activity', selectedProjectId, selectedPeriod],
     queryFn: () => dashboardApi.getTeamActivity(selectedProjectId!, selectedPeriod),
-    enabled: !!selectedProjectId,
+    enabled: !!selectedProjectId && periodType === 'MONTHLY',
     staleTime: 60_000,
   });
 
   const employees = useMemo(() => liveData.map(transformLiveKpi), [liveData]);
 
-  // Project member user IDs
-  const projectMemberIds = useMemo(
-    () => projectMembers.map((m) => m.user.id),
-    [projectMembers],
-  );
+  const projectMemberIds = useMemo(() => projectMembers.map((m) => m.user.id), [projectMembers]);
 
-  // KPI records filtered to selected project's members
   const projectEmployees = useMemo(() => {
     if (!selectedProjectId) return employees;
     return employees.filter((e) => projectMemberIds.includes(e.userId));
   }, [employees, selectedProjectId, projectMemberIds]);
 
-  // Filtered by search
   const filteredEmployees = useMemo(() => {
     if (!searchQuery) return projectEmployees;
     const q = searchQuery.toLowerCase();
     return projectEmployees.filter(
-      (e) =>
-        e.name.toLowerCase().includes(q) ||
-        e.role.toLowerCase().includes(q),
+      (e) => e.name.toLowerCase().includes(q) || e.role.toLowerCase().includes(q),
     );
   }, [projectEmployees, searchQuery]);
 
   const summary = useMemo(
-    () => (filteredEmployees.length > 0 ? buildTeamSummary(filteredEmployees, selectedPeriod) : null),
-    [filteredEmployees, selectedPeriod],
+    () => (filteredEmployees.length > 0 ? buildTeamSummary(filteredEmployees, periodLabel) : null),
+    [filteredEmployees, periodLabel],
   );
 
   const selectedEmployee = selectedMemberId
     ? employees.find((e) => e.userId === selectedMemberId) ?? null
     : null;
 
+  // Trend data: yearly + member selected
+  const trendData = useMemo<TrendPoint[] | null>(() => {
+    if (periodType !== 'YEARLY' || !selectedMemberId) return null;
+    const months = getMonthsForYear(selectedYear);
+    return months.map((monthKey) => {
+      const monthRecords = kpiDataByMonth.get(monthKey);
+      const record = monthRecords?.find((r) => r.userId === selectedMemberId);
+      const hasData = !!record && !record.hasNoActivity;
+      const date = new Date(`${monthKey}-01`);
+      return {
+        month: date.toLocaleString('default', { month: 'short' }),
+        score: hasData ? record!.totalScore : 0,
+        hasData,
+      };
+    });
+  }, [periodType, selectedYear, selectedMemberId, kpiDataByMonth]);
+
   const isLoading = kpiLoading || projectsLoading;
+
+  function handlePeriodTypeChange(type: PeriodType) {
+    setPeriodType(type);
+    setExpandedUserId(null);
+    setSearchQuery('');
+  }
+
+  const periodSelectorProps = {
+    periodType,
+    selectedPeriod,
+    selectedQuarter,
+    selectedHalf,
+    selectedYear,
+    onPeriodChange: (v: string) => { setSelectedPeriod(v); setExpandedUserId(null); },
+    onQuarterChange: (v: string) => { setSelectedQuarter(v); setExpandedUserId(null); },
+    onHalfChange: (v: string) => { setSelectedHalf(v); setExpandedUserId(null); },
+    onYearChange: (v: number) => { setSelectedYear(v); setExpandedUserId(null); },
+  };
 
   // ── Employee self-view (non-admin) ─────────────────────────────────────────
   if (!isAdminOrSuper) {
@@ -254,26 +597,26 @@ export function KpiPage() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-bold text-gray-900">My KPI Appraisal</h1>
-            <p className="text-sm text-gray-400 mt-0.5">
-              {PERIOD_OPTIONS.find((p) => p.value === selectedPeriod)?.label ?? selectedPeriod}
-            </p>
+            <h1 className="text-xl font-bold text-gray-900">My KPI Dashboard</h1>
+            <p className="text-sm text-gray-400 mt-0.5">{periodLabel}</p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             {ownRecord && !ownRecord.hasNoActivity && (
               <span className={`text-sm font-bold px-3 py-1.5 rounded-full ${GRADE_CONFIG[ownRecord.grade].bg} ${GRADE_CONFIG[ownRecord.grade].text}`}>
                 Grade {ownRecord.grade} — {ownRecord.totalScore} / 100
               </span>
             )}
             <select
-              value={selectedPeriod}
-              onChange={(e) => setSelectedPeriod(e.target.value)}
+              value={periodType}
+              onChange={(e) => handlePeriodTypeChange(e.target.value as PeriodType)}
               className="text-sm border border-gray-200 rounded-lg px-3 py-1.5 bg-white text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
-              {PERIOD_OPTIONS.map((p) => (
-                <option key={p.value} value={p.value}>{p.label}</option>
-              ))}
+              <option value="MONTHLY">Monthly</option>
+              <option value="QUARTERLY">Quarterly</option>
+              <option value="HALF_YEARLY">Half Yearly</option>
+              <option value="YEARLY">Yearly</option>
             </select>
+            <PeriodSubSelector {...periodSelectorProps} />
           </div>
         </div>
 
@@ -296,7 +639,6 @@ export function KpiPage() {
   }
 
   // ── Admin / Super User view ────────────────────────────────────────────────
-  const periodLabel = PERIOD_OPTIONS.find((p) => p.value === selectedPeriod)?.label ?? selectedPeriod;
   const selectedProject = projects.find((p) => p.id === selectedProjectId);
 
   return (
@@ -304,7 +646,7 @@ export function KpiPage() {
       {/* ── Page header ── */}
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
         <div>
-          <h1 className="text-xl font-bold text-gray-900">KPI Appraisal</h1>
+          <h1 className="text-xl font-bold text-gray-900">KPI Dashboard</h1>
           <p className="text-sm text-gray-400 mt-0.5">
             {selectedEmployee
               ? `${selectedEmployee.name} · ${selectedProject?.name ?? ''} · ${periodLabel}`
@@ -315,8 +657,8 @@ export function KpiPage() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          {/* Enter scores button — only when no individual selected */}
-          {!selectedMemberId && (
+          {/* Enter scores — monthly mode only */}
+          {periodType === 'MONTHLY' && !selectedMemberId && (
             <button
               onClick={() => setShowScoreEntry(true)}
               className="flex items-center gap-1.5 text-xs font-medium text-white bg-primary-600 hover:bg-primary-700 px-3 py-1.5 rounded-lg transition"
@@ -329,21 +671,25 @@ export function KpiPage() {
             </button>
           )}
 
-          {/* Period */}
+          {/* View type */}
           <div className="flex items-center gap-1.5">
-            <label className="text-xs text-gray-500 font-medium shrink-0">Period:</label>
+            <label className="text-xs text-gray-500 font-medium shrink-0">View:</label>
             <select
-              value={selectedPeriod}
-              onChange={(e) => {
-                setSelectedPeriod(e.target.value);
-                setExpandedUserId(null);
-              }}
+              value={periodType}
+              onChange={(e) => handlePeriodTypeChange(e.target.value as PeriodType)}
               className="text-sm border border-gray-200 rounded-lg px-3 py-1.5 bg-white text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
-              {PERIOD_OPTIONS.map((p) => (
-                <option key={p.value} value={p.value}>{p.label}</option>
-              ))}
+              <option value="MONTHLY">Monthly</option>
+              <option value="QUARTERLY">Quarterly</option>
+              <option value="HALF_YEARLY">Half Yearly</option>
+              <option value="YEARLY">Yearly</option>
             </select>
+          </div>
+
+          {/* Period sub-selector */}
+          <div className="flex items-center gap-1.5">
+            <label className="text-xs text-gray-500 font-medium shrink-0">Period:</label>
+            <PeriodSubSelector {...periodSelectorProps} />
           </div>
 
           {/* Project */}
@@ -365,7 +711,7 @@ export function KpiPage() {
             </select>
           </div>
 
-          {/* Team Member — only shown when project selected */}
+          {/* Team Member — only when project selected */}
           {selectedProjectId && (
             <div className="flex items-center gap-1.5">
               <label className="text-xs text-gray-500 font-medium shrink-0">Team Member:</label>
@@ -384,7 +730,7 @@ export function KpiPage() {
             </div>
           )}
 
-          {/* Back button when a member is selected */}
+          {/* Back button when member selected */}
           {selectedMemberId && (
             <button
               onClick={() => setSelectedMemberId(null)}
@@ -406,6 +752,11 @@ export function KpiPage() {
       ) : selectedEmployee ? (
         /* ── Individual Member KPI View ── */
         <div className="space-y-4">
+          {/* Trend graph above member info — yearly only */}
+          {trendData && (
+            <KpiTrendChart data={trendData} memberName={selectedEmployee.name} />
+          )}
+
           {/* Member info bar */}
           <div className="bg-white rounded-xl border border-[#cccccc] shadow-sm px-5 py-3 flex items-center gap-4">
             <div className="w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center shrink-0">
@@ -431,7 +782,7 @@ export function KpiPage() {
             totalScore={selectedEmployee.totalScore}
             userId={selectedEmployee.userId}
             period={selectedPeriod}
-            canAddNotes={isAdminOrSuper}
+            canAddNotes={isAdminOrSuper && periodType === 'MONTHLY'}
             currentUserId={user?.id}
             isAdmin={isAdminOrSuper}
           />
@@ -439,18 +790,24 @@ export function KpiPage() {
       ) : (
         /* ── Team / All-project view ── */
         <>
-          {/* Project Risk Score — only when a specific project is selected */}
-          {selectedProjectId && projectActivity.length > 0 && (
+          {/* Trend graph when yearly + member selected but no drill-down */}
+          {trendData && selectedMemberId && (
+            <KpiTrendChart
+              data={trendData}
+              memberName={projectMembers.find((m) => m.user.id === selectedMemberId)?.user.fullName ?? selectedMemberId}
+            />
+          )}
+
+          {/* Project Risk Score — monthly only */}
+          {periodType === 'MONTHLY' && selectedProjectId && projectActivity.length > 0 && (
             <ProjectRiskScoreCard activity={projectActivity} />
           )}
 
           {summary && (
             <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
-              {/* Leaderboard */}
               <div className="xl:col-span-1">
                 <KpiLeaderboard employees={filteredEmployees} />
               </div>
-              {/* Score Guide */}
               <div className="xl:col-span-2">
                 <ScoreGuideCard />
               </div>
@@ -466,6 +823,7 @@ export function KpiPage() {
                 </h3>
                 <p className="text-xs text-gray-400 mt-0.5">
                   {filteredEmployees.length} employee{filteredEmployees.length !== 1 ? 's' : ''} · click a row to view full parameter breakdown
+                  {periodType !== 'MONTHLY' && <span className="ml-1 text-blue-500">· scores averaged across period</span>}
                 </p>
               </div>
               <div className="sm:ml-auto">
@@ -516,7 +874,7 @@ export function KpiPage() {
                     <tr>
                       <td colSpan={9} className="text-center py-10 text-sm text-gray-400">
                         {selectedProjectId
-                          ? 'No KPI records found for this project\'s members this period.'
+                          ? "No KPI records found for this project's members this period."
                           : 'No employees found.'}
                       </td>
                     </tr>
@@ -533,6 +891,7 @@ export function KpiPage() {
                         period={selectedPeriod}
                         isAdmin={isAdminOrSuper}
                         currentUserId={user?.id}
+                        canAddNotes={periodType === 'MONTHLY'}
                       />
                     ))}
                 </tbody>
@@ -563,6 +922,7 @@ function EmployeeRow({
   period,
   isAdmin,
   currentUserId,
+  canAddNotes,
 }: {
   employee: EmployeeKpiRecord;
   isExpanded: boolean;
@@ -571,6 +931,7 @@ function EmployeeRow({
   period?: string;
   isAdmin?: boolean;
   currentUserId?: string;
+  canAddNotes?: boolean;
 }) {
   const grade = GRADE_CONFIG[employee.grade];
 
@@ -681,7 +1042,7 @@ function EmployeeRow({
                 totalScore={employee.totalScore}
                 userId={employee.userId}
                 period={period}
-                canAddNotes={isAdmin}
+                canAddNotes={canAddNotes && isAdmin}
                 currentUserId={currentUserId}
                 isAdmin={isAdmin}
               />
