@@ -53,6 +53,7 @@ export function ProjectsPage() {
   const user = useAuthStore((s) => s.user);
   const canEdit = user?.systemRole === 'SUPER_USER' || user?.systemRole === 'ADMIN' || user?.systemRole === 'BU_HEAD';
   const isAdminOrSuper = user?.systemRole === 'SUPER_USER' || user?.systemRole === 'ADMIN';
+  const isMemberOnly = !canEdit;
 
   const [showForm, setShowForm] = useState(false);
   const [editTarget, setEditTarget] = useState<Project | null>(null);
@@ -191,14 +192,16 @@ export function ProjectsPage() {
                 placeholder="All Business Units"
               />
             )}
-            {/* Client filter */}
-            <FilterCombobox
-              options={clients}
-              value={clientFilter}
-              onChange={handleClientFilter}
-              placeholder="All Clients"
-            />
-            {!quickFilter && archivedCount > 0 && (
+            {/* Client filter — hidden for member-only users */}
+            {!isMemberOnly && (
+              <FilterCombobox
+                options={clients}
+                value={clientFilter}
+                onChange={handleClientFilter}
+                placeholder="All Clients"
+              />
+            )}
+            {!isMemberOnly && !quickFilter && archivedCount > 0 && (
               <button onClick={() => handleFilterChange('ARCHIVE')}
                 className="flex items-center gap-1.5 text-xs font-medium px-3 py-2 rounded-lg border border-gray-200 text-gray-500 hover:border-gray-400 transition">
                 <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -221,8 +224,8 @@ export function ProjectsPage() {
         </div>
       </div>
 
-      {/* Summary Panel */}
-      {summary && (
+      {/* Summary Panel — hidden for member-only users */}
+      {!isMemberOnly && summary && (
         <div className="grid grid-cols-4 gap-3 sm:grid-cols-7">
           {([
             { label: 'Active',    value: summary.active,    color: 'text-green-600',  ring: 'ring-green-400',  filter: 'ACTIVE'    },
@@ -352,8 +355,8 @@ export function ProjectsPage() {
             ))}
           </div>
 
-          {/* Pagination footer */}
-          <div className="bg-white rounded-2xl border border-[#cccccc] shadow-sm flex items-center justify-between px-5 py-3 flex-wrap gap-3">
+          {/* Pagination footer — only when more than one page */}
+          {totalPages > 1 && <div className="bg-white rounded-2xl border border-[#cccccc] shadow-sm flex items-center justify-between px-5 py-3 flex-wrap gap-3">
             <div className="flex items-center gap-2 text-xs text-gray-500">
               <span>Per page:</span>
               <select value={pageSize} onChange={(e) => handlePageSizeChange(Number(e.target.value))}
@@ -390,7 +393,7 @@ export function ProjectsPage() {
                 <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 5l7 7-7 7M6 5l7 7-7 7" /></svg>
               </button>
             </div>
-          </div>
+          </div>}
         </div>
       )}
 

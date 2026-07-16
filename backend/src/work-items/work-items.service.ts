@@ -291,6 +291,20 @@ export class WorkItemsService implements OnModuleInit {
       throw new ForbiddenException('You can only edit items assigned to or reported by you');
     }
 
+    // Status changes: only the assignee or PM (not TL, not reporter-only)
+    if (dto.status !== undefined && dto.status !== item.status) {
+      if (!isAdmin && !isPm && item.assigneeId !== userId) {
+        throw new ForbiddenException('Only the assigned team member or Project Manager can change the status');
+      }
+    }
+
+    // Assignee changes: only PM or admin
+    if (dto.assigneeId !== undefined && dto.assigneeId !== item.assigneeId) {
+      if (!isAdmin && !isPm) {
+        throw new ForbiddenException('Only the Project Manager can change the assignee');
+      }
+    }
+
     // BUG items are always Non-Billable
     if (item.type === WorkItemType.BUG || dto.type === WorkItemType.BUG) {
       dto.billingStatus = BillingStatus.NON_BILLABLE;
@@ -554,8 +568,15 @@ export class WorkItemsService implements OnModuleInit {
     return updated;
   }
 
-  async move(id: string, userId: string, dto: MoveWorkItemDto) {
+  async move(id: string, userId: string, userSystemRole: SystemRole, userProjectRole: ProjectRole | null, dto: MoveWorkItemDto) {
     const item = await this.findOneOrFail(id);
+
+    const isAdmin = userSystemRole === SystemRole.SUPER_USER || userSystemRole === SystemRole.ADMIN;
+    const isPm = userProjectRole === ProjectRole.PROJECT_MANAGER;
+    if (!isAdmin && !isPm && item.assigneeId !== userId) {
+      throw new ForbiddenException('Only the assigned team member or Project Manager can change the status');
+    }
+
     const fromIdx = STATUS_ORDER.indexOf(item.status);
     const toIdx = STATUS_ORDER.indexOf(dto.status);
     const isBackward = toIdx < fromIdx;

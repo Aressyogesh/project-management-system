@@ -92,7 +92,7 @@ export class WorkItemsController {
   @ProjectIdFrom('workItem')
   @ApiOperation({ summary: 'Move work item to new status/position' })
   move(@Param('id') id: string, @Body() dto: MoveWorkItemDto, @Request() req: any) {
-    return this.workItemsService.move(id, req.user.id, dto);
+    return this.workItemsService.move(id, req.user.id, req.user.systemRole, req.user.projectRole ?? null, dto);
   }
 
   @Delete('work-items/:id')

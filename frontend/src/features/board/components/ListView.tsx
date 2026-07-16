@@ -1,5 +1,6 @@
 ﻿import { useEffect, useRef, useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
+import * as XLSX from 'xlsx-js-style';
 import type { WorkItem } from '../types/board.types';
 
 const PAGE_SIZE = 25;
@@ -59,17 +60,151 @@ const STATUS_STYLES: Record<string, string> = {
   CLOSED:       'bg-emerald-100 text-emerald-700',
 };
 
+type SortKey = 'id' | 'title' | 'assignee' | 'type' | 'bugClassification' | 'status' | 'priority' | 'startDate' | 'dueDate' | 'age' | 'estHrs' | 'loggedHrs';
+type SortDir = 'asc' | 'desc';
+
+const PRIORITY_RANK: Record<string, number> = { LOW: 1, MEDIUM: 2, HIGH: 3, CRITICAL: 4 };
+const STATUS_RANK: Record<string, number> = { TODO: 1, IN_PROGRESS: 2, BLOCKED: 3, IN_REVIEW: 4, READY_FOR_QA: 5, IN_QA: 6, QA_DONE: 7, CLOSED: 8 };
+const TYPE_RANK: Record<string, number>    = { EPIC: 1, USER_STORY: 2, TASK: 3, SUB_TASK: 4, BUG: 5 };
+
+function SortIcon({ active, dir }: { active: boolean; dir: SortDir }) {
+  return (
+    <span className="inline-flex flex-col ml-1 shrink-0">
+      <svg className={`w-2 h-2 ${active && dir === 'asc' ? 'text-primary-600' : 'text-gray-300'}`} fill="currentColor" viewBox="0 0 24 24"><path d="M12 4l8 8H4z"/></svg>
+      <svg className={`w-2 h-2 -mt-px ${active && dir === 'desc' ? 'text-primary-600' : 'text-gray-300'}`} fill="currentColor" viewBox="0 0 24 24"><path d="M12 20l-8-8h16z"/></svg>
+    </span>
+  );
+}
+
+const BUG_CLASS_LABELS: Record<string, string> = {
+  SECURITY:            'Security',
+  CRASH_HANG:          'Crash/Hang',
+  DATA_LOSS:           'Data Loss',
+  PERFORMANCE:         'Performance',
+  UI_USABILITY:        'UI/Usability',
+  OTHER_BUG:           'Other Bug',
+  OTHER:               'Other',
+  FEATURE_NEW:         'Feature/New',
+  ENHANCEMENT:         'Enhancement',
+  DESIGN:              'Design',
+  NEW_BUG:             'New Bug',
+  CODE_REVIEW:         'Code Review',
+  UNIT_TESTING:        'Unit Testing',
+  SUGGESTION:          'Suggestion',
+  PROJECT_MANAGEMENT:  'Project Mgmt',
+  EXISTING_APPLICATION:'Existing App',
+};
+
+const STATUS_LABELS: Record<string, string> = {
+  TODO:         'To Do',
+  IN_PROGRESS:  'In Progress',
+  BLOCKED:      'Blocked',
+  IN_REVIEW:    'In Review',
+  READY_FOR_QA: 'Ready for QA',
+  IN_QA:        'In QA',
+  QA_DONE:      'QA Done',
+  CLOSED:       'Closed',
+};
+
 function fmtDate(iso: string) {
   return new Date(iso.slice(0, 10) + 'T00:00:00').toLocaleDateString('en-GB', {
     day: '2-digit', month: 'short', year: 'numeric',
   });
 }
 
+type XS = Record<string, unknown>;
+function xc(v: string | number, t: 's' | 'n', s: XS): XLSX.CellObject { return { v, t, s } as XLSX.CellObject; }
+
+export function exportListToExcel(items: (WorkItem & { _columnLabel: string })[], today: Date) {
+  const HDR: XS = {
+    font: { bold: true, color: { rgb: 'FFFFFF' }, sz: 10 },
+    fill: { patternType: 'solid', fgColor: { rgb: '1E3A5F' } },
+    alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
+    border: { bottom: { style: 'thin', color: { rgb: '2D5F8A' } } },
+  };
+
+  const HEADERS = ['#', 'ID', 'Title', 'Assignee', 'Type', 'Status', 'Priority', 'Start Date', 'Due Date', 'Age (days)', 'Est. Hrs', 'Logged Hrs'];
+  const TERMINAL = new Set(['QA_DONE', 'CLOSED']);
+
+  const wb = XLSX.utils.book_new();
+  const ws: XLSX.WorkSheet = {};
+
+  HEADERS.forEach((h, i) => { ws[XLSX.utils.encode_cell({ r: 0, c: i })] = xc(h, 's', HDR); });
+
+  items.forEach((item, idx) => {
+    const row = idx + 1;
+    const bg = idx % 2 === 0 ? 'F1F5F9' : 'FFFFFF';
+    const fill = (rgb: string): XS => ({ fill: { patternType: 'solid', fgColor: { rgb } } });
+
+    const created = new Date(item.createdAt);
+    const todayLocal = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const createdLocal = new Date(created.getFullYear(), created.getMonth(), created.getDate());
+    const ageDays = Math.floor((todayLocal.getTime() - createdLocal.getTime()) / 86400000);
+
+    const logged = item.timesheetEntries
+      ? item.timesheetEntries.reduce((s, e) => s + Number(e.hours), 0)
+      : 0;
+
+    const fmtD = (iso?: string | null) =>
+      iso ? new Date(iso.slice(0, 10) + 'T00:00:00').toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '';
+
+    const cells: { v: string | number; t: 's' | 'n'; extra?: XS }[] = [
+      { v: idx + 1,                                                    t: 'n', extra: { alignment: { horizontal: 'center' }, font: { sz: 9, color: { rgb: '94A3B8' } } } },
+      { v: item.displayId ?? item.id.slice(0, 8),                     t: 's', extra: { font: { sz: 9, color: { rgb: '64748B' } } } },
+      { v: item.title,                                                  t: 's', extra: { font: { bold: true, sz: 10 } } },
+      { v: item.assignee?.fullName ?? 'Unassigned',                    t: 's' },
+      { v: TYPE_LABELS[item.type] ?? item.type,                        t: 's', extra: { alignment: { horizontal: 'center' } } },
+      { v: STATUS_LABELS[item.status] ?? item.status,                  t: 's', extra: { alignment: { horizontal: 'center' } } },
+      { v: item.priority.charAt(0) + item.priority.slice(1).toLowerCase(), t: 's', extra: { alignment: { horizontal: 'center' } } },
+      { v: fmtD(item.startDate),                                       t: 's', extra: { alignment: { horizontal: 'center' } } },
+      { v: fmtD(item.dueDate),                                         t: 's', extra: { alignment: { horizontal: 'center' } } },
+      { v: TERMINAL.has(item.status) ? '' : String(ageDays),          t: 's', extra: { alignment: { horizontal: 'center' } } },
+      { v: item.estimatedHours != null ? `${item.estimatedHours}h` : '', t: 's', extra: { alignment: { horizontal: 'center' } } },
+      { v: logged > 0 ? `${logged}h` : '',                             t: 's', extra: { alignment: { horizontal: 'center' } } },
+    ];
+
+    cells.forEach(({ v, t, extra }, i) => {
+      ws[XLSX.utils.encode_cell({ r: row, c: i })] = xc(v, t, { ...fill(bg), font: { sz: 10 }, ...extra });
+    });
+  });
+
+  ws['!cols'] = [
+    { wch: 5 }, { wch: 12 }, { wch: 40 }, { wch: 22 },
+    { wch: 12 }, { wch: 16 }, { wch: 10 },
+    { wch: 14 }, { wch: 14 }, { wch: 11 }, { wch: 10 }, { wch: 12 },
+  ];
+  ws['!rows'] = [{ hpt: 26 }];
+  ws['!ref'] = XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: items.length, c: HEADERS.length - 1 } });
+  ws['!freeze'] = { xSplit: 0, ySplit: 1 };
+
+  XLSX.utils.book_append_sheet(wb, ws, 'Work Items');
+  const data = XLSX.write(wb, { bookType: 'xlsx', type: 'array' }) as ArrayBuffer;
+  const blob = new Blob([data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `WorkItems_${new Date().toISOString().slice(0, 10)}.xlsx`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 export function ListView({ columns, onCardClick, onDelete, canReassign, members = [], onAssigneeChange }: Props) {
   const [reassignOpenId, setReassignOpenId] = useState<string | null>(null);
   const [dropPos, setDropPos] = useState({ top: 0, left: 0 });
   const [page, setPage] = useState(1);
+  const [sortKey, setSortKey] = useState<SortKey | null>(null);
+  const [sortDir, setSortDir] = useState<SortDir>('asc');
   const dropRef = useRef<HTMLDivElement>(null);
+
+  function handleSort(key: SortKey) {
+    if (sortKey === key) {
+      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortKey(key);
+      setSortDir('asc');
+    }
+    setPage(1);
+  }
 
   useEffect(() => {
     if (!reassignOpenId) return;
@@ -97,9 +232,47 @@ export function ListView({ columns, onCardClick, onDelete, canReassign, members 
     [columns],
   );
 
-  const totalPages = Math.max(1, Math.ceil(allItems.length / PAGE_SIZE));
+  const dir = sortDir === 'asc' ? 1 : -1;
+  const nullLast = (a: number | null, b: number | null) =>
+    a === null && b === null ? 0 : a === null ? 1 : b === null ? -1 : dir * (a - b);
+  const sortedItems = !sortKey ? allItems : [...allItems].sort((a, b) => {
+    switch (sortKey) {
+      case 'id':       return dir * (a.displayId ?? a.id).localeCompare(b.displayId ?? b.id);
+      case 'title':    return dir * a.title.localeCompare(b.title);
+      case 'assignee': {
+        const an = a.assignee?.fullName ?? '', bn = b.assignee?.fullName ?? '';
+        if (!an && bn) return 1; if (an && !bn) return -1;
+        return dir * an.localeCompare(bn);
+      }
+      case 'type':     return dir * ((TYPE_RANK[a.type] ?? 99) - (TYPE_RANK[b.type] ?? 99));
+      case 'status':   return dir * ((STATUS_RANK[a.status] ?? 99) - (STATUS_RANK[b.status] ?? 99));
+      case 'priority': return dir * ((PRIORITY_RANK[a.priority] ?? 99) - (PRIORITY_RANK[b.priority] ?? 99));
+      case 'startDate': return nullLast(a.startDate ? new Date(a.startDate).getTime() : null, b.startDate ? new Date(b.startDate).getTime() : null);
+      case 'dueDate':   return nullLast(a.dueDate ? new Date(a.dueDate).getTime() : null, b.dueDate ? new Date(b.dueDate).getTime() : null);
+      case 'age':       return dir * (new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      case 'estHrs':    return nullLast(a.estimatedHours ?? null, b.estimatedHours ?? null);
+      case 'bugClassification': {
+        const av = a.bugClassification ?? null;
+        const bv = b.bugClassification ?? null;
+        if (!av && bv) return 1; if (av && !bv) return -1; if (!av && !bv) return 0;
+        const ac = BUG_CLASS_LABELS[av!] ?? av!;
+        const bc = BUG_CLASS_LABELS[bv!] ?? bv!;
+        return dir * ac.localeCompare(bc);
+      }
+      case 'loggedHrs': {
+        const al = a.timesheetEntries?.reduce((s, e) => s + Number(e.hours), 0) ?? 0;
+        const bl = b.timesheetEntries?.reduce((s, e) => s + Number(e.hours), 0) ?? 0;
+        return dir * (al - bl);
+      }
+      default: return 0;
+    }
+  });
+
+  const showBugColumns = allItems.length > 0 && allItems.every((i) => i.type === 'BUG');
+
+  const totalPages = Math.max(1, Math.ceil(sortedItems.length / PAGE_SIZE));
   const safePage = Math.min(page, totalPages);
-  const items = allItems.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+  const items = sortedItems.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
 
   useEffect(() => { setPage(1); }, [allItems.length]);
 
@@ -125,17 +298,31 @@ export function ListView({ columns, onCardClick, onDelete, canReassign, members 
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-gray-100 bg-gray-50/60">
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide w-20">ID</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Title</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide w-24">Type</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide w-32">Status</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide w-24">Priority</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide w-28">Start Date</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide w-28">Due Date</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide w-32">Assignee</th>
-              <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wide w-20">Est. Hrs</th>
-              <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wide w-24">Logged Hrs</th>
-              <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wide w-12">SP</th>
+              {([
+                { key: 'id',                label: 'ID',             cls: 'w-20 text-left' },
+                { key: 'title',             label: 'Title',          cls: 'text-left' },
+                { key: 'assignee',          label: 'Assignee',       cls: 'w-32 text-left' },
+                { key: 'type',              label: 'Type',           cls: 'w-24 text-left' },
+                ...(showBugColumns ? [{ key: 'bugClassification' as SortKey, label: 'Classification', cls: 'w-32 text-left' }] : []),
+                { key: 'status',            label: 'Status',         cls: 'w-32 text-left' },
+                { key: 'priority',          label: 'Priority',       cls: 'w-24 text-left' },
+                { key: 'startDate',         label: 'Start Date',     cls: 'w-28 text-left' },
+                { key: 'dueDate',           label: 'Due Date',       cls: 'w-28 text-left' },
+                { key: 'age',               label: 'Age',            cls: 'w-16 text-center' },
+                { key: 'estHrs',            label: 'Est. Hrs',       cls: 'w-20 text-center' },
+                { key: 'loggedHrs',         label: 'Logged Hrs',     cls: 'w-24 text-center' },
+              ] as { key: SortKey; label: string; cls: string }[]).map(({ key, label, cls }) => (
+                <th
+                  key={key}
+                  onClick={() => handleSort(key)}
+                  className={`px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide cursor-pointer select-none ${cls}`}
+                >
+                  <span className="inline-flex items-center gap-0.5">
+                    {label}
+                    <SortIcon active={sortKey === key} dir={sortDir} />
+                  </span>
+                </th>
+              ))}
               {onDelete && <th className="w-10 px-4 py-3" />}
             </tr>
           </thead>
@@ -166,12 +353,54 @@ export function ListView({ columns, onCardClick, onDelete, canReassign, members 
                     )}
                   </td>
 
+                  {/* Assignee */}
+                  <td className="px-4 py-3 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                    {canReassign ? (
+                      <button
+                        onClick={(e) => openReassign(e, item.id)}
+                        title={item.assignee ? `${item.assignee.fullName} — click to reassign` : 'Unassigned — click to assign'}
+                        className="flex items-center gap-1.5 hover:opacity-80 transition"
+                      >
+                        <div className="w-6 h-6 rounded-full bg-gray-700 flex items-center justify-center shrink-0 ring-2 ring-transparent hover:ring-primary-300 transition">
+                          <span className="text-white text-[9px] font-semibold">
+                            {item.assignee ? getInitials(item.assignee.fullName) : '?'}
+                          </span>
+                        </div>
+                        <span className="text-xs text-gray-700 truncate max-w-[80px]">
+                          {item.assignee ? item.assignee.fullName.split(' ')[0] : <span className="text-gray-300">Unassigned</span>}
+                        </span>
+                      </button>
+                    ) : item.assignee ? (
+                      <div className="flex items-center gap-1.5">
+                        <div className="w-6 h-6 rounded-full bg-gray-700 flex items-center justify-center shrink-0">
+                          <span className="text-white text-[9px] font-semibold">{getInitials(item.assignee.fullName)}</span>
+                        </div>
+                        <span className="text-xs text-gray-700 truncate max-w-[90px]">{item.assignee.fullName.split(' ')[0]}</span>
+                      </div>
+                    ) : (
+                      <span className="text-xs text-gray-300">—</span>
+                    )}
+                  </td>
+
                   {/* Type */}
                   <td className="px-4 py-3 whitespace-nowrap">
                     <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold ${TYPE_STYLES[item.type] ?? 'bg-gray-100 text-gray-600'}`}>
                       {TYPE_LABELS[item.type] ?? item.type}
                     </span>
                   </td>
+
+                  {/* Bug Classification */}
+                  {showBugColumns && (
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      {item.bugClassification ? (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-rose-50 text-rose-700">
+                          {BUG_CLASS_LABELS[item.bugClassification] ?? item.bugClassification}
+                        </span>
+                      ) : (
+                        <span className="text-xs text-gray-300">—</span>
+                      )}
+                    </td>
+                  )}
 
                   {/* Status */}
                   <td className="px-4 py-3 whitespace-nowrap">
@@ -208,33 +437,16 @@ export function ListView({ columns, onCardClick, onDelete, canReassign, members 
                     )}
                   </td>
 
-                  {/* Assignee */}
-                  <td className="px-4 py-3 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
-                    {canReassign ? (
-                      <button
-                        onClick={(e) => openReassign(e, item.id)}
-                        title={item.assignee ? `${item.assignee.fullName} — click to reassign` : 'Unassigned — click to assign'}
-                        className="flex items-center gap-1.5 hover:opacity-80 transition"
-                      >
-                        <div className="w-6 h-6 rounded-full bg-gray-700 flex items-center justify-center shrink-0 ring-2 ring-transparent hover:ring-primary-300 transition">
-                          <span className="text-white text-[9px] font-semibold">
-                            {item.assignee ? getInitials(item.assignee.fullName) : '?'}
-                          </span>
-                        </div>
-                        <span className="text-xs text-gray-700 truncate max-w-[80px]">
-                          {item.assignee ? item.assignee.fullName.split(' ')[0] : <span className="text-gray-300">Unassigned</span>}
-                        </span>
-                      </button>
-                    ) : item.assignee ? (
-                      <div className="flex items-center gap-1.5">
-                        <div className="w-6 h-6 rounded-full bg-gray-700 flex items-center justify-center shrink-0">
-                          <span className="text-white text-[9px] font-semibold">{getInitials(item.assignee.fullName)}</span>
-                        </div>
-                        <span className="text-xs text-gray-700 truncate max-w-[90px]">{item.assignee.fullName.split(' ')[0]}</span>
-                      </div>
-                    ) : (
-                      <span className="text-xs text-gray-300">—</span>
-                    )}
+                  {/* Age */}
+                  <td className="px-4 py-3 text-center whitespace-nowrap">
+                    {item.status !== 'QA_DONE' && item.status !== 'CLOSED' ? (() => {
+                      const created = new Date(item.createdAt);
+                      const todayLocal = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+                      const createdLocal = new Date(created.getFullYear(), created.getMonth(), created.getDate());
+                      const ageDays = Math.floor((todayLocal.getTime() - createdLocal.getTime()) / 86400000);
+                      const cls = ageDays >= 14 ? 'text-red-500 font-semibold' : ageDays >= 7 ? 'text-amber-500 font-medium' : 'text-gray-500';
+                      return <span className={`text-xs ${cls}`}>{ageDays}d</span>;
+                    })() : <span className="text-xs text-gray-300">—</span>}
                   </td>
 
                   {/* Estimated Hours */}
@@ -256,12 +468,6 @@ export function ListView({ columns, onCardClick, onDelete, canReassign, members 
                     })()}
                   </td>
 
-                  {/* Story Points */}
-                  <td className="px-4 py-3 text-center whitespace-nowrap">
-                    <span className="text-xs font-medium text-gray-600">
-                      {item.storyPoints ?? '—'}
-                    </span>
-                  </td>
 
                   {/* Delete */}
                   {onDelete && (
@@ -289,9 +495,9 @@ export function ListView({ columns, onCardClick, onDelete, canReassign, members 
         <p className="text-[10px] text-gray-400">
           Showing{' '}
           <span className="font-medium text-gray-600">
-            {(safePage - 1) * PAGE_SIZE + 1}–{Math.min(safePage * PAGE_SIZE, allItems.length)}
+            {(safePage - 1) * PAGE_SIZE + 1}–{Math.min(safePage * PAGE_SIZE, sortedItems.length)}
           </span>{' '}
-          of <span className="font-medium text-gray-600">{allItems.length}</span> item{allItems.length !== 1 ? 's' : ''}
+          of <span className="font-medium text-gray-600">{sortedItems.length}</span> item{sortedItems.length !== 1 ? 's' : ''}
         </p>
         {totalPages > 1 && (
           <div className="flex items-center gap-1">

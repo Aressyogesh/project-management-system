@@ -443,7 +443,7 @@ export class AnalyticsService {
           this.prisma.workItem.count({
             where: {
               assigneeId: user.id,
-              status: BoardStatus.QA_DONE,
+              status: { in: [BoardStatus.QA_DONE, BoardStatus.CLOSED] },
               completedAt: { gte: start, lt: end },
               projectId: { in: activeProjectIds },
             },
@@ -474,7 +474,7 @@ export class AnalyticsService {
         const onTimeItems = await this.prisma.workItem.count({
           where: {
             assigneeId: user.id,
-            status: BoardStatus.QA_DONE,
+            status: { in: [BoardStatus.QA_DONE, BoardStatus.CLOSED] },
             completedAt: { gte: start, lt: end },
             projectId: { in: activeProjectIds },
           },

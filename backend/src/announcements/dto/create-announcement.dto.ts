@@ -1,6 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { AnnouncementScope } from '@prisma/client';
-import { IsEnum, IsNotEmpty, IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
+import { IsArray, IsEnum, IsNotEmpty, IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
 
 export class CreateAnnouncementDto {
   @ApiProperty({ example: 'System Maintenance Tonight' })
@@ -24,4 +24,10 @@ export class CreateAnnouncementDto {
   @IsOptional()
   @IsUUID()
   projectId?: string;
+
+  @ApiPropertyOptional({ description: 'Broadcast to multiple projects (creates one announcement per project)' })
+  @IsOptional()
+  @IsArray()
+  @IsUUID('all', { each: true })
+  projectIds?: string[];
 }

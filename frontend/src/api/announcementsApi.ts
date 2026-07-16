@@ -24,8 +24,8 @@ export const announcementsApi = {
   list: (params?: { page?: number; limit?: number; latest?: boolean }) =>
     apiClient.get<AnnouncementsPage>('/announcements', { params }).then((r: { data: AnnouncementsPage }) => r.data),
 
-  create: (dto: { title: string; content: string; scope?: AnnouncementScope; projectId?: string }) =>
-    apiClient.post<AnnouncementRecord>('/announcements', dto).then((r: { data: AnnouncementRecord }) => r.data),
+  create: (dto: { title: string; content: string; scope?: AnnouncementScope; projectId?: string; projectIds?: string[] }) =>
+    apiClient.post<AnnouncementRecord | AnnouncementRecord[]>('/announcements', dto).then((r) => r.data),
 
   remove: (id: string) =>
     apiClient.delete(`/announcements/${id}`),

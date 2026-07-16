@@ -45,8 +45,43 @@ export class AnnouncementsService {
 
   async create(dto: CreateAnnouncementDto, createdById: string, userRole: SystemRole) {
     const scope = dto.scope ?? AnnouncementScope.GLOBAL;
+    const isAdmin = this.isAdminOrSuper(userRole);
 
-    if (this.isAdminOrSuper(userRole)) {
+    // ── Bulk broadcast: one announcement per project ──────────────────────────
+    if (dto.projectIds && dto.projectIds.length > 0) {
+      if (!isAdmin) {
+        const pmIds = await this.getPmProjectIds(createdById);
+        if (pmIds.length === 0) throw new ForbiddenException('Only admins or project managers can post announcements');
+        for (const pid of dto.projectIds) {
+          if (!pmIds.includes(pid)) throw new ForbiddenException('You can only post announcements for your own projects');
+        }
+      }
+
+      const results = await this.prisma.$transaction(
+        dto.projectIds.map((pid) =>
+          this.prisma.announcement.create({
+            data: { title: dto.title, content: dto.content, scope: AnnouncementScope.PROJECT, projectId: pid, createdById },
+            select: ITEM_SELECT,
+          }),
+        ),
+      );
+
+      results.forEach((r) => {
+        this.auditLogs.log({
+          userId: createdById,
+          action: AuditAction.ANNOUNCEMENT_CREATED,
+          entity: AuditEntity.ANNOUNCEMENT,
+          entityId: r.id,
+          entityTitle: r.title,
+          projectId: r.projectId ?? undefined,
+        });
+      });
+
+      return results;
+    }
+
+    // ── Single announcement ───────────────────────────────────────────────────
+    if (isAdmin) {
       if (scope === AnnouncementScope.PROJECT && !dto.projectId) {
         throw new ForbiddenException('projectId is required for PROJECT-scoped announcements');
       }

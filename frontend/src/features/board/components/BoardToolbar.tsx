@@ -35,9 +35,6 @@ interface Props {
   members: Member[];
   onCreateItem: () => void;
   onImportItems?: () => void;
-  onManageSprints: () => void;
-  onAddMilestone: () => void;
-  canManageSprints: boolean;
   canCreateItem?: boolean;
   viewMode: 'kanban' | 'list';
   onViewModeChange: (mode: 'kanban' | 'list') => void;
@@ -51,9 +48,6 @@ export function BoardToolbar({
   members,
   onCreateItem,
   onImportItems,
-  onManageSprints,
-  onAddMilestone,
-  canManageSprints,
   canCreateItem = false,
   viewMode,
   onViewModeChange,
@@ -251,32 +245,6 @@ export function BoardToolbar({
           </svg>
         </button>
       </div>
-
-      {/* Add Milestone */}
-      {canManageSprints && (
-        <button
-          onClick={onAddMilestone}
-          className="flex items-center gap-1.5 text-xs font-medium text-violet-700 hover:text-violet-900 px-3 py-1.5 border border-violet-200 rounded-lg hover:bg-violet-50 transition"
-        >
-          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 21V4M4 4h14l-4 5.5 4 5.5H4" />
-          </svg>
-          Milestone
-        </button>
-      )}
-
-      {/* Manage Sprints */}
-      {canManageSprints && (
-        <button
-          onClick={onManageSprints}
-          className="flex items-center gap-1.5 text-xs font-medium text-gray-600 hover:text-gray-900 px-3 py-1.5 border border-gray-200 rounded-lg hover:bg-gray-50 transition"
-        >
-          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
-          </svg>
-          Sprints
-        </button>
-      )}
 
       {/* Import Items — PM / Admin / Super only */}
       {canCreateItem && onImportItems && (
