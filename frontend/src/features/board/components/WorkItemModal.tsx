@@ -2127,6 +2127,7 @@ export function CreateWorkItemModal({
   const typeMenuRef = useRef<HTMLDivElement>(null);
   const [showParentMenu, setShowParentMenu] = useState(false);
   const parentMenuRef = useRef<HTMLDivElement>(null);
+  const addNewRef = useRef(false);
   const [title, setTitle] = useState(prefill?.title ?? '');
   const [description, setDescription] = useState('');
   const [priority, setPriority] = useState<TaskPriority>('MEDIUM');
@@ -2190,6 +2191,37 @@ export function CreateWorkItemModal({
     }),
   });
 
+  function resetForNewItem() {
+    setTitle('');
+    setDescription('');
+    setStoryPoints('');
+    setEstimatedHours('');
+    const today = new Date().toISOString().slice(0, 10);
+    setStartDate(today);
+    setDueDate(today);
+    setSeverity('');
+    setBugClassification('');
+    setStepsToRepro('');
+    setBugFlag('');
+    setBugReproducibility('');
+    setModule('');
+    setResponsibleUserId('');
+    setBillingStatus('');
+    setAffectedBuildVersion('');
+    setFixedBuildVersion('');
+    setReminderType('NONE');
+    setAffectedMilestoneId('');
+    setPendingFiles([]);
+    setAssigneeError(false);
+    setParentError(false);
+    setDateError('');
+    setEstHoursError(false);
+    setBillingStatusError(false);
+    setBugSeverityError(false);
+    setBugClassificationError(false);
+    setBugEnvError(false);
+  }
+
   const createMut = useMutation({
     mutationFn: (data: Partial<WorkItem>) => boardApi.createWorkItem(projectId, data),
     onSuccess: async (created) => {
@@ -2202,7 +2234,12 @@ export function CreateWorkItemModal({
         qc.invalidateQueries({ queryKey: ['workItem', effectiveParent] });
       }
       onSuccess?.(`${TYPE_CONFIG[type].label} created successfully`);
-      onSaved();
+      if (addNewRef.current) {
+        addNewRef.current = false;
+        resetForNewItem();
+      } else {
+        onSaved();
+      }
     },
   });
 
@@ -2742,10 +2779,16 @@ export function CreateWorkItemModal({
             Cancel
           </button>
           <button
+            onClick={() => { addNewRef.current = true; handleSubmit(); }}
+            disabled={!title.trim() || createMut.isPending}
+            className="px-4 py-2 text-sm text-primary-700 bg-primary-50 hover:bg-primary-100 border border-primary-200 disabled:opacity-60 rounded-lg transition">
+            {createMut.isPending && addNewRef.current ? 'Saving…' : 'Save & Add New'}
+          </button>
+          <button
             onClick={handleSubmit}
             disabled={!title.trim() || createMut.isPending}
             className="px-4 py-2 text-sm text-white bg-primary-600 hover:bg-primary-700 disabled:opacity-60 rounded-lg transition">
-            {createMut.isPending ? 'Creating…' : 'Create Item'}
+            {createMut.isPending && !addNewRef.current ? 'Creating…' : 'Create Item'}
           </button>
         </div>
       </div>
