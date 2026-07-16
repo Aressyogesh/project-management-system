@@ -59,7 +59,7 @@ export function BoardToolbar({
   onViewModeChange,
 }: Props) {
   const hasFilters = !!(
-    filters.type || filters.assigneeId || filters.priority ||
+    filters.type || filters.assigneeId || filters.unassigned || filters.priority ||
     filters.search || filters.sprintId || filters.milestoneId || filters.backlog
   );
 
@@ -163,11 +163,18 @@ export function BoardToolbar({
 
       {/* Assignee filter */}
       <select
-        value={filters.assigneeId ?? ''}
-        onChange={(e) => onFiltersChange({ ...filters, assigneeId: e.target.value || undefined })}
+        value={filters.unassigned ? 'UNASSIGNED' : (filters.assigneeId ?? '')}
+        onChange={(e) => {
+          if (e.target.value === 'UNASSIGNED') {
+            onFiltersChange({ ...filters, unassigned: true, assigneeId: undefined });
+          } else {
+            onFiltersChange({ ...filters, unassigned: undefined, assigneeId: e.target.value || undefined });
+          }
+        }}
         className={selectClass}
       >
         <option value="">All Assignees</option>
+        <option value="UNASSIGNED">Unassigned</option>
         {members.map((m) => (
           <option key={m.id} value={m.id}>{m.fullName}</option>
         ))}

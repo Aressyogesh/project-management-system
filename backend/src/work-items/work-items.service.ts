@@ -91,6 +91,7 @@ export class WorkItemsService implements OnModuleInit {
       sprintId?: string;
       milestoneId?: string;
       assigneeId?: string;
+      unassigned?: boolean;
       status?: BoardStatus;
       priority?: TaskPriority;
       search?: string;
@@ -106,7 +107,7 @@ export class WorkItemsService implements OnModuleInit {
         ...(filters.milestoneId && {
           sprint: { milestoneId: filters.milestoneId },
         }),
-        ...(filters.assigneeId && { assigneeId: filters.assigneeId }),
+        ...(filters.unassigned ? { assigneeId: null } : filters.assigneeId ? { assigneeId: filters.assigneeId } : {}),
         ...(filters.status && { status: filters.status }),
         ...(filters.priority && { priority: filters.priority }),
         ...(filters.search && {

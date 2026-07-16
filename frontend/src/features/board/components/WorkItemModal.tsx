@@ -6,7 +6,6 @@ import { UserAvatar } from '../../../components/shared/UserAvatar';
 import { futureDateStr, pastDateStr, todayStr } from '../../../utils/dateUtils';
 import {
   DEFAULT_BOARD_COLUMNS,
-  BUG_STATUS_CONFIG,
   PRIORITY_CONFIG,
   TYPE_CONFIG,
   type BillingStatus,
@@ -1870,20 +1869,6 @@ export function WorkItemModal({ item, sprints, members, milestones, canDelete = 
                     <p className="text-xs text-red-500 mb-2">{bugDetailError}</p>
                   )}
 
-                  {/* Bug Status */}
-                  <SidebarRow label="Bug Status">
-                    <select
-                      value={bugStatusLocal}
-                      onChange={(e) => setBugStatusLocal(e.target.value as BugStatus)}
-                      className={`input-sm w-full text-xs font-medium ${bugStatusLocal ? BUG_STATUS_CONFIG[bugStatusLocal as BugStatus].text : ''}`}
-                    >
-                      <option value="">— select —</option>
-                      {(Object.keys(BUG_STATUS_CONFIG) as BugStatus[]).map((s) => (
-                        <option key={s} value={s}>{BUG_STATUS_CONFIG[s].label}</option>
-                      ))}
-                    </select>
-                  </SidebarRow>
-
                   {/* Severity — required */}
                   <SidebarRow label={<>Severity {canEditSidebar && <span className="text-red-500">*</span>}</>}>
                     {canEditSidebar ? (
@@ -2637,15 +2622,6 @@ export function CreateWorkItemModal({
             <div className="border-t border-gray-100 pt-4 space-y-3">
               <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest">Bug Details</p>
               <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className={labelCls}>Bug Status</label>
-                  <select value={bugStatus} onChange={(e) => setBugStatus(e.target.value as BugStatus)} className={inputCls}>
-                    <option value="">— select —</option>
-                    {(Object.keys(BUG_STATUS_CONFIG) as BugStatus[]).map((s) => (
-                      <option key={s} value={s}>{BUG_STATUS_CONFIG[s].label}</option>
-                    ))}
-                  </select>
-                </div>
                 <div>
                   <label className={labelCls}>Severity <span className="text-red-500">*</span></label>
                   <select

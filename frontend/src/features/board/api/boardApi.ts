@@ -8,6 +8,7 @@ export interface BoardFiltersQuery {
   milestoneId?: string;
   sprintId?: string;
   assigneeId?: string;
+  unassigned?: boolean;
   status?: BoardStatus;
   priority?: string;
   search?: string;
