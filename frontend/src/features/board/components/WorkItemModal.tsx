@@ -2145,7 +2145,7 @@ export function CreateWorkItemModal({
   const [stepsToRepro, setStepsToRepro] = useState(prefill?.stepsToRepro ?? '');
   const [bugFlag, setBugFlag] = useState<BugFlag | ''>('');
   const [bugReproducibility, setBugReproducibility] = useState<BugReproducibility | ''>('');
-  const [bugStatus, setBugStatus] = useState<BugStatus | ''>('');
+  const [bugStatus] = useState<BugStatus | ''>('');
   const [module, setModule] = useState('');
   const [responsibleUserId, setResponsibleUserId] = useState('');
   const [billingStatus, setBillingStatus] = useState<BillingStatus | ''>('');
