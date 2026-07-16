@@ -9,6 +9,7 @@ import type { Milestone, MilestoneStatus } from '../../../types/milestones.types
 import type { MemberBilling, MemberEngagement, ProjectMember, ProjectRole, ProjectStatus, ProjectType } from '../../../types/projects.types';
 import { AddMemberModal } from '../components/AddMemberModal';
 import { MilestoneFormModal } from '../components/MilestoneFormModal';
+import { SprintManager } from '../../board/components/SprintManager';
 
 const TYPE_LABEL: Record<ProjectType, string> = {
   DEDICATED: 'Dedicated',
@@ -132,6 +133,7 @@ export function ProjectDetailPage() {
   } | null>(null);
   const [showMilestoneForm, setShowMilestoneForm] = useState(false);
   const [editMilestone, setEditMilestone] = useState<Milestone | null>(null);
+  const [showSprintManager, setShowSprintManager] = useState(false);
   const [membersPage, setMembersPage] = useState(1);
   const [toast, setToast] = useState<{ message: string; variant?: 'success' | 'error' } | null>(null);
 
@@ -297,17 +299,30 @@ export function ProjectDetailPage() {
             <h2 className="text-sm font-semibold text-gray-900">Team Members</h2>
             <p className="text-xs text-gray-400 mt-0.5">{members.length} member{members.length !== 1 ? 's' : ''}</p>
           </div>
-          {canEdit && (
-            <button
-              onClick={() => setShowAddMember(true)}
-              className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-lg transition"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-              Add Member
-            </button>
-          )}
+          <div className="flex items-center gap-2">
+            {canEdit && (
+              <button
+                onClick={() => setShowSprintManager(true)}
+                className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-gray-600 hover:text-gray-900 border border-gray-200 hover:bg-gray-50 rounded-lg transition"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                </svg>
+                Manage Sprints
+              </button>
+            )}
+            {canEdit && (
+              <button
+                onClick={() => setShowAddMember(true)}
+                className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-lg transition"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                Add Member
+              </button>
+            )}
+          </div>
         </div>
 
         {membersLoading ? (
@@ -715,6 +730,15 @@ export function ProjectDetailPage() {
           milestone={editMilestone ?? undefined}
           onClose={() => { setShowMilestoneForm(false); setEditMilestone(null); }}
           onSuccess={(msg) => setToast({ message: msg })}
+        />
+      )}
+
+      {showSprintManager && (
+        <SprintManager
+          projectId={projectId!}
+          milestones={milestones}
+          onClose={() => setShowSprintManager(false)}
+          onToast={(msg) => setToast({ message: msg })}
         />
       )}
 

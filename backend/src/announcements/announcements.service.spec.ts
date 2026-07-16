@@ -54,7 +54,7 @@ describe('AnnouncementsService', () => {
         'admin-uuid',
         SystemRole.ADMIN,
       );
-      expect(result.title).toBe('Team Meeting');
+      expect(Array.isArray(result) ? result[0].title : result.title).toBe('Team Meeting');
       expect(mockPrisma.announcement.create).toHaveBeenCalledTimes(1);
     });
 
@@ -66,7 +66,8 @@ describe('AnnouncementsService', () => {
         'pm-uuid',
         SystemRole.EMPLOYEE,
       );
-      expect(result.scope).toBe(AnnouncementScope.PROJECT);
+      const single = Array.isArray(result) ? result[0] : result;
+      expect(single.scope).toBe(AnnouncementScope.PROJECT);
     });
 
     it('UTC-F055-B-003: PM cannot create GLOBAL announcement', async () => {

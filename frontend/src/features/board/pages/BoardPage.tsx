@@ -11,7 +11,7 @@ import { boardApi } from '../api/boardApi';
 import type { BoardFiltersQuery } from '../api/boardApi';
 import { BoardToolbar } from '../components/BoardToolbar';
 import { KanbanColumn } from '../components/KanbanColumn';
-import { ListView } from '../components/ListView';
+import { ListView, exportListToExcel } from '../components/ListView';
 import { SprintManager } from '../components/SprintManager';
 import { CreateWorkItemModal, WorkItemModal } from '../components/WorkItemModal';
 import { ImportWorkItemsModal } from '../components/ImportWorkItemsModal';
@@ -181,6 +181,7 @@ export function BoardPage() {
   const canDeleteWorkItem = isAdminOrSuper || isMgmt;
   const canChangeBilling  = isAdminOrSuper || myProjectRole === 'PROJECT_MANAGER';
   const canEditSidebar    = isAdminOrSuper || myProjectRole === 'PROJECT_MANAGER';
+  const canChangeAssignee = isAdminOrSuper || myProjectRole === 'PROJECT_MANAGER';
   const canEditColumns    = isAdminOrSuper || isMgmt;
   const canCreateItem     = isAdminOrSuper || !!myProjectRole;
   const bugOnly           = canCreateItem && !canEditSidebar;
@@ -278,9 +279,6 @@ export function BoardPage() {
             onCreateItem={() => setShowCreate(true)}
             onImportItems={canEditSidebar ? () => setShowImport(true) : undefined}
             canCreateItem={canCreateItem}
-            onManageSprints={() => setShowSprintManager(true)}
-            onAddMilestone={() => setShowMilestoneModal(true)}
-            canManageSprints={canManageSprints}
             viewMode={viewMode}
             onViewModeChange={handleViewModeChange}
           />
@@ -310,14 +308,32 @@ export function BoardPage() {
             )}
           </div>
         ) : viewMode === 'list' ? (
+          <>
+          <div className="flex justify-end mb-2">
+            <button
+              onClick={() => {
+                const today = new Date();
+                const allItems = columns.flatMap((col) => col.items.map((item) => ({ ...item, _columnLabel: col.label })));
+                exportListToExcel(allItems, today);
+              }}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 transition"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8}
+                  d="M12 10v6m0 0l-3-3m3 3l3-3M3 17V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
+              </svg>
+              Export to Excel
+            </button>
+          </div>
           <ListView
             columns={columns}
             onCardClick={setSelectedItem}
             onDelete={canDeleteWorkItem ? (itemId) => deleteMut.mutate(itemId) : undefined}
-            canReassign={isAdminOrSuper || myProjectRole === 'PROJECT_MANAGER'}
+            canReassign={canChangeAssignee}
             members={memberOptions}
-            onAssigneeChange={(itemId, assigneeId) => assignMut.mutate({ itemId, assigneeId })}
+            onAssigneeChange={canChangeAssignee ? (itemId, assigneeId) => assignMut.mutate({ itemId, assigneeId }) : undefined}
           />
+          </>
         ) : (
           <DragDropContext onDragEnd={handleDragEnd}>
             <div className="flex gap-3 items-stretch min-h-[500px] px-1">
@@ -330,7 +346,7 @@ export function BoardPage() {
                   items={col.items}
                   members={memberOptions}
                   onCardClick={setSelectedItem}
-                  onAssigneeChange={(itemId, assigneeId) => assignMut.mutate({ itemId, assigneeId })}
+                  onAssigneeChange={canChangeAssignee ? (itemId, assigneeId) => assignMut.mutate({ itemId, assigneeId }) : undefined}
                   onDelete={canDeleteWorkItem ? (itemId) => deleteMut.mutate(itemId) : undefined}
                 />
               ))}

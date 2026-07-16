@@ -1,4 +1,4 @@
-﻿import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Draggable } from '@hello-pangea/dnd';
 import { PRIORITY_CONFIG, TYPE_CONFIG, type WorkItem } from '../types/board.types';
@@ -15,6 +15,23 @@ interface Props {
   onDelete?: (itemId: string) => void;
 }
 
+const BUG_CLASS_LABELS: Record<string, string> = {
+  SECURITY:      'Security',
+  CRASH_HANG:    'Crash/Hang',
+  DATA_LOSS:     'Data Loss',
+  PERFORMANCE:   'Performance',
+  UI_USABILITY:  'UI/UX',
+  OTHER_BUG:     'Other Bug',
+  OTHER:         'Other',
+  FEATURE_NEW:   'New Feature',
+  ENHANCEMENT:   'Enhancement',
+  DESIGN:        'Design',
+  NEW_BUG:       'New Bug',
+  CODE_REVIEW:   'Code Review',
+  UNIT_TESTING:  'Unit Testing',
+  SUGGESTION:    'Suggestion',
+};
+
 function getInitials(name: string) {
   return name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2);
 }
@@ -22,6 +39,13 @@ function getInitials(name: string) {
 function getTotalLoggedHours(item: WorkItem): number {
   if (!item.timesheetEntries) return 0;
   return item.timesheetEntries.reduce((sum, e) => sum + Number(e.hours), 0);
+}
+
+function getAge(createdAt: string): string {
+  const days = Math.floor((Date.now() - new Date(createdAt).getTime()) / (1000 * 60 * 60 * 24));
+  if (days === 0) return 'Today';
+  if (days === 1) return '1d';
+  return `${days}d`;
 }
 
 export function WorkItemCard({ item, index, members = [], onClick, onAssigneeChange, onDelete }: Props) {
@@ -117,6 +141,16 @@ export function WorkItemCard({ item, index, members = [], onClick, onAssigneeCha
                 : 'border-[#cccccc] hover:border-primary-300 hover:shadow-sm'
             }`}
           >
+            {/* ⋯ button — absolute top-right corner */}
+            <button
+              ref={ctxTriggerRef}
+              onClick={handleCtxMenu}
+              title="More actions"
+              className="absolute top-1.5 right-1.5 opacity-0 group-hover:opacity-100 p-0.5 rounded text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-opacity leading-none z-10"
+            >
+              ⋯
+            </button>
+
             {/* Parent breadcrumb */}
             {item.parent && (
               <div className="flex items-center gap-1 mb-1.5 -mt-0.5">
@@ -127,35 +161,25 @@ export function WorkItemCard({ item, index, members = [], onClick, onAssigneeCha
               </div>
             )}
 
-            {/* Type label + priority + 3-dot menu */}
-            <div className="flex items-center justify-between gap-2 mb-1.5">
-              <span
-                className="text-[9px] font-semibold uppercase tracking-wide"
-                style={{ color: TYPE_CONFIG[item.type].color }}
-              >
-                {TYPE_CONFIG[item.type].label}
-              </span>
-              <div className="flex items-center gap-1">
-                <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${priority.bg} ${priority.text}`}>
-                  {priority.label}
-                </span>
-                <button
-                  ref={ctxTriggerRef}
-                  onClick={handleCtxMenu}
-                  title="More actions"
-                  className="opacity-0 group-hover:opacity-100 p-0.5 rounded text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-opacity leading-none"
+            {/* Type label + DisplayId + Priority */}
+            <div className="flex items-center justify-between gap-2 mb-1.5 pr-5">
+              <div className="flex items-center gap-1.5 min-w-0">
+                <span
+                  className="text-[9px] font-semibold uppercase tracking-wide shrink-0"
+                  style={{ color: TYPE_CONFIG[item.type].color }}
                 >
-                  ⋯
-                </button>
+                  {TYPE_CONFIG[item.type].label}
+                </span>
+                {item.displayId && (
+                  <span className="text-[9px] font-mono text-gray-400 truncate">#{item.displayId}</span>
+                )}
               </div>
+              <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded shrink-0 ${priority.bg} ${priority.text}`}>
+                {priority.label}
+              </span>
             </div>
 
             {/* Title */}
-            {item.displayId && (
-              <span className="text-[10px] font-mono font-semibold text-gray-400 mb-0.5 block">
-                {item.displayId}
-              </span>
-            )}
             <p className="text-xs font-semibold text-gray-800 line-clamp-2 mb-2 leading-snug">
               {item.title}
             </p>
@@ -183,8 +207,8 @@ export function WorkItemCard({ item, index, members = [], onClick, onAssigneeCha
               </div>
             )}
 
-            {/* Dates */}
-            {(item.startDate || item.dueDate) && (
+            {/* Dates + Age */}
+            {(item.startDate || item.dueDate || item.createdAt) && (
               <div className="flex items-center gap-2 mb-2 text-[10px] text-gray-400">
                 {item.startDate && (
                   <span>{new Date(item.startDate.slice(0, 10) + 'T00:00:00').toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}</span>
@@ -195,22 +219,38 @@ export function WorkItemCard({ item, index, members = [], onClick, onAssigneeCha
                     {new Date(item.dueDate.slice(0, 10) + 'T00:00:00').toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}
                   </span>
                 )}
+                {(item.startDate || item.dueDate) && <span className="text-gray-300">·</span>}
+                <span>Age: {getAge(item.createdAt)}</span>
               </div>
             )}
 
-            {/* Estimated hours */}
-            {item.estimatedHours != null && (
-              <div className="text-[10px] text-gray-400 mb-2">
-                Est. {Number(item.estimatedHours)}h
+            {/* Bug classification */}
+            {item.type === 'BUG' && item.bugClassification && (
+              <div className="mb-2">
+                <span className="inline-flex items-center text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-rose-50 text-rose-700 border border-rose-100">
+                  {BUG_CLASS_LABELS[item.bugClassification] ?? item.bugClassification}
+                </span>
               </div>
             )}
 
-            {/* Footer: logged hours, children count, assignee */}
+            {/* Est. hours · Logged hours — same line */}
+            {(item.estimatedHours != null || loggedHours > 0) && (
+              <div className="text-[10px] text-gray-400 mb-2 flex items-center gap-1.5">
+                {item.estimatedHours != null && (
+                  <span>Est. {Number(item.estimatedHours)}h</span>
+                )}
+                {item.estimatedHours != null && loggedHours > 0 && (
+                  <span className="text-gray-300">·</span>
+                )}
+                {loggedHours > 0 && (
+                  <span>{loggedHours}h logged</span>
+                )}
+              </div>
+            )}
+
+            {/* Footer: children, comments, PR link, assignee */}
             <div className="flex items-center justify-between gap-2 mt-2">
               <div className="flex items-center gap-2">
-                {loggedHours > 0 && (
-                  <span className="text-[10px] text-gray-400">{loggedHours}h logged</span>
-                )}
                 {childCount > 0 && (
                   <span className="text-[10px] text-gray-400">{childCount} sub</span>
                 )}

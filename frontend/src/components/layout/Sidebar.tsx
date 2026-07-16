@@ -151,6 +151,8 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { path: '/dashboard',       label: 'Overview',        Icon: IconOverview },
+  { path: '/kpi',             label: 'KPI',             Icon: IconKpi },
+  { path: '/reports',         label: 'Reports',         Icon: IconReports },
   { path: '/business-units',  label: 'Business Units',  Icon: IconBusinessUnit,   roles: ['SUPER_USER', 'ADMIN'] },
   { path: '/departments',     label: 'Departments',     Icon: IconDepartments,    roles: ['SUPER_USER', 'ADMIN'] },
   { path: '/clients',         label: 'Clients',         Icon: IconClients,        roles: ['SUPER_USER', 'ADMIN'] },
@@ -159,8 +161,6 @@ const navItems: NavItem[] = [
   { path: '/projects',        label: 'Projects',        Icon: IconProjects },
   { path: '/timesheet',       label: 'Timesheet',       Icon: IconTimesheet },
   { path: '/leave-logs',      label: 'Leave Management',  Icon: IconLeave },
-  { path: '/kpi',             label: 'KPI',             Icon: IconKpi },
-  { path: '/reports',         label: 'Reports',         Icon: IconReports },
   { path: '/announcements',   label: 'Announcements',   Icon: IconAnnouncements },
   { path: '/activity',        label: 'Activity Log',    Icon: IconActivity,      roles: ['SUPER_USER', 'ADMIN'] },
 ];
@@ -200,9 +200,9 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
   });
 
   const upskillItem: NavItem = { path: '/upskill', label: 'Learn & Innovate', Icon: IconUpskill };
-  const kpiIdx = baseNav.findIndex((n) => n.path === '/kpi');
-  const visibleNav = kpiIdx >= 0
-    ? [...baseNav.slice(0, kpiIdx + 1), upskillItem, ...baseNav.slice(kpiIdx + 1)]
+  const timesheetIdx = baseNav.findIndex((n) => n.path === '/timesheet');
+  const visibleNav = timesheetIdx >= 0
+    ? [...baseNav.slice(0, timesheetIdx + 1), upskillItem, ...baseNav.slice(timesheetIdx + 1)]
     : [...baseNav, upskillItem];
 
   const sidebarContent = (

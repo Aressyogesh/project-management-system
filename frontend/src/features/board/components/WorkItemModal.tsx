@@ -61,7 +61,10 @@ interface CreateProps {
 }
 
 function fmtDate(iso: string) {
-  return new Date(iso).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+  if (!iso) return '—';
+  const d = new Date(iso.length === 10 ? iso + 'T00:00:00' : iso);
+  if (isNaN(d.getTime())) return '—';
+  return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
 function Avatar({ name, photo, size = 'sm' }: { name: string; photo?: string | null; size?: 'sm' | 'xs' }) {
@@ -1277,7 +1280,7 @@ export function WorkItemModal({ item, sprints, members, milestones, canDelete = 
                     </div>
                     <div>
                       <textarea
-                        placeholder="Description (optional)"
+                        placeholder="Description *"
                         value={logDesc}
                         onChange={(e) => setLogDesc(e.target.value)}
                         maxLength={1000}
@@ -1288,24 +1291,24 @@ export function WorkItemModal({ item, sprints, members, milestones, canDelete = 
                     </div>
                     <button
                       onClick={() => {
-                        if (!logDate || !logHours) return;
+                        if (!logDate || !logHours || !logDesc.trim()) return;
                         logTimeMut.mutate(
-                          { date: logDate, hours: Number(logHours), description: logDesc || undefined },
+                          { date: logDate, hours: Number(logHours), description: logDesc.trim() },
                           { onSuccess: () => { setLogHours(''); setLogDesc(''); } },
                         );
                       }}
-                      disabled={!logDate || !logHours || logTimeMut.isPending}
+                      disabled={!logDate || !logHours || !logDesc.trim() || logTimeMut.isPending}
                       className="btn-primary text-xs px-4 py-1.5"
                     >
                       {logTimeMut.isPending ? 'Logging…' : 'Log Time'}
                     </button>
                     {(detail.timesheetEntries ?? []).length > 0 && (
                       <div className="space-y-1.5">
-                        {(detail.timesheetEntries ?? []).map((entry) => (
+                        {(detail.timesheetEntries ?? []).filter(e => !!e.date).map((entry) => (
                           <div key={entry.id} className="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2">
                             <div>
                               <p className="text-xs font-medium text-gray-800">{fmtDate(entry.date)} · <span className="text-emerald-600">{entry.hours}h</span></p>
-                              {entry.description && <p className="text-xs text-gray-500">{entry.description}</p>}
+                              {entry.description && <p className="text-xs text-gray-600 mt-0.5">{entry.description}</p>}
                               <p className="text-[10px] text-gray-400">{entry.user?.fullName}</p>
                             </div>
                             {(entry.userId === user?.id || user?.systemRole !== 'EMPLOYEE') && (
@@ -1445,23 +1448,32 @@ export function WorkItemModal({ item, sprints, members, milestones, canDelete = 
               {/* Status */}
               <div className="mb-4">
                 <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-2">Status</p>
-                <select
-                  value={detail.status}
-                  onChange={(e) => updateMut.mutate({ status: e.target.value as BoardStatus })}
-                  className={`w-full font-semibold text-sm rounded-lg px-3 py-2 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500 cursor-pointer bg-white ${
+                {(() => {
+                  const canChangeStatus = canEditSidebar || detail.assigneeId === user?.id;
+                  const statusColor =
                     detail.status === 'TODO' ? 'text-gray-700' :
                     detail.status === 'IN_PROGRESS' ? 'text-blue-700' :
                     detail.status === 'BLOCKED' ? 'text-red-700' :
                     detail.status === 'IN_REVIEW' ? 'text-amber-700' :
                     detail.status === 'READY_FOR_QA' ? 'text-purple-700' :
                     detail.status === 'IN_QA' ? 'text-indigo-700' :
-                    'text-emerald-700'
-                  }`}
-                >
-                  {DEFAULT_BOARD_COLUMNS.map((c) => (
-                    <option key={c.status} value={c.status}>{c.label}</option>
-                  ))}
-                </select>
+                    'text-emerald-700';
+                  return canChangeStatus ? (
+                    <select
+                      value={detail.status}
+                      onChange={(e) => updateMut.mutate({ status: e.target.value as BoardStatus })}
+                      className={`w-full font-semibold text-sm rounded-lg px-3 py-2 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500 cursor-pointer bg-white ${statusColor}`}
+                    >
+                      {DEFAULT_BOARD_COLUMNS.map((c) => (
+                        <option key={c.status} value={c.status}>{c.label}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <div className={`w-full font-semibold text-sm rounded-lg px-3 py-2 border border-gray-100 bg-gray-50 ${statusColor}`}>
+                      {DEFAULT_BOARD_COLUMNS.find((c) => c.status === detail.status)?.label ?? detail.status}
+                    </div>
+                  );
+                })()}
               </div>
 
               <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest pb-1">Details</p>

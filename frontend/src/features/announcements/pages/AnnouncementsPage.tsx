@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from 'react';
+﻿import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '../../../store/authStore';
@@ -18,15 +18,19 @@ function timeAgo(iso: string): string {
   return new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
-interface ProjectOption { id: string; name: string; }
+const ALL_PROJECTS_VALUE = '__ALL__';
+
+interface ProjectOption { id: string; name: string; buId?: string; buName?: string; }
 
 function AddAnnouncementModal({
   isAdmin,
+  isSuperAdmin,
   projects,
   onClose,
   onSuccess,
 }: {
   isAdmin: boolean;
+  isSuperAdmin: boolean;
   projects: ProjectOption[];
   onClose: () => void;
   onSuccess: () => void;
@@ -34,6 +38,7 @@ function AddAnnouncementModal({
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [scope, setScope] = useState<AnnouncementScope>(isAdmin ? 'GLOBAL' : 'PROJECT');
+  const [selectedBuId, setSelectedBuId] = useState('');
   const [projectId, setProjectId] = useState('');
   const [errors, setErrors] = useState<{ title?: string; content?: string; projectId?: string }>({});
 
@@ -42,6 +47,19 @@ function AddAnnouncementModal({
     onSuccess: () => { onSuccess(); onClose(); },
   });
 
+  // BU list derived from admin projects (only relevant for super admin)
+  const buOptions = useMemo(() => {
+    const map = new Map<string, string>();
+    projects.forEach((p) => { if (p.buId) map.set(p.buId, p.buName ?? p.buId); });
+    return Array.from(map.entries()).map(([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name));
+  }, [projects]);
+
+  // Projects visible in the dropdown (filtered by BU for super admin)
+  const visibleProjects = useMemo(() => {
+    if (isSuperAdmin && selectedBuId) return projects.filter((p) => p.buId === selectedBuId);
+    return projects;
+  }, [projects, isSuperAdmin, selectedBuId]);
+
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     const errs: typeof errors = {};
@@ -49,12 +67,19 @@ function AddAnnouncementModal({
     if (!content.trim()) errs.content = 'Content is required';
     if (scope === 'PROJECT' && !projectId) errs.projectId = 'Please select a project';
     if (Object.keys(errs).length) { setErrors(errs); return; }
-    mutate({
-      title: title.trim(),
-      content: content.trim(),
-      scope,
-      projectId: scope === 'PROJECT' ? projectId : undefined,
-    });
+
+    if (scope === 'PROJECT' && projectId === ALL_PROJECTS_VALUE) {
+      const ids = visibleProjects.map((p) => p.id);
+      if (ids.length === 0) { setErrors({ projectId: 'No projects available in the selected BU' }); return; }
+      mutate({ title: title.trim(), content: content.trim(), scope, projectIds: ids });
+    } else {
+      mutate({
+        title: title.trim(),
+        content: content.trim(),
+        scope,
+        projectId: scope === 'PROJECT' ? projectId : undefined,
+      });
+    }
   }
 
   return (
@@ -81,13 +106,39 @@ function AddAnnouncementModal({
                       type="radio"
                       value={s}
                       checked={scope === s}
-                      onChange={() => { setScope(s); setProjectId(''); setErrors((p) => ({ ...p, projectId: undefined })); }}
+                      onChange={() => {
+                        setScope(s);
+                        setSelectedBuId('');
+                        setProjectId('');
+                        setErrors({});
+                      }}
                       className="accent-gray-900"
                     />
                     <span className="text-sm text-gray-700">{s === 'GLOBAL' ? 'All users (Global)' : 'Project team only'}</span>
                   </label>
                 ))}
               </div>
+            </div>
+          )}
+
+          {/* BU selector — Super Admin (SUPER_USER/ADMIN) only, optional filter */}
+          {scope === 'PROJECT' && isSuperAdmin && buOptions.length > 0 && (
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">Filter by Business Unit</label>
+              <select
+                value={selectedBuId}
+                onChange={(e) => {
+                  setSelectedBuId(e.target.value);
+                  setProjectId('');
+                  setErrors((prev) => ({ ...prev, projectId: undefined }));
+                }}
+                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500/40 focus:border-primary-400"
+              >
+                <option value="">All Business Units</option>
+                {buOptions.map((bu) => (
+                  <option key={bu.id} value={bu.id}>{bu.name}</option>
+                ))}
+              </select>
             </div>
           )}
 
@@ -101,7 +152,12 @@ function AddAnnouncementModal({
                 className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500/40 focus:border-primary-400"
               >
                 <option value="">Select project…</option>
-                {projects.map((p) => (
+                {visibleProjects.length >= 1 && (
+                  <option value={ALL_PROJECTS_VALUE}>
+                    All Projects ({visibleProjects.length})
+                  </option>
+                )}
+                {visibleProjects.map((p) => (
                   <option key={p.id} value={p.id}>{p.name}</option>
                 ))}
               </select>
@@ -229,6 +285,7 @@ export function AnnouncementsPage() {
 
   const isAdmin = user?.systemRole === 'SUPER_USER' || user?.systemRole === 'ADMIN' || user?.systemRole === 'BU_HEAD';
   const isBuHead = user?.systemRole === 'BU_HEAD';
+  const isSuperAdmin = user?.systemRole === 'SUPER_USER' || user?.systemRole === 'ADMIN';
   const isPm = user?.hasPmRole === true;
 
   useEffect(() => {
@@ -252,9 +309,17 @@ export function AnnouncementsPage() {
     staleTime: 120_000,
   });
 
-  const projects: ProjectOption[] = isAdmin
-    ? adminProjects.map((p: { id: string; name: string }) => ({ id: p.id, name: p.name }))
-    : pmProjects.map((p: { id: string; name: string }) => ({ id: p.id, name: p.name }));
+  const projects: ProjectOption[] = useMemo(() => {
+    if (isAdmin) {
+      return adminProjects.map((p: any) => ({
+        id: p.id,
+        name: p.name,
+        buId: p.department?.businessUnit?.id as string | undefined,
+        buName: p.department?.businessUnit?.name as string | undefined,
+      }));
+    }
+    return pmProjects.map((p: { id: string; name: string }) => ({ id: p.id, name: p.name }));
+  }, [isAdmin, adminProjects, pmProjects]);
 
   const { data, isLoading } = useQuery({
     queryKey: ['announcements', page],
@@ -349,6 +414,7 @@ export function AnnouncementsPage() {
       {showModal && (
         <AddAnnouncementModal
           isAdmin={isAdmin}
+          isSuperAdmin={isSuperAdmin}
           projects={projects}
           onClose={() => setShowModal(false)}
           onSuccess={() => {
