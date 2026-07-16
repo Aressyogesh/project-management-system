@@ -6,7 +6,7 @@ import { milestonesApi } from '../../../api/milestones.api';
 import { projectsApi } from '../../../api/projects.api';
 import { useAuthStore } from '../../../store/authStore';
 import type { Milestone, MilestoneStatus } from '../../../types/milestones.types';
-import type { ProjectMember, ProjectRole, ProjectStatus, ProjectType } from '../../../types/projects.types';
+import type { MemberBilling, MemberEngagement, ProjectMember, ProjectRole, ProjectStatus, ProjectType } from '../../../types/projects.types';
 import { AddMemberModal } from '../components/AddMemberModal';
 import { MilestoneFormModal } from '../components/MilestoneFormModal';
 
@@ -75,6 +75,24 @@ const ROLE_OPTIONS: { value: ProjectRole; label: string }[] = [
   { value: 'DEVOPS', label: 'DevOps' },
 ];
 
+const BILLING_OPTIONS: { value: MemberBilling; label: string }[] = [
+  { value: 'BILLABLE', label: 'Billable' },
+  { value: 'NON_BILLABLE', label: 'Non-Billable' },
+];
+
+const BILLING_COLOR: Record<MemberBilling, string> = {
+  BILLABLE: 'bg-green-100 text-green-700',
+  NON_BILLABLE: 'bg-gray-100 text-gray-500',
+};
+
+const ENGAGEMENT_OPTIONS: { value: MemberEngagement; label: string; hours?: number }[] = [
+  { value: 'FULL_DAY', label: 'Full Day', hours: 8.5 },
+  { value: 'HALF_DAY', label: 'Half Day', hours: 4 },
+  { value: 'PARTIAL', label: 'Partial' },
+];
+
+const PARTIAL_HOURS = [1, 2, 3, 4, 5, 6, 7, 8] as const;
+
 function Toast({ message, variant = 'success', onClose }: { message: string; variant?: 'success' | 'error'; onClose: () => void }) {
   return (
     <div className={`fixed bottom-6 right-6 z-[100] flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg text-sm font-medium text-white min-w-[240px] max-w-sm ${variant === 'error' ? 'bg-red-600' : 'bg-gray-900'}`}>
@@ -105,7 +123,13 @@ export function ProjectDetailPage() {
   const isAdminOrSuper = user?.systemRole === 'SUPER_USER' || user?.systemRole === 'ADMIN' || user?.systemRole === 'BU_HEAD';
 
   const [showAddMember, setShowAddMember] = useState(false);
-  const [editingRole, setEditingRole] = useState<{ userId: string; role: ProjectRole } | null>(null);
+  const [editingMember, setEditingMember] = useState<{
+    userId: string;
+    role: ProjectRole;
+    billing: MemberBilling;
+    engagement: MemberEngagement;
+    engagementHours: number | null;
+  } | null>(null);
   const [showMilestoneForm, setShowMilestoneForm] = useState(false);
   const [editMilestone, setEditMilestone] = useState<Milestone | null>(null);
   const [membersPage, setMembersPage] = useState(1);
@@ -171,12 +195,12 @@ export function ProjectDetailPage() {
     },
   });
 
-  const updateRoleMutation = useMutation({
-    mutationFn: ({ userId, role }: { userId: string; role: ProjectRole }) =>
-      projectsApi.updateMemberRole(projectId!, userId, role),
+  const updateMemberMutation = useMutation({
+    mutationFn: (payload: { userId: string; data: Parameters<typeof projectsApi.updateMember>[2] }) =>
+      projectsApi.updateMember(projectId!, payload.userId, payload.data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['project-members', projectId] });
-      setEditingRole(null);
+      setEditingMember(null);
     },
   });
 
@@ -304,7 +328,8 @@ export function ProjectDetailPage() {
                   <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Member</th>
                   <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Department</th>
                   <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Project Role</th>
-                  <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Joined</th>
+                  <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Billing</th>
+                  <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Engagement</th>
                   {canEdit && <th className="px-6 py-3" />}
                 </tr>
               </thead>
@@ -323,63 +348,127 @@ export function ProjectDetailPage() {
                     <td className="px-6 py-3 text-sm text-gray-500">
                       {member.user.department?.name ?? '—'}
                     </td>
+                    {/* Project Role */}
                     <td className="px-6 py-3">
-                      {canEdit && editingRole?.userId === member.user.id ? (
-                        <div className="flex items-center gap-2">
-                          <select
-                            value={editingRole.role}
-                            onChange={(e) => setEditingRole({ userId: member.user.id, role: e.target.value as ProjectRole })}
-                            className="text-xs border border-gray-200 rounded-md px-2 py-1 focus:outline-none focus:ring-1 focus:ring-primary-500"
-                          >
-                            {ROLE_OPTIONS.map((opt) => (
-                              <option key={opt.value} value={opt.value}>{opt.label}</option>
-                            ))}
-                          </select>
-                          <button
-                            onClick={() => updateRoleMutation.mutate({ userId: member.user.id, role: editingRole.role })}
-                            disabled={updateRoleMutation.isPending}
-                            className="text-xs text-white bg-primary-600 hover:bg-primary-700 px-2 py-1 rounded-md transition"
-                          >
-                            Save
-                          </button>
-                          <button onClick={() => setEditingRole(null)} className="text-xs text-gray-500 hover:text-gray-700">
-                            Cancel
-                          </button>
-                        </div>
+                      {canEdit && editingMember?.userId === member.user.id ? (
+                        <select
+                          value={editingMember.role}
+                          onChange={(e) => setEditingMember({ ...editingMember, role: e.target.value as ProjectRole })}
+                          className="text-xs border border-gray-200 rounded-md px-2 py-1 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                        >
+                          {ROLE_OPTIONS.map((opt) => (
+                            <option key={opt.value} value={opt.value}>{opt.label}</option>
+                          ))}
+                        </select>
                       ) : (
                         <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${ROLE_COLOR[member.projectRole]}`}>
                           {ROLE_LABEL[member.projectRole]}
                         </span>
                       )}
                     </td>
-                    <td className="px-6 py-3 text-sm text-gray-400">
-                      {new Date(member.joinedAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+
+                    {/* Billing */}
+                    <td className="px-6 py-3">
+                      {canEdit && editingMember?.userId === member.user.id ? (
+                        <select
+                          value={editingMember.billing}
+                          onChange={(e) => setEditingMember({ ...editingMember, billing: e.target.value as MemberBilling })}
+                          className="text-xs border border-gray-200 rounded-md px-2 py-1 focus:outline-none focus:ring-1 focus:ring-primary-500 bg-white"
+                        >
+                          {BILLING_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                        </select>
+                      ) : (
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${BILLING_COLOR[member.billing ?? 'BILLABLE']}`}>
+                          {BILLING_OPTIONS.find((o) => o.value === (member.billing ?? 'BILLABLE'))?.label}
+                        </span>
+                      )}
                     </td>
+
+                    {/* Engagement */}
+                    <td className="px-6 py-3">
+                      {canEdit && editingMember?.userId === member.user.id ? (
+                        <div className="flex items-center gap-1.5">
+                          <select
+                            value={editingMember.engagement}
+                            onChange={(e) => setEditingMember({ ...editingMember, engagement: e.target.value as MemberEngagement, engagementHours: null })}
+                            className="text-xs border border-gray-200 rounded-md px-2 py-1 focus:outline-none focus:ring-1 focus:ring-primary-500 bg-white"
+                          >
+                            {ENGAGEMENT_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}{o.hours ? ` (${o.hours}h)` : ''}</option>)}
+                          </select>
+                          {editingMember.engagement === 'PARTIAL' && (
+                            <select
+                              value={editingMember.engagementHours ?? ''}
+                              onChange={(e) => setEditingMember({ ...editingMember, engagementHours: Number(e.target.value) })}
+                              className="text-xs border border-gray-200 rounded-md px-2 py-1 focus:outline-none focus:ring-1 focus:ring-primary-500 bg-white"
+                            >
+                              <option value="">— hrs</option>
+                              {PARTIAL_HOURS.map((h) => <option key={h} value={h}>{h}h</option>)}
+                            </select>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-xs text-gray-600">
+                          {(member.engagement === 'FULL_DAY' || !member.engagement) && 'Full Day (8.5h)'}
+                          {member.engagement === 'HALF_DAY' && 'Half Day (4h)'}
+                          {member.engagement === 'PARTIAL' && `Partial${member.engagementHours ? ` (${member.engagementHours}h)` : ''}`}
+                        </span>
+                      )}
+                    </td>
+
                     {canEdit && (
                       <td className="px-6 py-3">
-                        <div className="flex items-center gap-1 justify-end">
-                          <button
-                            title="Change role"
-                            onClick={() => setEditingRole({ userId: member.user.id, role: member.projectRole })}
-                            className="p-1.5 rounded-lg text-gray-400 hover:text-primary-600 hover:bg-primary-50 transition"
-                          >
-                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                                d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                            </svg>
-                          </button>
-                          <button
-                            title="Remove member"
-                            onClick={() => removeMutation.mutate(member.user.id)}
-                            disabled={removeMutation.isPending}
-                            className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition"
-                          >
-                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                            </svg>
-                          </button>
-                        </div>
+                        {editingMember?.userId === member.user.id ? (
+                          <div className="flex items-center gap-1.5 justify-end">
+                            <button
+                              onClick={() => updateMemberMutation.mutate({
+                                userId: member.user.id,
+                                data: {
+                                  projectRole: editingMember.role,
+                                  billing: editingMember.billing,
+                                  engagement: editingMember.engagement,
+                                  engagementHours: editingMember.engagementHours,
+                                },
+                              })}
+                              disabled={updateMemberMutation.isPending}
+                              className="text-xs text-white bg-primary-600 hover:bg-primary-700 px-2 py-1 rounded-md transition"
+                            >
+                              Save
+                            </button>
+                            <button onClick={() => setEditingMember(null)} className="text-xs text-gray-500 hover:text-gray-700">
+                              Cancel
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-1 justify-end">
+                            <button
+                              title="Edit member"
+                              onClick={() => setEditingMember({
+                                userId: member.user.id,
+                                role: member.projectRole,
+                                billing: member.billing ?? 'BILLABLE',
+                                engagement: member.engagement ?? 'FULL_DAY',
+                                engagementHours: member.engagementHours,
+                              })}
+                              className="p-1.5 rounded-lg text-gray-400 hover:text-primary-600 hover:bg-primary-50 transition"
+                            >
+                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                                  d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                              </svg>
+                            </button>
+                            <button
+                              title="Remove member"
+                              onClick={() => removeMutation.mutate(member.user.id)}
+                              disabled={removeMutation.isPending}
+                              className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition"
+                            >
+                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                              </svg>
+                            </button>
+                          </div>
+                        )}
                       </td>
                     )}
                   </tr>

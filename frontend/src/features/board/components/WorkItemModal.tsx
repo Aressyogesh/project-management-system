@@ -667,13 +667,13 @@ export function WorkItemModal({ item, sprints, members, milestones, canDelete = 
     updateMut.mutate({ labels: (detail?.labels ?? []).filter((l) => l !== label) });
   }
 
-  const defaultChildType: WorkItemType = detail.type === 'EPIC' ? 'USER_STORY' : detail.type === 'USER_STORY' ? 'TASK' : 'SUB_TASK';
+  const defaultChildType: WorkItemType = detail.type === 'EPIC' ? 'USER_STORY' : 'TASK';
   const childTypeOptions: WorkItemType[] =
     detail.type === 'EPIC' ? ['USER_STORY', 'BUG'] :
     detail.type === 'USER_STORY' ? ['TASK', 'BUG'] :
-    ['SUB_TASK'];
+    [];
   const childSectionLabel = detail.type === 'EPIC' ? 'Children' : detail.type === 'USER_STORY' ? 'Tasks & Bugs' : 'Sub Tasks';
-  const canAddChildren = detail.type === 'EPIC' || detail.type === 'USER_STORY' || detail.type === 'TASK';
+  const canAddChildren = detail.type === 'EPIC' || detail.type === 'USER_STORY';
   const activeChildType: WorkItemType = childTypeOptions.includes(newChildType) ? newChildType : defaultChildType;
 
   return (
@@ -2196,12 +2196,11 @@ export function CreateWorkItemModal({
   const { data: parentOptions = [] } = useQuery({
     queryKey: ['workItems-parents', projectId],
     queryFn: () => boardApi.getWorkItems(projectId),
-    enabled: ['USER_STORY', 'TASK', 'SUB_TASK', 'BUG'].includes(type),
+    enabled: ['USER_STORY', 'TASK', 'BUG'].includes(type),
     select: (items) => items.filter((i) => {
       if (type === 'USER_STORY') return i.type === 'EPIC';
       if (type === 'TASK') return i.type === 'EPIC' || i.type === 'USER_STORY';
-      if (type === 'BUG') return i.type === 'EPIC' || i.type === 'USER_STORY' || i.type === 'TASK' || i.type === 'SUB_TASK';
-      if (type === 'SUB_TASK') return i.type === 'TASK' || i.type === 'USER_STORY';
+      if (type === 'BUG') return i.type === 'EPIC' || i.type === 'USER_STORY' || i.type === 'TASK';
       return false;
     }),
   });
@@ -2304,8 +2303,8 @@ export function CreateWorkItemModal({
     } as Partial<WorkItem>);
   }
 
-  const CREATABLE_TYPES: WorkItemType[] = ['EPIC', 'USER_STORY', 'TASK', 'SUB_TASK', 'BUG'];
-  const needsParent = ['USER_STORY', 'TASK', 'SUB_TASK', 'BUG'].includes(type) && !parentId;
+  const CREATABLE_TYPES: WorkItemType[] = ['EPIC', 'USER_STORY', 'TASK', 'BUG'];
+  const needsParent = ['USER_STORY', 'TASK', 'BUG'].includes(type) && !parentId;
   const cfg = TYPE_CONFIG[type];
   const labelCls = 'block text-xs font-medium text-gray-600 mb-1';
   const inputCls = 'w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white';
@@ -2385,8 +2384,7 @@ export function CreateWorkItemModal({
                 <span className="text-gray-400 font-normal ml-1">
                   {type === 'USER_STORY' && '(Epic)'}
                   {type === 'TASK' && '(Epic / Story)'}
-                  {type === 'SUB_TASK' && '(Story / Task)'}
-                  {type === 'BUG' && '(Epic / Story / Task / Sub Task)'}
+                  {type === 'BUG' && '(Epic / Story / Task)'}
                 </span>
               </label>
               {parentOptions.length > 0 ? (

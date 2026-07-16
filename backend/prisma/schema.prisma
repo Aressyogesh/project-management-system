@@ -102,6 +102,17 @@ enum WorkItemType {
   BUG
 }
 
+enum MemberBilling {
+  BILLABLE
+  NON_BILLABLE
+}
+
+enum MemberEngagement {
+  FULL_DAY
+  HALF_DAY
+  PARTIAL
+}
+
 enum BoardStatus {
   TODO
   IN_PROGRESS
@@ -538,11 +549,14 @@ model TaskComment {
 // ─── Project Member ───────────────────────────────────────────────────────────
 
 model ProjectMember {
-  id          String      @id @default(uuid())
-  projectId   String
-  userId      String
-  projectRole ProjectRole
-  joinedAt    DateTime    @default(now())
+  id              String           @id @default(uuid())
+  projectId       String
+  userId          String
+  projectRole     ProjectRole
+  billing         MemberBilling    @default(BILLABLE)
+  engagement      MemberEngagement @default(FULL_DAY)
+  engagementHours Int?
+  joinedAt        DateTime         @default(now())
 
   project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
   user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)

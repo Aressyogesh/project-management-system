@@ -53,9 +53,15 @@ export interface ProjectMemberUser {
   department: { id: string; name: string } | null;
 }
 
+export type MemberBilling = 'BILLABLE' | 'NON_BILLABLE';
+export type MemberEngagement = 'FULL_DAY' | 'HALF_DAY' | 'PARTIAL';
+
 export interface ProjectMember {
   id: string;
   projectRole: ProjectRole;
+  billing: MemberBilling;
+  engagement: MemberEngagement;
+  engagementHours: number | null;
   joinedAt: string;
   user: ProjectMemberUser;
 }

@@ -3,13 +3,17 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { AuditAction, AuditEntity, ProjectRole } from '@prisma/client';
+import { AuditAction, AuditEntity, MemberEngagement, ProjectRole } from '@prisma/client';
+import { UpdateMemberDto } from './dto/project-member.dto';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditLogsService } from '../audit-logs/audit-logs.service';
 
 const MEMBER_SELECT = {
   id: true,
   projectRole: true,
+  billing: true,
+  engagement: true,
+  engagementHours: true,
   joinedAt: true,
   user: {
     select: {
@@ -66,26 +70,41 @@ export class ProjectMembersService {
   }
 
   async updateRole(projectId: string, userId: string, projectRole: ProjectRole, actorId: string) {
+    return this.updateMember(projectId, userId, { projectRole }, actorId);
+  }
+
+  async updateMember(projectId: string, userId: string, dto: UpdateMemberDto, actorId: string) {
     const member = await this.prisma.projectMember.findUnique({
       where: { projectId_userId: { projectId, userId } },
     });
     if (!member) throw new NotFoundException('Member not found in this project');
 
+    const data: Record<string, unknown> = {};
+    if (dto.projectRole !== undefined) data.projectRole = dto.projectRole;
+    if (dto.billing !== undefined) data.billing = dto.billing;
+    if (dto.engagement !== undefined) {
+      data.engagement = dto.engagement;
+      if (dto.engagement !== MemberEngagement.PARTIAL) data.engagementHours = null;
+    }
+    if (dto.engagementHours !== undefined) data.engagementHours = dto.engagementHours;
+
     const updated = await this.prisma.projectMember.update({
       where: { projectId_userId: { projectId, userId } },
-      data: { projectRole },
+      data,
       select: MEMBER_SELECT,
     });
 
-    this.auditLogs.log({
-      userId: actorId,
-      action: AuditAction.MEMBER_ROLE_CHANGED,
-      entity: AuditEntity.PROJECT_MEMBER,
-      entityId: userId,
-      entityTitle: updated.user.fullName,
-      projectId,
-      metadata: { oldRole: member.projectRole, newRole: projectRole },
-    });
+    if (dto.projectRole !== undefined) {
+      this.auditLogs.log({
+        userId: actorId,
+        action: AuditAction.MEMBER_ROLE_CHANGED,
+        entity: AuditEntity.PROJECT_MEMBER,
+        entityId: userId,
+        entityTitle: updated.user.fullName,
+        projectId,
+        metadata: { oldRole: member.projectRole, newRole: dto.projectRole },
+      });
+    }
 
     return updated;
   }

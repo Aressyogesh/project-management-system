@@ -77,7 +77,7 @@ export function ImportWorkItemsModal({ projectId, onClose, onSuccess }: Props) {
           <div>
             <h2 className="text-sm font-semibold text-gray-900">Import Work Items</h2>
             <p className="text-xs text-gray-400 mt-0.5">
-              {step === 'upload' && 'Upload an Excel file to import USER_STORY, TASK, or SUB_TASK items'}
+              {step === 'upload' && 'Upload an Excel file to import USER_STORY or TASK items'}
               {step === 'preview' && `${results.length} row${results.length !== 1 ? 's' : ''} found — ${errorCount > 0 ? `${errorCount} error${errorCount !== 1 ? 's' : ''}` : 'all valid'}`}
               {step === 'done' && 'Import complete'}
             </p>
@@ -167,7 +167,7 @@ export function ImportWorkItemsModal({ projectId, onClose, onSuccess }: Props) {
                     </span>
                   ))}
                 </div>
-                <p className="text-[10px] text-gray-400 mt-2">Blue = required · Gray = optional · Work Item Type: USER_STORY, TASK, SUB_TASK · Date format: MM-DD-YYYY</p>
+                <p className="text-[10px] text-gray-400 mt-2">Blue = required · Gray = optional · Work Item Type: USER_STORY, TASK · Date format: MM-DD-YYYY</p>
               </div>
             </div>
           )}
