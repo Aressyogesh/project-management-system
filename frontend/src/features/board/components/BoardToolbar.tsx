@@ -6,7 +6,6 @@ const TYPE_OPTIONS: { value: WorkItemType; label: string }[] = [
   { value: 'EPIC', label: 'Epic' },
   { value: 'USER_STORY', label: 'User Story' },
   { value: 'TASK', label: 'Task' },
-  { value: 'SUB_TASK', label: 'Sub Task' },
   { value: 'BUG', label: 'Bug' },
 ];
 

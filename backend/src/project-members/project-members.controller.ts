@@ -15,7 +15,7 @@ import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { ProjectRole } from '@prisma/client';
 import { ProjectIdFrom, ProjectRoles } from '../common/decorators/project-roles.decorator';
 import { ProjectRoleGuard } from '../common/guards/project-role.guard';
-import { AddMemberDto, UpdateMemberRoleDto } from './dto/project-member.dto';
+import { AddMemberDto, UpdateMemberDto } from './dto/project-member.dto';
 import { ProjectMembersService } from './project-members.service';
 
 @ApiTags('Project Members')
@@ -45,13 +45,13 @@ export class ProjectMembersController {
   @UseGuards(ProjectRoleGuard)
   @ProjectRoles(ProjectRole.PROJECT_MANAGER)
   @ProjectIdFrom('param')
-  updateRole(
+  updateMember(
     @Param('projectId') projectId: string,
     @Param('userId') userId: string,
-    @Body() dto: UpdateMemberRoleDto,
+    @Body() dto: UpdateMemberDto,
     @Request() req: any,
   ) {
-    return this.service.updateRole(projectId, userId, dto.projectRole, req.user.id);
+    return this.service.updateMember(projectId, userId, dto, req.user.id);
   }
 
   @Delete(':userId')

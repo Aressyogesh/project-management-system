@@ -1,6 +1,8 @@
-﻿import { useEffect, useRef, useState } from 'react';
+﻿import { useEffect, useRef, useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import type { WorkItem } from '../types/board.types';
+
+const PAGE_SIZE = 25;
 
 interface Column {
   status: string;
@@ -66,6 +68,7 @@ function fmtDate(iso: string) {
 export function ListView({ columns, onCardClick, onDelete, canReassign, members = [], onAssigneeChange }: Props) {
   const [reassignOpenId, setReassignOpenId] = useState<string | null>(null);
   const [dropPos, setDropPos] = useState({ top: 0, left: 0 });
+  const [page, setPage] = useState(1);
   const dropRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -89,11 +92,18 @@ export function ListView({ columns, onCardClick, onDelete, canReassign, members 
     setReassignOpenId(null);
     onAssigneeChange?.(itemId, assigneeId);
   }
-  const items = columns.flatMap((col) =>
-    col.items.map((item) => ({ ...item, _columnLabel: col.label })),
+  const allItems = useMemo(
+    () => columns.flatMap((col) => col.items.map((item) => ({ ...item, _columnLabel: col.label }))),
+    [columns],
   );
 
-  if (items.length === 0) {
+  const totalPages = Math.max(1, Math.ceil(allItems.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const items = allItems.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+
+  useEffect(() => { setPage(1); }, [allItems.length]);
+
+  if (allItems.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-48 bg-white rounded-2xl border border-[#cccccc] shadow-sm gap-2">
         <svg className="w-8 h-8 text-gray-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -275,10 +285,60 @@ export function ListView({ columns, onCardClick, onDelete, canReassign, members 
         </table>
       </div>
 
-      <div className="px-4 py-2.5 border-t border-gray-50 bg-gray-50/40">
+      <div className="flex items-center justify-between px-4 py-2.5 border-t border-gray-50 bg-gray-50/40">
         <p className="text-[10px] text-gray-400">
-          {items.length} item{items.length !== 1 ? 's' : ''}
+          Showing{' '}
+          <span className="font-medium text-gray-600">
+            {(safePage - 1) * PAGE_SIZE + 1}–{Math.min(safePage * PAGE_SIZE, allItems.length)}
+          </span>{' '}
+          of <span className="font-medium text-gray-600">{allItems.length}</span> item{allItems.length !== 1 ? 's' : ''}
         </p>
+        {totalPages > 1 && (
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={safePage === 1}
+              className="p-1.5 rounded-lg text-gray-500 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed transition"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
+            {Array.from({ length: totalPages }, (_, i) => i + 1)
+              .filter((p) => p === 1 || p === totalPages || Math.abs(p - safePage) <= 1)
+              .reduce<(number | '…')[]>((acc, p, idx, arr) => {
+                if (idx > 0 && p - (arr[idx - 1] as number) > 1) acc.push('…');
+                acc.push(p);
+                return acc;
+              }, [])
+              .map((p, idx) =>
+                p === '…' ? (
+                  <span key={`ellipsis-${idx}`} className="px-1 text-xs text-gray-400">…</span>
+                ) : (
+                  <button
+                    key={p}
+                    onClick={() => setPage(p as number)}
+                    className={`min-w-[28px] h-7 rounded-lg text-xs font-medium transition ${
+                      safePage === p
+                        ? 'bg-primary-600 text-white'
+                        : 'text-gray-600 hover:bg-gray-100'
+                    }`}
+                  >
+                    {p}
+                  </button>
+                ),
+              )}
+            <button
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              disabled={safePage === totalPages}
+              className="p-1.5 rounded-lg text-gray-500 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed transition"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+          </div>
+        )}
       </div>
     </div>
 
