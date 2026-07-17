@@ -70,10 +70,8 @@ function computeMetrics(entries: TimesheetEntryFull[]): DayMetrics {
     m.total += h;
 
     if (e.isRework) {
-      m.nonBillable += h;
       m.rework += h;
     } else if (e.isBugFix) {
-      m.nonBillable += h;
       m.bugFix += h;
     } else if (e.workItem.billingStatus === 'BILLABLE') {
       const item = itemTotals.get(e.workItem.id);
@@ -110,6 +108,7 @@ export function MyTimesheetPage() {
   const [month,             setMonth]             = useState(now.getMonth() + 1);
   const [selectedProjectId, setSelectedProjectId] = useState('');
   const [selectedUserId,    setSelectedUserId]    = useState('');
+  const [drillDay,          setDrillDay]          = useState<string | null>(null);
 
   const yearOptions = buildYearOptions();
 
@@ -276,6 +275,12 @@ export function MyTimesheetPage() {
               {monthMetrics.nonBillable > 0 && (
                 <div className="h-full bg-orange-400 transition-all" style={{ width: `${(monthMetrics.nonBillable / monthMetrics.total) * 100}%` }} />
               )}
+              {monthMetrics.rework > 0 && (
+                <div className="h-full bg-purple-500 transition-all" style={{ width: `${(monthMetrics.rework / monthMetrics.total) * 100}%` }} />
+              )}
+              {monthMetrics.bugFix > 0 && (
+                <div className="h-full bg-red-500 transition-all" style={{ width: `${(monthMetrics.bugFix / monthMetrics.total) * 100}%` }} />
+              )}
             </div>
             <div className="flex items-center gap-3 text-[11px] shrink-0">
               <span className="flex items-center gap-1 text-gray-500">
@@ -286,6 +291,18 @@ export function MyTimesheetPage() {
                 <span className="w-2 h-2 rounded-sm bg-orange-400" />
                 Non-Billable {Math.round((monthMetrics.nonBillable / monthMetrics.total) * 100)}%
               </span>
+              {monthMetrics.rework > 0 && (
+                <span className="flex items-center gap-1 text-gray-500">
+                  <span className="w-2 h-2 rounded-sm bg-purple-500" />
+                  Rework {Math.round((monthMetrics.rework / monthMetrics.total) * 100)}%
+                </span>
+              )}
+              {monthMetrics.bugFix > 0 && (
+                <span className="flex items-center gap-1 text-gray-500">
+                  <span className="w-2 h-2 rounded-sm bg-red-500" />
+                  Bug Fix {Math.round((monthMetrics.bugFix / monthMetrics.total) * 100)}%
+                </span>
+              )}
             </div>
           </div>
         )}
@@ -364,7 +381,11 @@ export function MyTimesheetPage() {
             return (
               <div
                 key={ds}
+                onClick={() => m && setDrillDay(ds)}
                 className={`min-h-[108px] border-b border-r border-gray-100 p-2 flex flex-col last:border-r-0 ${
+                  m ? 'cursor-pointer hover:ring-2 hover:ring-primary-300 hover:ring-inset' : ''
+                } ${
+                  drillDay === ds ? 'ring-2 ring-primary-500 ring-inset' :
                   isToday   ? 'bg-primary-50/50' :
                   isWeekend ? 'bg-slate-50/60' :
                   isFuture  ? 'bg-white/50' : 'bg-white'
@@ -429,8 +450,100 @@ export function MyTimesheetPage() {
           <span className="flex items-center gap-1.5 text-[11px] text-red-600">
             <span className="w-2 h-2 rounded-sm bg-red-500" /> Bug Fix (Bug)
           </span>
+          <span className="text-[11px] text-gray-400 ml-auto italic">Click a day to view details</span>
         </div>
       </div>
+
+      {/* ── Day drill-down panel ── */}
+      {drillDay && (() => {
+        const drillEntries = byDay[drillDay] ?? [];
+        const dm = computeMetrics(drillEntries);
+        const drillDate = new Date(drillDay + 'T00:00:00');
+        const drillLabel = drillDate.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+
+        const grouped = drillEntries.reduce<Record<string, { workItem: TimesheetEntryFull['workItem']; entries: TimesheetEntryFull[] }>>((acc, e) => {
+          if (!acc[e.workItem.id]) acc[e.workItem.id] = { workItem: e.workItem, entries: [] };
+          acc[e.workItem.id].entries.push(e);
+          return acc;
+        }, {});
+
+        return (
+          <div className="bg-white rounded-2xl border border-primary-200 shadow-sm overflow-hidden">
+            <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+              <div>
+                <h2 className="text-sm font-semibold text-gray-800">{drillLabel}</h2>
+                <div className="flex items-center gap-3 mt-1">
+                  <span className="text-xs font-bold text-gray-700">{dm.total.toFixed(1)}h total</span>
+                  {dm.billable > 0   && <span className="text-xs text-green-600 font-medium">{dm.billable.toFixed(1)}h Billable</span>}
+                  {dm.nonBillable > 0 && <span className="text-xs text-orange-500 font-medium">{dm.nonBillable.toFixed(1)}h Non-Billable</span>}
+                  {dm.rework > 0     && <span className="text-xs text-purple-600 font-medium">{dm.rework.toFixed(1)}h Rework</span>}
+                  {dm.bugFix > 0     && <span className="text-xs text-red-600 font-medium">{dm.bugFix.toFixed(1)}h Bug Fix</span>}
+                </div>
+              </div>
+              <button
+                onClick={() => setDrillDay(null)}
+                className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="divide-y divide-gray-50">
+              {Object.values(grouped).map(({ workItem, entries: wEntries }) => {
+                const wTotal = wEntries.reduce((s, e) => s + Number(e.hours), 0);
+                return (
+                  <div key={workItem.id} className="px-5 py-4">
+                    {/* Work item header */}
+                    <div className="flex items-start gap-3 mb-3">
+                      <span className={`shrink-0 mt-0.5 inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wide ${
+                        workItem.type === 'BUG'        ? 'bg-red-100 text-red-700' :
+                        workItem.type === 'USER_STORY' ? 'bg-blue-100 text-blue-700' :
+                        workItem.type === 'EPIC'       ? 'bg-purple-100 text-purple-700' :
+                        'bg-gray-100 text-gray-600'
+                      }`}>
+                        {workItem.type === 'USER_STORY' ? 'Story' : workItem.type.charAt(0) + workItem.type.slice(1).toLowerCase()}
+                      </span>
+                      <span className="text-sm font-medium text-gray-800 flex-1 leading-snug">{workItem.title}</span>
+                      <div className="shrink-0 flex items-center gap-2 ml-2">
+                        <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${
+                          workItem.billingStatus === 'BILLABLE' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'
+                        }`}>
+                          {workItem.billingStatus === 'BILLABLE' ? 'Billable' : 'Non-Billable'}
+                        </span>
+                        <span className="text-sm font-bold text-gray-800">{wTotal.toFixed(1)}h</span>
+                      </div>
+                    </div>
+
+                    {/* Log entries for this work item */}
+                    <div className="space-y-2 pl-2">
+                      {wEntries.map((e) => (
+                        <div key={e.id} className="flex items-start gap-3 bg-gray-50 rounded-lg px-3 py-2">
+                          <div className="w-6 h-6 rounded-full bg-primary-100 flex items-center justify-center text-primary-700 text-[10px] font-bold shrink-0 mt-0.5">
+                            {e.user.fullName.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2)}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="text-xs font-medium text-gray-700">{e.user.fullName}</span>
+                              <span className="text-xs font-bold text-gray-900">{Number(e.hours).toFixed(1)}h</span>
+                              {e.isRework && <span className="text-[10px] bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded font-semibold">Rework</span>}
+                              {e.isBugFix && <span className="text-[10px] bg-red-100 text-red-700 px-1.5 py-0.5 rounded font-semibold">Bug Fix</span>}
+                            </div>
+                            {e.description && (
+                              <p className="text-xs text-gray-500 mt-1 leading-relaxed">{e.description}</p>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
