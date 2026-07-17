@@ -604,7 +604,10 @@ export function WorkItemModal({ item, sprints, members, milestones, canDelete = 
 
   const logTimeMut = useMutation({
     mutationFn: (d: { date: string; hours: number; description?: string }) => boardApi.logTime(item!.id, d),
-    onSuccess: () => {
+    onSuccess: (newEntry) => {
+      qc.setQueryData<WorkItem>(['workItem', item!.id], (old) =>
+        old ? { ...old, timesheetEntries: [newEntry, ...(old.timesheetEntries ?? [])] } : old
+      );
       qc.invalidateQueries({ queryKey: ['workItem', item!.id] });
       qc.invalidateQueries({ queryKey: ['workItem-activities', item!.id] });
     },
