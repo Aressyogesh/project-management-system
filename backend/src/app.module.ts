@@ -31,6 +31,7 @@ import { UploadsModule } from './uploads/uploads.module';
 import { BusinessUnitsModule } from './business-units/business-units.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { LeaveRequestsModule } from './leave-requests/leave-requests.module';
+import { LateComingsModule } from './late-comings/late-comings.module';
 import { BoardColumnConfigsModule } from './board-column-configs/board-column-configs.module';
 import { TestCasesModule } from './test-cases/test-cases.module';
 import { HealthModule } from './health/health.module';
@@ -71,6 +72,7 @@ import { AnnouncementsModule } from './announcements/announcements.module';
     BusinessUnitsModule,
     NotificationsModule,
     LeaveRequestsModule,
+    LateComingsModule,
     BoardColumnConfigsModule,
     TestCasesModule,
     AuditLogsModule,

@@ -74,6 +74,19 @@ export class LeaveRequestsService {
       );
     }
 
+    const lateComingConflict = await this.prisma.lateComingLog.findFirst({
+      where: {
+        userId: targetUserId,
+        date: { gte: start, lte: end },
+      },
+    });
+
+    if (lateComingConflict) {
+      throw new ConflictException(
+        `A late coming is already recorded for ${lateComingConflict.date.toISOString().slice(0, 10)}. Cannot add leave for a day with a late coming log.`,
+      );
+    }
+
     const leave = await this.prisma.leaveRequest.create({
       data: {
         userId: targetUserId,

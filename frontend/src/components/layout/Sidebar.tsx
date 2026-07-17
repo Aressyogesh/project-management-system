@@ -160,7 +160,7 @@ const navItems: NavItem[] = [
   { path: '/users',           label: 'Users',           Icon: IconUsers,         roles: ['SUPER_USER', 'ADMIN'] },
   { path: '/projects',        label: 'Projects',        Icon: IconProjects },
   { path: '/timesheet',       label: 'Timesheet',       Icon: IconTimesheet },
-  { path: '/leave-logs',      label: 'Leave Management',  Icon: IconLeave },
+  { path: '/leave-logs',      label: 'Attendance Log',    Icon: IconLeave },
   { path: '/announcements',   label: 'Announcements',   Icon: IconAnnouncements },
   { path: '/activity',        label: 'Activity Log',    Icon: IconActivity,      roles: ['SUPER_USER', 'ADMIN'] },
 ];
