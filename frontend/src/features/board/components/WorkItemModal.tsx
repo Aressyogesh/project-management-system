@@ -466,11 +466,11 @@ export function WorkItemModal({ item, sprints, members, milestones, canDelete = 
   const commentInputRef = useRef<HTMLInputElement>(null);
   const titleRef = useRef<HTMLTextAreaElement>(null);
 
-  const { data: detail } = useQuery({
+  const { data: detail, isPlaceholderData } = useQuery({
     queryKey: ['workItem', item?.id],
     queryFn: () => boardApi.getWorkItem(item!.id),
     enabled: !!item?.id,
-    initialData: item ?? undefined,
+    placeholderData: item ?? undefined,
   });
 
   const validParentTypes: WorkItemType[] | null =
@@ -1305,9 +1305,12 @@ export function WorkItemModal({ item, sprints, members, milestones, canDelete = 
                     >
                       {logTimeMut.isPending ? 'Logging…' : 'Log Time'}
                     </button>
-                    {(detail.timesheetEntries ?? []).length > 0 && (
+                    {isPlaceholderData && (
+                      <p className="text-[11px] text-gray-400 animate-pulse">Loading entries…</p>
+                    )}
+                    {!isPlaceholderData && (detail.timesheetEntries ?? []).length > 0 && (
                       <div className="space-y-1.5">
-                        {(detail.timesheetEntries ?? []).filter(e => !!e.date).map((entry) => (
+                        {(detail.timesheetEntries ?? []).filter(e => !!e.id).map((entry) => (
                           <div key={entry.id} className="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2">
                             <div>
                               <p className="text-xs font-medium text-gray-800">{fmtDate(entry.date)} · <span className="text-emerald-600">{entry.hours}h</span></p>
