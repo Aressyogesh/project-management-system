@@ -11,7 +11,7 @@ import {
   YAxis,
 } from 'recharts';
 import { analyticsApi } from '../../../api/analyticsApi';
-import type { LiveEmployeeKpiRecord } from '../../../api/analyticsApi';
+import type { LiveEmployeeKpiRecord, KpiNote } from '../../../api/analyticsApi';
 import { dashboardApi } from '../../../api/dashboard.api';
 import { projectsApi } from '../../../api/projects.api';
 import { useAuthStore } from '../../../store/authStore';
@@ -201,11 +201,7 @@ const QUARTER_OPTIONS = buildQuarterOptions();
 const HALF_OPTIONS = buildHalfOptions();
 const YEAR_OPTIONS = buildYearOptions();
 
-const MANUAL_METRICS = KPI_METRICS.filter((m) => m.badge === 'MANUAL').map((m) => ({
-  id: m.id,
-  label: m.name,
-  max: m.maxPoints,
-}));
+const MANUAL_METRIC_DEFS = KPI_METRICS.filter((m) => m.badge === 'MANUAL');
 
 // ─── Trend chart ──────────────────────────────────────────────────────────────
 
@@ -278,9 +274,207 @@ function KpiTrendChart({ data, memberName }: { data: TrendPoint[]; memberName: s
   );
 }
 
-// ─── KPI Score Entry Panel ────────────────────────────────────────────────────
+// ─── KPI Score Entry Accordion ────────────────────────────────────────────────
 
-function KpiScoreEntryPanel({
+function EmployeeScoreAccordion({
+  employee,
+  period,
+}: {
+  employee: EmployeeKpiRecord;
+  period: string;
+}) {
+  const qc = useQueryClient();
+  const [open, setOpen] = useState(false);
+  const [noteTexts, setNoteTexts] = useState<Record<string, string>>({});
+  const [justSaved, setJustSaved] = useState(false);
+
+  const [scores, setScores] = useState<Record<string, number>>(() => {
+    const map: Record<string, number> = {};
+    for (const m of MANUAL_METRIC_DEFS) {
+      map[m.id] = employee.metrics.find((x) => x.metricId === m.id)?.points ?? m.maxPoints;
+    }
+    return map;
+  });
+
+  const notesKey = ['kpi-notes', employee.userId, period];
+
+  const { data: notes = [] } = useQuery<KpiNote[]>({
+    queryKey: notesKey,
+    queryFn: () => analyticsApi.getKpiNotes(employee.userId, period),
+    enabled: open,
+    staleTime: 30_000,
+  });
+
+  const saveMutation = useMutation({
+    mutationFn: () =>
+      Promise.all(
+        MANUAL_METRIC_DEFS.map((m) =>
+          analyticsApi.upsertKpiRecord({ userId: employee.userId, period, metricId: m.id, points: scores[m.id] }),
+        ),
+      ),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['kpi-live'] });
+      setJustSaved(true);
+      setTimeout(() => setJustSaved(false), 2500);
+    },
+  });
+
+  const addNoteMutation = useMutation({
+    mutationFn: ({ metricId, content }: { metricId: string; content: string }) =>
+      analyticsApi.addKpiNote({ userId: employee.userId, metricId, period, content }),
+    onSuccess: (_, { metricId }) => {
+      qc.invalidateQueries({ queryKey: notesKey });
+      setNoteTexts((prev) => ({ ...prev, [metricId]: '' }));
+    },
+  });
+
+  const deleteNoteMutation = useMutation({
+    mutationFn: (noteId: string) => analyticsApi.deleteKpiNote(noteId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: notesKey }),
+  });
+
+  const grade = GRADE_CONFIG[employee.grade];
+
+  return (
+    <div className={`border rounded-xl overflow-hidden transition-shadow ${open ? 'border-primary-200 shadow-sm' : 'border-gray-200'}`}>
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className={`w-full flex items-center gap-3 px-5 py-3.5 text-left transition-colors ${open ? 'bg-primary-50/60' : 'hover:bg-gray-50'}`}
+      >
+        <div className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center shrink-0">
+          <span className="text-white text-xs font-semibold">
+            {employee.name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)}
+          </span>
+        </div>
+        <div className="flex-1 min-w-0 text-left">
+          <p className="text-sm font-semibold text-gray-800">{employee.name}</p>
+          <p className="text-xs text-gray-400">{employee.role}</p>
+        </div>
+        {!employee.hasNoActivity && (
+          <span className={`text-xs font-bold px-2.5 py-1 rounded-full shrink-0 ${grade.bg} ${grade.text}`}>
+            {employee.totalScore.toFixed(1)} · Grade {employee.grade}
+          </span>
+        )}
+        <svg
+          className={`w-4 h-4 text-gray-400 transition-transform duration-200 shrink-0 ${open ? 'rotate-180' : ''}`}
+          fill="none" stroke="currentColor" viewBox="0 0 24 24"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+
+      {open && (
+        <div className="border-t border-gray-100 bg-gray-50/40 px-5 py-4 space-y-3">
+          {MANUAL_METRIC_DEFS.map((m) => {
+            const metricNotes = notes.filter((n) => n.metricId === m.id);
+            const noteText = noteTexts[m.id] ?? '';
+
+            return (
+              <div key={m.id} className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+                {/* Metric header: name + score select */}
+                <div className="px-4 py-3 flex items-start justify-between gap-3 border-b border-gray-100">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-sm font-semibold text-gray-800">{m.name}</span>
+                      <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 border border-amber-300">
+                        MANUAL
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-gray-400 mt-0.5 italic">{m.scoringDescription}</p>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="text-xs text-gray-500">Score:</span>
+                    <select
+                      value={scores[m.id]}
+                      onChange={(e) => setScores((prev) => ({ ...prev, [m.id]: Number(e.target.value) }))}
+                      className="text-sm border border-gray-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    >
+                      {Array.from({ length: m.maxPoints + 1 }, (_, i) => m.maxPoints - i).map((v) => (
+                        <option key={v} value={v}>{v} / {m.maxPoints}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Notes: existing + add */}
+                <div className="px-4 py-3 bg-amber-50/30">
+                  <p className="text-[10px] font-semibold text-amber-700 uppercase tracking-wider mb-2">
+                    PM Notes {metricNotes.length > 0 && `(${metricNotes.length})`}
+                  </p>
+
+                  {metricNotes.length > 0 ? (
+                    <div className="space-y-2 mb-3">
+                      {metricNotes.map((note) => (
+                        <div key={note.id} className="bg-white rounded-lg border border-amber-100 px-3 py-2 relative group">
+                          <p className="text-xs text-gray-700 leading-relaxed whitespace-pre-wrap">{note.content}</p>
+                          <div className="flex items-center justify-between mt-1.5">
+                            <p className="text-[10px] text-gray-400">
+                              {note.author.fullName} · {new Date(note.createdAt).toLocaleString('en-IN', {
+                                day: '2-digit', month: 'short', year: 'numeric',
+                                hour: '2-digit', minute: '2-digit',
+                              })}
+                            </p>
+                            <button
+                              onClick={() => deleteNoteMutation.mutate(note.id)}
+                              className="opacity-0 group-hover:opacity-100 text-[10px] text-red-400 hover:text-red-600 transition-all"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-[11px] text-gray-400 italic mb-3">No notes added yet.</p>
+                  )}
+
+                  <div className="flex gap-2">
+                    <textarea
+                      value={noteText}
+                      onChange={(e) => setNoteTexts((prev) => ({ ...prev, [m.id]: e.target.value }))}
+                      placeholder="Add a note for this metric…"
+                      rows={2}
+                      className="flex-1 text-xs border border-amber-200 rounded-lg px-2.5 py-2 resize-none focus:outline-none focus:border-amber-400 bg-white"
+                    />
+                    <button
+                      onClick={() => {
+                        if (noteText.trim()) addNoteMutation.mutate({ metricId: m.id, content: noteText.trim() });
+                      }}
+                      disabled={!noteText.trim() || addNoteMutation.isPending}
+                      className="self-end px-3 py-1.5 text-xs font-semibold bg-amber-500 hover:bg-amber-600 text-white rounded-lg disabled:opacity-40 transition-colors"
+                    >
+                      Add
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+
+          <div className="flex items-center justify-end gap-3 pt-1">
+            {justSaved && (
+              <span className="text-xs text-emerald-600 font-medium flex items-center gap-1">
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                Scores saved
+              </span>
+            )}
+            <button
+              onClick={() => saveMutation.mutate()}
+              disabled={saveMutation.isPending}
+              className="text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 disabled:opacity-60 px-4 py-2 rounded-lg transition"
+            >
+              {saveMutation.isPending ? 'Saving…' : `Save ${employee.name.split(' ')[0]}'s Scores`}
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function KpiScoreEntryAccordion({
   employees,
   period,
   onClose,
@@ -289,48 +483,14 @@ function KpiScoreEntryPanel({
   period: string;
   onClose: () => void;
 }) {
-  const qc = useQueryClient();
-
-  const initialScores = () => {
-    const map: Record<string, Record<string, number>> = {};
-    for (const emp of employees) {
-      map[emp.userId] = {};
-      for (const m of MANUAL_METRICS) {
-        const existing = emp.metrics.find((x) => x.metricId === m.id)?.points ?? m.max;
-        map[emp.userId][m.id] = existing;
-      }
-    }
-    return map;
-  };
-
-  const [scores, setScores] = useState<Record<string, Record<string, number>>>(initialScores);
-  const [saveError, setSaveError] = useState('');
-
-  const saveMutation = useMutation({
-    mutationFn: async () => {
-      const calls: Promise<unknown>[] = [];
-      for (const [userId, metrics] of Object.entries(scores)) {
-        for (const [metricId, points] of Object.entries(metrics)) {
-          calls.push(analyticsApi.upsertKpiRecord({ userId, period, metricId, points }));
-        }
-      }
-      await Promise.all(calls);
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['kpi-live'] });
-      onClose();
-    },
-    onError: () => setSaveError('Failed to save scores. Please try again.'),
-  });
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-6xl max-h-[90vh] flex flex-col">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
           <div>
-            <h2 className="text-sm font-semibold text-gray-900">Enter Monthly KPI Scores</h2>
+            <h2 className="text-sm font-semibold text-gray-900">Monthly KPI — Score Entry</h2>
             <p className="text-xs text-gray-400 mt-0.5">
-              Manual metrics · {PERIOD_OPTIONS.find((p) => p.value === period)?.label ?? period} · {employees.length} employees
+              Manual metrics only · {PERIOD_OPTIONS.find((p) => p.value === period)?.label ?? period} · {employees.length} employees
             </p>
           </div>
           <button onClick={onClose} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition">
@@ -339,65 +499,13 @@ function KpiScoreEntryPanel({
             </svg>
           </button>
         </div>
-
-        <div className="flex-1 overflow-auto">
-          <table className="w-full text-sm">
-            <thead className="sticky top-0 bg-white z-10">
-              <tr className="bg-gray-50 border-b border-gray-100">
-                <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide w-44">Employee</th>
-                {MANUAL_METRICS.map((m) => (
-                  <th key={m.id} className="px-3 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                    {m.label}
-                    <span className="block font-normal normal-case text-[10px] text-gray-400">/{m.max} pts</span>
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50">
-              {employees.map((emp) => (
-                <tr key={emp.userId} className="hover:bg-gray-50/50">
-                  <td className="px-5 py-3">
-                    <p className="text-xs font-medium text-gray-800">{emp.name}</p>
-                    <p className="text-[10px] text-gray-400">{emp.role}</p>
-                  </td>
-                  {MANUAL_METRICS.map((m) => (
-                    <td key={m.id} className="px-3 py-3 text-center">
-                      <select
-                        value={scores[emp.userId]?.[m.id] ?? m.max}
-                        onChange={(e) =>
-                          setScores((prev) => ({
-                            ...prev,
-                            [emp.userId]: { ...prev[emp.userId], [m.id]: Number(e.target.value) },
-                          }))
-                        }
-                        className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 w-16"
-                      >
-                        {Array.from({ length: m.max + 1 }, (_, i) => m.max - i).map((v) => (
-                          <option key={v} value={v}>{v}</option>
-                        ))}
-                      </select>
-                    </td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-between gap-3">
-          {saveError && <p className="text-xs text-red-500">{saveError}</p>}
-          <div className="flex items-center gap-3 ml-auto">
-            <button onClick={onClose} className="text-sm text-gray-500 hover:text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-100 transition">
-              Cancel
-            </button>
-            <button
-              onClick={() => { setSaveError(''); saveMutation.mutate(); }}
-              disabled={saveMutation.isPending}
-              className="text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 disabled:opacity-60 px-5 py-2 rounded-lg transition"
-            >
-              {saveMutation.isPending ? 'Saving…' : 'Save All Scores'}
-            </button>
-          </div>
+        <p className="px-6 pt-3 pb-1 text-[11px] text-gray-400">
+          Auto-calculated metrics (Sprint Reliability, Attendance, Timeliness, etc.) are system-computed and not editable here.
+        </p>
+        <div className="flex-1 overflow-auto px-4 py-3 space-y-2">
+          {employees.map((emp) => (
+            <EmployeeScoreAccordion key={emp.userId} employee={emp} period={period} />
+          ))}
         </div>
       </div>
     </div>
@@ -925,7 +1033,7 @@ export function KpiPage() {
       )}
 
       {showScoreEntry && (
-        <KpiScoreEntryPanel
+        <KpiScoreEntryAccordion
           employees={filteredEmployees}
           period={selectedPeriod}
           onClose={() => setShowScoreEntry(false)}
