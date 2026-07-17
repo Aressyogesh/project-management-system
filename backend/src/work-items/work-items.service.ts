@@ -42,7 +42,7 @@ const VALID_PARENT_TYPES: Partial<Record<WorkItemType, WorkItemType[]>> = {
 };
 
 const ITEM_INCLUDE = {
-  assignee: { select: { id: true, fullName: true, profilePhoto: true } },
+  assignee: { select: { id: true, fullName: true, email: true, profilePhoto: true } },
   reporter: { select: { id: true, fullName: true, profilePhoto: true } },
   responsibleUser: { select: { id: true, fullName: true, profilePhoto: true } },
   sprint: { select: { id: true, name: true } },
@@ -118,7 +118,7 @@ export class WorkItemsService implements OnModuleInit {
         }),
       },
       include: {
-        assignee: { select: { id: true, fullName: true, profilePhoto: true } },
+        assignee: { select: { id: true, fullName: true, email: true, profilePhoto: true } },
         reporter: { select: { id: true, fullName: true } },
         sprint: { select: { id: true, name: true } },
         parent: { select: { id: true, title: true, type: true } },
@@ -208,8 +208,8 @@ export class WorkItemsService implements OnModuleInit {
       });
     }
 
-    // Scenario 7: notify assignee on Slack when item is assigned on creation
-    if (dto.assigneeId && dto.assigneeId !== reporterId && item.assignee) {
+    // Scenario 7: notify assignee when item is assigned on creation (skip BUGs — notifyBugCreated already covers them)
+    if (dto.assigneeId && dto.assigneeId !== reporterId && item.assignee && item.type !== WorkItemType.BUG) {
       const reporter = await this.prisma.user.findUnique({ where: { id: reporterId }, select: { fullName: true } });
       this.automation.notifyTaskAssigned(
         { id: item.id, displayId: item.displayId ?? '', title: item.title, type: item.type, priority: item.priority, dueDate: item.dueDate, estimatedHours: item.estimatedHours, projectId: item.projectId },
@@ -259,7 +259,8 @@ export class WorkItemsService implements OnModuleInit {
     }
 
     // Scenario 8: urgent alert when a CRITICAL severity bug is created
-    if (item.type === WorkItemType.BUG && item.severity === BugSeverity.CRITICAL) {
+    const CRITICAL_SEVERITIES = new Set<BugSeverity>([BugSeverity.CRITICAL, BugSeverity.SHOW_STOPPER, BugSeverity.BLOCKER]);
+    if (item.type === WorkItemType.BUG && item.severity && CRITICAL_SEVERITIES.has(item.severity)) {
       this.automation.notifyCriticalBug({
         id: item.id,
         displayId: item.displayId ?? '',
@@ -269,6 +270,7 @@ export class WorkItemsService implements OnModuleInit {
         projectId: item.projectId,
         description: item.description,
         environment: item.environment,
+        bugFlag: item.bugFlag,
         stepsToRepro: item.stepsToRepro,
         assignee: item.assignee,
         reporter: item.reporter,
@@ -335,6 +337,8 @@ export class WorkItemsService implements OnModuleInit {
     const isUncompletingViaEdit = TERMINAL_STATUSES.has(item.status) && !!dto.status && !TERMINAL_STATUSES.has(dto.status);
     const enteringReviewViaEdit = !!dto.status && dto.status === BoardStatus.IN_REVIEW && item.status !== BoardStatus.IN_REVIEW;
     const pulledBackFromReviewViaEdit = !!dto.status && item.status === BoardStatus.IN_REVIEW && dto.status === BoardStatus.IN_PROGRESS;
+    const isBackwardViaEdit = !!dto.status && dto.status !== item.status &&
+      STATUS_ORDER.indexOf(dto.status) < STATUS_ORDER.indexOf(item.status);
     const updated = await this.prisma.workItem.update({
       where: { id },
       data: {
@@ -345,11 +349,12 @@ export class WorkItemsService implements OnModuleInit {
         ...(dueDate !== undefined && { dueDate: dueDate ? new Date(dueDate) : null }),
         ...(isCompletingViaEdit && { completedAt: new Date() }),
         ...(isUncompletingViaEdit && { completedAt: null }),
+        ...(isBackwardViaEdit && { reopenCount: { increment: 1 } }),
         ...(enteringReviewViaEdit && { inReviewAt: new Date() }),
         ...(pulledBackFromReviewViaEdit && { inReviewAt: null }),
       },
       include: {
-        assignee: { select: { id: true, fullName: true, profilePhoto: true } },
+        assignee: { select: { id: true, fullName: true, email: true, profilePhoto: true } },
         reporter: { select: { id: true, fullName: true } },
       },
     });
@@ -384,7 +389,7 @@ export class WorkItemsService implements OnModuleInit {
       // Scenario 9: alert reporter when bug is moved back from a terminal status (reopened)
       if (item.type === WorkItemType.BUG && TERMINAL_STATUSES.has(item.status) && !!dto.status && !TERMINAL_STATUSES.has(dto.status)) {
         this.automation.notifyBugReopened(
-          { id: updated.id, displayId: updated.displayId ?? '', title: updated.title, projectId: item.projectId, reopenCount: item.reopenCount + 1, assignee: updated.assignee, reporter: null },
+          { id: updated.id, displayId: updated.displayId ?? '', title: updated.title, projectId: item.projectId, reopenCount: updated.reopenCount, assignee: updated.assignee, reporter: updated.reporter },
           { fullName: actorName },
         );
       }
@@ -622,9 +627,10 @@ export class WorkItemsService implements OnModuleInit {
         metadata: { from: item.status, to: dto.status },
       });
 
-      const [actor, assignee] = await Promise.all([
+      const [actor, assignee, reporter] = await Promise.all([
         this.prisma.user.findUnique({ where: { id: userId }, select: { fullName: true } }),
-        item.assigneeId ? this.prisma.user.findUnique({ where: { id: item.assigneeId }, select: { id: true, fullName: true, profilePhoto: true } }) : null,
+        item.assigneeId ? this.prisma.user.findUnique({ where: { id: item.assigneeId }, select: { id: true, fullName: true, email: true, profilePhoto: true } }) : null,
+        item.reporterId ? this.prisma.user.findUnique({ where: { id: item.reporterId }, select: { id: true, fullName: true } }) : null,
       ]);
       const actorName = actor?.fullName ?? 'Someone';
 
@@ -637,7 +643,7 @@ export class WorkItemsService implements OnModuleInit {
 
       if (item.type === WorkItemType.BUG && TERMINAL_STATUSES.has(item.status) && !TERMINAL_STATUSES.has(dto.status)) {
         this.automation.notifyBugReopened(
-          { id: item.id, displayId: item.displayId ?? '', title: item.title, projectId: item.projectId, reopenCount: item.reopenCount + 1, assignee, reporter: null },
+          { id: item.id, displayId: item.displayId ?? '', title: item.title, projectId: item.projectId, reopenCount: result.reopenCount, assignee, reporter },
           { fullName: actorName },
         );
       }

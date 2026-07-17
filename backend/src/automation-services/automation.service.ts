@@ -30,7 +30,51 @@ export class AutomationService {
     return map[type] ?? { itemType: type, itemIcon: '📋' };
   }
 
-  // Scenario 1 — Bug created
+  private priorityColor(priority: string): string {
+    const map: Record<string, string> = {
+      CRITICAL: 'Attention',
+      HIGH:     'Warning',
+      MEDIUM:   'Accent',
+      LOW:      'Good',
+    };
+    return map[priority] ?? 'Default';
+  }
+
+  private priorityIcon(priority: string): string {
+    const map: Record<string, string> = {
+      CRITICAL: '🔴',
+      HIGH:     '🟠',
+      MEDIUM:   '🟡',
+      LOW:      '🟢',
+    };
+    return map[priority] ?? '⚪';
+  }
+
+  private severityColor(severity: string): string {
+    const map: Record<string, string> = {
+      SHOW_STOPPER: 'Attention',
+      BLOCKER:      'Attention',
+      CRITICAL:     'Attention',
+      MAJOR:        'Warning',
+      MINOR:        'Accent',
+      TRIVIAL:      'Good',
+    };
+    return map[severity] ?? 'Default';
+  }
+
+  private severityIcon(severity: string): string {
+    const map: Record<string, string> = {
+      SHOW_STOPPER: '🚨',
+      BLOCKER:      '🚨',
+      CRITICAL:     '🚨',
+      MAJOR:        '🔥',
+      MINOR:        '⚠️',
+      TRIVIAL:      '🔵',
+    };
+    return map[severity] ?? '⚪';
+  }
+
+  // Scenario 2 — Bug created (posts Adaptive Card directly to Teams)
   notifyBugCreated(item: {
     id: string;
     displayId: string;
@@ -67,68 +111,262 @@ export class AutomationService {
     affectedMilestone?: { id: string; description: string | null } | null;
     createdAt: Date;
   }): void {
+    const severity   = item.severity ?? 'Not set';
+    const dueDateStr = item.dueDate
+      ? item.dueDate.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+      : 'Not set';
+    const envFlagMap: Record<string, string> = { INTERNAL: 'Development', EXTERNAL: 'Production', STAGING: 'Staging' };
+    const environmentStr = item.environment || (item.bugFlag ? (envFlagMap[item.bugFlag] ?? item.bugFlag) : 'Not specified');
+
     this.getProjectWebhookUrl(item.projectId)
       .then((url) => {
         if (!url) return;
         this.post(url, {
-          event: 'BUG_CREATED',
-          payload: {
-            id: item.id,
-            displayId: item.displayId,
-            title: item.title,
-            severity: item.severity,
-            priority: item.priority,
-            status: item.status,
-            projectId: item.projectId,
-            environment: item.environment,
-            assigneeName: item.assignee?.fullName ?? 'Unassigned',
-            reporterName: item.reporter?.fullName ?? 'Unknown',
-            dueDate: item.dueDate
-              ? item.dueDate.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
-              : 'Not set',
-            createdAt: item.createdAt.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
-          },
+          type: 'message',
+          attachments: [{
+            contentType: 'application/vnd.microsoft.card.adaptive',
+            contentUrl: null,
+            content: {
+              type: 'AdaptiveCard',
+              $schema: 'http://adaptivecards.io/schemas/adaptive-card.json',
+              version: '1.4',
+              body: [
+                // ── Header ──────────────────────────────────────────────
+                {
+                  type: 'ColumnSet',
+                  columns: [
+                    {
+                      type: 'Column',
+                      width: 'auto',
+                      items: [{ type: 'TextBlock', text: '🐛', size: 'ExtraLarge', wrap: false }],
+                      verticalContentAlignment: 'Center',
+                    },
+                    {
+                      type: 'Column',
+                      width: 'stretch',
+                      items: [
+                        { type: 'TextBlock', text: 'PMS — Bug Created', weight: 'Bolder', size: 'Large', color: 'Accent', wrap: true, spacing: 'None' },
+                        { type: 'TextBlock', text: 'Project Management System', size: 'Small', color: 'Accent', isSubtle: true, spacing: 'None', wrap: false },
+                      ],
+                      verticalContentAlignment: 'Center',
+                    },
+                  ],
+                },
+                // spacer
+                { type: 'TextBlock', text: ' ', spacing: 'Medium', size: 'Small' },
+                // ── Bug title ───────────────────────────────────────────
+                {
+                  type: 'Container',
+                  style: 'emphasis',
+                  items: [
+                    { type: 'TextBlock', text: 'BUG', size: 'Small', weight: 'Bolder', color: 'Attention', spacing: 'None' },
+                    { type: 'TextBlock', text: item.title, size: 'Medium', weight: 'Bolder', wrap: true, spacing: 'Small' },
+                    { type: 'TextBlock', text: item.displayId, size: 'Small', isSubtle: true, fontType: 'Monospace', spacing: 'Small' },
+                  ],
+                },
+                // ── Severity · Priority ──────────────────────────────────
+                {
+                  type: 'ColumnSet',
+                  spacing: 'Medium',
+                  columns: [
+                    {
+                      type: 'Column',
+                      width: 'stretch',
+                      items: [
+                        { type: 'TextBlock', text: 'SEVERITY', size: 'Small', weight: 'Bolder', color: 'Accent', spacing: 'None' },
+                        { type: 'TextBlock', text: `${this.severityIcon(severity)} ${severity}`, color: this.severityColor(severity), weight: 'Bolder', spacing: 'Small', wrap: false },
+                      ],
+                    },
+                    {
+                      type: 'Column',
+                      width: 'stretch',
+                      items: [
+                        { type: 'TextBlock', text: 'PRIORITY', size: 'Small', weight: 'Bolder', color: 'Accent', spacing: 'None' },
+                        { type: 'TextBlock', text: `${this.priorityIcon(item.priority)} ${item.priority}`, color: this.priorityColor(item.priority), weight: 'Bolder', spacing: 'Small', wrap: false },
+                      ],
+                    },
+                    {
+                      type: 'Column',
+                      width: 'stretch',
+                      items: [
+                        { type: 'TextBlock', text: 'ENVIRONMENT', size: 'Small', weight: 'Bolder', color: 'Accent', spacing: 'None' },
+                        { type: 'TextBlock', text: environmentStr, spacing: 'Small', wrap: true },
+                      ],
+                    },
+                  ],
+                },
+                // ── Assignee · Reporter ──────────────────────────────────
+                {
+                  type: 'ColumnSet',
+                  separator: true,
+                  spacing: 'Medium',
+                  columns: [
+                    {
+                      type: 'Column',
+                      width: 'stretch',
+                      items: [
+                        { type: 'TextBlock', text: 'ASSIGNEE', size: 'Small', weight: 'Bolder', color: 'Accent', spacing: 'None' },
+                        { type: 'TextBlock', text: `👤 ${item.assignee?.fullName ?? 'Unassigned'}`, color: 'Good', weight: 'Bolder', spacing: 'Small', wrap: true },
+                      ],
+                    },
+                    {
+                      type: 'Column',
+                      width: 'stretch',
+                      items: [
+                        { type: 'TextBlock', text: 'REPORTER', size: 'Small', weight: 'Bolder', color: 'Accent', spacing: 'None' },
+                        { type: 'TextBlock', text: item.reporter?.fullName ?? 'Unknown', spacing: 'Small', wrap: true, isSubtle: true },
+                      ],
+                    },
+                  ],
+                },
+                // ── Due date ─────────────────────────────────────────────
+                {
+                  type: 'ColumnSet',
+                  separator: true,
+                  spacing: 'Medium',
+                  columns: [
+                    {
+                      type: 'Column',
+                      width: 'stretch',
+                      items: [
+                        { type: 'TextBlock', text: 'DUE DATE', size: 'Small', weight: 'Bolder', color: 'Accent', spacing: 'None' },
+                        { type: 'TextBlock', text: `📅 ${dueDateStr}`, spacing: 'Small', wrap: false },
+                      ],
+                    },
+                    {
+                      type: 'Column',
+                      width: 'stretch',
+                      items: [
+                        { type: 'TextBlock', text: 'SPRINT', size: 'Small', weight: 'Bolder', color: 'Accent', spacing: 'None' },
+                        { type: 'TextBlock', text: item.sprint?.name ?? 'Not assigned', spacing: 'Small', wrap: true, isSubtle: true },
+                      ],
+                    },
+                  ],
+                },
+              ],
+            },
+          }],
         });
       })
       .catch((err) => this.logger.warn(`notifyBugCreated failed: ${err.message}`));
   }
 
-  // Scenario 2 — Sprint started
+  // Scenario 6 — Sprint started (posts Adaptive Card directly to Teams)
   notifySprintStarted(sprintId: string, projectId: string, activatedByUserId: string): void {
     Promise.all([
       this.prisma.sprint.findUnique({ where: { id: sprintId } }),
       this.prisma.project.findUnique({ where: { id: projectId }, select: { name: true, teamsWebhookUrl: true } }),
-      this.prisma.projectMember.findMany({
-        where: { projectId },
-        include: { user: { select: { id: true, fullName: true, email: true } } },
-      }),
+      this.prisma.workItem.count({ where: { sprintId, projectId } }),
       this.prisma.user.findUnique({ where: { id: activatedByUserId }, select: { fullName: true } }),
     ])
-      .then(([sprint, project, members, activatedBy]) => {
+      .then(([sprint, project, itemCount, activatedBy]) => {
         if (!project?.teamsWebhookUrl) return;
+        const startDateStr = sprint?.startDate
+          ? new Date(sprint.startDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+          : 'Not set';
+        const endDateStr = sprint?.endDate
+          ? new Date(sprint.endDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+          : 'Not set';
+
         this.post(project.teamsWebhookUrl, {
-          event: 'SPRINT_STARTED',
-          payload: {
-            id: sprint?.id,
-            name: sprint?.name,
-            goal: sprint?.goal ?? 'No goal set',
-            startDate: sprint?.startDate
-              ? new Date(sprint.startDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
-              : 'Not set',
-            endDate: sprint?.endDate
-              ? new Date(sprint.endDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
-              : 'Not set',
-            projectId,
-            projectName: project?.name,
-            activatedBy: activatedBy?.fullName,
-            memberCount: members.length,
-          },
+          type: 'message',
+          attachments: [{
+            contentType: 'application/vnd.microsoft.card.adaptive',
+            contentUrl: null,
+            content: {
+              type: 'AdaptiveCard',
+              $schema: 'http://adaptivecards.io/schemas/adaptive-card.json',
+              version: '1.4',
+              body: [
+                // ── Header ──────────────────────────────────────────────
+                {
+                  type: 'ColumnSet',
+                  columns: [
+                    {
+                      type: 'Column',
+                      width: 'auto',
+                      items: [{ type: 'TextBlock', text: '🚀', size: 'ExtraLarge', wrap: false }],
+                      verticalContentAlignment: 'Center',
+                    },
+                    {
+                      type: 'Column',
+                      width: 'stretch',
+                      items: [
+                        { type: 'TextBlock', text: 'PMS — Sprint Started', weight: 'Bolder', size: 'Large', color: 'Accent', wrap: true, spacing: 'None' },
+                        { type: 'TextBlock', text: project.name ?? 'Project Management System', size: 'Small', color: 'Accent', isSubtle: true, spacing: 'None', wrap: false },
+                      ],
+                      verticalContentAlignment: 'Center',
+                    },
+                  ],
+                },
+                // spacer
+                { type: 'TextBlock', text: ' ', spacing: 'Medium', size: 'Small' },
+                // ── Sprint name + goal ────────────────────────────────────
+                {
+                  type: 'Container',
+                  style: 'emphasis',
+                  items: [
+                    { type: 'TextBlock', text: 'SPRINT', size: 'Small', weight: 'Bolder', color: 'Good', spacing: 'None' },
+                    { type: 'TextBlock', text: sprint?.name ?? 'Sprint', size: 'Medium', weight: 'Bolder', wrap: true, spacing: 'Small' },
+                    { type: 'TextBlock', text: sprint?.goal ?? 'No goal set', size: 'Small', isSubtle: true, wrap: true, spacing: 'Small' },
+                  ],
+                },
+                // ── Start · End dates ────────────────────────────────────
+                {
+                  type: 'ColumnSet',
+                  spacing: 'Medium',
+                  columns: [
+                    {
+                      type: 'Column',
+                      width: 'stretch',
+                      items: [
+                        { type: 'TextBlock', text: 'START DATE', size: 'Small', weight: 'Bolder', color: 'Accent', spacing: 'None' },
+                        { type: 'TextBlock', text: `📅 ${startDateStr}`, weight: 'Bolder', color: 'Good', spacing: 'Small', wrap: false },
+                      ],
+                    },
+                    {
+                      type: 'Column',
+                      width: 'stretch',
+                      items: [
+                        { type: 'TextBlock', text: 'END DATE', size: 'Small', weight: 'Bolder', color: 'Accent', spacing: 'None' },
+                        { type: 'TextBlock', text: `📅 ${endDateStr}`, weight: 'Bolder', color: 'Warning', spacing: 'Small', wrap: false },
+                      ],
+                    },
+                  ],
+                },
+                // ── Items · Activated by ─────────────────────────────────
+                {
+                  type: 'ColumnSet',
+                  separator: true,
+                  spacing: 'Medium',
+                  columns: [
+                    {
+                      type: 'Column',
+                      width: 'stretch',
+                      items: [
+                        { type: 'TextBlock', text: 'WORK ITEMS', size: 'Small', weight: 'Bolder', color: 'Accent', spacing: 'None' },
+                        { type: 'TextBlock', text: `📋 ${itemCount}`, weight: 'Bolder', spacing: 'Small', wrap: false },
+                      ],
+                    },
+                    {
+                      type: 'Column',
+                      width: 'stretch',
+                      items: [
+                        { type: 'TextBlock', text: 'STARTED BY', size: 'Small', weight: 'Bolder', color: 'Accent', spacing: 'None' },
+                        { type: 'TextBlock', text: activatedBy?.fullName ?? 'Someone', spacing: 'Small', wrap: true, isSubtle: true },
+                      ],
+                    },
+                  ],
+                },
+              ],
+            },
+          }],
         });
       })
       .catch((err) => this.logger.warn(`notifySprintStarted failed: ${err.message}`));
   }
 
-  // Scenario 7 — Task/item assigned
+  // Scenario 1 — Task/item assigned (posts Adaptive Card directly to Teams)
   notifyTaskAssigned(item: {
     id: string;
     displayId: string;
@@ -138,33 +376,139 @@ export class AutomationService {
     dueDate?: Date | null;
     estimatedHours?: any;
     projectId: string;
-  }, assignee: { id: string; fullName: string }, assignedBy: { fullName: string }): void {
+  }, assignee: { id: string; fullName: string; email?: string | null }, assignedBy: { fullName: string }): void {
+    const { itemType, itemIcon } = this.itemMeta(item.type);
     this.getProjectWebhookUrl(item.projectId)
       .then((url) => {
         if (!url) return;
+        const dueDateStr = item.dueDate
+          ? item.dueDate.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+          : 'Not set';
+        const estHoursStr = item.estimatedHours != null ? `${item.estimatedHours} hrs` : 'Not set';
+
         this.post(url, {
-          event: 'TASK_ASSIGNED',
-          payload: {
-            id: item.id,
-            displayId: item.displayId,
-            title: item.title,
-            type: item.type,
-            ...this.itemMeta(item.type),
-            priority: item.priority,
-            dueDate: item.dueDate
-              ? item.dueDate.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
-              : 'Not set',
-            estimatedHours: item.estimatedHours != null ? `${item.estimatedHours} hrs` : 'Not set',
-            projectId: item.projectId,
-            assigneeName: assignee.fullName,
-            assignedBy: assignedBy.fullName,
-          },
+          type: 'message',
+          attachments: [{
+            contentType: 'application/vnd.microsoft.card.adaptive',
+            contentUrl: null,
+            content: {
+              type: 'AdaptiveCard',
+              $schema: 'http://adaptivecards.io/schemas/adaptive-card.json',
+              version: '1.4',
+              body: [
+                // ── Header ────────────────────────────────────────────────
+                {
+                  type: 'ColumnSet',
+                  columns: [
+                    {
+                      type: 'Column',
+                      width: 'auto',
+                      items: [{ type: 'TextBlock', text: '📋', size: 'ExtraLarge', wrap: false }],
+                      verticalContentAlignment: 'Center',
+                    },
+                    {
+                      type: 'Column',
+                      width: 'stretch',
+                      items: [
+                        { type: 'TextBlock', text: 'PMS — Work Item Assigned', weight: 'Bolder', size: 'Large', color: 'Accent', wrap: true, spacing: 'None' },
+                        { type: 'TextBlock', text: 'Project Management System', size: 'Small', color: 'Accent', isSubtle: true, spacing: 'None', wrap: false },
+                      ],
+                      verticalContentAlignment: 'Center',
+                    },
+                  ],
+                },
+                // spacer
+                { type: 'TextBlock', text: ' ', spacing: 'Medium', size: 'Small' },
+                // ── Work item title ───────────────────────────────────────
+                {
+                  type: 'Container',
+                  style: 'emphasis',
+                  items: [
+                    { type: 'TextBlock', text: 'WORK ITEM', size: 'Small', weight: 'Bolder', color: 'Accent', spacing: 'None' },
+                    { type: 'TextBlock', text: item.title, size: 'Medium', weight: 'Bolder', wrap: true, spacing: 'Small' },
+                    { type: 'TextBlock', text: item.displayId, size: 'Small', isSubtle: true, fontType: 'Monospace', spacing: 'Small' },
+                  ],
+                  spacing: 'None',
+                },
+                // ── Assignee row ──────────────────────────────────────────
+                {
+                  type: 'ColumnSet',
+                  spacing: 'Medium',
+                  columns: [
+                    {
+                      type: 'Column',
+                      width: 'stretch',
+                      items: [
+                        { type: 'TextBlock', text: 'ASSIGNED TO', size: 'Small', weight: 'Bolder', color: 'Accent', spacing: 'None' },
+                        { type: 'TextBlock', text: `👤 ${assignee.fullName}`, weight: 'Bolder', size: 'Medium', color: 'Good', wrap: true, spacing: 'Small' },
+                      ],
+                    },
+                    {
+                      type: 'Column',
+                      width: 'stretch',
+                      items: [
+                        { type: 'TextBlock', text: 'ASSIGNED BY', size: 'Small', weight: 'Bolder', color: 'Accent', spacing: 'None' },
+                        { type: 'TextBlock', text: assignedBy.fullName, wrap: true, spacing: 'Small', isSubtle: true },
+                      ],
+                    },
+                  ],
+                },
+                // ── Type · Priority row ───────────────────────────────────
+                {
+                  type: 'ColumnSet',
+                  separator: true,
+                  spacing: 'Medium',
+                  columns: [
+                    {
+                      type: 'Column',
+                      width: 'stretch',
+                      items: [
+                        { type: 'TextBlock', text: 'TYPE', size: 'Small', weight: 'Bolder', color: 'Accent', spacing: 'None' },
+                        { type: 'TextBlock', text: `${itemIcon} ${itemType}`, spacing: 'Small', wrap: false },
+                      ],
+                    },
+                    {
+                      type: 'Column',
+                      width: 'stretch',
+                      items: [
+                        { type: 'TextBlock', text: 'PRIORITY', size: 'Small', weight: 'Bolder', color: 'Accent', spacing: 'None' },
+                        { type: 'TextBlock', text: `${this.priorityIcon(item.priority)} ${item.priority}`, color: this.priorityColor(item.priority), weight: 'Bolder', spacing: 'Small', wrap: false },
+                      ],
+                    },
+                  ],
+                },
+                // ── Est Hours · Due Date row ──────────────────────────────
+                {
+                  type: 'ColumnSet',
+                  spacing: 'Small',
+                  columns: [
+                    {
+                      type: 'Column',
+                      width: 'stretch',
+                      items: [
+                        { type: 'TextBlock', text: 'EST. HOURS', size: 'Small', weight: 'Bolder', color: 'Accent', spacing: 'None' },
+                        { type: 'TextBlock', text: `⏱ ${estHoursStr}`, spacing: 'Small', wrap: false },
+                      ],
+                    },
+                    {
+                      type: 'Column',
+                      width: 'stretch',
+                      items: [
+                        { type: 'TextBlock', text: 'DUE DATE', size: 'Small', weight: 'Bolder', color: 'Accent', spacing: 'None' },
+                        { type: 'TextBlock', text: `📅 ${dueDateStr}`, spacing: 'Small', wrap: false },
+                      ],
+                    },
+                  ],
+                },
+              ],
+            },
+          }],
         });
       })
       .catch((err) => this.logger.warn(`notifyTaskAssigned failed: ${err.message}`));
   }
 
-  // Scenario 8 — Critical bug created
+  // Scenario 3 — Critical bug created (posts Adaptive Card directly to Teams)
   notifyCriticalBug(item: {
     id: string;
     displayId: string;
@@ -174,34 +518,135 @@ export class AutomationService {
     projectId: string;
     description?: string | null;
     environment?: string | null;
+    bugFlag?: string | null;
     stepsToRepro?: string | null;
     assignee?: { id: string; fullName: string } | null;
     reporter?: { id: string; fullName: string } | null;
     createdAt: Date;
   }): void {
+    const envFlagMap: Record<string, string> = { INTERNAL: 'Development', EXTERNAL: 'Production', STAGING: 'Staging' };
+    const environmentStr = item.environment || (item.bugFlag ? (envFlagMap[item.bugFlag] ?? item.bugFlag) : 'Not specified');
+
     this.getProjectWebhookUrl(item.projectId)
       .then((url) => {
         if (!url) return;
         this.post(url, {
-          event: 'CRITICAL_BUG_CREATED',
-          payload: {
-            id: item.id,
-            displayId: item.displayId,
-            title: item.title,
-            severity: item.severity,
-            priority: item.priority,
-            projectId: item.projectId,
-            environment: item.environment ?? 'Not specified',
-            stepsToRepro: item.stepsToRepro ?? 'Not provided',
-            assigneeName: item.assignee?.fullName ?? 'Unassigned',
-            reporterName: item.reporter?.fullName ?? 'Unknown',
-          },
+          type: 'message',
+          attachments: [{
+            contentType: 'application/vnd.microsoft.card.adaptive',
+            contentUrl: null,
+            content: {
+              type: 'AdaptiveCard',
+              $schema: 'http://adaptivecards.io/schemas/adaptive-card.json',
+              version: '1.4',
+              body: [
+                // ── Header ──────────────────────────────────────────────
+                {
+                  type: 'ColumnSet',
+                  columns: [
+                    {
+                      type: 'Column',
+                      width: 'auto',
+                      items: [{ type: 'TextBlock', text: '🚨', size: 'ExtraLarge', wrap: false }],
+                      verticalContentAlignment: 'Center',
+                    },
+                    {
+                      type: 'Column',
+                      width: 'stretch',
+                      items: [
+                        { type: 'TextBlock', text: 'PMS — CRITICAL Bug Alert!', weight: 'Bolder', size: 'Large', color: 'Accent', wrap: true, spacing: 'None' },
+                        { type: 'TextBlock', text: 'Project Management System', size: 'Small', color: 'Accent', isSubtle: true, spacing: 'None', wrap: false },
+                      ],
+                      verticalContentAlignment: 'Center',
+                    },
+                  ],
+                },
+                // spacer
+                { type: 'TextBlock', text: ' ', spacing: 'Medium', size: 'Small' },
+                // ── Bug title ───────────────────────────────────────────
+                {
+                  type: 'Container',
+                  style: 'emphasis',
+                  items: [
+                    { type: 'TextBlock', text: '🚨 CRITICAL BUG', size: 'Small', weight: 'Bolder', color: 'Attention', spacing: 'None' },
+                    { type: 'TextBlock', text: item.title, size: 'Medium', weight: 'Bolder', wrap: true, spacing: 'Small' },
+                    { type: 'TextBlock', text: item.displayId, size: 'Small', isSubtle: true, fontType: 'Monospace', spacing: 'Small' },
+                  ],
+                },
+                // ── Severity · Priority · Environment ────────────────────
+                {
+                  type: 'ColumnSet',
+                  spacing: 'Medium',
+                  columns: [
+                    {
+                      type: 'Column',
+                      width: 'stretch',
+                      items: [
+                        { type: 'TextBlock', text: 'SEVERITY', size: 'Small', weight: 'Bolder', color: 'Accent', spacing: 'None' },
+                        { type: 'TextBlock', text: `${this.severityIcon(item.severity)} ${item.severity}`, color: this.severityColor(item.severity), weight: 'Bolder', spacing: 'Small', wrap: false },
+                      ],
+                    },
+                    {
+                      type: 'Column',
+                      width: 'stretch',
+                      items: [
+                        { type: 'TextBlock', text: 'PRIORITY', size: 'Small', weight: 'Bolder', color: 'Accent', spacing: 'None' },
+                        { type: 'TextBlock', text: `${this.priorityIcon(item.priority)} ${item.priority}`, color: this.priorityColor(item.priority), weight: 'Bolder', spacing: 'Small', wrap: false },
+                      ],
+                    },
+                    {
+                      type: 'Column',
+                      width: 'stretch',
+                      items: [
+                        { type: 'TextBlock', text: 'ENVIRONMENT', size: 'Small', weight: 'Bolder', color: 'Accent', spacing: 'None' },
+                        { type: 'TextBlock', text: environmentStr, spacing: 'Small', wrap: true },
+                      ],
+                    },
+                  ],
+                },
+                // ── Assignee · Reporter ──────────────────────────────────
+                {
+                  type: 'ColumnSet',
+                  separator: true,
+                  spacing: 'Medium',
+                  columns: [
+                    {
+                      type: 'Column',
+                      width: 'stretch',
+                      items: [
+                        { type: 'TextBlock', text: 'ASSIGNEE', size: 'Small', weight: 'Bolder', color: 'Accent', spacing: 'None' },
+                        { type: 'TextBlock', text: `👤 ${item.assignee?.fullName ?? 'Unassigned'}`, color: 'Good', weight: 'Bolder', spacing: 'Small', wrap: true },
+                      ],
+                    },
+                    {
+                      type: 'Column',
+                      width: 'stretch',
+                      items: [
+                        { type: 'TextBlock', text: 'REPORTER', size: 'Small', weight: 'Bolder', color: 'Accent', spacing: 'None' },
+                        { type: 'TextBlock', text: item.reporter?.fullName ?? 'Unknown', spacing: 'Small', wrap: true, isSubtle: true },
+                      ],
+                    },
+                  ],
+                },
+                // ── Steps to repro ────────────────────────────────────────
+                ...(item.stepsToRepro ? [{
+                  type: 'Container',
+                  separator: true,
+                  spacing: 'Medium' as const,
+                  items: [
+                    { type: 'TextBlock', text: 'STEPS TO REPRODUCE', size: 'Small', weight: 'Bolder', color: 'Accent', spacing: 'None' },
+                    { type: 'TextBlock', text: item.stepsToRepro, wrap: true, spacing: 'Small', isSubtle: true },
+                  ],
+                }] : []),
+              ],
+            },
+          }],
         });
       })
       .catch((err) => this.logger.warn(`notifyCriticalBug failed: ${err.message}`));
   }
 
-  // Scenario 9 — Bug reopened
+  // Scenario 4 — Bug reopened (posts Adaptive Card directly to Teams)
   notifyBugReopened(item: {
     id: string;
     displayId: string;
@@ -215,22 +660,104 @@ export class AutomationService {
       .then((url) => {
         if (!url) return;
         this.post(url, {
-          event: 'BUG_REOPENED',
-          payload: {
-            id: item.id,
-            displayId: item.displayId,
-            title: item.title,
-            projectId: item.projectId,
-            reopenCount: item.reopenCount,
-            assigneeName: item.assignee?.fullName ?? 'Unassigned',
-            reopenedBy: reopenedBy.fullName,
-          },
+          type: 'message',
+          attachments: [{
+            contentType: 'application/vnd.microsoft.card.adaptive',
+            contentUrl: null,
+            content: {
+              type: 'AdaptiveCard',
+              $schema: 'http://adaptivecards.io/schemas/adaptive-card.json',
+              version: '1.4',
+              body: [
+                // ── Header ──────────────────────────────────────────────
+                {
+                  type: 'ColumnSet',
+                  columns: [
+                    {
+                      type: 'Column',
+                      width: 'auto',
+                      items: [{ type: 'TextBlock', text: '🔁', size: 'ExtraLarge', wrap: false }],
+                      verticalContentAlignment: 'Center',
+                    },
+                    {
+                      type: 'Column',
+                      width: 'stretch',
+                      items: [
+                        { type: 'TextBlock', text: 'PMS — Bug Reopened', weight: 'Bolder', size: 'Large', color: 'Accent', wrap: true, spacing: 'None' },
+                        { type: 'TextBlock', text: 'Project Management System', size: 'Small', color: 'Accent', isSubtle: true, spacing: 'None', wrap: false },
+                      ],
+                      verticalContentAlignment: 'Center',
+                    },
+                  ],
+                },
+                // spacer
+                { type: 'TextBlock', text: ' ', spacing: 'Medium', size: 'Small' },
+                // ── Bug title ───────────────────────────────────────────
+                {
+                  type: 'Container',
+                  style: 'emphasis',
+                  items: [
+                    { type: 'TextBlock', text: 'BUG', size: 'Small', weight: 'Bolder', color: 'Warning', spacing: 'None' },
+                    { type: 'TextBlock', text: item.title, size: 'Medium', weight: 'Bolder', wrap: true, spacing: 'Small' },
+                    { type: 'TextBlock', text: item.displayId, size: 'Small', isSubtle: true, fontType: 'Monospace', spacing: 'Small' },
+                  ],
+                },
+                // ── Reopen count · Reopened by ────────────────────────────
+                {
+                  type: 'ColumnSet',
+                  spacing: 'Medium',
+                  columns: [
+                    {
+                      type: 'Column',
+                      width: 'stretch',
+                      items: [
+                        { type: 'TextBlock', text: 'REOPEN COUNT', size: 'Small', weight: 'Bolder', color: 'Accent', spacing: 'None' },
+                        { type: 'TextBlock', text: `🔁 ${item.reopenCount}x`, weight: 'Bolder', color: 'Warning', spacing: 'Small', wrap: false },
+                      ],
+                    },
+                    {
+                      type: 'Column',
+                      width: 'stretch',
+                      items: [
+                        { type: 'TextBlock', text: 'REOPENED BY', size: 'Small', weight: 'Bolder', color: 'Accent', spacing: 'None' },
+                        { type: 'TextBlock', text: reopenedBy.fullName, spacing: 'Small', wrap: true, isSubtle: true },
+                      ],
+                    },
+                  ],
+                },
+                // ── Assignee · Reporter ──────────────────────────────────
+                {
+                  type: 'ColumnSet',
+                  separator: true,
+                  spacing: 'Medium',
+                  columns: [
+                    {
+                      type: 'Column',
+                      width: 'stretch',
+                      items: [
+                        { type: 'TextBlock', text: 'ASSIGNEE', size: 'Small', weight: 'Bolder', color: 'Accent', spacing: 'None' },
+                        { type: 'TextBlock', text: `👤 ${item.assignee?.fullName ?? 'Unassigned'}`, color: 'Good', weight: 'Bolder', spacing: 'Small', wrap: true },
+                      ],
+                    },
+                    {
+                      type: 'Column',
+                      width: 'stretch',
+                      items: [
+                        { type: 'TextBlock', text: 'REPORTER', size: 'Small', weight: 'Bolder', color: 'Accent', spacing: 'None' },
+                        { type: 'TextBlock', text: item.reporter?.fullName ?? 'Unknown', spacing: 'Small', wrap: true, isSubtle: true },
+                      ],
+                    },
+                  ],
+                },
+              ],
+            },
+          }],
         });
       })
       .catch((err) => this.logger.warn(`notifyBugReopened failed: ${err.message}`));
   }
 
-  // Scenario 10 — Item blocked
+  // Scenario 5 — Item blocked (posts Adaptive Card directly to Teams)
   notifyItemBlocked(item: {
     id: string;
     displayId: string;
@@ -239,21 +766,103 @@ export class AutomationService {
     projectId: string;
     assignee?: { id: string; fullName: string } | null;
   }, blockedBy: { fullName: string }): void {
+    const { itemType, itemIcon } = this.itemMeta(item.type);
     this.getProjectWebhookUrl(item.projectId)
       .then((url) => {
         if (!url) return;
         this.post(url, {
-          event: 'ITEM_BLOCKED',
-          payload: {
-            id: item.id,
-            displayId: item.displayId,
-            title: item.title,
-            type: item.type,
-            ...this.itemMeta(item.type),
-            projectId: item.projectId,
-            assigneeName: item.assignee?.fullName ?? 'Unassigned',
-            blockedBy: blockedBy.fullName,
-          },
+          type: 'message',
+          attachments: [{
+            contentType: 'application/vnd.microsoft.card.adaptive',
+            contentUrl: null,
+            content: {
+              type: 'AdaptiveCard',
+              $schema: 'http://adaptivecards.io/schemas/adaptive-card.json',
+              version: '1.4',
+              body: [
+                // ── Header ──────────────────────────────────────────────
+                {
+                  type: 'ColumnSet',
+                  columns: [
+                    {
+                      type: 'Column',
+                      width: 'auto',
+                      items: [{ type: 'TextBlock', text: '🚧', size: 'ExtraLarge', wrap: false }],
+                      verticalContentAlignment: 'Center',
+                    },
+                    {
+                      type: 'Column',
+                      width: 'stretch',
+                      items: [
+                        { type: 'TextBlock', text: 'PMS — Item Blocked', weight: 'Bolder', size: 'Large', color: 'Accent', wrap: true, spacing: 'None' },
+                        { type: 'TextBlock', text: 'Project Management System', size: 'Small', color: 'Accent', isSubtle: true, spacing: 'None', wrap: false },
+                      ],
+                      verticalContentAlignment: 'Center',
+                    },
+                  ],
+                },
+                // spacer
+                { type: 'TextBlock', text: ' ', spacing: 'Medium', size: 'Small' },
+                // ── Work item title ───────────────────────────────────────
+                {
+                  type: 'Container',
+                  style: 'emphasis',
+                  items: [
+                    { type: 'TextBlock', text: `${itemIcon} ${itemType.toUpperCase()}`, size: 'Small', weight: 'Bolder', color: 'Attention', spacing: 'None' },
+                    { type: 'TextBlock', text: item.title, size: 'Medium', weight: 'Bolder', wrap: true, spacing: 'Small' },
+                    { type: 'TextBlock', text: item.displayId, size: 'Small', isSubtle: true, fontType: 'Monospace', spacing: 'Small' },
+                  ],
+                },
+                // ── Status · Type ────────────────────────────────────────
+                {
+                  type: 'ColumnSet',
+                  spacing: 'Medium',
+                  columns: [
+                    {
+                      type: 'Column',
+                      width: 'stretch',
+                      items: [
+                        { type: 'TextBlock', text: 'STATUS', size: 'Small', weight: 'Bolder', color: 'Accent', spacing: 'None' },
+                        { type: 'TextBlock', text: '🚧 BLOCKED', weight: 'Bolder', color: 'Attention', spacing: 'Small', wrap: false },
+                      ],
+                    },
+                    {
+                      type: 'Column',
+                      width: 'stretch',
+                      items: [
+                        { type: 'TextBlock', text: 'TYPE', size: 'Small', weight: 'Bolder', color: 'Accent', spacing: 'None' },
+                        { type: 'TextBlock', text: `${itemIcon} ${itemType}`, spacing: 'Small', wrap: false },
+                      ],
+                    },
+                  ],
+                },
+                // ── Assignee · Blocked by ─────────────────────────────────
+                {
+                  type: 'ColumnSet',
+                  separator: true,
+                  spacing: 'Medium',
+                  columns: [
+                    {
+                      type: 'Column',
+                      width: 'stretch',
+                      items: [
+                        { type: 'TextBlock', text: 'ASSIGNEE', size: 'Small', weight: 'Bolder', color: 'Accent', spacing: 'None' },
+                        { type: 'TextBlock', text: `👤 ${item.assignee?.fullName ?? 'Unassigned'}`, color: 'Good', weight: 'Bolder', spacing: 'Small', wrap: true },
+                      ],
+                    },
+                    {
+                      type: 'Column',
+                      width: 'stretch',
+                      items: [
+                        { type: 'TextBlock', text: 'BLOCKED BY', size: 'Small', weight: 'Bolder', color: 'Accent', spacing: 'None' },
+                        { type: 'TextBlock', text: blockedBy.fullName, spacing: 'Small', wrap: true, isSubtle: true },
+                      ],
+                    },
+                  ],
+                },
+              ],
+            },
+          }],
         });
       })
       .catch((err) => this.logger.warn(`notifyItemBlocked failed: ${err.message}`));
