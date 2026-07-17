@@ -58,6 +58,7 @@ describe('AnalyticsService — KPI computation', () => {
             timesheetEntry: { aggregate: jest.fn(), groupBy: jest.fn(), findMany: jest.fn() },
             kpiRecord: { findMany: jest.fn() },
             leaveRequest: { findMany: jest.fn() },
+            lateComingLog: { findMany: jest.fn() },
             upskillAssignment: { findFirst: jest.fn() },
             portalConfig: { findUnique: jest.fn() },
             holiday: { findMany: jest.fn() },
@@ -75,6 +76,7 @@ describe('AnalyticsService — KPI computation', () => {
     bugItems = [],
     manualScores = [],
     leaveRequests = [],
+    lateComingLogs = [],
     upskillApproved = null as { id: string } | null,
     upskillRejected = null as { id: string } | null,
     totalHours = 40,
@@ -83,7 +85,8 @@ describe('AnalyticsService — KPI computation', () => {
     allItems?: ReturnType<typeof wi>[];
     bugItems?: { id: string; bugClassification: string | null }[];
     manualScores?: { metricId: string; points: number }[];
-    leaveRequests?: { totalDays: number; isPlanned: boolean }[];
+    leaveRequests?: { isPlanned: boolean; startDate: Date; endDate: Date; isHalfDay: boolean }[];
+    lateComingLogs?: { minutesLate: number }[];
     upskillApproved?: { id: string } | null;
     upskillRejected?: { id: string } | null;
     totalHours?: number;
@@ -99,6 +102,7 @@ describe('AnalyticsService — KPI computation', () => {
 
     (prisma.kpiRecord.findMany as jest.Mock).mockResolvedValue(manualScores);
     (prisma.leaveRequest.findMany as jest.Mock).mockResolvedValue(leaveRequests);
+    (prisma.lateComingLog.findMany as jest.Mock).mockResolvedValue(lateComingLogs);
 
     // Phase 1: upskillAssignment.findFirst called twice — APPROVED LEARNING first, then REJECTED LEARNING
     (prisma.upskillAssignment.findFirst as jest.Mock)
@@ -209,7 +213,7 @@ describe('AnalyticsService — KPI computation', () => {
   it('Attendance: unplanned approved leave returns 0', async () => {
     setupUserKpiMocks({
       allItems: [wi(BoardStatus.QA_DONE)],
-      leaveRequests: [{ totalDays: 1, isPlanned: false }],
+      leaveRequests: [{ isPlanned: false, startDate: new Date('2026-05-10'), endDate: new Date('2026-05-10'), isHalfDay: false }],
     });
     const [result] = await service.getKpi('2026-05', 'user-1', true);
     const metric = result.metrics.find((m) => m.metricId === 'attendance')!;

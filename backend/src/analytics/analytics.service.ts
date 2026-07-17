@@ -42,13 +42,25 @@ function computeDefectLeakageFromHours(bugHours: number, totalWorkingHours: numb
   return Math.max(0, Math.min(10, Math.round(score * 10) / 10));
 }
 
-function computeAttendance(leaveRequests: { totalDays: number; isPlanned: boolean }[]): number {
-  // Unplanned leave (isPlanned = false) → 0 pts
+function computeAttendance(
+  leaveRequests: { isPlanned: boolean; startDate: Date; endDate: Date; isHalfDay: boolean }[],
+  periodStart: Date,
+  periodEnd: Date,
+): number {
   if (leaveRequests.some((r) => !r.isPlanned)) return 0;
-  // Planned approved leaves — score based on total days
-  const plannedDays = leaveRequests.reduce((s, r) => s + r.totalDays, 0);
+
+  const lastDayOfPeriod = new Date(periodEnd.getTime() - 86_400_000);
+
+  const plannedDays = leaveRequests.reduce((s, r) => {
+    if (r.isHalfDay) return s + 0.5;
+    const effectiveStart = r.startDate < periodStart ? periodStart : r.startDate;
+    const effectiveEnd   = r.endDate   > lastDayOfPeriod ? lastDayOfPeriod : r.endDate;
+    const days = Math.round((effectiveEnd.getTime() - effectiveStart.getTime()) / 86_400_000) + 1;
+    return s + Math.max(0, days);
+  }, 0);
+
   if (plannedDays > 1.5) return 0;
-  if (plannedDays > 1) return 3;
+  if (plannedDays > 1)   return 3;
   return 5;
 }
 
@@ -127,6 +139,7 @@ export class AnalyticsService {
       bugItems,
       manualScores,
       leaveRequests,
+      lateComingLogs,
       upskillLearningApproved,
       upskillLearningRejected,
       totalWorkingHoursAgg,
@@ -163,7 +176,12 @@ export class AnalyticsService {
           startDate: { lte: end },
           endDate: { gte: start },
         },
-        select: { totalDays: true, isPlanned: true },
+        select: { isPlanned: true, startDate: true, endDate: true, isHalfDay: true },
+      }),
+      // Late coming logs for the period — used to auto-compute timeliness score
+      this.prisma.lateComingLog.findMany({
+        where: { userId, date: { gte: start, lt: end } },
+        select: { minutesLate: true },
       }),
       // APPROVED LEARNING assignment → 5 pts
       this.prisma.upskillAssignment.findFirst({
@@ -292,16 +310,22 @@ export class AnalyticsService {
     const reworkHours = Number(reworkHoursAgg._sum.hours ?? 0);
     const functionalDefectLeakage = computeDefectLeakageFromHours(functionalBugHours + reworkHours, totalWorkingHours);
 
-    // Attendance
-    const attendance = computeAttendance(leaveRequests);
+    // Attendance — clipped to period so cross-month leaves aren't overcounted
+    const attendance = computeAttendance(leaveRequests, start, end);
 
     // Learning Velocity: approved=5, declined (REJECTED)=3, not submitted or any other status=0
     const learningVelocity = upskillLearningApproved ? 5 : upskillLearningRejected ? 3 : 0;
 
+    // Timeliness — auto-computed from late coming logs
+    const timeliness = (() => {
+      if (lateComingLogs.length === 0) return 5;
+      if (lateComingLogs.length < 3 && lateComingLogs.every((l) => l.minutesLate <= 10)) return 3;
+      return 0;
+    })();
+
     // Manual scores (PM entries)
     const getManual = (metricId: string) =>
       manualScores.find((s) => s.metricId === metricId)?.points ?? 0;
-    const timeliness         = getManual('timeliness');
     const teamCollaboration  = getManual('team_collaboration');
     const reportingDocs      = getManual('reporting_documentation');
     const positiveBehaviour  = getManual('positive_behaviour');
@@ -325,7 +349,7 @@ export class AnalyticsService {
     ];
 
     const METRIC_VALUES = hasNoActivity
-      ? Array(14).fill(0)
+      ? [0, 0, 0, 0, 0, 0, 0, attendance, timeliness, 0, 0, 0, 0, 0]
       : [
           sprintReliability, deliveryTimeliness, estimationAccuracy, throughput,
           internalReworkRatio, technicalDefectLeakage, functionalDefectLeakage,

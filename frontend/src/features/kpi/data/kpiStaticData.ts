@@ -139,17 +139,17 @@ export const KPI_METRICS: KpiMetricDefinition[] = [
   {
     id: 'timeliness',
     name: 'Timeliness',
-    subTitle: 'Punctuality — Late Comings Tracked by PM / HR',
+    subTitle: 'Punctuality — Auto-computed from Late Coming Logs',
     shortName: 'Timeliness',
     coreValue: 'Diligent and Committed',
     subCategory: 'Attendance',
     weightage: 0.05,
     maxPoints: 5,
-    scoringType: 'manual',
-    scoringDescription: 'Zero late comings = 5 · < 3 lates under 10 min = 3 · ≥ 3 lates or any > 10 min = 0',
-    badge: 'MANUAL',
-    formula: 'Your PM / HR enters this score based on office arrival records for the month',
-    example: 'No late comings this month → 5 pts\n1 or 2 late comings, each under 10 minutes → 3 pts\n3 or more late comings, OR even 1 late coming over 10 minutes → 0 pts\n\nThis score is entered manually by your Project Manager.',
+    scoringType: 'stepped',
+    scoringDescription: 'Zero late comings = 5 · < 3 lates all ≤ 10 min = 3 · ≥ 3 lates or any > 10 min = 0',
+    badge: 'AUTO',
+    formula: 'System counts late coming logs recorded for the month and applies the scoring rules automatically',
+    example: 'No late comings this month → 5 pts\n1 or 2 late comings, each ≤ 10 minutes → 3 pts\n3 or more late comings → 0 pts\nAny single late coming > 10 minutes → 0 pts',
   },
 
   // ── Collaboration ──────────────────────────────────────────────────────────

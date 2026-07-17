@@ -278,6 +278,8 @@ model User {
   leaveRequests         LeaveRequest[]       @relation("UserLeaveRequests")
   leaveRequestApprovals LeaveRequest[]       @relation("LeaveRequestApprovals")
   leaveLogs             LeaveLog[]           @relation("LeaveLogs")
+  lateComingLogs        LateComingLog[]      @relation("LateComingLogs")
+  lateComingLogsRecorded LateComingLog[]     @relation("LateComingLogsRecordedBy")
   learningLogs          LearningLog[]        @relation("LearningLogs")
   innovationLogs        InnovationLog[]      @relation("InnovationLogs")
   createdTestCases      TestCase[]           @relation("CreatedTestCases")
@@ -882,6 +884,26 @@ model LeaveLog {
   @@unique([userId, date])
   @@index([userId])
   @@map("leave_logs")
+}
+
+// ─── Late Coming Log ──────────────────────────────────────────────────────────
+
+model LateComingLog {
+  id           String   @id @default(uuid())
+  userId       String
+  date         DateTime @db.Date
+  minutesLate  Int
+  reason       String?  @db.VarChar(500)
+  recordedById String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user       User @relation("LateComingLogs", fields: [userId], references: [id], onDelete: Cascade)
+  recordedBy User @relation("LateComingLogsRecordedBy", fields: [recordedById], references: [id])
+
+  @@index([userId])
+  @@index([date])
+  @@map("late_coming_logs")
 }
 
 // ─── Learning Log ─────────────────────────────────────────────────────────────
