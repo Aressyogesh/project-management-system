@@ -5,6 +5,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { randomUUID } from 'crypto';
 import { AuditAction, AuditEntity, ProjectRole, SystemRole, UpskillStatus, UpskillType } from '@prisma/client';
 import { AuditLogsService } from '../audit-logs/audit-logs.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -81,6 +82,25 @@ export class UpskillService {
     return !!membership;
   }
 
+  private splitMonths(start: Date, end: Date): Array<{ s: Date; e: Date }> {
+    const segments: Array<{ s: Date; e: Date }> = [];
+    let curYear  = start.getUTCFullYear();
+    let curMonth = start.getUTCMonth(); // 0-indexed
+    let curDay   = start.getUTCDate();
+
+    while (true) {
+      const lastDayOfMonth = new Date(Date.UTC(curYear, curMonth + 1, 0)).getUTCDate();
+      const monthEnd = new Date(Date.UTC(curYear, curMonth, lastDayOfMonth));
+      const segEnd   = monthEnd.getTime() < end.getTime() ? monthEnd : new Date(end);
+      segments.push({ s: new Date(Date.UTC(curYear, curMonth, curDay)), e: segEnd });
+      if (segEnd.getTime() >= end.getTime()) break;
+      curDay = 1;
+      curMonth++;
+      if (curMonth > 11) { curMonth = 0; curYear++; }
+    }
+    return segments;
+  }
+
   async createAssignment(callerId: string, dto: CreateAssignmentDto) {
     const { type, assignedToId, description, toolScript, startDate, endDate } = dto;
 
@@ -97,36 +117,49 @@ export class UpskillService {
     const target = await this.prisma.user.findUnique({ where: { id: assignedToId }, select: { id: true } });
     if (!target) throw new NotFoundException('Assigned user not found');
 
-    const conflict = await this.prisma.upskillAssignment.findFirst({
-      where: { assignedToId, startDate: { lte: end }, endDate: { gte: start } },
-      select: { startDate: true, endDate: true },
-    });
-    if (conflict) {
-      throw new ConflictException(
-        `This resource already has an upskill assignment from ${conflict.startDate.toISOString().split('T')[0]} to ${conflict.endDate.toISOString().split('T')[0]}. Date ranges cannot overlap.`,
-      );
+    const segments = type === UpskillType.LEARNING ? this.splitMonths(start, end) : [{ s: start, e: end }];
+
+    for (const seg of segments) {
+      const conflict = await this.prisma.upskillAssignment.findFirst({
+        where: { assignedToId, startDate: { lte: seg.e }, endDate: { gte: seg.s } },
+        select: { startDate: true, endDate: true },
+      });
+      if (conflict) {
+        throw new ConflictException(
+          `This resource already has an upskill assignment from ${conflict.startDate.toISOString().split('T')[0]} to ${conflict.endDate.toISOString().split('T')[0]}. Date ranges cannot overlap.`,
+        );
+      }
     }
 
-    const created = await this.prisma.upskillAssignment.create({
-      data: {
-        type,
-        assignedToId,
-        createdById: callerId,
-        description,
-        toolScript: toolScript ?? null,
-        startDate: start,
-        endDate: end,
-      },
-      include: { assignedTo: { select: { id: true, fullName: true } }, createdBy: { select: { id: true, fullName: true } } },
-    });
+    const groupId = segments.length > 1 ? randomUUID() : null;
+
+    const created = await this.prisma.$transaction(
+      segments.map((seg) =>
+        this.prisma.upskillAssignment.create({
+          data: {
+            type,
+            assignedToId,
+            createdById: callerId,
+            description,
+            toolScript: toolScript ?? null,
+            startDate: seg.s,
+            endDate: seg.e,
+            groupId,
+          },
+          include: { assignedTo: { select: { id: true, fullName: true } }, createdBy: { select: { id: true, fullName: true } } },
+        }),
+      ),
+    );
+
     this.auditLogs.log({
       userId: callerId,
       action: AuditAction.UPSKILL_ASSIGNED,
       entity: AuditEntity.UPSKILL_ASSIGNMENT,
-      entityId: created.id,
-      entityTitle: `${type} — ${created.assignedTo?.fullName ?? assignedToId}`,
-      metadata: { type, startDate: startDate.slice(0, 10), endDate: endDate.slice(0, 10) },
+      entityId: created[0].id,
+      entityTitle: `${type} — ${created[0].assignedTo?.fullName ?? assignedToId}`,
+      metadata: { type, startDate: startDate.slice(0, 10), endDate: endDate.slice(0, 10), months: segments.length },
     });
+
     return created;
   }
 
@@ -157,8 +190,114 @@ export class UpskillService {
     }
 
     const assignedToId = dto.assignedToId ?? assignment.assignedToId;
+    const description  = dto.description  ?? assignment.description;
+    const toolScript   = dto.toolScript !== undefined ? (dto.toolScript || null) : assignment.toolScript;
+
+    // For LEARNING type, split the new range into monthly segments and create any new months
+    if (assignment.type === UpskillType.LEARNING) {
+      const allSegments = this.splitMonths(start, end);
+
+      // Find other records that already belong to this group
+      const siblings = assignment.groupId
+        ? await this.prisma.upskillAssignment.findMany({
+            where: { groupId: assignment.groupId, id: { not: assignmentId } },
+            select: { id: true, startDate: true },
+          })
+        : [];
+
+      const coveredKeys = new Set(
+        siblings.map((s) => `${s.startDate.getUTCFullYear()}-${s.startDate.getUTCMonth()}`),
+      );
+      const thisKey = `${assignment.startDate.getUTCFullYear()}-${assignment.startDate.getUTCMonth()}`;
+
+      // Segments that are genuinely new (not already covered by a sibling or this record)
+      const newSegments = allSegments.filter((seg) => {
+        const k = `${seg.s.getUTCFullYear()}-${seg.s.getUTCMonth()}`;
+        return k !== thisKey && !coveredKeys.has(k);
+      });
+
+      // The segment this assignment should cover (its own month)
+      const thisSeg = allSegments.find(
+        (seg) => `${seg.s.getUTCFullYear()}-${seg.s.getUTCMonth()}` === thisKey,
+      ) ?? allSegments[0];
+
+      // Conflict check for new segments only
+      for (const seg of newSegments) {
+        const conflict = await this.prisma.upskillAssignment.findFirst({
+          where: {
+            assignedToId,
+            startDate: { lte: seg.e },
+            endDate:   { gte: seg.s },
+            id: { not: assignmentId },
+            ...(assignment.groupId ? { groupId: { not: assignment.groupId } } : {}),
+          },
+          select: { startDate: true, endDate: true },
+        });
+        if (conflict) {
+          throw new ConflictException(
+            `This resource already has an upskill assignment from ${conflict.startDate.toISOString().split('T')[0]} to ${conflict.endDate.toISOString().split('T')[0]}. Date ranges cannot overlap.`,
+          );
+        }
+      }
+
+      const totalCount = 1 + siblings.length + newSegments.length;
+      const groupId    = totalCount > 1 ? (assignment.groupId ?? randomUUID()) : assignment.groupId;
+
+      const updated = await this.prisma.upskillAssignment.update({
+        where: { id: assignmentId },
+        data: {
+          ...(dto.assignedToId ? { assignedToId } : {}),
+          description,
+          toolScript,
+          startDate: thisSeg.s,
+          endDate:   thisSeg.e,
+          ...(groupId ? { groupId } : {}),
+        },
+        include: {
+          assignedTo: { select: { id: true, fullName: true } },
+          createdBy:  { select: { id: true, fullName: true } },
+        },
+      });
+
+      if (newSegments.length > 0) {
+        await this.prisma.$transaction(
+          newSegments.map((seg) =>
+            this.prisma.upskillAssignment.create({
+              data: {
+                type:        assignment.type,
+                assignedToId,
+                createdById: callerId,
+                description,
+                toolScript,
+                startDate:   seg.s,
+                endDate:     seg.e,
+                groupId:     groupId!,
+              },
+            }),
+          ),
+        );
+      }
+
+      this.auditLogs.log({
+        userId: callerId,
+        action: AuditAction.UPSKILL_UPDATED,
+        entity: AuditEntity.UPSKILL_ASSIGNMENT,
+        entityId: assignmentId,
+        entityTitle: `${updated.type} — ${updated.assignedTo?.fullName ?? assignmentId}`,
+        metadata: { newMonthsAdded: newSegments.length },
+      });
+      return updated;
+    }
+
+    // Non-LEARNING: standard single-record update
     const conflict = await this.prisma.upskillAssignment.findFirst({
-      where: { assignedToId, startDate: { lte: end }, endDate: { gte: start }, id: { not: assignmentId } },
+      where: {
+        assignedToId,
+        startDate: { lte: end },
+        endDate:   { gte: start },
+        id: { not: assignmentId },
+        ...(assignment.groupId ? { groupId: { not: assignment.groupId } } : {}),
+      },
       select: { startDate: true, endDate: true },
     });
     if (conflict) {
@@ -170,15 +309,15 @@ export class UpskillService {
     const updated = await this.prisma.upskillAssignment.update({
       where: { id: assignmentId },
       data: {
-        ...(dto.assignedToId ? { assignedToId: dto.assignedToId } : {}),
-        ...(dto.description ? { description: dto.description } : {}),
-        ...(dto.toolScript !== undefined ? { toolScript: dto.toolScript || null } : {}),
+        ...(dto.assignedToId ? { assignedToId } : {}),
+        description,
+        toolScript,
         startDate: start,
-        endDate: end,
+        endDate:   end,
       },
       include: {
         assignedTo: { select: { id: true, fullName: true } },
-        createdBy: { select: { id: true, fullName: true } },
+        createdBy:  { select: { id: true, fullName: true } },
       },
     });
     this.auditLogs.log({

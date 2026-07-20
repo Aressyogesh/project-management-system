@@ -1108,6 +1108,7 @@ model UpskillAssignment {
   rejectionReason  String?       @db.VarChar(500)
   approvedAt       DateTime?
   approvedById     String?
+  groupId          String?
   createdAt        DateTime      @default(now())
   updatedAt        DateTime      @updatedAt
 
@@ -1118,6 +1119,7 @@ model UpskillAssignment {
 
   @@index([assignedToId])
   @@index([status])
+  @@index([groupId])
   @@map("upskill_assignments")
 }
 

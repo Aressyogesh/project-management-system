@@ -55,10 +55,11 @@ describe('UpskillService', () => {
 
   // ─── UTC-F054-BE-01 ───────────────────────────────────────────────────────
 
-  it('creates a LEARNING assignment successfully', async () => {
+  it('creates a LEARNING assignment successfully (single month)', async () => {
     (prisma.user.findUnique as jest.Mock).mockResolvedValue({ id: 'user-001' });
+    (prisma.upskillAssignment.findFirst as jest.Mock).mockResolvedValue(null);
     const created = mockAssignment();
-    (prisma.upskillAssignment.create as jest.Mock).mockResolvedValue(created);
+    (prisma.$transaction as jest.Mock).mockResolvedValue([created]);
 
     const result = await service.createAssignment('mgr-001', {
       type: UpskillType.LEARNING,
@@ -68,9 +69,9 @@ describe('UpskillService', () => {
       endDate: '2026-06-30',
     });
 
-    expect(result.id).toBe('asgn-001');
-    expect(result.status).toBe(UpskillStatus.ASSIGNED);
-    expect(prisma.upskillAssignment.create).toHaveBeenCalledTimes(1);
+    expect(result[0].id).toBe('asgn-001');
+    expect(result[0].status).toBe(UpskillStatus.ASSIGNED);
+    expect(prisma.$transaction).toHaveBeenCalledTimes(1);
   });
 
   // ─── UTC-F054-BE-02 ───────────────────────────────────────────────────────
@@ -85,7 +86,7 @@ describe('UpskillService', () => {
         endDate: '2026-06-30',
       }),
     ).rejects.toThrow(BadRequestException);
-    expect(prisma.upskillAssignment.create).not.toHaveBeenCalled();
+    expect(prisma.$transaction).not.toHaveBeenCalled();
   });
 
   // ─── UTC-F054-BE-04 ───────────────────────────────────────────────────────
