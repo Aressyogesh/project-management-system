@@ -23,12 +23,16 @@ interface CapacityCell {
   hasWorkItem?: boolean;
   holidayName?: string;
   dayOfWeek: string;
+  leaveAffectedHours?: number;
 }
 
 interface CapacityEmployee {
   userId: string;
   name: string;
   role: string;
+  billing?: string;
+  engagement?: string;
+  engagementHours?: number | null;
   cells: CapacityCell[];
   summary: { workingDays: number; occupiedDays: number; leaveDays: number; availableDays: number };
 }
@@ -66,9 +70,9 @@ const STATUS_STYLE: Record<string, { bg: string; title: string }> = {
   weekly_off:      { bg: 'bg-gray-100',    title: 'Weekly Off' },
   planned_leave:   { bg: 'bg-pink-300',    title: 'On Planned Leave' },
   unplanned_leave: { bg: 'bg-blue-400',    title: 'On Unplanned Leave' },
-  occupied:        { bg: 'bg-red-600',     title: 'Fully Occupied (≥8h)' },
-  partial:         { bg: 'bg-red-400',     title: 'Work Assigned / Partially Occupied' },
-  available:       { bg: 'bg-green-200',   title: 'Available' },
+  occupied:        { bg: 'bg-green-600',   title: 'Fully Occupied' },
+  partial:         { bg: 'bg-amber-400',   title: 'Work Assigned / Partially Occupied' },
+  available:       { bg: 'bg-red-200',     title: 'Available' },
 };
 
 const LEGEND = [
@@ -76,9 +80,9 @@ const LEGEND = [
   { label: 'Weekly Off',                   color: 'bg-gray-100 border border-gray-200' },
   { label: 'Planned Leave',                color: 'bg-pink-300' },
   { label: 'Unplanned Leave',              color: 'bg-blue-400' },
-  { label: 'Fully Occupied (≥8h)',          color: 'bg-red-600' },
-  { label: 'Work Assigned / Partial',      color: 'bg-red-400' },
-  { label: 'Available',                    color: 'bg-green-200' },
+  { label: 'Fully Occupied (≥8.5h)',        color: 'bg-green-600' },
+  { label: 'Work Assigned / Partial',      color: 'bg-amber-400' },
+  { label: 'Available',                    color: 'bg-red-200' },
 ];
 
 function buildYears() {
@@ -114,9 +118,9 @@ const XL_COLORS: Record<string, string> = {
   weekly_off:      'F3F4F6',
   planned_leave:   'FBCFE8',
   unplanned_leave: '93C5FD',
-  occupied:        'EF4444',
-  partial:         'FCA5A5',
-  available:       'D1FAE5',
+  occupied:        '16A34A',
+  partial:         'FBBF24',
+  available:       'FECACA',
 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -155,13 +159,13 @@ function exportSingleMonthXlsx(data: CapacityReport, year: number) {
 
   // ── Row 1: Legend ──
   const legendItems: [string, string][] = [
-    ['Occupied (≥8h)', 'EF4444'],
-    ['Work Assigned',  'FCA5A5'],
-    ['Planned Leave',  'FBCFE8'],
-    ['Unplanned Leave','93C5FD'],
-    ['Holiday',        'FED7AA'],
-    ['Available',      'D1FAE5'],
-    ['Weekly Off',     'F3F4F6'],
+    ['Occupied (≥8.5h)', '16A34A'],
+    ['Work Assigned',    'FBBF24'],
+    ['Planned Leave',    'FBCFE8'],
+    ['Unplanned Leave',  '93C5FD'],
+    ['Holiday',          'FED7AA'],
+    ['Available',        'FECACA'],
+    ['Weekly Off',       'F3F4F6'],
   ];
   legendItems.forEach(([label, rgb], i) => {
     const col = i * 2;
@@ -341,6 +345,9 @@ interface TooltipState {
   cell: CapacityCell;
   x: number;
   y: number;
+  isBillable: boolean;
+  engagement?: string;
+  engagementHours?: number | null;
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -566,7 +573,7 @@ export function CapacityReportTab({ project }: { project?: string }) {
                             className="px-0.5 py-1 border-l border-gray-50 border-t border-gray-50 text-center cursor-default"
                             onMouseEnter={(e) => {
                               const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-                              setTooltip({ employeeName: emp.name, day: cell.day, month: singleData.month, year, cell, x: rect.left + rect.width / 2, y: rect.top });
+                              setTooltip({ employeeName: emp.name, day: cell.day, month: singleData.month, year, cell, x: rect.left + rect.width / 2, y: rect.top, isBillable: emp.billing === 'BILLABLE', engagement: emp.engagement, engagementHours: emp.engagementHours });
                             }}
                             onMouseLeave={() => setTooltip(null)}
                           >
@@ -580,7 +587,7 @@ export function CapacityReportTab({ project }: { project?: string }) {
                             ) : (
                               <div
                                 className={`w-6 h-6 rounded mx-auto ${style.bg} ${isToday ? 'ring-1 ring-blue-500' : ''} ${
-                                  cell.status === 'occupied' || cell.status === 'partial' || cell.status === 'unplanned_leave' ? 'text-white' : ''
+                                  cell.status === 'occupied' || cell.status === 'unplanned_leave' ? 'text-white' : ''
                                 } flex items-center justify-center text-[9px] font-medium`}
                               >
                                 {cell.hours > 0 && cell.status !== 'holiday' && cell.status !== 'weekly_off'
@@ -595,9 +602,9 @@ export function CapacityReportTab({ project }: { project?: string }) {
                       })}
                       <td className="px-3 py-2 border-l border-gray-100 border-t border-gray-50 text-center whitespace-nowrap">
                         <div className="flex flex-col items-center gap-0.5">
-                          <span className="text-[10px] text-red-500 font-medium">{emp.summary.occupiedDays}d occ</span>
+                          <span className="text-[10px] text-green-600 font-medium">{emp.summary.occupiedDays}d occ</span>
                           <span className="text-[10px] text-pink-500">{emp.summary.leaveDays}d leave</span>
-                          <span className="text-[10px] text-green-600">{emp.summary.availableDays}d avail</span>
+                          <span className="text-[10px] text-red-500">{emp.summary.availableDays}d avail</span>
                         </div>
                       </td>
                       <td className="px-4 py-2 border-l border-gray-100 border-t border-gray-50 text-center whitespace-nowrap">
@@ -661,7 +668,7 @@ export function CapacityReportTab({ project }: { project?: string }) {
                         <td key={m} className="px-4 py-3 text-center border-l border-gray-50">
                           {s ? (
                             <div className="flex flex-col items-center gap-0.5">
-                              <span className="text-red-500 font-medium">{s.occupiedDays}d occ</span>
+                              <span className="text-green-600 font-medium">{s.occupiedDays}d occ</span>
                               <span className="text-gray-400">{s.workingDays}d work</span>
                               <span className={`text-[10px] ${utilisationColor(s.utilisation)}`}>{s.utilisation}%</span>
                             </div>
@@ -705,42 +712,105 @@ export function CapacityReportTab({ project }: { project?: string }) {
           <p className="text-gray-600 mt-1">
             Status: <span className="font-medium capitalize">
               {tooltip.cell.isHalfDay
-                ? `Half-day — ${STATUS_STYLE[tooltip.cell.status].title}`
+                ? tooltip.isBillable && (tooltip.engagement === 'HALF_DAY' || tooltip.engagement === 'PARTIAL')
+                  ? `${tooltip.engagement === 'HALF_DAY' ? 'Half Day' : `Partial (${tooltip.engagementHours ?? '?'}h)`} Engagement`
+                  : `Half-day — ${STATUS_STYLE[tooltip.cell.status].title}`
                 : tooltip.cell.status === 'partial'
                   ? tooltip.cell.hours > 0 && tooltip.cell.hasWorkItem
-                    ? `${tooltip.cell.hours}h Logged · Work Item Assigned`
+                    ? `${tooltip.cell.hours}h Assigned · Work Item`
                     : tooltip.cell.hours > 0
-                    ? `${tooltip.cell.hours}h Logged (Partial Day)`
-                    : 'Work Item Assigned (No Hours Logged Yet)'
+                    ? `${tooltip.cell.hours}h Assigned (Partial Day)`
+                    : 'Work Item Assigned (No Hours Yet)'
                 : STATUS_STYLE[tooltip.cell.status].title}
             </span>
           </p>
-          {tooltip.cell.isHalfDay && tooltip.cell.restOfDayStatus && (
+          {/* Rest of day line — only for leave split cells; engagement cells get the full breakdown below */}
+          {tooltip.cell.isHalfDay && tooltip.cell.restOfDayStatus &&
+           !(tooltip.isBillable && (tooltip.cell.status === 'occupied' || tooltip.cell.status === 'partial')) && (
             <p className="text-gray-600">Rest of day: <span className="font-medium capitalize">{STATUS_STYLE[tooltip.cell.restOfDayStatus]?.title ?? tooltip.cell.restOfDayStatus}</span></p>
           )}
-          {(tooltip.cell.workItemHours ?? 0) > 0 && (
-            <p className="text-gray-600">Est. load: <span className="font-medium text-red-600">{tooltip.cell.workItemHours}h/day</span></p>
+          {/* Leave-day work item warning — shown when assigned work falls on a full leave day */}
+          {(tooltip.cell.status === 'planned_leave' || tooltip.cell.status === 'unplanned_leave') &&
+           !tooltip.cell.isHalfDay &&
+           (tooltip.cell.leaveAffectedHours ?? 0) > 0 && (
+            <p className="text-amber-600 font-medium mt-1">
+              ⚠ {tooltip.cell.leaveAffectedHours}h of assigned work falls on this day.
+              <span className="block text-gray-500 font-normal">Consider extending the due date or reassigning.</span>
+            </p>
           )}
-          {tooltip.cell.hours > 0 && (
+          {/* Billable half-day / partial: committed slot breakdown */}
+          {tooltip.isBillable && tooltip.cell.isHalfDay &&
+           (tooltip.cell.status === 'occupied' || tooltip.cell.status === 'partial') && (() => {
+            const cap        = tooltip.engagement === 'HALF_DAY' ? 4 : (tooltip.engagementHours ?? 4);
+            const restOfDay  = Math.round((8.5 - cap) * 10) / 10;
+            const assigned   = tooltip.cell.workItemHours ?? 0;
+            const unassigned = Math.max(0, Math.round((cap - assigned) * 10) / 10);
+            return (
+              <>
+                <p className="text-gray-600 mt-0.5">
+                  Capacity: <span className="font-medium">{cap}h</span>
+                  {' · '}Rest of day: <span className="font-medium text-red-500">{restOfDay}h</span>
+                </p>
+                <p className="text-gray-600">
+                  Assigned: <span className="font-medium text-green-700">{assigned > 0 ? `${assigned}h` : '—'}</span>
+                </p>
+                {unassigned > 0 ? (
+                  assigned > 0
+                    ? <p className="text-gray-600">Unassigned: <span className="font-medium text-amber-600">{unassigned}h</span></p>
+                    : <p className="text-gray-400 text-[10px] mt-0.5">No tasks in committed slot</p>
+                ) : (
+                  <p className="text-green-700 font-semibold text-[10px] mt-0.5">Committed slot fully assigned</p>
+                )}
+              </>
+            );
+          })()}
+          {/* Billable full-day: show capacity + assigned breakdown on occupied / partial / available */}
+          {tooltip.isBillable && !tooltip.cell.isHalfDay &&
+           (tooltip.cell.status === 'occupied' || tooltip.cell.status === 'partial' || tooltip.cell.status === 'available') && (() => {
+            const cap        = tooltip.engagement === 'FULL_DAY' ? 8.5 : tooltip.engagement === 'HALF_DAY' ? 4 : (tooltip.engagementHours ?? 4);
+            const allocated  = tooltip.cell.workItemHours ?? 0;
+            const unassigned = Math.max(0, Math.round((cap - allocated) * 10) / 10);
+            return (
+              <>
+                <p className="text-gray-600">
+                  Capacity: <span className="font-medium">{cap}h</span>
+                  <span className="text-gray-400 ml-1 text-[10px]">({tooltip.engagement === 'FULL_DAY' ? 'Full Day' : tooltip.engagement === 'HALF_DAY' ? 'Half Day' : 'Partial'})</span>
+                </p>
+                <p className="text-gray-600">
+                  Assigned: <span className="font-medium text-green-700">{allocated > 0 ? `${allocated}h` : '—'}</span>
+                </p>
+                {unassigned > 0 ? (
+                  allocated > 0
+                    ? <p className="text-gray-600">Unassigned: <span className="font-medium text-amber-600">{unassigned}h</span></p>
+                    : <p className="text-gray-400 text-[10px] mt-0.5">No tasks assigned for this day</p>
+                ) : (
+                  <p className="text-green-700 font-semibold text-[10px] mt-0.5">Fully assigned — 0h remaining</p>
+                )}
+              </>
+            );
+          })()}
+          {/* Non-billable: show hours logged */}
+          {!tooltip.isBillable && tooltip.cell.hours > 0 && (
             <p className="text-gray-600">Hours logged: <span className="font-medium">{tooltip.cell.hours}h</span></p>
           )}
-          {(tooltip.cell.status === 'occupied' || tooltip.cell.status === 'partial') && (
-            (() => {
-              const estLoad = tooltip.cell.workItemHours ?? 0;
-              const logged  = tooltip.cell.hours ?? 0;
-              const available = Math.max(0, 8 - Math.max(estLoad, logged));
-              return available > 0 ? (
-                <p className="text-gray-600">Available: <span className="font-medium text-green-600">{available}h</span></p>
-              ) : (
-                <p className="text-red-600 font-semibold text-[10px] mt-0.5">Fully allocated — 0h available</p>
-              );
-            })()
+          {!tooltip.isBillable && (tooltip.cell.workItemHours ?? 0) > 0 && (
+            <p className="text-gray-600">Est. load: <span className="font-medium text-amber-600">{tooltip.cell.workItemHours}h/day</span></p>
           )}
-          {tooltip.cell.hours > 8 && (
-            <p className="text-red-600 font-semibold text-[10px] mt-1">Overloaded — {tooltip.cell.hours - 8}h over capacity</p>
+          {!tooltip.isBillable && (tooltip.cell.status === 'occupied' || tooltip.cell.status === 'partial') && !tooltip.cell.isHalfDay && (() => {
+            const estLoad   = tooltip.cell.workItemHours ?? 0;
+            const logged    = tooltip.cell.hours ?? 0;
+            const available = Math.max(0, 8.5 - Math.max(estLoad, logged));
+            return available > 0 ? (
+              <p className="text-gray-600">Available: <span className="font-medium text-red-500">{available}h</span></p>
+            ) : (
+              <p className="text-red-600 font-semibold text-[10px] mt-0.5">Fully allocated — 0h available</p>
+            );
+          })()}
+          {tooltip.cell.hours > 8.5 && (
+            <p className="text-red-600 font-semibold text-[10px] mt-1">Overloaded — {Math.round((tooltip.cell.hours - 8.5) * 10) / 10}h over capacity</p>
           )}
-          {tooltip.cell.status === 'available' && (
-            <p className="text-gray-600">Available: <span className="font-medium text-green-600">8h</span></p>
+          {!tooltip.isBillable && tooltip.cell.status === 'available' && (
+            <p className="text-gray-600">Available: <span className="font-medium text-red-500">8.5h</span></p>
           )}
           {tooltip.cell.hasWorkItem && !(tooltip.cell.workItemHours ?? 0) && (
             <p className="text-red-500 text-[10px] mt-0.5">Has assigned work item</p>

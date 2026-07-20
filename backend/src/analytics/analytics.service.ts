@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { BoardStatus, BugClassification, LeaveStatus, ProjectRole, SystemRole, WorkItemType } from '@prisma/client';
+import { BoardStatus, BugClassification, LeaveStatus, MemberBilling, MemberEngagement, ProjectRole, SystemRole, WorkItemType } from '@prisma/client';
 
 // ─── KPI Computation Helpers ──────────────────────────────────────────────────
 
@@ -922,6 +922,12 @@ export class AnalyticsService {
   async getCapacityReport(period: string, requestingUserId?: string, isAdmin = true, filterProjectId?: string) {
     const { start, end } = periodToRange(period);
     const [year, month] = period.split('-').map(Number);
+    const now = new Date();
+    // For dateless work items in the current month, start distribution from today
+    // rather than the 1st so allocation appears on the correct day in the report.
+    const datelessWiStart = (now >= start && now < end)
+      ? new Date(now.getFullYear(), now.getMonth(), now.getDate())
+      : start;
 
     const daysInMonth = new Date(year, month, 0).getDate();
     const days = Array.from({ length: daysInMonth }, (_, i) => i + 1);
@@ -957,7 +963,11 @@ export class AnalyticsService {
             id: true,
             fullName: true,
             systemRole: true,
-            projectMembers: { select: { projectRole: true } },
+            projectMembers: {
+              ...(filterProjectId ? { where: { projectId: filterProjectId } } : {}),
+              select: { projectRole: true, billing: true, engagement: true, engagementHours: true },
+              take: 1,
+            },
           },
           orderBy: { fullName: 'asc' },
         }),
@@ -1041,49 +1051,94 @@ export class AnalyticsService {
       hoursMap.get(entry.userId)!.set(day, existing + Number(entry.hours));
     }
 
-    // Build per-user assigned-work-item day sets + estimated hours per day.
-    // Fill-to-capacity model: allocate up to 8h per working day, carry the
-    // remainder forward. e.g. 12h over 2 days → day 1 = 8h, day 2 = 4h.
-    // This correctly reflects that a developer cannot work more than 8h/day,
-    // so any overflow spills into the next working day.
-    const workItemDayMap      = new Map<string, Set<number>>();
-    const workItemEstHoursMap = new Map<string, Map<number, number>>();
+    // Pre-index work items by assignee — distribution is done per-employee
+    // so each employee's daily cap (driven by their engagement) is respected.
+    const userWorkItemsMap = new Map<string, typeof workItems>();
     for (const wi of workItems) {
       if (!wi.assigneeId) continue;
-      const wiStart = wi.startDate ? new Date(wi.startDate) : start;
-      const wiEnd   = wi.dueDate   ? new Date(wi.dueDate)   : end;
-      let remaining = Number(wi.estimatedHours ?? 0);
-
-      for (let d = new Date(wiStart); d <= wiEnd && remaining > 0; d.setDate(d.getDate() + 1)) {
-        const dn = dayNames[d.getDay()];
-        if (!workingDaysCfg[dn]) continue; // skip weekends
-        // Skip holidays in the current month (holidays outside this month are not loaded)
-        if (d.getFullYear() === year && d.getMonth() + 1 === month && holidayDates.has(d.getDate())) continue;
-
-        const allocatedForDay = Math.min(remaining, 8);
-        remaining = Math.round((remaining - allocatedForDay) * 100) / 100;
-
-        // Only populate maps for days that fall within the viewed month
-        if (d.getFullYear() === year && d.getMonth() + 1 === month) {
-          const day = d.getDate();
-          if (!workItemDayMap.has(wi.assigneeId)) workItemDayMap.set(wi.assigneeId, new Set());
-          workItemDayMap.get(wi.assigneeId)!.add(day);
-          if (allocatedForDay > 0) {
-            if (!workItemEstHoursMap.has(wi.assigneeId)) workItemEstHoursMap.set(wi.assigneeId, new Map());
-            const prev = workItemEstHoursMap.get(wi.assigneeId)!.get(day) ?? 0;
-            workItemEstHoursMap.get(wi.assigneeId)!.set(day, Math.round((prev + allocatedForDay) * 100) / 100);
-          }
-        }
-      }
+      if (!userWorkItemsMap.has(wi.assigneeId)) userWorkItemsMap.set(wi.assigneeId, []);
+      userWorkItemsMap.get(wi.assigneeId)!.push(wi);
     }
 
     const employeeRows = users.map((user) => {
-      const userPlannedLeaves   = plannedLeaveMap.get(user.id)       ?? new Set<number>();
-      const userUnplannedLeaves = unplannedLeaveMap.get(user.id)   ?? new Set<number>();
-      const userHalfDayLeaves   = halfDayLeaveMap.get(user.id)     ?? new Set<number>();
-      const userHours           = hoursMap.get(user.id)            ?? new Map<number, number>();
-      const userWorkDays        = workItemDayMap.get(user.id)      ?? new Set<number>();
-      const userWorkItemEstHrs  = workItemEstHoursMap.get(user.id) ?? new Map<number, number>();
+      const member          = user.projectMembers[0];
+      const isBillable      = !!filterProjectId && member?.billing === MemberBilling.BILLABLE;
+      const engagement      = member?.engagement ?? MemberEngagement.FULL_DAY;
+      const engagementHoursVal = member?.engagementHours ?? null;
+
+      // Daily capacity cap used for work-item fill-to-capacity distribution
+      const dailyCap = isBillable
+        ? engagement === MemberEngagement.FULL_DAY ? 8.5
+          : engagement === MemberEngagement.HALF_DAY ? 4
+          : (engagementHoursVal ?? 4)
+        : 8.5;
+
+      // Resolve leave sets up front so the distribution loop can skip leave days
+      const userPlannedLeaves   = plannedLeaveMap.get(user.id)   ?? new Set<number>();
+      const userUnplannedLeaves = unplannedLeaveMap.get(user.id) ?? new Set<number>();
+      const userHalfDayLeaves   = halfDayLeaveMap.get(user.id)   ?? new Set<number>();
+      const userHours           = hoursMap.get(user.id)          ?? new Map<number, number>();
+
+      // Per-employee work-item distribution using this employee's daily cap.
+      // Full leave days are skipped (same as weekends/holidays) so hours roll
+      // forward to the next available day within the due date.
+      // leaveAffectedHours is only populated when hours could NOT be redistributed
+      // (remaining > 0 after the loop) — so the warning disappears once the PM
+      // extends the due date far enough to absorb the leave day's hours.
+      const userWorkDays         = new Set<number>();
+      const userWorkItemEstHrs   = new Map<number, number>();
+      const userLeaveAffectedHrs = new Map<number, number>();
+      const _wiList = userWorkItemsMap.get(user.id) ?? [];
+      for (const wi of _wiList) {
+        const wiStart = wi.startDate ? new Date(wi.startDate) : datelessWiStart;
+        const wiEnd   = wi.dueDate   ? new Date(wi.dueDate)   : end;
+        let remaining = Number(wi.estimatedHours ?? 0);
+        // Track per-leave-day skips for THIS work item — only surfaced if
+        // hours overflow past the due date.
+        const thisWiLeaveSkips = new Map<number, number>();
+
+        for (let d = new Date(wiStart); d <= wiEnd && remaining > 0; d.setDate(d.getDate() + 1)) {
+          const dn             = dayNames[d.getDay()];
+          const isCurrentMonth = d.getFullYear() === year && d.getMonth() + 1 === month;
+          const dayNum         = d.getDate();
+
+          if (!workingDaysCfg[dn]) continue;
+          if (isCurrentMonth && holidayDates.has(dayNum)) continue;
+
+          // Skip full leave days — hours roll forward to the next available day.
+          // Half-day leave is NOT skipped: the person is partially available.
+          if (isCurrentMonth &&
+              (userPlannedLeaves.has(dayNum) || userUnplannedLeaves.has(dayNum)) &&
+              !userHalfDayLeaves.has(dayNum)) {
+            const wouldAllocate = Math.min(remaining, dailyCap);
+            thisWiLeaveSkips.set(dayNum, Math.round(((thisWiLeaveSkips.get(dayNum) ?? 0) + wouldAllocate) * 100) / 100);
+            continue;
+          }
+
+          const allocatedForDay = Math.min(remaining, dailyCap);
+          remaining = Math.round((remaining - allocatedForDay) * 100) / 100;
+
+          if (isCurrentMonth) {
+            userWorkDays.add(dayNum);
+            if (allocatedForDay > 0) {
+              const prev = userWorkItemEstHrs.get(dayNum) ?? 0;
+              userWorkItemEstHrs.set(dayNum, Math.round((prev + allocatedForDay) * 100) / 100);
+            }
+          }
+        }
+
+        // Only surface leave impacts that caused actual overflow past the due date.
+        // If remaining == 0, all hours were placed — no warning needed.
+        if (remaining > 0) {
+          let overflow = remaining;
+          for (const [day, hrs] of thisWiLeaveSkips) {
+            if (overflow <= 0) break;
+            const attributed = Math.min(hrs, overflow);
+            overflow = Math.round((overflow - attributed) * 100) / 100;
+            userLeaveAffectedHrs.set(day, Math.round(((userLeaveAffectedHrs.get(day) ?? 0) + attributed) * 100) / 100);
+          }
+        }
+      }
 
       const cells = days.map((day) => {
         const date    = new Date(year, month - 1, day);
@@ -1093,68 +1148,109 @@ export class AnalyticsService {
         const isOnPlannedLeave   = userPlannedLeaves.has(day);
         const isOnUnplannedLeave = userUnplannedLeaves.has(day);
         const isOnLeave          = isOnPlannedLeave || isOnUnplannedLeave;
-        const isHalfDay          = userHalfDayLeaves.has(day);
-        const hours          = userHours.get(day) ?? 0;
-        const hasWorkItem    = userWorkDays.has(day);
-        const workItemHours  = userWorkItemEstHrs.get(day) ?? 0;
+        const isHalfDayLeave     = userHalfDayLeaves.has(day);
+        const hours              = userHours.get(day) ?? 0;
+        const hasWorkItem        = userWorkDays.has(day);
+        const workItemHours      = userWorkItemEstHrs.get(day) ?? 0;
 
         let status: string;
-        if (isHoliday)           status = 'holiday';
-        else if (isWeeklyOff)    status = 'weekly_off';
-        else if (isOnUnplannedLeave) status = 'unplanned_leave';
-        else if (isOnPlannedLeave)   status = 'planned_leave';
-        else if (hours >= 8 || workItemHours >= 8) status = 'occupied';
-        else if (hasWorkItem)                       status = 'partial';
-        else status = 'available';
+        let cellHours = 0;
+        let cellIsHalfDay = false;
+        let cellRestOfDayStatus: string | undefined;
 
-        // For half-day leave, compute what the "rest of day" looks like
-        let restOfDayStatus: string | undefined;
-        if (isHalfDay && isOnLeave) {
-          if (hours >= 4 || workItemHours >= 4) restOfDayStatus = 'occupied';
-          else if (hasWorkItem)                 restOfDayStatus = 'partial';
-          else                                  restOfDayStatus = 'available';
+        if (isHoliday) {
+          status = 'holiday';
+        } else if (isWeeklyOff) {
+          status = 'weekly_off';
+        } else if (isOnUnplannedLeave || isOnPlannedLeave) {
+          status        = isOnUnplannedLeave ? 'unplanned_leave' : 'planned_leave';
+          cellIsHalfDay = isHalfDayLeave;
+          if (isHalfDayLeave) {
+            if (hours >= 4 || workItemHours >= 4) cellRestOfDayStatus = 'occupied';
+            else if (hasWorkItem)                 cellRestOfDayStatus = 'partial';
+            else                                 cellRestOfDayStatus = 'available';
+          }
+        } else if (isBillable) {
+          if (engagement === MemberEngagement.FULL_DAY) {
+            // Full-day engagement sets the daily cap at 8.5h but does NOT
+            // pre-occupy every day. Color follows actual work item allocation,
+            // same as non-billable, so the PM sees real gaps (red = nothing assigned).
+            if (workItemHours >= 8.5)   { status = 'occupied'; cellHours = workItemHours; }
+            else if (workItemHours > 0) { status = 'partial';  cellHours = workItemHours; }
+            else                        { status = 'available'; cellHours = 0; }
+          } else if (engagement === MemberEngagement.HALF_DAY) {
+            // Split cell: top half = committed 4h slot, bottom = rest of day.
+            // Green top when work fills the slot; amber when slot has no tasks yet.
+            cellIsHalfDay       = true;
+            cellRestOfDayStatus = 'available';
+            cellHours           = workItemHours > 0 ? workItemHours : 4;
+            status              = workItemHours >= 4 ? 'occupied' : 'partial';
+          } else {
+            // PARTIAL — split cell, custom engagement hours per day
+            const cap           = engagementHoursVal ?? 4;
+            cellIsHalfDay       = true;
+            cellRestOfDayStatus = 'available';
+            cellHours           = workItemHours > 0 ? workItemHours : cap;
+            status              = workItemHours >= cap ? 'occupied' : 'partial';
+          }
+        } else {
+          // Non-billable: current behaviour — work items + timesheets
+          if (hours >= 8.5 || workItemHours >= 8.5) status = 'occupied';
+          else if (hasWorkItem)                     status = 'partial';
+          else                                      status = 'available';
+          cellHours = hours;
         }
 
         return {
           day,
           status,
-          hours,
-          workItemHours: !isHoliday && !isWeeklyOff ? workItemHours : 0,
-          isHalfDay: isHalfDay && isOnLeave,
-          restOfDayStatus,
-          hasWorkItem: !isHoliday && !isWeeklyOff && !isOnLeave && hasWorkItem,
-          holidayName: holidayNames.get(day),
-          dayOfWeek: dayName,
+          hours:               cellHours,
+          workItemHours:       !isHoliday && !isWeeklyOff ? workItemHours : 0,
+          isHalfDay:           cellIsHalfDay,
+          restOfDayStatus:     cellRestOfDayStatus,
+          hasWorkItem:         !isHoliday && !isWeeklyOff && !isOnLeave && hasWorkItem,
+          holidayName:         holidayNames.get(day),
+          dayOfWeek:           dayName,
+          leaveAffectedHours:  isOnLeave && !isHalfDayLeave ? (userLeaveAffectedHrs.get(day) ?? 0) : 0,
         };
       });
 
       const workingDayCount = cells.filter(
         (c) => c.status !== 'holiday' && c.status !== 'weekly_off',
       ).length;
-      // Half-day leave cells contribute 0.5 to occupied/available counts
+
       const occupiedDays = cells.reduce((sum, c) => {
-        if (c.status === 'occupied' || c.status === 'partial') return sum + 1;
-        if (c.isHalfDay && (c.restOfDayStatus === 'occupied' || c.restOfDayStatus === 'partial')) return sum + 0.5;
+        if (!c.isHalfDay && (c.status === 'occupied' || c.status === 'partial')) return sum + 1;
+        if (c.isHalfDay) {
+          // For split cells the top half is only truly occupied when status='occupied'.
+          // status='partial' means the commitment slot has no tasks yet — don't count it.
+          if (c.status === 'occupied') sum += 0.5;
+          if (c.restOfDayStatus === 'occupied' || c.restOfDayStatus === 'partial') sum += 0.5;
+        }
         return sum;
       }, 0);
-      // Count leave days from the per-month day sets — this is always scoped to the
-      // current month even when the leave request spans multiple months.
-      // Each half-day counts as 0.5; full days count as 1.
+
       const userHalfDayCount = userHalfDayLeaves.size;
       const leaveDays =
         (userPlannedLeaves.size + userUnplannedLeaves.size) - userHalfDayCount * 0.5;
+
       const availableDays = cells.reduce((sum, c) => {
-        if (c.status === 'available') return sum + 1;
-        if (c.isHalfDay && c.restOfDayStatus === 'available') return sum + 0.5;
+        if (!c.isHalfDay && c.status === 'available') return sum + 1;
+        if (c.isHalfDay) {
+          // 'partial' top = commitment slot with no tasks = available for assignment
+          if (c.status === 'available' || c.status === 'partial') sum += 0.5;
+          if (c.restOfDayStatus === 'available') sum += 0.5;
+        }
         return sum;
       }, 0);
 
       return {
-        userId: user.id,
-        name: user.fullName,
-        role:
-          user.projectMembers[0]?.projectRole?.replace('_', ' ') ??
-          user.systemRole,
+        userId:         user.id,
+        name:           user.fullName,
+        role:           member?.projectRole?.replace('_', ' ') ?? user.systemRole,
+        billing:        member?.billing,
+        engagement:     member?.engagement,
+        engagementHours: engagementHoursVal,
         cells,
         summary: { workingDays: workingDayCount, occupiedDays, leaveDays, availableDays },
       };
