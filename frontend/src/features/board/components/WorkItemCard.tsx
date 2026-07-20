@@ -41,8 +41,9 @@ function getTotalLoggedHours(item: WorkItem): number {
   return item.timesheetEntries.reduce((sum, e) => sum + Number(e.hours), 0);
 }
 
-function getAge(createdAt: string): string {
-  const days = Math.floor((Date.now() - new Date(createdAt).getTime()) / (1000 * 60 * 60 * 24));
+function getAge(createdAt: string, completedAt?: string | null): string {
+  const end  = completedAt ? new Date(completedAt).getTime() : Date.now();
+  const days = Math.floor((end - new Date(createdAt).getTime()) / (1000 * 60 * 60 * 24));
   if (days === 0) return 'Today';
   if (days === 1) return '1d';
   return `${days}d`;
@@ -220,7 +221,7 @@ export function WorkItemCard({ item, index, members = [], onClick, onAssigneeCha
                   </span>
                 )}
                 {(item.startDate || item.dueDate) && <span className="text-gray-300">·</span>}
-                <span>Age: {getAge(item.createdAt)}</span>
+                <span>Age: {getAge(item.createdAt, item.completedAt)}</span>
               </div>
             )}
 
