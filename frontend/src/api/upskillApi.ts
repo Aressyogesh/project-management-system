@@ -28,6 +28,7 @@ export interface UpskillAssignment {
   rejectionReason: string | null;
   approvedAt: string | null;
   approvedById: string | null;
+  groupId: string | null;
   createdAt: string;
   updatedAt: string;
   assignedTo?: { id: string; fullName: string };
@@ -79,7 +80,7 @@ export const upskillApi = {
   getAssignment: (id: string): Promise<UpskillAssignment> =>
     apiClient.get(`/upskill/assignments/${id}`).then((r) => r.data),
 
-  createAssignment: (dto: CreateAssignmentDto): Promise<UpskillAssignment> =>
+  createAssignment: (dto: CreateAssignmentDto): Promise<UpskillAssignment[]> =>
     apiClient.post('/upskill/assignments', dto).then((r) => r.data),
 
   logProgress: (

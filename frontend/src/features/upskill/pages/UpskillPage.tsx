@@ -1,5 +1,5 @@
 ﻿import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { upskillApi, type CreateAssignmentDto, type UpskillAssignment, type UpskillStatus } from '../../../api/upskillApi';
 import { useAuthStore } from '../../../store/authStore';
 import { Pagination } from '../../../components/shared/Pagination';
@@ -43,6 +43,32 @@ function StatusBadge({ status }: { status: UpskillStatus }) {
   );
 }
 
+// ─── Month helpers ────────────────────────────────────────────────────────────
+
+function computeMonthLabels(startStr: string, endStr: string): string[] {
+  if (!startStr || !endStr || endStr <= startStr) return [];
+  const [sy, sm] = startStr.split('-').map(Number);
+  const [ey, em] = endStr.split('-').map(Number);
+  const labels: string[] = [];
+  let y = sy, m = sm;
+  while (y < ey || (y === ey && m <= em)) {
+    labels.push(new Date(y, m - 1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }));
+    m++;
+    if (m > 12) { m = 1; y++; }
+  }
+  return labels;
+}
+
+function monthLabelFromIso(iso: string): string {
+  const d = new Date(iso);
+  return d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+}
+
+function invalidateUpskill(qc: ReturnType<typeof useQueryClient>) {
+  qc.invalidateQueries({ queryKey: ['upskill-assignments'] });
+  qc.invalidateQueries({ queryKey: ['upskill-mine-all'] });
+}
+
 // ─── Create Assignment Modal ──────────────────────────────────────────────────
 
 function CreateAssignmentModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
@@ -59,7 +85,7 @@ function CreateAssignmentModal({ onClose, onCreated }: { onClose: () => void; on
   const createMutation = useMutation({
     mutationFn: () => upskillApi.createAssignment(form as CreateAssignmentDto),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['upskill-assignments'] });
+      invalidateUpskill(qc);
       onCreated();
       onClose();
     },
@@ -162,6 +188,26 @@ function CreateAssignmentModal({ onClose, onCreated }: { onClose: () => void; on
             </div>
           </div>
 
+          {(() => {
+            const months = computeMonthLabels(form.startDate ?? '', form.endDate ?? '');
+            if (months.length <= 1) return null;
+            return (
+              <div className="rounded-xl bg-indigo-50 border border-indigo-100 px-4 py-3 space-y-1.5">
+                <p className="text-xs font-semibold text-indigo-700">
+                  This will create {months.length} monthly sub-tasks
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  {months.map((label) => (
+                    <span key={label} className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-indigo-100 text-indigo-700">
+                      {label}
+                    </span>
+                  ))}
+                </div>
+                <p className="text-[10px] text-indigo-500">Each month is tracked and approved independently.</p>
+              </div>
+            );
+          })()}
+
           {error && <p className="text-xs text-red-600">{error}</p>}
 
           <div className="flex gap-2 justify-end pt-2">
@@ -217,7 +263,7 @@ function ProgressDrawer({ assignment, onClose }: { assignment: UpskillAssignment
         notes: notes.trim() || undefined,
       }),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['upskill-assignments'] });
+      invalidateUpskill(qc);
       qc.invalidateQueries({ queryKey: ['upskill-detail', assignment.id] });
       setPct(''); setHrs(''); setNotes(''); setFormErr('');
     },
@@ -227,7 +273,7 @@ function ProgressDrawer({ assignment, onClose }: { assignment: UpskillAssignment
   const submitMutation = useMutation({
     mutationFn: (file: File) => upskillApi.submitEvidence(assignment.id, file),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['upskill-assignments'] });
+      invalidateUpskill(qc);
       qc.invalidateQueries({ queryKey: ['upskill-detail', assignment.id] });
       setFileErr('');
     },
@@ -438,7 +484,7 @@ function EditAssignmentModal({ assignment, onClose }: { assignment: UpskillAssig
       startDate: form.startDate,
       endDate: form.endDate,
     }),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['upskill-assignments'] }); onClose(); },
+    onSuccess: () => { invalidateUpskill(qc); onClose(); },
     onError: (err: any) => setError(err?.response?.data?.message ?? 'Failed to update assignment'),
   });
 
@@ -574,6 +620,162 @@ function AssignmentRow({
   );
 }
 
+// ─── Grouped Assignment Row ───────────────────────────────────────────────────
+
+function GroupedAssignmentRow({
+  assignments,
+  isManager,
+  onProgress,
+  onApprove,
+  onReject,
+  onEdit,
+  onDelete,
+}: {
+  assignments: UpskillAssignment[];
+  isManager: boolean;
+  onProgress: (a: UpskillAssignment) => void;
+  onApprove: (id: string) => void;
+  onReject: (a: UpskillAssignment) => void;
+  onEdit: (a: UpskillAssignment) => void;
+  onDelete: (id: string) => void;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const sorted = [...assignments].sort(
+    (a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime(),
+  );
+  const first = sorted[0];
+  const last = sorted[sorted.length - 1];
+
+  const statuses = sorted.map((a) => a.status);
+  const groupStatus: UpskillStatus = statuses.every((s) => s === 'APPROVED')
+    ? 'APPROVED'
+    : statuses.some((s) => s === 'REJECTED')
+    ? 'REJECTED'
+    : statuses.some((s) => s === 'SUBMITTED')
+    ? 'SUBMITTED'
+    : statuses.some((s) => s === 'IN_PROGRESS')
+    ? 'IN_PROGRESS'
+    : 'ASSIGNED';
+
+  return (
+    <>
+      <tr
+        className="hover:bg-indigo-50/40 transition-colors cursor-pointer border-l-2 border-indigo-300"
+        onClick={() => setExpanded((v) => !v)}
+      >
+        <td className="px-4 py-3">
+          <div className="flex items-center gap-2">
+            <svg
+              className={`w-3.5 h-3.5 text-gray-400 flex-shrink-0 transition-transform duration-150 ${expanded ? 'rotate-90' : ''}`}
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+            <div>
+              <p className="text-sm font-medium text-gray-800">{first.assignedTo?.fullName ?? '—'}</p>
+              <div className="flex items-center gap-1.5 mt-0.5">
+                <p className="text-[10px] text-gray-400">{first.createdBy?.fullName}</p>
+                <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-indigo-100 text-indigo-600">
+                  {sorted.length} months
+                </span>
+              </div>
+            </div>
+          </div>
+        </td>
+        <td className="px-4 py-3 text-sm text-gray-600 max-w-xs">
+          <p className="truncate">{first.description}</p>
+          {first.toolScript && <p className="text-[10px] text-gray-400 truncate">{first.toolScript}</p>}
+        </td>
+        <td className="px-4 py-3 text-xs text-gray-500 whitespace-nowrap">
+          {new Date(first.startDate).toLocaleDateString()} –<br />
+          {new Date(last.endDate).toLocaleDateString()}
+        </td>
+        <td className="px-4 py-3 text-xs text-gray-400">—</td>
+        <td className="px-4 py-3">
+          <StatusBadge status={groupStatus} />
+        </td>
+        <td className="px-4 py-3">
+          <span className="text-[11px] text-indigo-500 font-medium">{expanded ? '▲ Collapse' : '▼ Expand'}</span>
+        </td>
+      </tr>
+
+      {expanded &&
+        sorted.map((asgn, i) => {
+          const consolidatedPct = Math.min(
+            100,
+            asgn.progressLogs?.reduce((s, l) => s + l.percentComplete, 0) ?? 0,
+          );
+          const totalHours = asgn.progressLogs?.reduce((s, l) => s + l.hoursSpent, 0) ?? 0;
+          const isLast = i === sorted.length - 1;
+          return (
+            <tr key={asgn.id} className="bg-indigo-50/20 border-l-2 border-indigo-200 hover:bg-indigo-50/50 transition-colors">
+              <td className="px-4 py-2.5 pl-10">
+                <p className="text-xs font-semibold text-indigo-700">
+                  {isLast ? '└' : '├'} {monthLabelFromIso(asgn.startDate)}
+                </p>
+              </td>
+              <td className="px-4 py-2.5 text-xs text-gray-500 whitespace-nowrap">
+                {new Date(asgn.startDate).toLocaleDateString()} – {new Date(asgn.endDate).toLocaleDateString()}
+              </td>
+              <td />
+              <td className="px-4 py-2.5 text-xs text-gray-500">
+                <span className="font-medium">{consolidatedPct}%</span>
+                {totalHours > 0 && <span className="text-gray-400"> · {totalHours}h</span>}
+              </td>
+              <td className="px-4 py-2.5">
+                <StatusBadge status={asgn.status} />
+              </td>
+              <td className="px-4 py-2.5">
+                <div className="flex items-center gap-1.5">
+                  <button
+                    onClick={(e) => { e.stopPropagation(); onProgress(asgn); }}
+                    className="text-xs px-2.5 py-1 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 transition"
+                  >
+                    View
+                  </button>
+                  {isManager && asgn.status === 'ASSIGNED' && (
+                    <>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); onEdit(asgn); }}
+                        className="text-xs px-2.5 py-1 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); onDelete(asgn.id); }}
+                        className="text-xs px-2.5 py-1 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition"
+                      >
+                        Delete
+                      </button>
+                    </>
+                  )}
+                  {isManager && asgn.status === 'SUBMITTED' && (
+                    <>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); onApprove(asgn.id); }}
+                        className="text-xs px-2.5 py-1 rounded-lg bg-green-100 text-green-700 hover:bg-green-200 transition"
+                      >
+                        Approve
+                      </button>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); onReject(asgn); }}
+                        className="text-xs px-2.5 py-1 rounded-lg bg-red-100 text-red-700 hover:bg-red-200 transition"
+                      >
+                        Reject
+                      </button>
+                    </>
+                  )}
+                </div>
+              </td>
+            </tr>
+          );
+        })}
+    </>
+  );
+}
+
 // ─── Reject Modal ─────────────────────────────────────────────────────────────
 
 function RejectModal({ assignment, onClose }: { assignment: UpskillAssignment; onClose: () => void }) {
@@ -584,7 +786,7 @@ function RejectModal({ assignment, onClose }: { assignment: UpskillAssignment; o
   const rejectMutation = useMutation({
     mutationFn: () => upskillApi.reject(assignment.id, reason.trim()),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['upskill-assignments'] });
+      invalidateUpskill(qc);
       onClose();
     },
     onError: (e: Error) => setErr(e.message),
@@ -651,11 +853,14 @@ function UpskillCard({ asgn, onRefresh }: { asgn: UpskillAssignment; onRefresh: 
   const canLog = asgn.status !== 'APPROVED' && asgn.status !== 'SUBMITTED';
   const canSubmit = asgn.status === 'ASSIGNED' || asgn.status === 'IN_PROGRESS' || asgn.status === 'REJECTED';
 
+  const qc = useQueryClient();
+
   const logMutation = useMutation({
     mutationFn: () => upskillApi.logProgress(asgn.id, {
       percentComplete: Number(pct), hoursSpent: Number(hrs), notes: notes.trim() || undefined,
     }),
     onSuccess: () => {
+      invalidateUpskill(qc);
       onRefresh();
       setPct(''); setHrs(''); setNotes(''); setShowProgress(false); setFormErr('');
     },
@@ -664,7 +869,7 @@ function UpskillCard({ asgn, onRefresh }: { asgn: UpskillAssignment; onRefresh: 
 
   const submitMutation = useMutation({
     mutationFn: (file: File) => upskillApi.submitEvidence(asgn.id, file),
-    onSuccess: () => { onRefresh(); setFileErr(''); },
+    onSuccess: () => { invalidateUpskill(qc); onRefresh(); setFileErr(''); },
     onError: (err: any) => setFileErr(err?.response?.data?.message ?? 'Failed to submit evidence'),
   });
 
@@ -829,14 +1034,32 @@ export function UpskillPage() {
 
   const assignments = result?.data ?? [];
 
+  type TableRow =
+    | { kind: 'single'; asgn: UpskillAssignment }
+    | { kind: 'group'; groupId: string; assignments: UpskillAssignment[] };
+
+  const tableRows = useMemo((): TableRow[] => {
+    const seenGroups = new Set<string>();
+    const rows: TableRow[] = [];
+    for (const asgn of assignments) {
+      if (!asgn.groupId) {
+        rows.push({ kind: 'single', asgn });
+      } else if (!seenGroups.has(asgn.groupId)) {
+        seenGroups.add(asgn.groupId);
+        rows.push({ kind: 'group', groupId: asgn.groupId, assignments: assignments.filter((a) => a.groupId === asgn.groupId) });
+      }
+    }
+    return rows;
+  }, [assignments]);
+
   const approveMutation = useMutation({
     mutationFn: (id: string) => upskillApi.approve(id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['upskill-assignments'] }),
+    onSuccess: () => invalidateUpskill(qc),
   });
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => upskillApi.deleteAssignment(id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['upskill-assignments'] }),
+    onSuccess: () => invalidateUpskill(qc),
   });
 
   return (
@@ -906,18 +1129,31 @@ export function UpskillPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
-                {assignments.map((asgn) => (
-                  <AssignmentRow
-                    key={asgn.id}
-                    asgn={asgn}
-                    isManager={isManager}
-                    onProgress={(a) => setProgressFor(a)}
-                    onApprove={(id) => approveMutation.mutate(id)}
-                    onReject={(a) => setRejectFor(a)}
-                    onEdit={(a) => setEditFor(a)}
-                    onDelete={(id) => { if (confirm('Delete this assignment?')) deleteMutation.mutate(id); }}
-                  />
-                ))}
+                {tableRows.map((row) =>
+                  row.kind === 'single' ? (
+                    <AssignmentRow
+                      key={row.asgn.id}
+                      asgn={row.asgn}
+                      isManager={isManager}
+                      onProgress={(a) => setProgressFor(a)}
+                      onApprove={(id) => approveMutation.mutate(id)}
+                      onReject={(a) => setRejectFor(a)}
+                      onEdit={(a) => setEditFor(a)}
+                      onDelete={(id) => { if (confirm('Delete this assignment?')) deleteMutation.mutate(id); }}
+                    />
+                  ) : (
+                    <GroupedAssignmentRow
+                      key={row.groupId}
+                      assignments={row.assignments}
+                      isManager={isManager}
+                      onProgress={(a) => setProgressFor(a)}
+                      onApprove={(id) => approveMutation.mutate(id)}
+                      onReject={(a) => setRejectFor(a)}
+                      onEdit={(a) => setEditFor(a)}
+                      onDelete={(id) => { if (confirm('Delete this monthly sub-task?')) deleteMutation.mutate(id); }}
+                    />
+                  )
+                )}
               </tbody>
             </table>
           </div>
