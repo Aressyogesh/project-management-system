@@ -21,7 +21,7 @@ import { diskStorage, memoryStorage } from 'multer';
 import { extname, join } from 'path';
 import { randomUUID } from 'crypto';
 import { Response } from 'express';
-import { BoardStatus, ProjectRole, TaskPriority, WorkItemType } from '@prisma/client';
+import { BillingStatus, BoardStatus, ProjectRole, TaskPriority, WorkItemType } from '@prisma/client';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { ProjectIdFrom, ProjectRoles } from '../common/decorators/project-roles.decorator';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
@@ -54,8 +54,9 @@ export class WorkItemsController {
     @Query('status') status?: BoardStatus,
     @Query('priority') priority?: TaskPriority,
     @Query('search') search?: string,
+    @Query('billingStatus') billingStatus?: BillingStatus,
   ) {
-    return this.workItemsService.findByProject(projectId, { type, sprintId, milestoneId, assigneeId, unassigned: unassigned === 'true', status, priority, search });
+    return this.workItemsService.findByProject(projectId, { type, sprintId, milestoneId, assigneeId, unassigned: unassigned === 'true', status, priority, search, billingStatus });
   }
 
   @Get('work-items/:id')

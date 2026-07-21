@@ -1582,15 +1582,20 @@ export function WorkItemModal({ item, sprints, members, milestones, canDelete = 
               </SidebarRow>
 
               {/* Estimated Hours */}
-              <SidebarRow label={item.type !== 'EPIC' ? <span>Est. Hours <span className="text-red-500">*</span></span> : 'Est. Hours'}>
-                {canEditSidebar ? (
+              <SidebarRow label="Est. Hours">
+                {(item.type === 'EPIC' || item.type === 'USER_STORY') ? (
+                  <div>
+                    <span className="text-xs text-gray-700">{detail.estimatedHours != null ? `${detail.estimatedHours}h` : '—'}</span>
+                    <p className="text-[10px] text-gray-400 mt-0.5">Auto-calculated from child tasks</p>
+                  </div>
+                ) : canEditSidebar ? (
                   <div>
                     <input
                       type="number" min={0} step={0.5}
                       defaultValue={detail.estimatedHours ?? ''}
-                      required={item.type !== 'EPIC'}
+                      required
                       onBlur={(e) => {
-                        if (item.type !== 'EPIC' && !e.target.value) {
+                        if (!e.target.value) {
                           setEstHoursError(true);
                           return;
                         }
@@ -2145,6 +2150,8 @@ export function CreateWorkItemModal({
   const typeMenuRef = useRef<HTMLDivElement>(null);
   const [showParentMenu, setShowParentMenu] = useState(false);
   const parentMenuRef = useRef<HTMLDivElement>(null);
+  const parentSearchRef = useRef<HTMLInputElement>(null);
+  const [parentSearch, setParentSearch] = useState('');
   const addNewRef = useRef(false);
   const [title, setTitle] = useState(prefill?.title ?? '');
   const [description, setDescription] = useState('');
@@ -2238,6 +2245,7 @@ export function CreateWorkItemModal({
     setBugSeverityError(false);
     setBugClassificationError(false);
     setBugEnvError(false);
+    setParentSearch('');
   }
 
   const createMut = useMutation({
@@ -2278,7 +2286,7 @@ export function CreateWorkItemModal({
       return;
     }
     setParentError(false);
-    if (type === 'BUG' && !assigneeId) {
+    if (!assigneeId) {
       setAssigneeError(true);
       return;
     }
@@ -2288,7 +2296,7 @@ export function CreateWorkItemModal({
       return;
     }
     setDateError('');
-    if (type !== 'EPIC' && !estimatedHours) {
+    if (type !== 'EPIC' && type !== 'USER_STORY' && !estimatedHours) {
       setEstHoursError(true);
       return;
     }
@@ -2432,7 +2440,10 @@ export function CreateWorkItemModal({
                   {/* Trigger */}
                   <button
                     type="button"
-                    onClick={() => setShowParentMenu((v) => !v)}
+                    onClick={() => {
+                      setShowParentMenu((v) => !v);
+                      setTimeout(() => parentSearchRef.current?.focus(), 50);
+                    }}
                     className={`${inputCls} flex items-center gap-2 text-left`}
                   >
                     {selectedParentId ? (() => {
@@ -2444,48 +2455,85 @@ export function CreateWorkItemModal({
                           <span className={`inline-flex items-center justify-center w-4 h-4 rounded shrink-0 ${pcfg.bg} ${pcfg.text}`}>
                             <TypeIcon type={p.type} />
                           </span>
+                          {p.displayId && (
+                            <span className="text-xs font-mono font-semibold text-gray-500 shrink-0">{p.displayId}</span>
+                          )}
                           <span className="flex-1 truncate text-gray-800">{p.title}</span>
                         </>
                       );
-                    })() : <span className="text-gray-400 flex-1">— no parent —</span>}
+                    })() : <span className="text-gray-400 flex-1">Search by code or name…</span>}
                     <svg className="w-3.5 h-3.5 text-gray-400 shrink-0 ml-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                     </svg>
                   </button>
 
-                  {/* Dropdown list */}
+                  {/* Dropdown with search */}
                   {showParentMenu && (
-                    <div className="absolute top-full left-0 right-0 mt-1 bg-white rounded-xl shadow-lg border border-[#cccccc] py-1 z-20 max-h-52 overflow-y-auto">
-                      <button
-                        type="button"
-                        onClick={() => { setSelectedParentId(''); setShowParentMenu(false); }}
-                        className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-400 hover:bg-gray-50 transition"
-                      >
-                        — no parent —
-                      </button>
-                      {parentOptions.map((p) => {
-                        const pcfg = TYPE_CONFIG[p.type];
-                        return (
-                          <button
-                            key={p.id}
-                            type="button"
-                            onClick={() => { setSelectedParentId(p.id); setShowParentMenu(false); setParentError(false); }}
-                            className={`flex items-center gap-2.5 w-full px-3 py-2.5 text-sm hover:bg-gray-50 transition ${
-                              selectedParentId === p.id ? 'bg-primary-50 text-primary-700' : 'text-gray-700'
-                            }`}
-                          >
-                            <span className={`inline-flex items-center justify-center w-5 h-5 rounded shrink-0 ${pcfg.bg} ${pcfg.text}`}>
-                              <TypeIcon type={p.type} />
-                            </span>
-                            <span className="flex-1 text-left truncate">{p.title}</span>
-                            {selectedParentId === p.id && (
-                              <svg className="w-3.5 h-3.5 shrink-0 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                              </svg>
-                            )}
-                          </button>
-                        );
-                      })}
+                    <div className="absolute top-full left-0 right-0 mt-1 bg-white rounded-xl shadow-lg border border-[#cccccc] z-20 flex flex-col">
+                      {/* Search input */}
+                      <div className="px-3 py-2 border-b border-gray-100">
+                        <input
+                          ref={parentSearchRef}
+                          type="text"
+                          value={parentSearch}
+                          onChange={(e) => setParentSearch(e.target.value)}
+                          placeholder="Search by code or name…"
+                          className="w-full text-sm border border-gray-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                          autoComplete="off"
+                        />
+                      </div>
+                      {/* Results */}
+                      <div className="py-1 max-h-48 overflow-y-auto">
+                        <button
+                          type="button"
+                          onClick={() => { setSelectedParentId(''); setParentSearch(''); setShowParentMenu(false); }}
+                          className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-400 hover:bg-gray-50 transition"
+                        >
+                          — no parent —
+                        </button>
+                        {(() => {
+                          const q = parentSearch.trim().toLowerCase();
+                          const filtered = q
+                            ? parentOptions.filter((p) =>
+                                (p.displayId?.toLowerCase().includes(q)) ||
+                                p.title.toLowerCase().includes(q)
+                              )
+                            : parentOptions;
+                          if (filtered.length === 0) {
+                            return (
+                              <p className="px-3 py-3 text-xs text-gray-400 italic text-center">
+                                No matches found
+                              </p>
+                            );
+                          }
+                          return filtered.map((p) => {
+                            const pcfg = TYPE_CONFIG[p.type];
+                            return (
+                              <button
+                                key={p.id}
+                                type="button"
+                                onClick={() => { setSelectedParentId(p.id); setParentSearch(''); setShowParentMenu(false); setParentError(false); }}
+                                className={`flex items-center gap-2.5 w-full px-3 py-2.5 text-sm hover:bg-gray-50 transition ${
+                                  selectedParentId === p.id ? 'bg-primary-50 text-primary-700' : 'text-gray-700'
+                                }`}
+                              >
+                                <span className={`inline-flex items-center justify-center w-5 h-5 rounded shrink-0 ${pcfg.bg} ${pcfg.text}`}>
+                                  <TypeIcon type={p.type} />
+                                </span>
+                                {p.displayId && (
+                                  <span className="text-xs font-mono font-semibold text-gray-500 shrink-0">{p.displayId}</span>
+                                )}
+                                <span className="flex-1 text-left truncate">{p.title}</span>
+                                {selectedParentId === p.id && (
+                                  <svg className="w-3.5 h-3.5 shrink-0 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                  </svg>
+                                )}
+                              </button>
+                            );
+                          });
+                        })()}
+                      </div>
                     </div>
                   )}
                 </div>
@@ -2605,8 +2653,7 @@ export function CreateWorkItemModal({
             {members.length > 0 && (
               <div>
                 <label className={labelCls}>
-                  Assignee
-                  {type === 'BUG' && <span className="text-red-500 ml-0.5">*</span>}
+                  Assignee <span className="text-red-500">*</span>
                 </label>
                 <select
                   value={assigneeId}
@@ -2616,7 +2663,7 @@ export function CreateWorkItemModal({
                   <option value="">Unassigned</option>
                   {members.map((m) => <option key={m.id} value={m.id}>{m.fullName}</option>)}
                 </select>
-                {assigneeError && <p className="text-xs text-red-500 mt-1">Assignee is required for bugs</p>}
+                {assigneeError && <p className="text-xs text-red-500 mt-1">Assignee is required</p>}
               </div>
             )}
             <div>
@@ -2636,18 +2683,22 @@ export function CreateWorkItemModal({
               <label className={labelCls}>Story Points</label>
               <input type="number" min={0} value={storyPoints} onChange={(e) => setStoryPoints(e.target.value)} className={inputCls} />
             </div>
-            <div>
-              <label className={labelCls}>
-                Est. Hours {type !== 'EPIC' && <span className="text-red-500">*</span>}
-                {type === 'EPIC' && <span className="text-gray-400 font-normal">(optional)</span>}
-              </label>
-              <input
-                type="number" min={0} step={0.5} value={estimatedHours}
-                onChange={(e) => { setEstimatedHours(e.target.value); if (e.target.value) setEstHoursError(false); }}
-                className={`${inputCls} ${estHoursError ? 'border-red-500 focus:ring-red-500' : ''}`}
-              />
-              {estHoursError && <p className="text-xs text-red-500 mt-1">Estimated hours is required</p>}
-            </div>
+            {(type === 'EPIC' || type === 'USER_STORY') ? (
+              <div>
+                <label className={labelCls}>Est. Hours</label>
+                <p className="text-xs text-gray-400 mt-1 italic">Auto-calculated from child tasks</p>
+              </div>
+            ) : (
+              <div>
+                <label className={labelCls}>Est. Hours <span className="text-red-500">*</span></label>
+                <input
+                  type="number" min={0} step={0.5} value={estimatedHours}
+                  onChange={(e) => { setEstimatedHours(e.target.value); if (e.target.value) setEstHoursError(false); }}
+                  className={`${inputCls} ${estHoursError ? 'border-red-500 focus:ring-red-500' : ''}`}
+                />
+                {estHoursError && <p className="text-xs text-red-500 mt-1">Estimated hours is required</p>}
+              </div>
+            )}
             <div>
               <label className={labelCls}>Billing <span className="text-red-500">*</span></label>
               {type === 'BUG' ? (

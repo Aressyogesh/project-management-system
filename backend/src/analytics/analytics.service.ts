@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { BoardStatus, BugClassification, LeaveStatus, MemberBilling, MemberEngagement, ProjectRole, SystemRole, WorkItemType } from '@prisma/client';
+import { BoardStatus, BugClassification, BugSeverity, LeaveStatus, MemberBilling, MemberEngagement, ProjectRole, SystemRole, WorkItemType } from '@prisma/client';
 
 // ─── KPI Computation Helpers ──────────────────────────────────────────────────
 
@@ -1273,5 +1273,59 @@ export class AnalyticsService {
       }),
       employees: employeeRows,
     };
+  }
+
+  // ─── Drill-down ───────────────────────────────────────────────────────────────
+
+  async getDrillDown(params: {
+    period: string;
+    projectId?: string;
+    userId?: string;
+    workItemType?: string;
+    severity?: string;
+    classification?: string;
+    statusFilter?: 'done';
+    completedOnly?: boolean;
+    noDateFilter?: boolean;
+  }) {
+    const { start, end } = periodToRange(params.period);
+
+    const projectIds = params.projectId
+      ? [params.projectId]
+      : (await this.prisma.project.findMany({ where: { status: 'ACTIVE' }, select: { id: true } })).map((p) => p.id);
+
+    const dateFilter = params.noDateFilter
+      ? {}
+      : params.completedOnly
+        ? { completedAt: { gte: start, lt: end } }
+        : { createdAt: { gte: start, lt: end } };
+
+    const statusFilter = params.statusFilter === 'done'
+      ? { status: { in: [BoardStatus.QA_DONE, BoardStatus.CLOSED] } }
+      : {};
+
+    return this.prisma.workItem.findMany({
+      where: {
+        projectId: { in: projectIds },
+        ...dateFilter,
+        ...statusFilter,
+        ...(params.userId && { assigneeId: params.userId }),
+        ...(params.workItemType && { type: params.workItemType as WorkItemType }),
+        ...(params.severity && { severity: params.severity as BugSeverity }),
+        ...(params.classification && { bugClassification: params.classification as BugClassification }),
+      },
+      select: {
+        id: true,
+        displayId: true,
+        title: true,
+        type: true,
+        status: true,
+        priority: true,
+        assignee: { select: { fullName: true } },
+        project: { select: { id: true, name: true } },
+      },
+      orderBy: params.completedOnly ? { completedAt: 'desc' } : { createdAt: 'desc' },
+      take: 200,
+    });
   }
 }

@@ -54,7 +54,7 @@ export function BoardToolbar({
 }: Props) {
   const hasFilters = !!(
     filters.type || filters.assigneeId || filters.unassigned || filters.priority ||
-    filters.search || filters.sprintId || filters.milestoneId || filters.backlog
+    filters.search || filters.sprintId || filters.milestoneId || filters.backlog || filters.billingStatus
   );
 
   const selectClass =
@@ -251,6 +251,17 @@ export function BoardToolbar({
           {PRIORITY_OPTIONS.map((p) => (
             <option key={p.value} value={p.value}>{p.label}</option>
           ))}
+        </select>
+
+        {/* Billing filter */}
+        <select
+          value={filters.billingStatus ?? ''}
+          onChange={(e) => onFiltersChange({ ...filters, billingStatus: (e.target.value as 'BILLABLE' | 'NON_BILLABLE') || undefined })}
+          className={selectClass}
+        >
+          <option value="">All Billing</option>
+          <option value="BILLABLE">Billable</option>
+          <option value="NON_BILLABLE">Non-Billable</option>
         </select>
 
         {/* Search */}
