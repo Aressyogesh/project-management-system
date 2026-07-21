@@ -102,7 +102,7 @@ export class AutomationService {
     fixedBuildVersion?: string | null;
     startDate?: Date | null;
     dueDate?: Date | null;
-    assignee?: { id: string; fullName: string; profilePhoto?: string | null } | null;
+    assignee?: { id: string; fullName: string; email?: string | null; profilePhoto?: string | null } | null;
     reporter?: { id: string; fullName: string; profilePhoto?: string | null } | null;
     responsibleUser?: { id: string; fullName: string } | null;
     sprint?: { id: string; name: string } | null;
@@ -121,6 +121,8 @@ export class AutomationService {
     this.getProjectWebhookUrl(item.projectId)
       .then((url) => {
         if (!url) return;
+        const mention = this.buildMention(item.assignee, 'a bug has been assigned to you');
+        if (mention) this.post(url, { type: 'message', text: mention.outerText, entities: mention.entities });
         this.post(url, {
           type: 'message',
           attachments: [{
@@ -134,6 +136,7 @@ export class AutomationService {
                 // ── Header ──────────────────────────────────────────────
                 {
                   type: 'ColumnSet',
+                  style: 'warning',
                   columns: [
                     {
                       type: 'Column',
@@ -281,6 +284,7 @@ export class AutomationService {
                 // ── Header ──────────────────────────────────────────────
                 {
                   type: 'ColumnSet',
+                  style: 'good',
                   columns: [
                     {
                       type: 'Column',
@@ -385,7 +389,8 @@ export class AutomationService {
           ? item.dueDate.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
           : 'Not set';
         const estHoursStr = item.estimatedHours != null ? `${item.estimatedHours} hrs` : 'Not set';
-
+        const mention = this.buildMention(assignee, 'a work item has been assigned to you');
+        if (mention) this.post(url, { type: 'message', text: mention.outerText, entities: mention.entities });
         this.post(url, {
           type: 'message',
           attachments: [{
@@ -399,6 +404,7 @@ export class AutomationService {
                 // ── Header ────────────────────────────────────────────────
                 {
                   type: 'ColumnSet',
+                  style: 'accent',
                   columns: [
                     {
                       type: 'Column',
@@ -520,7 +526,7 @@ export class AutomationService {
     environment?: string | null;
     bugFlag?: string | null;
     stepsToRepro?: string | null;
-    assignee?: { id: string; fullName: string } | null;
+    assignee?: { id: string; fullName: string; email?: string | null } | null;
     reporter?: { id: string; fullName: string } | null;
     createdAt: Date;
   }): void {
@@ -530,6 +536,8 @@ export class AutomationService {
     this.getProjectWebhookUrl(item.projectId)
       .then((url) => {
         if (!url) return;
+        const mention = this.buildMention(item.assignee, 'a critical bug requires your attention');
+        if (mention) this.post(url, { type: 'message', text: mention.outerText, entities: mention.entities });
         this.post(url, {
           type: 'message',
           attachments: [{
@@ -543,6 +551,7 @@ export class AutomationService {
                 // ── Header ──────────────────────────────────────────────
                 {
                   type: 'ColumnSet',
+                  style: 'attention',
                   columns: [
                     {
                       type: 'Column',
@@ -653,12 +662,14 @@ export class AutomationService {
     title: string;
     projectId: string;
     reopenCount: number;
-    assignee?: { id: string; fullName: string } | null;
+    assignee?: { id: string; fullName: string; email?: string | null } | null;
     reporter?: { id: string; fullName: string } | null;
   }, reopenedBy: { fullName: string }): void {
     this.getProjectWebhookUrl(item.projectId)
       .then((url) => {
         if (!url) return;
+        const mention = this.buildMention(item.assignee, 'a bug assigned to you has been reopened');
+        if (mention) this.post(url, { type: 'message', text: mention.outerText, entities: mention.entities });
         this.post(url, {
           type: 'message',
           attachments: [{
@@ -672,6 +683,7 @@ export class AutomationService {
                 // ── Header ──────────────────────────────────────────────
                 {
                   type: 'ColumnSet',
+                  style: 'warning',
                   columns: [
                     {
                       type: 'Column',
@@ -764,12 +776,14 @@ export class AutomationService {
     title: string;
     type: string;
     projectId: string;
-    assignee?: { id: string; fullName: string } | null;
+    assignee?: { id: string; fullName: string; email?: string | null } | null;
   }, blockedBy: { fullName: string }): void {
     const { itemType, itemIcon } = this.itemMeta(item.type);
     this.getProjectWebhookUrl(item.projectId)
       .then((url) => {
         if (!url) return;
+        const mention = this.buildMention(item.assignee, 'a work item assigned to you is blocked');
+        if (mention) this.post(url, { type: 'message', text: mention.outerText, entities: mention.entities });
         this.post(url, {
           type: 'message',
           attachments: [{
@@ -783,6 +797,7 @@ export class AutomationService {
                 // ── Header ──────────────────────────────────────────────
                 {
                   type: 'ColumnSet',
+                  style: 'attention',
                   columns: [
                     {
                       type: 'Column',
@@ -900,6 +915,19 @@ export class AutomationService {
         changedByUserId,
       },
     });
+  }
+
+  private buildMention(
+    user: { fullName: string; email?: string | null } | null | undefined,
+    context: string,
+  ): { outerText: string; entities: object[]; displayText: string } | null {
+    if (!user?.email) return null;
+    const tag = `<at>${user.fullName}</at>`;
+    return {
+      outerText: `${tag} — ${context}`,
+      entities: [{ type: 'mention', text: tag, mentioned: { id: user.email, name: user.fullName } }],
+      displayText: `@${user.fullName} — ${context}`,
+    };
   }
 
   private post(url: string, body: unknown): void {

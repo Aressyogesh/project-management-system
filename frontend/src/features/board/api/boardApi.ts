@@ -13,6 +13,7 @@ export interface BoardFiltersQuery {
   priority?: string;
   search?: string;
   backlog?: 'sprint' | 'product';
+  billingStatus?: 'BILLABLE' | 'NON_BILLABLE';
 }
 
 export const boardApi = {

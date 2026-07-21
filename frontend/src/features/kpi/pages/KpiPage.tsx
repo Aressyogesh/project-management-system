@@ -570,6 +570,14 @@ export function KpiPage() {
   const user = useAuthStore((s) => s.user);
   const isAdminOrSuper = user?.systemRole === 'SUPER_USER' || user?.systemRole === 'ADMIN' || user?.systemRole === 'BU_HEAD';
 
+  const { data: myRoleData } = useQuery({
+    queryKey: ['my-project-role'],
+    queryFn: analyticsApi.getMyProjectRole,
+    staleTime: 300_000,
+    enabled: !isAdminOrSuper,
+  });
+  const canSeeTeam = isAdminOrSuper || (myRoleData?.isManager ?? false);
+
   // Period state
   const [periodType, setPeriodType] = useState<PeriodType>('MONTHLY');
   const [selectedPeriod, setSelectedPeriod] = useState(DEFAULT_PERIOD);
@@ -632,7 +640,7 @@ export function KpiPage() {
     queryKey: ['projects-list'],
     queryFn: () => projectsApi.list(),
     staleTime: 120_000,
-    enabled: isAdminOrSuper,
+    enabled: canSeeTeam,
   });
 
   const { data: projectMembers = [] } = useQuery({
@@ -712,8 +720,8 @@ export function KpiPage() {
     onYearChange: (v: number) => { setSelectedYear(v); setExpandedUserId(null); },
   };
 
-  // ── Employee self-view (non-admin) ─────────────────────────────────────────
-  if (!isAdminOrSuper) {
+  // ── Employee self-view (non-admin, non-PM) ────────────────────────────────
+  if (!canSeeTeam) {
     const ownRecord = employees.find((e) => e.userId === user?.id);
 
     if (kpiLoading) {
@@ -913,9 +921,9 @@ export function KpiPage() {
             totalScore={selectedEmployee.totalScore}
             userId={selectedEmployee.userId}
             period={selectedPeriod}
-            canAddNotes={isAdminOrSuper && periodType === 'MONTHLY'}
+            canAddNotes={canSeeTeam && periodType === 'MONTHLY'}
             currentUserId={user?.id}
-            isAdmin={isAdminOrSuper}
+            isAdmin={canSeeTeam}
           />
         </div>
       ) : (
@@ -1020,7 +1028,7 @@ export function KpiPage() {
                         onToggle={() => setExpandedUserId((prev) => (prev === emp.userId ? null : emp.userId))}
                         onViewDetails={() => setSelectedMemberId(emp.userId)}
                         period={selectedPeriod}
-                        isAdmin={isAdminOrSuper}
+                        isAdmin={canSeeTeam}
                         currentUserId={user?.id}
                         canAddNotes={periodType === 'MONTHLY'}
                       />

@@ -124,6 +124,31 @@ export class AnalyticsController {
     return this.analyticsService.getCapacityReport(period, req.user.id, isAdmin, projectId || undefined);
   }
 
+  @Get('reports/drill-down')
+  getDrillDown(
+    @Query('period') period: string,
+    @Query('projectId') projectId?: string,
+    @Query('userId') userId?: string,
+    @Query('workItemType') workItemType?: string,
+    @Query('severity') severity?: string,
+    @Query('classification') classification?: string,
+    @Query('statusFilter') statusFilter?: string,
+    @Query('completedOnly') completedOnly?: string,
+    @Query('noDateFilter') noDateFilter?: string,
+  ) {
+    return this.analyticsService.getDrillDown({
+      period,
+      projectId,
+      userId,
+      workItemType,
+      severity,
+      classification,
+      statusFilter: statusFilter === 'done' ? 'done' : undefined,
+      completedOnly: completedOnly === 'true',
+      noDateFilter: noDateFilter === 'true',
+    });
+  }
+
   @Get('reports/planned-vs-actual')
   getPlannedVsActual(
     @Query('period') period = '2026-05',

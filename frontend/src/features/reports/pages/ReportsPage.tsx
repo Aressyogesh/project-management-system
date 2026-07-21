@@ -1,5 +1,5 @@
 ﻿import { useQueries, useQuery } from '@tanstack/react-query';
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import {
   Bar,
   BarChart,
@@ -16,7 +16,7 @@ import {
 } from 'recharts';
 // Legend intentionally omitted — not used after PvA redesign
 import * as XLSX from 'xlsx-js-style';
-import { analyticsApi, PlannedVsActualRecord } from '../../../api/analyticsApi';
+import { analyticsApi, DrillDownItem, PlannedVsActualRecord } from '../../../api/analyticsApi';
 import { projectsApi } from '../../../api/projects.api';
 import { usePageSize } from '../../../hooks/usePageSize';
 import { useAuthStore } from '../../../store/authStore';
@@ -164,6 +164,188 @@ function TabSpinner() {
   );
 }
 
+// ─── Drill-down ───────────────────────────────────────────────────────────────
+
+interface DrillDownState {
+  title: string;
+  period: string;
+  projectId?: string;
+  userId?: string;
+  workItemType?: string;
+  severity?: string;
+  classification?: string;
+  statusFilter?: 'done';
+  completedOnly?: boolean;
+  noDateFilter?: boolean;
+}
+
+const STATUS_CFG: Record<string, { bg: string; text: string; label: string }> = {
+  TODO:        { bg: 'bg-gray-100',    text: 'text-gray-600',    label: 'To Do'       },
+  IN_PROGRESS: { bg: 'bg-blue-100',   text: 'text-blue-700',    label: 'In Progress' },
+  IN_REVIEW:   { bg: 'bg-purple-100', text: 'text-purple-700',  label: 'In Review'   },
+  IN_QA:       { bg: 'bg-amber-100',  text: 'text-amber-700',   label: 'In QA'       },
+  QA_DONE:     { bg: 'bg-emerald-100',text: 'text-emerald-700', label: 'QA Done'     },
+  DONE:        { bg: 'bg-emerald-100',text: 'text-emerald-700', label: 'Done'        },
+  CLOSED:      { bg: 'bg-gray-200',   text: 'text-gray-700',    label: 'Closed'      },
+  BLOCKED:     { bg: 'bg-red-100',    text: 'text-red-700',     label: 'Blocked'     },
+};
+
+const TYPE_BADGE: Record<string, { bg: string; text: string; short: string }> = {
+  EPIC:       { bg: 'bg-violet-100', text: 'text-violet-700', short: 'E'  },
+  USER_STORY: { bg: 'bg-blue-100',   text: 'text-blue-700',   short: 'US' },
+  TASK:       { bg: 'bg-green-100',  text: 'text-green-700',  short: 'T'  },
+  BUG:        { bg: 'bg-red-100',    text: 'text-red-700',    short: 'B'  },
+  SUB_TASK:   { bg: 'bg-gray-100',   text: 'text-gray-600',   short: 'ST' },
+};
+
+function DrillDownPanel({ state, onClose }: { state: DrillDownState; onClose: () => void }) {
+  const [search, setSearch] = useState('');
+  const searchRef = useRef<HTMLInputElement>(null);
+
+  const { data: items = [], isLoading } = useQuery({
+    queryKey: ['drill-down', state],
+    queryFn: () => analyticsApi.getDrillDown({
+      period: state.period,
+      projectId: state.projectId,
+      userId: state.userId,
+      workItemType: state.workItemType,
+      severity: state.severity,
+      classification: state.classification,
+      statusFilter: state.statusFilter,
+      completedOnly: state.completedOnly,
+      noDateFilter: state.noDateFilter,
+    }),
+    staleTime: 30_000,
+  });
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return items;
+    return items.filter(
+      (i) =>
+        i.title.toLowerCase().includes(q) ||
+        (i.displayId?.toLowerCase().includes(q) ?? false) ||
+        i.project.name.toLowerCase().includes(q) ||
+        (i.assignee?.fullName.toLowerCase().includes(q) ?? false),
+    );
+  }, [items, search]);
+
+  return (
+    <>
+      <div className="fixed inset-0 bg-black/25 z-40" onClick={onClose} />
+      <div className="fixed right-0 top-0 bottom-0 w-full max-w-[520px] bg-white shadow-2xl z-50 flex flex-col">
+        {/* Header */}
+        <div className="px-5 py-4 border-b border-gray-100 flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h2 className="text-sm font-semibold text-gray-900 leading-snug">{state.title}</h2>
+            <p className="text-xs text-gray-400 mt-0.5">
+              {isLoading ? 'Loading…' : `${filtered.length} of ${items.length} items`}
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition shrink-0"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        {/* Search */}
+        <div className="px-4 py-2.5 border-b border-gray-50">
+          <div className="relative">
+            <svg className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            <input
+              ref={searchRef}
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Filter by ID, title, project or assignee…"
+              className="w-full text-xs border border-gray-200 rounded-lg pl-7 pr-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary-500"
+            />
+          </div>
+        </div>
+        {/* List */}
+        <div className="flex-1 overflow-y-auto">
+          {isLoading ? (
+            <div className="flex items-center justify-center h-48">
+              <div className="w-5 h-5 border-2 border-primary-300 border-t-primary-600 rounded-full animate-spin" />
+            </div>
+          ) : filtered.length === 0 ? (
+            <p className="text-center text-sm text-gray-400 py-12 italic">
+              {items.length === 0 ? 'No items found for this selection.' : 'No items match your filter.'}
+            </p>
+          ) : (
+            <table className="w-full text-xs">
+              <thead className="sticky top-0 bg-white border-b border-gray-100 z-10">
+                <tr className="text-gray-500 uppercase tracking-wide font-medium">
+                  <th className="px-4 py-2.5 text-left">ID</th>
+                  <th className="px-4 py-2.5 text-left">Title</th>
+                  <th className="px-4 py-2.5 text-left">Status</th>
+                  <th className="px-4 py-2.5 text-left">Assignee</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {filtered.map((item: DrillDownItem) => {
+                  const sc = STATUS_CFG[item.status] ?? { bg: 'bg-gray-100', text: 'text-gray-600', label: item.status };
+                  const tc = TYPE_BADGE[item.type] ?? { bg: 'bg-gray-100', text: 'text-gray-600', short: '?' };
+                  return (
+                    <tr key={item.id} className="hover:bg-gray-50/60">
+                      <td className="px-4 py-2.5 whitespace-nowrap">
+                        <div className="flex items-center gap-1.5">
+                          <span className={`inline-flex items-center justify-center w-5 h-5 rounded text-[9px] font-bold shrink-0 ${tc.bg} ${tc.text}`}>
+                            {tc.short}
+                          </span>
+                          <span className="font-mono text-gray-500">{item.displayId ?? '—'}</span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-2.5 max-w-[180px]">
+                        <p className="truncate font-medium text-gray-800" title={item.title}>{item.title}</p>
+                        <p className="text-[10px] text-gray-400 truncate">{item.project.name}</p>
+                      </td>
+                      <td className="px-4 py-2.5 whitespace-nowrap">
+                        <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold ${sc.bg} ${sc.text}`}>
+                          {sc.label}
+                        </span>
+                      </td>
+                      <td className="px-4 py-2.5 text-gray-500 max-w-[100px] truncate">
+                        {item.assignee?.fullName ?? <span className="text-gray-300 italic">Unassigned</span>}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </div>
+    </>
+  );
+}
+
+function DrillCount({
+  value,
+  onClick,
+  className = '',
+}: {
+  value: number;
+  onClick: () => void;
+  className?: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`underline underline-offset-2 decoration-dotted cursor-pointer hover:text-primary-700 transition-colors ${className}`}
+      title="Click to see items"
+    >
+      {value}
+    </button>
+  );
+}
+
 // ─── Team Productivity Tab ─────────────────────────────────────────────────────
 
 function TeamProductivityTab({ currentUserId, period, project }: { currentUserId?: string; period: string; project: string }) {
@@ -173,9 +355,11 @@ function TeamProductivityTab({ currentUserId, period, project }: { currentUserId
     staleTime: 60_000,
   });
 
+  const [drillDown, setDrillDown] = useState<DrillDownState | null>(null);
+  const projectId = project && project !== 'all' ? project : undefined;
+  const periodLabel = PERIOD_OPTIONS.find((p) => p.value === period)?.label ?? period;
   const chartData = data.slice(0, 10).map((r) => ({ name: r.name.split(' ')[0], tasks: r.tasksDone }));
   const { paginatedData, page, setPage, pageSize, setPageSize, totalPages, totalItems, startIndex, endIndex } = usePagination(data, 'productivity');
-  const periodLabel = PERIOD_OPTIONS.find((p) => p.value === period)?.label ?? period;
 
   if (isLoading) return <TabSpinner />;
 
@@ -245,8 +429,12 @@ function TeamProductivityTab({ currentUserId, period, project }: { currentUserId
                         {isMe && <span className="ml-1 text-xs bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-full font-medium">You</span>}
                       </div>
                     </td>
-                    <td className="px-5 py-3 text-right text-gray-600">{r.storiesAssigned ?? 0}</td>
-                    <td className="px-5 py-3 text-right font-semibold text-gray-700">{r.tasksDone}</td>
+                    <td className="px-5 py-3 text-right text-gray-600">
+                      <DrillCount value={r.storiesAssigned ?? 0} onClick={() => setDrillDown({ title: `All assigned — ${r.name} · ${periodLabel}`, period, projectId, userId: r.userId, noDateFilter: true })} />
+                    </td>
+                    <td className="px-5 py-3 text-right font-semibold text-gray-700">
+                      <DrillCount value={r.tasksDone} onClick={() => setDrillDown({ title: `Completed — ${r.name} · ${periodLabel}`, period, projectId, userId: r.userId, completedOnly: true })} />
+                    </td>
                     <td className="px-5 py-3 text-right text-gray-600">{r.hoursLogged}h</td>
                     <td className="px-5 py-3 text-right text-gray-600">{r.onTimePct}%</td>
                     <td className="px-5 py-3">
@@ -264,6 +452,7 @@ function TeamProductivityTab({ currentUserId, period, project }: { currentUserId
             onPageChange={setPage} onPageSizeChange={setPageSize} />
         )}
       </div>
+      {drillDown && <DrillDownPanel state={drillDown} onClose={() => setDrillDown(null)} />}
     </div>
   );
 }
@@ -285,6 +474,9 @@ function ProjectSummaryTab({ period, project }: { period: string; project: strin
     staleTime: 60_000,
   });
 
+  const [drillDown, setDrillDown] = useState<DrillDownState | null>(null);
+  const periodLabel = PERIOD_OPTIONS.find((p) => p.value === period)?.label ?? period;
+
   if (isLoading) return <TabSpinner />;
 
   const statusColors: Record<string, { bg: string; text: string }> = {
@@ -303,6 +495,8 @@ function ProjectSummaryTab({ period, project }: { period: string; project: strin
           ),
         ])} />
       </div>
+
+      {drillDown && <DrillDownPanel state={drillDown} onClose={() => setDrillDown(null)} />}
 
       {projects.length === 0 && (
         <div className="text-center py-12 text-sm text-gray-400">No active projects for this period.</div>
@@ -344,8 +538,12 @@ function ProjectSummaryTab({ period, project }: { period: string; project: strin
                   {(proj.breakdown ?? []).filter((b) => b.total > 0).map((b) => (
                     <tr key={b.type} className="hover:bg-gray-50/50">
                       <td className="px-3 py-2 font-medium text-gray-700">{TYPE_LABELS[b.type] ?? b.type}</td>
-                      <td className="px-3 py-2 text-right text-gray-600">{b.total}</td>
-                      <td className="px-3 py-2 text-right text-emerald-600 font-semibold">{b.done}</td>
+                      <td className="px-3 py-2 text-right text-gray-600">
+                        <DrillCount value={b.total} onClick={() => setDrillDown({ title: `All ${TYPE_LABELS[b.type] ?? b.type}s — ${proj.name} · ${periodLabel}`, period, projectId: proj.id, workItemType: b.type })} />
+                      </td>
+                      <td className="px-3 py-2 text-right text-emerald-600 font-semibold">
+                        <DrillCount value={b.done} className="text-emerald-600" onClick={() => setDrillDown({ title: `Completed ${TYPE_LABELS[b.type] ?? b.type}s — ${proj.name} · ${periodLabel}`, period, projectId: proj.id, workItemType: b.type, statusFilter: 'done' })} />
+                      </td>
                       <td className="px-3 py-2 text-right">
                         <span className={`font-semibold ${b.completePct === 100 ? 'text-emerald-600' : b.completePct >= 50 ? 'text-amber-600' : 'text-gray-600'}`}>
                           {b.completePct}%
@@ -409,6 +607,10 @@ function BugSummaryTab({ period, project }: { period: string; project: string })
     staleTime: 60_000,
   });
 
+  const [drillDown, setDrillDown] = useState<DrillDownState | null>(null);
+  const projectId = project && project !== 'all' ? project : undefined;
+  const periodLabel = PERIOD_OPTIONS.find((p) => p.value === period)?.label ?? period;
+
   if (isLoading) return <TabSpinner />;
 
   const allSeverityData = (data?.severity ?? []);
@@ -465,7 +667,12 @@ function BugSummaryTab({ period, project }: { period: string; project: string })
             {allSeverityData.map((d) => (
               <div key={d.severity} className="flex items-center gap-2">
                 <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: d.color }} />
-                <span className="text-xs text-gray-500">{SEVERITY_LABELS[d.severity] ?? d.severity} — <span className="font-semibold text-gray-700">{d.count}</span></span>
+                <span className="text-xs text-gray-500">
+                  {SEVERITY_LABELS[d.severity] ?? d.severity} —{' '}
+                  {d.count > 0
+                    ? <DrillCount value={d.count} className="font-semibold text-gray-700" onClick={() => setDrillDown({ title: `${SEVERITY_LABELS[d.severity] ?? d.severity} bugs · ${periodLabel}`, period, projectId, severity: d.severity })} />
+                    : <span className="font-semibold text-gray-700">0</span>}
+                </span>
               </div>
             ))}
           </div>
@@ -483,7 +690,7 @@ function BugSummaryTab({ period, project }: { period: string; project: string })
                 <div key={d.classification}>
                   <div className="flex justify-between text-xs mb-1">
                     <span className="text-gray-600 font-medium">{CLASSIFICATION_LABELS[d.classification] ?? d.classification}</span>
-                    <span className="text-gray-500">{d.count}</span>
+                    <DrillCount value={d.count} className="text-gray-500" onClick={() => setDrillDown({ title: `${CLASSIFICATION_LABELS[d.classification] ?? d.classification} bugs · ${periodLabel}`, period, projectId, classification: d.classification })} />
                   </div>
                   <div className="w-full bg-gray-100 rounded-full h-1.5">
                     <div className="h-1.5 rounded-full"
@@ -498,13 +705,20 @@ function BugSummaryTab({ period, project }: { period: string; project: string })
 
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
         {(data?.severity ?? []).map((d) => (
-          <div key={d.severity} className="bg-white rounded-2xl border border-[#cccccc] p-4 shadow-sm text-center">
+          <button
+            key={d.severity}
+            type="button"
+            disabled={d.count === 0}
+            onClick={() => d.count > 0 && setDrillDown({ title: `${SEVERITY_LABELS[d.severity] ?? d.severity} bugs · ${periodLabel}`, period, projectId, severity: d.severity })}
+            className="bg-white rounded-2xl border border-[#cccccc] p-4 shadow-sm text-center hover:border-primary-300 hover:shadow-md transition disabled:cursor-default disabled:hover:border-[#cccccc] disabled:hover:shadow-sm"
+          >
             <p className="text-2xl font-bold text-gray-800">{d.count}</p>
             <p className="text-xs text-gray-400 mt-1">{SEVERITY_LABELS[d.severity] ?? d.severity}</p>
             <div className="w-6 h-1 rounded-full mx-auto mt-2" style={{ backgroundColor: d.color }} />
-          </div>
+          </button>
         ))}
       </div>
+      {drillDown && <DrillDownPanel state={drillDown} onClose={() => setDrillDown(null)} />}
     </div>
   );
 }

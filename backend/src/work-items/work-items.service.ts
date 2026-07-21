@@ -50,7 +50,7 @@ const ITEM_INCLUDE = {
   releaseMilestone: { select: { id: true, description: true } },
   affectedMilestone: { select: { id: true, description: true } },
   children: {
-    select: { id: true, title: true, type: true, status: true, priority: true, assigneeId: true },
+    select: { id: true, title: true, type: true, status: true, priority: true, assigneeId: true, estimatedHours: true },
     orderBy: { createdAt: 'asc' as const },
   },
   comments: {
@@ -95,9 +95,10 @@ export class WorkItemsService implements OnModuleInit {
       status?: BoardStatus;
       priority?: TaskPriority;
       search?: string;
+      billingStatus?: BillingStatus;
     },
   ) {
-    return this.prisma.workItem.findMany({
+    const items = await this.prisma.workItem.findMany({
       where: {
         projectId,
         ...(filters.type && { type: filters.type }),
@@ -110,6 +111,7 @@ export class WorkItemsService implements OnModuleInit {
         ...(filters.unassigned ? { assigneeId: null } : filters.assigneeId ? { assigneeId: filters.assigneeId } : {}),
         ...(filters.status && { status: filters.status }),
         ...(filters.priority && { priority: filters.priority }),
+        ...(filters.billingStatus && { billingStatus: filters.billingStatus }),
         ...(filters.search && {
           OR: [
             { title: { contains: filters.search, mode: 'insensitive' as const } },
@@ -127,6 +129,57 @@ export class WorkItemsService implements OnModuleInit {
       },
       orderBy: [{ status: 'asc' }, { position: 'asc' }],
     });
+
+    const storyIds = items.filter((i) => i.type === WorkItemType.USER_STORY).map((i) => i.id);
+    const epicIds  = items.filter((i) => i.type === WorkItemType.EPIC).map((i) => i.id);
+
+    if (storyIds.length === 0 && epicIds.length === 0) return items;
+
+    // SUM of child TASK estimatedHours, grouped by parent story
+    const storyHoursMap = new Map<string, number>();
+    if (storyIds.length > 0) {
+      const rows = await this.prisma.workItem.groupBy({
+        by: ['parentId'],
+        where: { parentId: { in: storyIds }, type: WorkItemType.TASK },
+        _sum: { estimatedHours: true },
+      });
+      for (const r of rows) {
+        if (r.parentId) storyHoursMap.set(r.parentId, Number(r._sum.estimatedHours ?? 0));
+      }
+    }
+
+    // SUM of grandchild TASK estimatedHours, grouped by epic
+    const epicHoursMap = new Map<string, number>();
+    if (epicIds.length > 0) {
+      const childStories = await this.prisma.workItem.findMany({
+        where: { parentId: { in: epicIds }, type: WorkItemType.USER_STORY },
+        select: { id: true, parentId: true },
+      });
+      if (childStories.length > 0) {
+        const storyToEpic = new Map(childStories.filter((s) => s.parentId).map((s) => [s.id, s.parentId as string]));
+        const taskRows = await this.prisma.workItem.groupBy({
+          by: ['parentId'],
+          where: { parentId: { in: childStories.map((s) => s.id) }, type: WorkItemType.TASK },
+          _sum: { estimatedHours: true },
+        });
+        for (const r of taskRows) {
+          const epicId = r.parentId ? storyToEpic.get(r.parentId) : undefined;
+          if (epicId) epicHoursMap.set(epicId, (epicHoursMap.get(epicId) ?? 0) + Number(r._sum.estimatedHours ?? 0));
+        }
+      }
+    }
+
+    return items.map((item) => {
+      if (item.type === WorkItemType.USER_STORY) {
+        const hours = storyHoursMap.get(item.id) ?? 0;
+        return { ...item, estimatedHours: hours > 0 ? hours : null };
+      }
+      if (item.type === WorkItemType.EPIC) {
+        const hours = epicHoursMap.get(item.id) ?? 0;
+        return { ...item, estimatedHours: hours > 0 ? hours : null };
+      }
+      return item;
+    });
   }
 
   async findOne(id: string) {
@@ -135,6 +188,27 @@ export class WorkItemsService implements OnModuleInit {
       include: ITEM_INCLUDE,
     });
     if (!item) throw new NotFoundException(`Work item ${id} not found`);
+
+    if (item.type === WorkItemType.USER_STORY) {
+      const hours = item.children
+        .filter((c) => c.type === WorkItemType.TASK)
+        .reduce((sum, c) => sum + Number(c.estimatedHours ?? 0), 0);
+      return { ...item, estimatedHours: hours > 0 ? hours : null };
+    }
+
+    if (item.type === WorkItemType.EPIC) {
+      const storyIds = item.children
+        .filter((c) => c.type === WorkItemType.USER_STORY)
+        .map((c) => c.id);
+      if (storyIds.length === 0) return { ...item, estimatedHours: null };
+      const grandchildTasks = await this.prisma.workItem.findMany({
+        where: { parentId: { in: storyIds }, type: WorkItemType.TASK },
+        select: { estimatedHours: true },
+      });
+      const hours = grandchildTasks.reduce((sum, t) => sum + Number(t.estimatedHours ?? 0), 0);
+      return { ...item, estimatedHours: hours > 0 ? hours : null };
+    }
+
     return item;
   }
 
@@ -147,6 +221,11 @@ export class WorkItemsService implements OnModuleInit {
 
     // BUG items are always Non-Billable
     if (dto.type === WorkItemType.BUG) dto.billingStatus = BillingStatus.NON_BILLABLE;
+
+    // Epic and Story estimatedHours are computed from children — never stored
+    if (dto.type === WorkItemType.EPIC || dto.type === WorkItemType.USER_STORY) {
+      dto.estimatedHours = undefined;
+    }
 
     const item = await this.prisma.$transaction(async (tx) => {
       const project = await tx.project.update({
@@ -209,7 +288,7 @@ export class WorkItemsService implements OnModuleInit {
     }
 
     // Scenario 7: notify assignee when item is assigned on creation (skip BUGs — notifyBugCreated already covers them)
-    if (dto.assigneeId && dto.assigneeId !== reporterId && item.assignee && item.type !== WorkItemType.BUG) {
+    if (dto.assigneeId && item.assignee && item.type !== WorkItemType.BUG) {
       const reporter = await this.prisma.user.findUnique({ where: { id: reporterId }, select: { fullName: true } });
       this.automation.notifyTaskAssigned(
         { id: item.id, displayId: item.displayId ?? '', title: item.title, type: item.type, priority: item.priority, dueDate: item.dueDate, estimatedHours: item.estimatedHours, projectId: item.projectId },
@@ -332,6 +411,11 @@ export class WorkItemsService implements OnModuleInit {
       }
     }
 
+    // Epic and Story estimatedHours are computed from children — ignore any client-sent value
+    if (item.type === WorkItemType.EPIC || item.type === WorkItemType.USER_STORY) {
+      dto.estimatedHours = undefined;
+    }
+
     const { startDate, dueDate, ...restDto } = dto;
     const isCompletingViaEdit = !!dto.status && TERMINAL_STATUSES.has(dto.status) && !TERMINAL_STATUSES.has(item.status);
     const isUncompletingViaEdit = TERMINAL_STATUSES.has(item.status) && !!dto.status && !TERMINAL_STATUSES.has(dto.status);
@@ -423,14 +507,13 @@ export class WorkItemsService implements OnModuleInit {
           body: `${actorName} assigned "${item.title}" to you`,
           workItemId: id,
         });
-        // Scenario 7: Slack alert to new assignee
-        if (updated.assignee) {
-          this.automation.notifyTaskAssigned(
-            { id: updated.id, displayId: updated.displayId ?? '', title: updated.title, type: updated.type, priority: updated.priority, dueDate: item.dueDate, estimatedHours: updated.estimatedHours, projectId: item.projectId },
-            updated.assignee,
-            { fullName: actorName },
-          );
-        }
+      }
+      if (dto.assigneeId && updated.assignee) {
+        this.automation.notifyTaskAssigned(
+          { id: updated.id, displayId: updated.displayId ?? '', title: updated.title, type: updated.type, priority: updated.priority, dueDate: item.dueDate, estimatedHours: updated.estimatedHours, projectId: item.projectId },
+          updated.assignee,
+          { fullName: actorName },
+        );
       }
     }
     if (dto.priority && dto.priority !== item.priority) {

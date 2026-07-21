@@ -211,4 +211,42 @@ export const analyticsApi = {
 
   deleteKpiNote: (noteId: string) =>
     apiClient.delete(`/analytics/kpi/notes/${noteId}`).then((r) => r.data),
+
+  getDrillDown: (params: {
+    period: string;
+    projectId?: string;
+    userId?: string;
+    workItemType?: string;
+    severity?: string;
+    classification?: string;
+    statusFilter?: 'done';
+    completedOnly?: boolean;
+    noDateFilter?: boolean;
+  }) =>
+    apiClient
+      .get<DrillDownItem[]>('/analytics/reports/drill-down', {
+        params: {
+          period: params.period,
+          ...(params.projectId && { projectId: params.projectId }),
+          ...(params.userId && { userId: params.userId }),
+          ...(params.workItemType && { workItemType: params.workItemType }),
+          ...(params.severity && { severity: params.severity }),
+          ...(params.classification && { classification: params.classification }),
+          ...(params.statusFilter && { statusFilter: params.statusFilter }),
+          ...(params.completedOnly && { completedOnly: 'true' }),
+          ...(params.noDateFilter && { noDateFilter: 'true' }),
+        },
+      })
+      .then((r) => r.data),
 };
+
+export interface DrillDownItem {
+  id: string;
+  displayId: string | null;
+  title: string;
+  type: string;
+  status: string;
+  priority: string;
+  assignee: { fullName: string } | null;
+  project: { id: string; name: string };
+}
