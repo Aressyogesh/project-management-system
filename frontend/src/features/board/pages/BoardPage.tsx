@@ -212,7 +212,7 @@ export function BoardPage() {
     }
   }
 
-  const memberOptions = members.map((m) => ({ id: m.user.id, fullName: m.user.fullName, profilePhoto: m.user.profilePhoto }));
+  const memberOptions = members.map((m) => ({ id: m.user.id, fullName: m.user.fullName, profilePhoto: m.user.profilePhoto, projectRole: m.projectRole }));
 
   return (
     <div className="flex flex-col h-full min-h-0">

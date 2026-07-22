@@ -29,7 +29,7 @@ import { testCasesApi, type TestCase, type TestCaseStatus } from '../../../api/t
 
 type ActivityTab = 'comments' | 'logTime' | 'attachments' | 'activities' | 'testCases';
 
-interface MemberOption { id: string; fullName: string; profilePhoto?: string | null; }
+interface MemberOption { id: string; fullName: string; profilePhoto?: string | null; projectRole?: string; }
 
 interface Props {
   item: WorkItem | null;
@@ -455,6 +455,7 @@ export function WorkItemModal({ item, sprints, members, milestones, canDelete = 
   const [bugDetailError, setBugDetailError] = useState('');
   const [showBugCloseGuard, setShowBugCloseGuard] = useState(false);
   const [estHoursError, setEstHoursError] = useState(false);
+  const [assigneeBlockedMsg, setAssigneeBlockedMsg] = useState('');
   const [startDateError, setStartDateError] = useState(false);
   const [dueDateError, setDueDateError] = useState(false);
   const [billingStatusError, setBillingStatusDetailError] = useState(false);
@@ -526,20 +527,23 @@ export function WorkItemModal({ item, sprints, members, milestones, canDelete = 
     if (!bugClassificationLocal) { setBugDetailError('Classification is required'); return; }
     if (!bugFlagLocal) { setBugDetailError('Environment is required'); return; }
     setBugDetailError('');
-    updateMut.mutate({
-      severity: bugSeverityLocal as BugSeverity,
-      bugClassification: bugClassificationLocal as BugClassification,
-      bugStatus: (bugStatusLocal || undefined) as BugStatus | undefined,
-      bugFlag: (bugFlagLocal || undefined) as BugFlag | undefined,
-      bugReproducibility: (bugReproducibilityLocal || undefined) as BugReproducibility | undefined,
-      module: bugModuleLocal || undefined,
-      responsibleUserId: bugResponsibleUserIdLocal || undefined,
-      affectedBuildVersion: bugAffectedBuildLocal || undefined,
-      fixedBuildVersion: bugFixedBuildLocal || undefined,
-      reminderType: bugReminderTypeLocal,
-      environment: bugEnvironmentLocal || undefined,
-      stepsToRepro: bugStepsToReproLocal || undefined,
-    });
+    updateMut.mutate(
+      {
+        severity: bugSeverityLocal as BugSeverity,
+        bugClassification: bugClassificationLocal as BugClassification,
+        bugStatus: (bugStatusLocal || undefined) as BugStatus | undefined,
+        bugFlag: (bugFlagLocal || undefined) as BugFlag | undefined,
+        bugReproducibility: (bugReproducibilityLocal || undefined) as BugReproducibility | undefined,
+        module: bugModuleLocal || undefined,
+        responsibleUserId: bugResponsibleUserIdLocal || undefined,
+        affectedBuildVersion: bugAffectedBuildLocal || undefined,
+        fixedBuildVersion: bugFixedBuildLocal || undefined,
+        reminderType: bugReminderTypeLocal,
+        environment: bugEnvironmentLocal || undefined,
+        stepsToRepro: bugStepsToReproLocal || undefined,
+      },
+      { onSuccess: () => onClose() },
+    );
   }
 
   const updateMut = useMutation({
@@ -1501,7 +1505,19 @@ export function WorkItemModal({ item, sprints, members, milestones, canDelete = 
                     <>
                       <select
                         value={detail.assigneeId ?? ''}
-                        onChange={(e) => updateMut.mutate({ assigneeId: e.target.value || undefined })}
+                        onChange={(e) => {
+                          const newId = e.target.value;
+                          if (detail.type === 'BUG' && newId) {
+                            const newMember = members.find((m) => m.id === newId);
+                            if (newMember?.projectRole !== 'PROJECT_MANAGER' && !detail.estimatedHours) {
+                              setAssigneeBlockedMsg('Add estimated hours before assigning to a developer');
+                              setEstHoursError(true);
+                              return;
+                            }
+                          }
+                          setAssigneeBlockedMsg('');
+                          updateMut.mutate({ assigneeId: newId || undefined });
+                        }}
                         className="input-sm w-full text-xs mt-1"
                       >
                         <option value="">Unassigned</option>
@@ -1509,9 +1525,23 @@ export function WorkItemModal({ item, sprints, members, milestones, canDelete = 
                           <option key={m.id} value={m.id}>{m.fullName}</option>
                         ))}
                       </select>
+                      {assigneeBlockedMsg && (
+                        <p className="text-[10px] text-red-500 mt-0.5">{assigneeBlockedMsg}</p>
+                      )}
                       {user && (
                         <button
-                          onClick={() => updateMut.mutate({ assigneeId: user.id })}
+                          onClick={() => {
+                            if (detail.type === 'BUG') {
+                              const mySelf = members.find((m) => m.id === user.id);
+                              if (mySelf?.projectRole !== 'PROJECT_MANAGER' && !detail.estimatedHours) {
+                                setAssigneeBlockedMsg('Add estimated hours before assigning to a developer');
+                                setEstHoursError(true);
+                                return;
+                              }
+                            }
+                            setAssigneeBlockedMsg('');
+                            updateMut.mutate({ assigneeId: user.id });
+                          }}
                           className="text-[11px] text-primary-600 hover:text-primary-700 font-medium"
                         >
                           Assign to me
@@ -1600,6 +1630,7 @@ export function WorkItemModal({ item, sprints, members, milestones, canDelete = 
                           return;
                         }
                         setEstHoursError(false);
+                        setAssigneeBlockedMsg('');
                         updateMut.mutate({ estimatedHours: Number(e.target.value) || undefined });
                       }}
                       className={`input-sm w-24 text-xs ${estHoursError ? 'border-red-500 focus:ring-red-500' : ''}`}
@@ -2157,7 +2188,10 @@ export function CreateWorkItemModal({
   const [description, setDescription] = useState('');
   const [priority, setPriority] = useState<TaskPriority>('MEDIUM');
   const [sprintId, setSprintId] = useState('');
-  const [assigneeId, setAssigneeId] = useState('');
+  const pmMember = members.find((m) => m.projectRole === 'PROJECT_MANAGER');
+  const [assigneeId, setAssigneeId] = useState(() => type === 'BUG' ? (pmMember?.id ?? '') : '');
+  const selectedMemberRole = members.find((m) => m.id === assigneeId)?.projectRole;
+  const bugAssignedToNonPm = type === 'BUG' && !!assigneeId && selectedMemberRole !== 'PROJECT_MANAGER';
   const [storyPoints, setStoryPoints] = useState('');
   const [estimatedHours, setEstimatedHours] = useState('');
   const todayIso = new Date().toISOString().slice(0, 10);
@@ -2200,6 +2234,14 @@ export function CreateWorkItemModal({
     return () => document.removeEventListener('mousedown', handleOutside);
   }, [showParentMenu]);
 
+  // Default assignee to PM when creating a BUG (runs once members load)
+  useEffect(() => {
+    if (type === 'BUG' && pmMember && !assigneeId) {
+      setAssigneeId(pmMember.id);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pmMember?.id, type]);
+
   const filteredSprints = milestoneLinkId
     ? sprints.filter((s) => s.milestoneId === milestoneLinkId)
     : sprints;
@@ -2237,6 +2279,7 @@ export function CreateWorkItemModal({
     setReminderType('NONE');
     setAffectedMilestoneId('');
     setPendingFiles([]);
+    setAssigneeId(type === 'BUG' ? (pmMember?.id ?? '') : '');
     setAssigneeError(false);
     setParentError(false);
     setDateError('');
@@ -2296,7 +2339,8 @@ export function CreateWorkItemModal({
       return;
     }
     setDateError('');
-    if (type !== 'EPIC' && type !== 'USER_STORY' && !estimatedHours) {
+    const estHoursRequired = type !== 'EPIC' && type !== 'USER_STORY' && (type !== 'BUG' || bugAssignedToNonPm);
+    if (estHoursRequired && !estimatedHours) {
       setEstHoursError(true);
       return;
     }
@@ -2690,13 +2734,19 @@ export function CreateWorkItemModal({
               </div>
             ) : (
               <div>
-                <label className={labelCls}>Est. Hours <span className="text-red-500">*</span></label>
+                <label className={labelCls}>
+                  Est. Hours{' '}
+                  {type === 'BUG' && selectedMemberRole === 'PROJECT_MANAGER'
+                    ? <span className="text-gray-400 font-normal">(optional — required when assigned to developer)</span>
+                    : <span className="text-red-500">*</span>
+                  }
+                </label>
                 <input
                   type="number" min={0} step={0.5} value={estimatedHours}
                   onChange={(e) => { setEstimatedHours(e.target.value); if (e.target.value) setEstHoursError(false); }}
                   className={`${inputCls} ${estHoursError ? 'border-red-500 focus:ring-red-500' : ''}`}
                 />
-                {estHoursError && <p className="text-xs text-red-500 mt-1">Estimated hours is required</p>}
+                {estHoursError && <p className="text-xs text-red-500 mt-1">Estimated hours is required when assigning to a developer</p>}
               </div>
             )}
             <div>
