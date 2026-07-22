@@ -30,7 +30,7 @@ const TABS: { id: Tab; label: string }[] = [
   { id: 'productivity',   label: 'Team Productivity'  },
   { id: 'projects',       label: 'Project Summary'    },
   { id: 'bugs',           label: 'Bug Summary'         },
-  { id: 'allocation',     label: 'Task Allocation'    },
+  { id: 'allocation',     label: 'Task Summary'       },
   { id: 'timesheet',      label: 'Timesheet'          },
   { id: 'planned-actual', label: 'Planned vs Actual'  },
   { id: 'capacity',       label: 'Capacity'            },
@@ -766,7 +766,7 @@ function TaskAllocationTab({ currentUserId, period, project }: { currentUserId?:
       </div>
 
       <div className="bg-white rounded-2xl border border-[#cccccc] p-5 shadow-sm">
-        <h3 className="text-sm font-semibold text-gray-800 mb-1">Hours Allocated — {periodLabel}</h3>
+        <h3 className="text-sm font-semibold text-gray-800 mb-1">Hours Logged — {periodLabel}</h3>
         <p className="text-xs text-gray-400 mb-4">
           {data.length > 10 ? 'Top 10 team members' : `${data.length} team members`} by allocated hours
         </p>
@@ -784,7 +784,7 @@ function TaskAllocationTab({ currentUserId, period, project }: { currentUserId?:
 
       <div className="bg-white rounded-2xl border border-[#cccccc] shadow-sm overflow-hidden">
         <div className="px-5 py-4 border-b border-gray-50">
-          <h3 className="text-sm font-semibold text-gray-800">Task Allocation Details</h3>
+          <h3 className="text-sm font-semibold text-gray-800">Task Summary Details</h3>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
