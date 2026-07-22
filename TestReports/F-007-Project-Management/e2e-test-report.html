@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>E2E Test Report — F-007 Project Management</title>
+<style>
+  body { font-family: system-ui, sans-serif; margin: 0; background: #f8fafc; color: #1e293b; }
+  .header { background: #1e3a5f; color: #fff; padding: 24px 32px; }
+  .header h1 { margin: 0 0 4px; font-size: 1.4rem; }
+  .header p { margin: 0; opacity: .75; font-size: .875rem; }
+  .summary { display: flex; gap: 16px; padding: 20px 32px; flex-wrap: wrap; }
+  .chip { padding: 8px 18px; border-radius: 999px; font-size: .85rem; font-weight: 600; }
+  .pass { background: #dcfce7; color: #15803d; }
+  .fail { background: #fee2e2; color: #b91c1c; }
+  .manual { background: #f3e8ff; color: #7c3aed; }
+  .info { background: #e0f2fe; color: #0369a1; }
+  table { width: calc(100% - 64px); margin: 0 32px 32px; border-collapse: collapse; background: #fff; border-radius: 10px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,.08); }
+  th { background: #f1f5f9; text-align: left; padding: 10px 14px; font-size: .78rem; color: #64748b; text-transform: uppercase; letter-spacing: .05em; }
+  td { padding: 11px 14px; font-size: .85rem; border-top: 1px solid #f1f5f9; vertical-align: top; }
+  .badge { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: .75rem; font-weight: 600; }
+  .badge-pass { background: #dcfce7; color: #15803d; }
+  .badge-fail { background: #fee2e2; color: #b91c1c; }
+  .badge-manual { background: #f3e8ff; color: #7c3aed; }
+  code { background: #f1f5f9; padding: 1px 5px; border-radius: 4px; font-size: .8rem; }
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>E2E Test Report — F-007: Project Management</h1>
+  <p>Manual Verification • Generated 2026-05-26</p>
+</div>
+<div class="summary">
+  <span class="chip pass">8 Passed</span>
+  <span class="chip fail">0 Failed</span>
+  <span class="chip manual">Manual</span>
+  <span class="chip info">Tester: Yogesh Lolage</span>
+</div>
+<table>
+  <thead>
+    <tr>
+      <th>Test ID</th><th>Scenario</th><th>Steps</th><th>Expected</th><th>Result</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>TC-F-007-001</code></td>
+      <td>View project list</td>
+      <td>Navigate to /projects as any authenticated user</td>
+      <td>Card grid with project cards and summary panel visible</td>
+      <td><span class="badge badge-pass">PASS</span></td>
+    </tr>
+    <tr>
+      <td><code>TC-F-007-002</code></td>
+      <td>Create project — valid data</td>
+      <td>Click "New Project", fill name, choose type, submit</td>
+      <td>New card appears in grid; summary counts update</td>
+      <td><span class="badge badge-pass">PASS</span></td>
+    </tr>
+    <tr>
+      <td><code>TC-F-007-003</code></td>
+      <td>Create project — missing name</td>
+      <td>Submit form with empty name</td>
+      <td>Inline error "Project name is required"; no API call</td>
+      <td><span class="badge badge-pass">PASS</span></td>
+    </tr>
+    <tr>
+      <td><code>TC-F-007-004</code></td>
+      <td>Create project — end before start</td>
+      <td>Set endDate before startDate, submit</td>
+      <td>Error "End date must be on or after start date"</td>
+      <td><span class="badge badge-pass">PASS</span></td>
+    </tr>
+    <tr>
+      <td><code>TC-F-007-005</code></td>
+      <td>Edit project</td>
+      <td>Click edit icon on a card, change name, save</td>
+      <td>Card refreshes with updated name</td>
+      <td><span class="badge badge-pass">PASS</span></td>
+    </tr>
+    <tr>
+      <td><code>TC-F-007-006</code></td>
+      <td>Archive active project</td>
+      <td>Click archive icon on an ACTIVE card</td>
+      <td>Card status badge changes to "Archive"; summary active count decreases</td>
+      <td><span class="badge badge-pass">PASS</span></td>
+    </tr>
+    <tr>
+      <td><code>TC-F-007-007</code></td>
+      <td>Restore archived project</td>
+      <td>Click restore icon on an ARCHIVE card</td>
+      <td>Card status badge changes to "Active"; summary counts update</td>
+      <td><span class="badge badge-pass">PASS</span></td>
+    </tr>
+    <tr>
+      <td><code>TC-F-007-008</code></td>
+      <td>Filter by status</td>
+      <td>Select "Archive" from the status dropdown</td>
+      <td>Only archived projects shown; "1 project shown" count updates</td>
+      <td><span class="badge badge-pass">PASS</span></td>
+    </tr>
+  </tbody>
+</table>
+</body>
+</html>

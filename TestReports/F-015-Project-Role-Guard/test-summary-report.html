@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><title>Test Summary — F-015 ProjectRoleGuard</title>
+<style>
+  body{font-family:Arial,sans-serif;margin:32px;color:#1a1a1a}
+  h1{color:#1d4ed8}h2{color:#374151;border-bottom:1px solid #e5e7eb;padding-bottom:6px}
+  table{border-collapse:collapse;width:100%;margin-bottom:24px}
+  th,td{border:1px solid #d1d5db;padding:8px 12px;text-align:left}
+  th{background:#f3f4f6;font-weight:600}
+  .pass{color:#16a34a;font-weight:600}.fail{color:#dc2626;font-weight:600}
+  .badge-pass{background:#dcfce7;color:#15803d;padding:2px 8px;border-radius:4px;font-size:13px}
+  .badge-fail{background:#fee2e2;color:#b91c1c;padding:2px 8px;border-radius:4px;font-size:13px}
+  .summary-box{background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:16px;margin-bottom:24px}
+</style>
+</head>
+<body>
+<h1>Test Summary Report — F-015: ProjectRoleGuard</h1>
+<p><strong>Date:</strong> 2026-05-27 &nbsp;|&nbsp; <strong>Environment:</strong> Node.js / NestJS / Jest &nbsp;|&nbsp; <strong>Branch:</strong> feature/F-015-project-role-guard</p>
+
+<div class="summary-box">
+  <strong>Overall Result: <span class="pass">ALL PASS</span></strong><br>
+  Unit Tests (Backend): 9 / 9 PASSED &nbsp;|&nbsp; E2E Tests: N/A (backend-only feature) &nbsp;|&nbsp; Pass Rate: 100%
+</div>
+
+<h2>Unit Test Results — Backend (ProjectRoleGuard)</h2>
+<table>
+  <tr><th>Test ID</th><th>Title</th><th>AC</th><th>Result</th></tr>
+  <tr><td>UTC-F015-B-001</td><td>canActivate_NoDecorator_ReturnsTrue</td><td>AC-6</td><td><span class="badge-pass">PASS</span></td></tr>
+  <tr><td>UTC-F015-B-002</td><td>canActivate_SuperUser_ReturnsTrue</td><td>AC-1</td><td><span class="badge-pass">PASS</span></td></tr>
+  <tr><td>UTC-F015-B-003</td><td>canActivate_Admin_ReturnsTrue</td><td>AC-1</td><td><span class="badge-pass">PASS</span></td></tr>
+  <tr><td>UTC-F015-B-004</td><td>canActivate_ProjectManagerMember_ReturnsTrue</td><td>AC-2</td><td><span class="badge-pass">PASS</span></td></tr>
+  <tr><td>UTC-F015-B-005</td><td>canActivate_TeamLeadMember_AllowedRoles_ReturnsTrue</td><td>AC-3</td><td><span class="badge-pass">PASS</span></td></tr>
+  <tr><td>UTC-F015-B-006</td><td>canActivate_TeamLeadMember_MilestoneRoute_ThrowsForbidden</td><td>AC-3</td><td><span class="badge-pass">PASS</span></td></tr>
+  <tr><td>UTC-F015-B-007</td><td>canActivate_DeveloperMember_ThrowsForbidden</td><td>AC-4</td><td><span class="badge-pass">PASS</span></td></tr>
+  <tr><td>UTC-F015-B-008</td><td>canActivate_NonMember_ThrowsForbidden</td><td>AC-5</td><td><span class="badge-pass">PASS</span></td></tr>
+  <tr><td>UTC-F015-B-009</td><td>canActivate_TaskListSource_ResolvesProjectIdFromDb</td><td>AC-7</td><td><span class="badge-pass">PASS</span></td></tr>
+</table>
+
+<h2>Acceptance Criteria Coverage</h2>
+<table>
+  <tr><th>AC</th><th>Description</th><th>Covered By</th><th>Status</th></tr>
+  <tr><td>AC-1</td><td>SUPER_USER/ADMIN always pass</td><td>UTC-B-002, UTC-B-003</td><td><span class="badge-pass">PASS</span></td></tr>
+  <tr><td>AC-2</td><td>PROJECT_MANAGER can write tasks/task-lists/milestones</td><td>UTC-B-004</td><td><span class="badge-pass">PASS</span></td></tr>
+  <tr><td>AC-3</td><td>TEAM_LEAD can write tasks/task-lists but not milestones</td><td>UTC-B-005, UTC-B-006</td><td><span class="badge-pass">PASS</span></td></tr>
+  <tr><td>AC-4</td><td>DEVELOPER/QA/etc get 403</td><td>UTC-B-007</td><td><span class="badge-pass">PASS</span></td></tr>
+  <tr><td>AC-5</td><td>Non-member gets 403</td><td>UTC-B-008</td><td><span class="badge-pass">PASS</span></td></tr>
+  <tr><td>AC-6</td><td>GET endpoints pass through without check</td><td>UTC-B-001</td><td><span class="badge-pass">PASS</span></td></tr>
+  <tr><td>AC-7</td><td>Guard is reusable via decorator</td><td>UTC-B-009</td><td><span class="badge-pass">PASS</span></td></tr>
+</table>
+</body>
+</html>

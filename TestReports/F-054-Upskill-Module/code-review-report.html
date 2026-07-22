@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Code Review Report — F-054 Upskill Module</title>
+<style>
+  body { font-family: 'Segoe UI', sans-serif; background: #0f172a; color: #e2e8f0; margin: 0; padding: 24px; }
+  h1 { color: #f8fafc; font-size: 1.6rem; border-bottom: 2px solid #334155; padding-bottom: 12px; }
+  h2 { color: #94a3b8; font-size: 1.1rem; margin-top: 32px; }
+  .meta { background: #1e293b; border-radius: 8px; padding: 16px; margin-bottom: 24px; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+  .meta div { font-size: 0.85rem; color: #94a3b8; }
+  .meta strong { display: block; color: #e2e8f0; font-size: 1rem; }
+  .summary { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 28px; }
+  .card { background: #1e293b; border-radius: 8px; padding: 16px; text-align: center; }
+  .card .num { font-size: 2rem; font-weight: 700; }
+  .card .lbl { font-size: 0.8rem; color: #94a3b8; margin-top: 4px; }
+  .blocking .num { color: #f87171; }
+  .warning .num { color: #fbbf24; }
+  .info .num { color: #60a5fa; }
+  .fixed .num { color: #34d399; }
+  .finding { background: #1e293b; border-radius: 8px; padding: 20px; margin-bottom: 16px; border-left: 4px solid #334155; }
+  .finding.blocking { border-left-color: #f87171; }
+  .finding.warning { border-left-color: #fbbf24; }
+  .finding.info { border-left-color: #60a5fa; }
+  .finding h3 { margin: 0 0 8px; font-size: 1rem; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .badge { font-size: 0.7rem; padding: 2px 8px; border-radius: 999px; font-weight: 600; letter-spacing: 0.05em; }
+  .badge-blocking { background: #7f1d1d; color: #fca5a5; }
+  .badge-warning { background: #78350f; color: #fde68a; }
+  .badge-info { background: #1e3a5f; color: #93c5fd; }
+  .badge-fixed { background: #14532d; color: #86efac; }
+  .field { margin-top: 10px; }
+  .field label { font-size: 0.75rem; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 3px; }
+  .field p { margin: 0; font-size: 0.9rem; color: #cbd5e1; }
+  code { background: #0f172a; padding: 2px 6px; border-radius: 4px; font-family: 'Fira Code', monospace; font-size: 0.82rem; color: #a5f3fc; }
+  .checklist { list-style: none; padding: 0; }
+  .checklist li { padding: 6px 0; border-bottom: 1px solid #1e293b; font-size: 0.88rem; }
+  .checklist li::before { content: '✓ '; color: #34d399; }
+  .footer { margin-top: 40px; color: #475569; font-size: 0.8rem; border-top: 1px solid #1e293b; padding-top: 12px; }
+</style>
+</head>
+<body>
+<h1>Code Review Report — F-054 Upskill Module</h1>
+
+<div class="meta">
+  <div><strong>F-054</strong>Feature ID</div>
+  <div><strong>2026-06-24</strong>Review Date</div>
+  <div><strong>High Effort (CR-1 through CR-8)</strong>Review Mode</div>
+  <div><strong>4 Fixed / 0 Open</strong>Status</div>
+  <div><strong>feature/F-054-upskill-module</strong>Branch</div>
+  <div><strong>All Angles Passed</strong>Verdict</div>
+</div>
+
+<div class="summary">
+  <div class="card blocking"><div class="num">1</div><div class="lbl">Blocking</div></div>
+  <div class="card warning"><div class="num">3</div><div class="lbl">Warning</div></div>
+  <div class="card info"><div class="num">0</div><div class="lbl">Info</div></div>
+  <div class="card fixed"><div class="num">4</div><div class="lbl">Fixed</div></div>
+</div>
+
+<h2>Findings</h2>
+
+<!-- CR-01 -->
+<div class="finding blocking">
+  <h3>
+    CR-01 — <code>Error</code> Instead of <code>BadRequestException</code> for Missing File
+    <span class="badge badge-blocking">BLOCKING</span>
+    <span class="badge badge-fixed">FIXED</span>
+  </h3>
+  <div class="field"><label>File</label><p><code>backend/src/upskill/upskill.controller.ts:135</code></p></div>
+  <div class="field"><label>Angle</label><p>A — Line-by-line diff scan</p></div>
+  <div class="field">
+    <label>Description</label>
+    <p>
+      The Multer <code>fileFilter</code> error callback used <code>new Error(...)</code> instead of NestJS
+      <code>BadRequestException</code>. A bare <code>Error</code> thrown inside Multer's callback is not
+      caught by NestJS's exception filters and results in an unhandled exception / 500 response instead of
+      a 400 Bad Request with the standard error envelope.
+    </p>
+  </div>
+  <div class="field"><label>Fix Applied</label><p>Imported <code>BadRequestException</code> and used it in the fileFilter callback and in the missing-file guard.</p></div>
+</div>
+
+<!-- CR-02 -->
+<div class="finding warning">
+  <h3>
+    CR-02 — Upload Directory Not Created on Deploy
+    <span class="badge badge-warning">WARNING</span>
+    <span class="badge badge-fixed">FIXED</span>
+  </h3>
+  <div class="field"><label>File</label><p><code>backend/src/upskill/upskill.controller.ts:35</code></p></div>
+  <div class="field"><label>Angle</label><p>B — Removed-behavior auditor / Deployment concern</p></div>
+  <div class="field">
+    <label>Description</label>
+    <p>
+      The <code>uploads/upskill/</code> target directory did not exist on a fresh Render deploy. Multer
+      would throw <code>ENOENT</code> on the first file upload attempt, causing a 500 error.
+      The existing <code>main.ts</code> only <code>mkdirSync</code>s <code>avatars</code> and <code>images</code>.
+    </p>
+  </div>
+  <div class="field"><label>Fix Applied</label><p>Added <code>mkdirSync(UPSKILL_UPLOAD_DIR, { recursive: true })</code> at module-level in the controller so the directory is created at startup.</p></div>
+</div>
+
+<!-- CR-03 -->
+<div class="finding warning">
+  <h3>
+    CR-03 — <code>rejectAssignment</code> Incorrectly Set <code>approvedById</code>
+    <span class="badge badge-warning">WARNING</span>
+    <span class="badge badge-fixed">FIXED</span>
+  </h3>
+  <div class="field"><label>File</label><p><code>backend/src/upskill/upskill.service.ts:219</code></p></div>
+  <div class="field"><label>Angle</label><p>A — Line-by-line diff scan</p></div>
+  <div class="field">
+    <label>Description</label>
+    <p>
+      The initial implementation of <code>rejectAssignment</code> included <code>approvedById: rejectorId</code>
+      in the Prisma update payload. This incorrectly marks the rejector as an "approver", corrupting the
+      audit trail and causing false-positive reads in <code>findApprovedForUserInPeriod</code> (used by
+      the analytics/KPI scoring service).
+    </p>
+  </div>
+  <div class="field"><label>Fix Applied</label><p>Removed <code>approvedById</code> from the reject update payload. Only <code>status: REJECTED</code> and <code>rejectionReason</code> are set.</p></div>
+</div>
+
+<!-- CR-04 -->
+<div class="finding warning">
+  <h3>
+    CR-04 — <code>UpskillAssignmentSection</code> Queried Without <code>period</code> Filter
+    <span class="badge badge-warning">WARNING</span>
+    <span class="badge badge-fixed">FIXED</span>
+  </h3>
+  <div class="field"><label>File</label><p><code>frontend/src/features/kpi/pages/KpiPage.tsx</code></p></div>
+  <div class="field"><label>Angle</label><p>C — Cross-file tracer</p></div>
+  <div class="field">
+    <label>Description</label>
+    <p>
+      <code>UpskillAssignmentSection</code> used <code>['upskill-mine', period]</code> as the React Query
+      cache key (period-aware) but called <code>upskillApi.listAssignments({ mine: true })</code> without
+      passing <code>period</code>. This caused all assignments across all months to render regardless of
+      the KPI period selected, and cache invalidations for different periods would share the same stale
+      data.
+    </p>
+  </div>
+  <div class="field"><label>Fix Applied</label><p>Updated the API call to <code>listAssignments({ mine: true, period })</code>; updated <code>upskillApi.ts</code>, the controller query param, and <code>buildPeriodFilter</code> in the service to support the period param.</p></div>
+</div>
+
+<h2>Review Checklist</h2>
+<ul class="checklist">
+  <li>CR-1: Logic bugs and off-by-one — checked, no remaining issues</li>
+  <li>CR-2: Error handling — BadRequestException used correctly throughout</li>
+  <li>CR-3: Auth & authorization — isManager check on create/approve/reject; IDOR fixed in security review</li>
+  <li>CR-4: TypeScript types — zero tsc --noEmit errors on both backend and frontend</li>
+  <li>CR-5: Test coverage — 19 BE unit tests, 7 FE unit tests, all passing</li>
+  <li>CR-6: Database — Prisma schema valid; npx prisma db push applied successfully</li>
+  <li>CR-7: API contract — controller query params and service method signatures align with REQ-F-054</li>
+  <li>CR-8: Cross-file consistency — analytics service, sidebar, KPI page integrations all reviewed and consistent</li>
+</ul>
+
+<div class="footer">Generated: 2026-06-24 | Reviewer: Claude Code | Feature: F-054 Upskill Module</div>
+</body>
+</html>

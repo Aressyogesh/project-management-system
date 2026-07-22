@@ -1,0 +1,94 @@
+import { BadRequestException, Controller, Get, Query } from '@nestjs/common';
+import { ApiBearerAuth, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
+import { SystemRole } from '@prisma/client';
+import { CurrentUser } from '../common/decorators/current-user.decorator';
+import {
+  Announcement,
+  DashboardService,
+  DashboardStats,
+  MemberActivity,
+  ProjectProgress,
+  TasksProgress,
+} from './dashboard.service';
+
+interface JwtUser {
+  id: string;
+  email: string;
+  systemRole: SystemRole;
+  managedBusinessUnitId?: string | null;
+}
+
+@ApiTags('Dashboard')
+@ApiBearerAuth()
+@Controller('dashboard')
+export class DashboardController {
+  constructor(private dashboardService: DashboardService) {}
+
+  @Get('stats')
+  @ApiOperation({ summary: 'Get role-based dashboard statistics' })
+  @ApiQuery({ name: 'projectId', required: false })
+  @ApiQuery({ name: 'month',     required: false, description: 'YYYY-MM — scopes all stats to this project+month' })
+  getStats(
+    @CurrentUser() user: JwtUser,
+    @Query('projectId') projectId?: string,
+    @Query('month')     month?: string,
+  ): Promise<DashboardStats> {
+    return this.dashboardService.getStats(user.id, user.systemRole, projectId, month, user.managedBusinessUnitId);
+  }
+
+  @Get('projects-progress')
+  @ApiOperation({ summary: 'Get project-wise team progress (Admin+ / BU_HEAD / Project Manager/Team Lead)' })
+  getProjectsProgress(@CurrentUser() user: JwtUser): Promise<ProjectProgress[]> {
+    return this.dashboardService.getProjectsProgress(user.id, user.systemRole, user.managedBusinessUnitId);
+  }
+
+  @Get('team-activity')
+  @ApiOperation({ summary: 'Get per-member activity for a project and month (Admin+ or PM)' })
+  @ApiQuery({ name: 'projectId', required: true })
+  @ApiQuery({ name: 'month', required: true, description: 'YYYY-MM' })
+  async getTeamActivity(
+    @CurrentUser() user: JwtUser,
+    @Query('projectId') projectId: string,
+    @Query('month') month: string,
+  ): Promise<MemberActivity[]> {
+    if (!projectId || !month) throw new BadRequestException('projectId and month are required');
+    if (!/^\d{4}-\d{2}$/.test(month)) throw new BadRequestException('month must be in YYYY-MM format');
+    return this.dashboardService.getTeamActivity(projectId, month, user.id, user.systemRole);
+  }
+
+  @Get('tasks-progress')
+  @ApiOperation({ summary: 'Get task status distribution — last 7d / 30d / all time' })
+  @ApiQuery({ name: 'projectId', required: false })
+  @ApiQuery({ name: 'period',    required: false, enum: ['7d', '30d', 'all'] })
+  getTasksProgress(
+    @CurrentUser() user: JwtUser,
+    @Query('projectId') projectId?: string,
+    @Query('period')    period: '7d' | '30d' | 'all' = 'all',
+  ): Promise<TasksProgress> {
+    return this.dashboardService.getTasksProgress(user.id, user.systemRole, projectId, period);
+  }
+
+  @Get('activity')
+  @ApiOperation({ summary: 'Get activity data — monthly or weekly, optionally scoped to a project' })
+  @ApiQuery({ name: 'projectId', required: false })
+  @ApiQuery({ name: 'period',    required: false, enum: ['monthly', 'weekly'] })
+  getActivityData(
+    @CurrentUser() user: JwtUser,
+    @Query('projectId') projectId?: string,
+    @Query('period')    period: 'monthly' | 'weekly' = 'monthly',
+  ) {
+    return this.dashboardService.getActivityData(user.id, projectId, period);
+  }
+
+  @Get('announcements')
+  @ApiOperation({ summary: 'Get dynamic announcements filtered by project and month' })
+  @ApiQuery({ name: 'projectId', required: false })
+  @ApiQuery({ name: 'month',     required: false, description: 'YYYY-MM' })
+  getAnnouncements(
+    @CurrentUser() user: JwtUser,
+    @Query('projectId') projectId?: string,
+    @Query('month')     month?: string,
+  ): Promise<Announcement[]> {
+    return this.dashboardService.getAnnouncements(projectId, month, user.id, user.systemRole);
+  }
+}

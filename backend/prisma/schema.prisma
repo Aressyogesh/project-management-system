@@ -3,8 +3,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 // ─── Enums ────────────────────────────────────────────────────────────────────
@@ -12,7 +13,220 @@ datasource db {
 enum SystemRole {
   SUPER_USER
   ADMIN
+  BU_HEAD
   EMPLOYEE
+}
+
+enum ShiftType {
+  DAY
+  AFTERNOON
+  NIGHT
+  CUSTOM
+}
+
+enum ProjectType {
+  DEDICATED
+  T_AND_M
+  FIXED
+}
+
+enum ProjectStatus {
+  ACTIVE
+  ARCHIVE
+  ON_HOLD
+}
+
+enum ProjectRole {
+  PROJECT_MANAGER
+  TEAM_LEAD
+  DEVELOPER
+  QA
+  DESIGNER
+  DEVOPS
+}
+
+enum MilestoneStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+  DELAYED
+}
+
+enum TaskListType {
+  GENERAL
+  PROJECT_MANAGEMENT
+  DEVELOPMENT
+  QA
+  SPRINT
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum TaskStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  ON_REVIEW
+  COMPLETED
+}
+
+enum BillingStatus {
+  BILLABLE
+  NON_BILLABLE
+}
+
+enum TimesheetApprovalStatus {
+  PENDING
+  SUBMITTED
+  APPROVED
+  REJECTED
+}
+
+
+enum LeaveStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+enum WorkItemType {
+  EPIC
+  USER_STORY
+  TASK
+  SUB_TASK
+  BUG
+}
+
+enum MemberBilling {
+  BILLABLE
+  NON_BILLABLE
+}
+
+enum MemberEngagement {
+  FULL_DAY
+  HALF_DAY
+  PARTIAL
+}
+
+enum BoardStatus {
+  TODO
+  IN_PROGRESS
+  BLOCKED
+  IN_REVIEW
+  READY_FOR_QA
+  IN_QA
+  QA_DONE
+  CLOSED
+  QA
+}
+
+enum BugSeverity {
+  SHOW_STOPPER
+  BLOCKER
+  CRITICAL
+  MAJOR
+  MINOR
+  TRIVIAL
+}
+
+enum BugClassification {
+  SECURITY
+  CRASH_HANG
+  DATA_LOSS
+  PERFORMANCE
+  UI_USABILITY
+  OTHER_BUG
+  OTHER
+  FEATURE_NEW
+  ENHANCEMENT
+  DESIGN
+  NEW_BUG
+  CODE_REVIEW
+  UNIT_TESTING
+  SUGGESTION
+  PROJECT_MANAGEMENT
+  EXISTING_APPLICATION
+  TECHNICAL
+  FUNCTIONAL
+}
+
+enum BugFlag {
+  INTERNAL
+  EXTERNAL
+}
+
+enum BugReproducibility {
+  ALWAYS
+  SOMETIMES
+  RARELY
+  UNABLE
+  NEVER_TRIED
+  NOT_APPLICABLE
+}
+
+enum BugReminderType {
+  NONE
+  DAILY
+  ONE_DAY
+  TWO_DAYS
+  THREE_DAYS
+}
+
+enum TestCaseStatus {
+  NOT_RUN
+  PASSED
+  FAILED
+  BLOCKED
+}
+
+enum BugStatus {
+  OPEN
+  REOPEN
+  TO_BE_TESTED
+  IN_PROGRESS
+  CLOSED
+  ACKNOWLEDGED
+  DEFERRED
+  ON_HOLD
+}
+
+// ─── Business Unit ────────────────────────────────────────────────────────────
+
+model BusinessUnit {
+  id          String   @id @default(uuid())
+  name        String   @unique @db.VarChar(100)
+  description String?  @db.VarChar(2000)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  departments    Department[]
+  clients        Client[]
+  managedByUsers User[]       @relation("ManagedBusinessUnit")
+
+  @@map("business_units")
+}
+
+// ─── Department ───────────────────────────────────────────────────────────────
+
+model Department {
+  id             String   @id @default(uuid())
+  name           String   @unique @db.VarChar(100)
+  businessUnitId String?
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  businessUnit BusinessUnit? @relation(fields: [businessUnitId], references: [id], onDelete: SetNull)
+  users        User[]
+  projects     Project[]
+
+  @@map("departments")
 }
 
 // ─── Auth Models ──────────────────────────────────────────────────────────────
@@ -23,14 +237,357 @@ model User {
   email        String     @unique @db.VarChar(255)
   passwordHash String
   systemRole   SystemRole @default(EMPLOYEE)
-  isActive     Boolean    @default(true)
-  createdAt    DateTime   @default(now())
-  lastLoginAt  DateTime?
+  phone        String?    @db.VarChar(20)
+  employeeId   String?    @db.VarChar(50)
+  joinDate     DateTime?  @db.Date
+  dateOfBirth  DateTime?  @db.Date
+  profilePhoto          String?
+  departmentId          String?
+  shiftId               String?
+  managedBusinessUnitId String?
+  isActive          Boolean    @default(true)
+  mustResetPassword Boolean    @default(false)
+  createdAt         DateTime   @default(now())
+  lastLoginAt       DateTime?
 
-  refreshTokens RefreshToken[]
+  department           Department?   @relation(fields: [departmentId], references: [id])
+  shift                Shift?        @relation(fields: [shiftId], references: [id])
+  managedBusinessUnit  BusinessUnit? @relation("ManagedBusinessUnit", fields: [managedBusinessUnitId], references: [id], onDelete: SetNull)
+  refreshTokens         RefreshToken[]
+  passwordResetTokens   PasswordResetToken[]
+  projectMembers        ProjectMember[]
+  responsibleMilestones Milestone[]
+  assignedTasks         Task[]         @relation("AssignedTasks")
+  createdTasks          Task[]         @relation("CreatedTasks")
+  uploadedAttachments   TaskAttachment[] @relation("UploadedAttachments")
+  authoredComments      TaskComment[]   @relation("AuthoredComments")
+  taskAllocations       TaskAllocation[]
+  assignedWorkItems     WorkItem[]           @relation("AssignedWorkItems")
+  reportedWorkItems     WorkItem[]           @relation("ReportedWorkItems")
+  responsibleWorkItems  WorkItem[]           @relation("ResponsibleWorkItems")
+  workItemComments      WorkItemComment[]    @relation("WorkItemComments")
+  workItemAttachments   WorkItemAttachment[] @relation("WorkItemAttachments")
+  workItemActivities    WorkItemActivity[]   @relation("WorkItemActivities")
+  notifications         Notification[]       @relation("Notifications")
+  timesheetEntries      TimesheetEntry[]     @relation("TimesheetEntries")
+  timesheetApprovals    TimesheetEntry[]     @relation("TimesheetApprovals")
+  kpiRecords            KpiRecord[]          @relation("KpiRecords")
+  enteredKpiRecords     KpiRecord[]          @relation("EnteredKpiRecords")
+  kpiNotes              KpiNote[]            @relation("KpiNotesForUser")
+  kpiNotesCreated       KpiNote[]            @relation("KpiNotesCreatedBy")
+  leaveRequests         LeaveRequest[]       @relation("UserLeaveRequests")
+  leaveRequestApprovals LeaveRequest[]       @relation("LeaveRequestApprovals")
+  leaveLogs             LeaveLog[]           @relation("LeaveLogs")
+  lateComingLogs        LateComingLog[]      @relation("LateComingLogs")
+  lateComingLogsRecorded LateComingLog[]     @relation("LateComingLogsRecordedBy")
+  learningLogs          LearningLog[]        @relation("LearningLogs")
+  innovationLogs        InnovationLog[]      @relation("InnovationLogs")
+  createdTestCases      TestCase[]           @relation("CreatedTestCases")
+  auditLogs             AuditLog[]           @relation("UserAuditLogs")
+  upskillAssignments    UpskillAssignment[]  @relation("UpskillAssignments")
+  upskillCreated        UpskillAssignment[]  @relation("UpskillCreated")
+  upskillApprovals      UpskillAssignment[]  @relation("UpskillApprovals")
+  upskillProgressLogs   UpskillProgressLog[] @relation("UpskillProgressLogs")
+  announcements         Announcement[]       @relation("CreatedAnnouncements")
 
   @@index([email])
   @@map("users")
+}
+
+model PasswordResetToken {
+  id        String    @id @default(uuid())
+  token     String    @unique
+  userId    String
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@index([userId])
+  @@map("password_reset_tokens")
+}
+
+model CompanySettings {
+  id               String   @id @default("singleton")
+  companyName      String   @default("") @db.VarChar(200)
+  webAddress       String?
+  street           String?
+  city             String?
+  state            String?
+  country          String   @default("India")
+  zipCode          String?  @db.VarChar(20)
+  timezone         String   @default("Asia/Kolkata")
+  backDateLogValue Int      @default(8)
+  backDateLogUnit  String   @default("Days") @db.VarChar(10)
+  emailDomains     String[]
+  updatedAt        DateTime @updatedAt
+
+  @@map("company_settings")
+}
+
+model PortalConfig {
+  id                       String   @id @default("singleton")
+  dateFormat               String   @default("DD-MM-YYYY") @db.VarChar(20)
+  timeFormat               String   @default("24") @db.VarChar(4)
+  taskDurationIn           String   @default("hours") @db.VarChar(10)
+  firstDayOfWeek           String   @default("Monday") @db.VarChar(10)
+  businessHoursStart       String   @default("10:00") @db.VarChar(6)
+  businessHoursStartPeriod String   @default("AM") @db.VarChar(2)
+  businessHoursEnd         String   @default("07:00") @db.VarChar(6)
+  businessHoursEndPeriod   String   @default("PM") @db.VarChar(2)
+  workingDays              Json     @default("{\"monday\":true,\"tuesday\":true,\"wednesday\":true,\"thursday\":true,\"friday\":true,\"saturday\":false,\"sunday\":false}")
+  updatedAt                DateTime @updatedAt
+
+  @@map("portal_config")
+}
+
+model Shift {
+  id        String    @id @default(uuid())
+  name      String    @db.VarChar(50)
+  shiftType ShiftType
+  startTime String    @db.VarChar(8)
+  endTime   String    @db.VarChar(8)
+  workHours Int       @default(8)
+  isActive  Boolean   @default(true)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  users User[]
+
+  @@map("shifts")
+}
+
+model Holiday {
+  id          String   @id @default(uuid())
+  name        String   @db.VarChar(100)
+  date        DateTime @db.Date
+  isRecurring Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  @@unique([date])
+  @@map("holidays")
+}
+
+model FeatureVisibility {
+  id      String  @id @default(cuid())
+  feature String  @db.VarChar(50)
+  role    String  @db.VarChar(20)
+  visible Boolean @default(false)
+
+  @@unique([feature, role])
+  @@map("feature_visibility")
+}
+
+// ─── Project ──────────────────────────────────────────────────────────────────
+
+model Project {
+  id               String        @id @default(uuid())
+  name             String        @db.VarChar(200)
+  clientId         String?
+  departmentId     String?
+  description      String?       @db.Text
+  startDate        DateTime?     @db.Date
+  endDate          DateTime?     @db.Date
+  budget           Decimal?      @db.Decimal(12, 2)
+  projectType      ProjectType
+  status           ProjectStatus @default(ACTIVE)
+  workItemCounter  Int           @default(10000)
+  teamsWebhookUrl  String?       @db.VarChar(2000)
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  client     Client?         @relation(fields: [clientId], references: [id])
+  department Department?     @relation(fields: [departmentId], references: [id])
+  members    ProjectMember[]
+  milestones Milestone[]
+  taskLists  TaskList[]
+  tasks      Task[]
+  sprints    Sprint[]
+  workItems  WorkItem[]
+  boardColumnConfigs BoardColumnConfig[]
+  auditLogs          AuditLog[]          @relation("ProjectAuditLogs")
+  announcements      Announcement[]
+
+  @@index([status])
+  @@index([projectType])
+  @@map("projects")
+}
+
+// ─── Milestone ────────────────────────────────────────────────────────────────
+
+model Milestone {
+  id                String          @id @default(uuid())
+  projectId         String
+  name              String?         @db.VarChar(200)
+  description       String?         @db.Text
+  deliveryNote      String?         @db.VarChar(1000)
+  startDate         DateTime?       @db.Date
+  dueDate           DateTime?       @db.Date
+  responsibleUserId String?
+  status            MilestoneStatus @default(NOT_STARTED)
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  project         Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  responsibleUser User?      @relation(fields: [responsibleUserId], references: [id], onDelete: SetNull)
+  tasks             Task[]
+  sprints           Sprint[]
+  releaseWorkItems  WorkItem[] @relation("ReleaseMilestoneItems")
+  affectedWorkItems WorkItem[] @relation("AffectedMilestoneItems")
+
+  @@index([projectId])
+  @@map("milestones")
+}
+
+// ─── Task List ────────────────────────────────────────────────────────────────
+
+model TaskList {
+  id           String       @id @default(uuid())
+  projectId    String
+  name         String       @db.VarChar(200)
+  type         TaskListType
+  sprintNumber Int?
+  description  String?      @db.VarChar(500)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  tasks   Task[]
+
+  @@index([projectId])
+  @@map("task_lists")
+}
+
+// ─── Task ─────────────────────────────────────────────────────────────────────
+
+model Task {
+  id             String        @id @default(uuid())
+  projectId      String
+  taskListId     String
+  milestoneId    String?
+  title          String        @db.VarChar(300)
+  description    String?       @db.VarChar(2000)
+  assignedToId   String?
+  createdById    String
+  estimatedHours Decimal?      @db.Decimal(6, 2)
+  priority       TaskPriority  @default(MEDIUM)
+  billingStatus  BillingStatus @default(BILLABLE)
+  status         TaskStatus    @default(NOT_STARTED)
+  startDate      DateTime?     @db.Date
+  dueDate        DateTime?     @db.Date
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  project    Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  taskList   TaskList  @relation(fields: [taskListId], references: [id], onDelete: Cascade)
+  milestone  Milestone? @relation(fields: [milestoneId], references: [id], onDelete: SetNull)
+  assignedTo User?     @relation("AssignedTasks", fields: [assignedToId], references: [id], onDelete: SetNull)
+  createdBy  User      @relation("CreatedTasks", fields: [createdById], references: [id])
+  attachments     TaskAttachment[]
+  comments        TaskComment[]
+  taskAllocations TaskAllocation[]
+
+  @@index([projectId])
+  @@index([taskListId])
+  @@index([assignedToId])
+  @@map("tasks")
+}
+
+// ─── Task Allocation ──────────────────────────────────────────────────────────
+
+model TaskAllocation {
+  id             String   @id @default(uuid())
+  taskId         String
+  userId         String
+  date           DateTime @db.Date
+  allocatedHours Float
+
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([taskId, userId, date])
+  @@index([userId, date])
+  @@map("task_allocations")
+}
+
+// ─── Task Attachment ──────────────────────────────────────────────────────────
+
+model TaskAttachment {
+  id           String   @id @default(uuid())
+  taskId       String
+  filename     String   @db.VarChar(255)
+  originalName String   @db.VarChar(255)
+  mimeType     String   @db.VarChar(100)
+  size         Int
+  uploadedById String
+  createdAt    DateTime @default(now())
+
+  task       Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  uploadedBy User @relation("UploadedAttachments", fields: [uploadedById], references: [id])
+
+  @@index([taskId])
+  @@map("task_attachments")
+}
+
+// ─── Task Comment ─────────────────────────────────────────────────────────────
+
+model TaskComment {
+  id        String   @id @default(uuid())
+  taskId    String
+  content   String   @db.VarChar(2000)
+  authorId  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  task   Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  author User @relation("AuthoredComments", fields: [authorId], references: [id])
+
+  @@index([taskId])
+  @@map("task_comments")
+}
+
+// ─── Project Member ───────────────────────────────────────────────────────────
+
+model ProjectMember {
+  id              String           @id @default(uuid())
+  projectId       String
+  userId          String
+  projectRole     ProjectRole
+  billing         MemberBilling    @default(BILLABLE)
+  engagement      MemberEngagement @default(FULL_DAY)
+  engagementHours Int?
+  joinedAt        DateTime         @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, userId])
+  @@index([projectId])
+  @@map("project_members")
+}
+
+// ─── Client ───────────────────────────────────────────────────────────────────
+
+model Client {
+  id             String   @id @default(uuid())
+  name           String   @unique @db.VarChar(150)
+  contactPerson  String   @db.VarChar(100)
+  designation    String?  @db.VarChar(100)
+  email          String   @db.VarChar(255)
+  phone          String?  @db.VarChar(20)
+  address        String?  @db.Text
+  businessUnitId     String?
+  additionalContacts Json     @default("[]")
+  isActive           Boolean  @default(true)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  businessUnit BusinessUnit? @relation(fields: [businessUnitId], references: [id], onDelete: SetNull)
+  projects     Project[]
+
+  @@map("clients")
 }
 
 model RefreshToken {
@@ -46,4 +603,563 @@ model RefreshToken {
   @@index([token])
   @@index([userId])
   @@map("refresh_tokens")
+}
+
+// ─── Sprint ───────────────────────────────────────────────────────────────────
+
+model Sprint {
+  id          String    @id @default(uuid())
+  projectId   String
+  milestoneId String?
+  name        String    @db.VarChar(100)
+  goal        String?   @db.VarChar(500)
+  startDate   DateTime? @db.Date
+  endDate     DateTime? @db.Date
+  isActive    Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  project   Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  milestone Milestone? @relation(fields: [milestoneId], references: [id], onDelete: SetNull)
+  workItems WorkItem[]
+
+  @@index([projectId])
+  @@index([milestoneId])
+  @@map("sprints")
+}
+
+// ─── Work Item ────────────────────────────────────────────────────────────────
+
+model WorkItem {
+  id                String             @id @default(uuid())
+  displayId         String?            @unique @db.VarChar(20)
+  projectId         String
+  parentId          String?
+  sprintId          String?
+  type              WorkItemType
+  status            BoardStatus        @default(TODO)
+  title             String             @db.VarChar(300)
+  description       String?            @db.VarChar(5000)
+  priority          TaskPriority       @default(MEDIUM)
+  assigneeId        String?
+  reporterId        String
+  storyPoints       Int?
+  estimatedHours    Decimal?           @db.Decimal(6, 2)
+  labels            String[]
+  components        String[]
+  fixVersion        String?            @db.VarChar(100)
+  severity             BugSeverity?
+  bugClassification    BugClassification?
+  environment          String?            @db.VarChar(200)
+  stepsToRepro         String?            @db.VarChar(3000)
+  definitionOfDone     String?            @db.VarChar(3000)
+  completedAt          DateTime?
+  inReviewAt           DateTime?
+  reopenCount          Int                @default(0)
+  qaReopenCount        Int                @default(0)
+  position             Int                @default(0)
+  startDate            DateTime?          @db.Date
+  dueDate              DateTime?          @db.Date
+  // Phase 9 Bug Management fields
+  bugFlag              BugFlag?
+  bugReproducibility   BugReproducibility?
+  bugStatus            BugStatus?
+  module               String?            @db.VarChar(100)
+  responsibleUserId    String?
+  billingStatus        BillingStatus  @default(BILLABLE)
+  affectedBuildVersion String?            @db.VarChar(50)
+  fixedBuildVersion    String?            @db.VarChar(50)
+  reminderType         BugReminderType?   @default(NONE)
+  releaseMilestoneId   String?
+  affectedMilestoneId  String?
+  // GitHub PR link (set automatically via webhook)
+  prUrl                String?            @db.VarChar(500)
+  prNumber             Int?
+  prState              String?            @db.VarChar(20)
+  prTitle              String?            @db.VarChar(200)
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+
+  project           Project              @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  parent            WorkItem?            @relation("WorkItemChildren", fields: [parentId], references: [id], onDelete: SetNull)
+  children          WorkItem[]           @relation("WorkItemChildren")
+  sprint            Sprint?              @relation(fields: [sprintId], references: [id], onDelete: SetNull)
+  assignee          User?                @relation("AssignedWorkItems", fields: [assigneeId], references: [id], onDelete: SetNull)
+  reporter          User                 @relation("ReportedWorkItems", fields: [reporterId], references: [id])
+  responsibleUser   User?                @relation("ResponsibleWorkItems", fields: [responsibleUserId], references: [id], onDelete: SetNull)
+  releaseMilestone  Milestone?           @relation("ReleaseMilestoneItems", fields: [releaseMilestoneId], references: [id], onDelete: SetNull)
+  affectedMilestone Milestone?           @relation("AffectedMilestoneItems", fields: [affectedMilestoneId], references: [id], onDelete: SetNull)
+  comments          WorkItemComment[]
+  attachments       WorkItemAttachment[]
+  timesheetEntries  TimesheetEntry[]
+  activities        WorkItemActivity[]
+  notifications     Notification[]       @relation("WorkItemNotifications")
+  testCases         TestCase[]
+
+  @@index([projectId])
+  @@index([sprintId])
+  @@index([assigneeId])
+  @@index([parentId])
+  @@map("work_items")
+}
+
+// ─── Timesheet Entry ──────────────────────────────────────────────────────────
+
+model TimesheetEntry {
+  id             String                   @id @default(uuid())
+  workItemId     String
+  userId         String
+  date           DateTime                 @db.Date
+  hours          Decimal                  @db.Decimal(5, 2)
+  description    String?                  @db.VarChar(500)
+  approvalStatus TimesheetApprovalStatus  @default(PENDING)
+  approvedById   String?
+  approvedAt     DateTime?
+  rejectionNote  String?                  @db.VarChar(500)
+  createdAt      DateTime                 @default(now())
+  updatedAt      DateTime                 @updatedAt
+
+  workItem   WorkItem @relation(fields: [workItemId], references: [id], onDelete: Cascade)
+  user       User     @relation("TimesheetEntries", fields: [userId], references: [id], onDelete: Cascade)
+  approvedBy User?    @relation("TimesheetApprovals", fields: [approvedById], references: [id], onDelete: SetNull)
+
+  @@index([workItemId])
+  @@index([userId, date])
+  @@map("timesheet_entries")
+}
+
+// ─── Work Item Comment ────────────────────────────────────────────────────────
+
+model WorkItemComment {
+  id         String   @id @default(uuid())
+  workItemId String
+  content    String   @db.VarChar(3000)
+  authorId   String
+  mentions   String[]
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  workItem WorkItem @relation(fields: [workItemId], references: [id], onDelete: Cascade)
+  author   User     @relation("WorkItemComments", fields: [authorId], references: [id])
+
+  @@index([workItemId])
+  @@map("work_item_comments")
+}
+
+// ─── Work Item Activity ───────────────────────────────────────────────────────
+
+model WorkItemActivity {
+  id         String   @id @default(uuid())
+  workItemId String
+  userId     String
+  action     String   @db.VarChar(100)
+  field      String?  @db.VarChar(100)
+  oldValue   String?  @db.VarChar(500)
+  newValue   String?  @db.VarChar(500)
+  createdAt  DateTime @default(now())
+
+  workItem WorkItem @relation(fields: [workItemId], references: [id], onDelete: Cascade)
+  user     User     @relation("WorkItemActivities", fields: [userId], references: [id])
+
+  @@index([workItemId])
+  @@map("work_item_activities")
+}
+
+// ─── Notification ─────────────────────────────────────────────────────────────
+
+model Notification {
+  id         String   @id @default(uuid())
+  userId     String
+  type       String   @db.VarChar(50)
+  title      String   @db.VarChar(200)
+  body       String   @db.VarChar(500)
+  workItemId String?
+  isRead     Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  user     User      @relation("Notifications", fields: [userId], references: [id], onDelete: Cascade)
+  workItem WorkItem? @relation("WorkItemNotifications", fields: [workItemId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@map("notifications")
+}
+
+// ─── Work Item Attachment ─────────────────────────────────────────────────────
+
+model WorkItemAttachment {
+  id           String   @id @default(uuid())
+  workItemId   String
+  filename     String   @db.VarChar(255)
+  originalName String   @db.VarChar(255)
+  mimeType     String   @db.VarChar(100)
+  size         Int
+  uploadedById String
+  createdAt    DateTime @default(now())
+
+  workItem   WorkItem @relation(fields: [workItemId], references: [id], onDelete: Cascade)
+  uploadedBy User     @relation("WorkItemAttachments", fields: [uploadedById], references: [id])
+
+  @@index([workItemId])
+  @@map("work_item_attachments")
+}
+
+// ─── KPI Record ───────────────────────────────────────────────────────────────
+
+model KpiRecord {
+  id          String   @id @default(uuid())
+  userId      String
+  period      String   @db.VarChar(7)
+  metricId    String   @db.VarChar(50)
+  points      Float
+  notes       String?  @db.VarChar(500)
+  enteredById String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user      User @relation("KpiRecords", fields: [userId], references: [id], onDelete: Cascade)
+  enteredBy User @relation("EnteredKpiRecords", fields: [enteredById], references: [id])
+
+  @@unique([userId, period, metricId])
+  @@index([userId, period])
+  @@map("kpi_records")
+}
+
+// ─── KPI Note (multiple notes per metric per month, entered by PM) ────────────
+
+model KpiNote {
+  id        String   @id @default(uuid())
+  userId    String
+  metricId  String   @db.VarChar(50)
+  period    String   @db.VarChar(7)
+  content   String   @db.Text
+  authorId  String
+  createdAt DateTime @default(now())
+
+  user      User @relation("KpiNotesForUser", fields: [userId], references: [id], onDelete: Cascade)
+  author    User @relation("KpiNotesCreatedBy", fields: [authorId], references: [id])
+
+  @@index([userId, metricId, period])
+  @@map("kpi_notes")
+}
+
+// ─── Leave Request ────────────────────────────────────────────────────────────
+
+model LeaveRequest {
+  id           String      @id @default(uuid())
+  userId       String
+  startDate    DateTime    @db.Date
+  endDate      DateTime    @db.Date
+  totalDays    Float
+  isHalfDay    Boolean     @default(false)
+  isPlanned    Boolean     @default(true)
+  reason       String?     @db.VarChar(500)
+  status       LeaveStatus @default(PENDING)
+  approvedById String?
+  approvalNote String?     @db.VarChar(500)
+  approvedAt   DateTime?
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  user       User  @relation("UserLeaveRequests", fields: [userId], references: [id], onDelete: Cascade)
+  approvedBy User? @relation("LeaveRequestApprovals", fields: [approvedById], references: [id])
+
+  @@index([userId])
+  @@index([status])
+  @@index([startDate, endDate])
+  @@map("leave_requests")
+}
+
+// ─── Leave Log ────────────────────────────────────────────────────────────────
+
+model LeaveLog {
+  id          String   @id @default(uuid())
+  userId      String
+  date        DateTime @db.Date
+  type        String   @db.VarChar(20)
+  description String?  @db.VarChar(200)
+  createdAt   DateTime @default(now())
+
+  user User @relation("LeaveLogs", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date])
+  @@index([userId])
+  @@map("leave_logs")
+}
+
+// ─── Late Coming Log ──────────────────────────────────────────────────────────
+
+model LateComingLog {
+  id           String   @id @default(uuid())
+  userId       String
+  date         DateTime @db.Date
+  minutesLate  Int
+  reason       String?  @db.VarChar(500)
+  recordedById String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user       User @relation("LateComingLogs", fields: [userId], references: [id], onDelete: Cascade)
+  recordedBy User @relation("LateComingLogsRecordedBy", fields: [recordedById], references: [id])
+
+  @@index([userId])
+  @@index([date])
+  @@map("late_coming_logs")
+}
+
+// ─── Learning Log ─────────────────────────────────────────────────────────────
+
+model LearningLog {
+  id          String   @id @default(uuid())
+  userId      String
+  period      String   @db.VarChar(7)
+  topic       String   @db.VarChar(200)
+  hours       Float
+  description String?  @db.VarChar(500)
+  createdAt   DateTime @default(now())
+
+  user User @relation("LearningLogs", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, period])
+  @@map("learning_logs")
+}
+
+// ─── Innovation Log ───────────────────────────────────────────────────────────
+
+model InnovationLog {
+  id        String   @id @default(uuid())
+  userId    String
+  period    String   @db.VarChar(7)
+  title     String   @db.VarChar(200)
+  impact    String   @db.VarChar(500)
+  type      String   @db.VarChar(30)
+  createdAt DateTime @default(now())
+
+  user User @relation("InnovationLogs", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, period])
+  @@map("innovation_logs")
+}
+
+// ─── Test Case ────────────────────────────────────────────────────────────────
+
+model TestCase {
+  id             String         @id @default(uuid())
+  workItemId     String
+  title          String         @db.VarChar(300)
+  preconditions  String?        @db.VarChar(1000)
+  steps          String         @db.VarChar(3000)
+  expectedResult String         @db.VarChar(1000)
+  actualResult   String?        @db.VarChar(1000)
+  status         TestCaseStatus @default(NOT_RUN)
+  createdById    String
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  workItem  WorkItem @relation(fields: [workItemId], references: [id], onDelete: Cascade)
+  createdBy User     @relation("CreatedTestCases", fields: [createdById], references: [id])
+
+  @@index([workItemId])
+  @@map("test_cases")
+}
+
+// ─── Board Column Config ──────────────────────────────────────────────────────
+
+model BoardColumnConfig {
+  id        String      @id @default(uuid())
+  projectId String
+  status    BoardStatus
+  label     String      @db.VarChar(100)
+  updatedAt DateTime    @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, status])
+  @@index([projectId])
+  @@map("board_column_configs")
+}
+
+// ─── Audit Log ────────────────────────────────────────────────────────────────
+
+// ─── Upskill Enums ───────────────────────────────────────────────────────────
+
+enum UpskillType {
+  LEARNING
+  AUTOMATION
+}
+
+enum UpskillStatus {
+  ASSIGNED
+  IN_PROGRESS
+  SUBMITTED
+  APPROVED
+  REJECTED
+}
+
+// ─── Audit Log ────────────────────────────────────────────────────────────────
+
+enum AuditAction {
+  LOGIN
+  WORK_ITEM_CREATED
+  WORK_ITEM_UPDATED
+  WORK_ITEM_STATUS_CHANGED
+  WORK_ITEM_DELETED
+  WORK_ITEM_ASSIGNED
+  SPRINT_CREATED
+  SPRINT_UPDATED
+  SPRINT_ACTIVATED
+  SPRINT_DELETED
+  MEMBER_ADDED
+  MEMBER_REMOVED
+  MEMBER_ROLE_CHANGED
+  PROFILE_UPDATED
+  PROJECT_CREATED
+  PROJECT_UPDATED
+  PROJECT_STATUS_CHANGED
+  PROJECT_DELETED
+  TASK_CREATED
+  TASK_UPDATED
+  TASK_DELETED
+  MILESTONE_CREATED
+  MILESTONE_UPDATED
+  MILESTONE_DELETED
+  LEAVE_REQUESTED
+  LEAVE_APPROVED
+  LEAVE_REJECTED
+  LEAVE_CANCELLED
+  UPSKILL_ASSIGNED
+  UPSKILL_UPDATED
+  UPSKILL_DELETED
+  UPSKILL_PROGRESS_LOGGED
+  UPSKILL_SUBMITTED
+  UPSKILL_APPROVED
+  UPSKILL_REJECTED
+  ANNOUNCEMENT_CREATED
+  ANNOUNCEMENT_DELETED
+  CLIENT_CREATED
+  CLIENT_UPDATED
+  CLIENT_DELETED
+  SETTINGS_UPDATED
+  USER_CREATED
+  USER_UPDATED
+  USER_STATUS_CHANGED
+  COMMENT_ADDED
+  COMMENT_DELETED
+  ATTACHMENT_ADDED
+  ATTACHMENT_DELETED
+  TIMESHEET_LOGGED
+  TIMESHEET_DELETED
+}
+
+enum AuditEntity {
+  AUTH
+  WORK_ITEM
+  SPRINT
+  PROJECT_MEMBER
+  USER_PROFILE
+  PROJECT
+  TASK
+  MILESTONE
+  LEAVE_REQUEST
+  UPSKILL_ASSIGNMENT
+  ANNOUNCEMENT
+  CLIENT
+  SETTINGS
+  USER
+  COMMENT
+  ATTACHMENT
+  TIMESHEET
+}
+
+model AuditLog {
+  id          String      @id @default(uuid())
+  userId      String
+  action      AuditAction
+  entity      AuditEntity
+  entityId    String?     @db.VarChar(100)
+  entityTitle String?     @db.VarChar(300)
+  projectId   String?
+  metadata    Json?
+  createdAt   DateTime    @default(now())
+
+  user    User     @relation("UserAuditLogs", fields: [userId], references: [id], onDelete: Cascade)
+  project Project? @relation("ProjectAuditLogs", fields: [projectId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([entity])
+  @@index([projectId])
+  @@index([createdAt(sort: Desc)])
+  @@map("audit_logs")
+}
+
+// ─── Upskill Assignment ───────────────────────────────────────────────────────
+
+model UpskillAssignment {
+  id               String        @id @default(uuid())
+  type             UpskillType
+  assignedToId     String
+  createdById      String
+  description      String        @db.VarChar(1000)
+  toolScript       String?       @db.VarChar(300)
+  startDate        DateTime
+  endDate          DateTime
+  status           UpskillStatus @default(ASSIGNED)
+  evidenceFilePath String?       @db.VarChar(500)
+  evidenceFileName String?       @db.VarChar(255)
+  rejectionReason  String?       @db.VarChar(500)
+  approvedAt       DateTime?
+  approvedById     String?
+  groupId          String?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  assignedTo   User                 @relation("UpskillAssignments", fields: [assignedToId], references: [id], onDelete: Cascade)
+  createdBy    User                 @relation("UpskillCreated", fields: [createdById], references: [id])
+  approvedBy   User?                @relation("UpskillApprovals", fields: [approvedById], references: [id])
+  progressLogs UpskillProgressLog[]
+
+  @@index([assignedToId])
+  @@index([status])
+  @@index([groupId])
+  @@map("upskill_assignments")
+}
+
+// ─── Upskill Progress Log ─────────────────────────────────────────────────────
+
+model UpskillProgressLog {
+  id              String   @id @default(uuid())
+  assignmentId    String
+  userId          String
+  percentComplete Int
+  hoursSpent      Float
+  notes           String?  @db.VarChar(1000)
+  createdAt       DateTime @default(now())
+
+  assignment UpskillAssignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  user       User              @relation("UpskillProgressLogs", fields: [userId], references: [id])
+
+  @@index([assignmentId])
+  @@map("upskill_progress_logs")
+}
+
+// ─── Announcements ────────────────────────────────────────────────────────────
+
+enum AnnouncementScope {
+  GLOBAL
+  PROJECT
+}
+
+model Announcement {
+  id          String            @id @default(uuid())
+  title       String            @db.VarChar(200)
+  content     String            @db.Text
+  scope       AnnouncementScope @default(GLOBAL)
+  projectId   String?
+  createdById String?
+  createdAt   DateTime          @default(now())
+
+  project   Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  createdBy User?    @relation("CreatedAnnouncements", fields: [createdById], references: [id])
+
+  @@index([createdAt(sort: Desc)])
+  @@map("announcements")
 }

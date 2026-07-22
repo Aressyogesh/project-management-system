@@ -10,11 +10,14 @@ A full-stack, role-based Project Management System for a software development fi
 **Frontend:** React 18 + TypeScript + Vite + Tailwind CSS
 **Backend:** NestJS (Node.js + TypeScript)
 **ORM:** Prisma
-**Database:** PostgreSQL (Docker)
+**Database:** PostgreSQL (Supabase production / Docker local)
 **Auth:** Passport.js + JWT
 **Real-time:** Socket.io (bug reminders, notifications)
 **File Uploads:** Multer (task & bug attachments)
 **API Docs:** Swagger via @nestjs/swagger
+**AI:** Groq API (LLM inference — free tier)
+**Email:** Company SMTP via Nodemailer (cp1.aress.net:465 SSL — pmtool@aress.net)
+**Scheduler:** @nestjs/schedule (cron-based automation)
 
 Both frontend and backend are 100% TypeScript — Prisma auto-generates types from `schema.prisma` that are shared across the stack.
 
@@ -26,25 +29,74 @@ UI design follows the **Taskee** reference (`Document/Design/project-management-
 
 ## Tech Stack
 
+### Frontend
 | Layer | Technology |
 |-------|-----------|
-| Frontend | React 18 + TypeScript + Vite |
+| Framework | React 18 + TypeScript + Vite |
 | Styling | Tailwind CSS |
 | Data Fetching | TanStack React Query |
 | State Management | Zustand |
 | Routing | React Router v6 |
 | HTTP Client | Axios (with JWT interceptors) |
 | Charts | Recharts |
-| File Upload | Multer (multipart/form-data — stored on disk, path configurable) |
-| **Backend** | **NestJS (Node.js + TypeScript)** |
-| **ORM** | **Prisma ORM** |
-| **Database** | **PostgreSQL (Docker)** |
-| **Authentication** | **Passport.js + JWT (@nestjs/jwt + @nestjs/passport)** |
-| **Password Hashing** | **bcrypt** |
-| **Validation** | **class-validator + class-transformer (backend) + React Hook Form (frontend)** |
-| **API Docs** | **Swagger / OpenAPI (@nestjs/swagger)** |
-| **Real-time** | **Socket.io (@nestjs/websockets) — bug reminders, notifications** |
+| Forms | React Hook Form |
+
+### Backend
+| Layer | Technology |
+|-------|-----------|
+| Framework | NestJS (Node.js + TypeScript) |
+| ORM | Prisma ORM |
+| Database | PostgreSQL |
+| Authentication | Passport.js + JWT (`@nestjs/jwt` + `@nestjs/passport`) |
+| Password Hashing | bcryptjs |
+| Validation | class-validator + class-transformer |
+| API Docs | Swagger / OpenAPI (`@nestjs/swagger`) |
+| Real-time | Socket.io (`@nestjs/websockets`) — notifications |
+| File Upload | Multer (multipart/form-data, stored on disk) |
+| Scheduler | `@nestjs/schedule` — cron jobs for reminders & automation |
+
+### AI & Automation
+| Layer | Technology |
+|-------|-----------|
+| **Local LLM (dev)** | **Ollama** — runs `llama3.2:3b` locally at `http://localhost:11434`; OpenAI-compatible API; zero cost; used during development for F-030 AI Chat SQL Agent |
+| **Cloud LLM (prod)** | **Groq API** — free tier, ultra-fast inference via `api.groq.com`; drop-in replacement for Ollama (same OpenAI-compatible API); used in production for all AI features |
+| **Groq Models** | `llama-3.3-70b-versatile` — primary model for chat, SQL agent, sprint planning (best quality); `llama-3.1-8b-instant` — fast model for blocker detection, smart descriptions (low latency) |
+| **LLM Abstraction** | Provider switching = 3 env vars only (`GROQ_API_KEY`, `AI_BASE_URL`, `AI_MODEL`); no code changes needed to swap Ollama ↔ Groq |
+| **Tool Calling** | Groq native tool use (OpenAI-compatible function calling); used by SQL Agent to select Prisma query tools based on user question |
+| **Embeddings (Phase 2)** | **Voyage AI** `voyage-3-lite` (768 dims) — document embeddings for RAG knowledge base; pgvector extension on existing PostgreSQL |
+| **Email Delivery** | **Company SMTP via Nodemailer** — cp1.aress.net:465 SSL; authenticated as pmtool@aress.net; password reset, deadline reminders, project health reports, welcome emails |
+| **Workflow Automation** | **NestJS `@nestjs/schedule`** — built-in cron scheduler, no external tool; deadline reminders, timesheet reminders, overdue escalation, monthly KPI digest |
+
+#### AI Model Reference
+
+| Model | Provider | Context | Use Case in PMS |
+|-------|----------|---------|-----------------|
+| `llama3.2:3b` | Ollama (local) | 128k | Development / local testing |
+| `llama-3.3-70b-versatile` | Groq (cloud) | 128k | AI Chat SQL Agent, sprint planning, complex summaries |
+| `llama-3.1-8b-instant` | Groq (cloud) | 128k | Blocker detection, smart task description, quick checks |
+| `voyage-3-lite` | Voyage AI | — | Document chunk embeddings (Phase 2 RAG only) |
+
+#### Environment Variables (AI)
+```env
+# Local development (Ollama)
+GROQ_API_KEY=ollama
+AI_BASE_URL=http://localhost:11434/v1
+AI_MODEL=llama3.2:3b
+
+# Production (Groq)
+GROQ_API_KEY=gsk_xxxxxxxxxxxxxxxxxxxx
+AI_BASE_URL=https://api.groq.com/openai/v1
+AI_MODEL=llama-3.3-70b-versatile
+```
+
+### Infrastructure & DevOps
+| Layer | Technology |
+|-------|-----------|
 | Dev Environment | Docker Compose (PostgreSQL + pgAdmin) |
+| Deployment | On-premise server + GitHub Actions self-hosted runner |
+| Frontend Hosting | Vercel |
+| Backend Hosting | Render (`pms-backend-zhez.onrender.com`) |
+| Database Hosting | Supabase (production) / PostgreSQL local (development) |
 
 ---
 
@@ -807,23 +859,193 @@ project-management-system/
 - [ ] Configurable metric weightages (Super User)
 
 ### Phase 10 — Dashboard & Reports
-- [ ] Role-based stats dashboard (Taskee design):
-  - Stat cards: Active Projects, Total Tasks, Assigned Tasks, Completed Tasks
-  - Team Activity Summary bar chart (monthly)
-  - My Task table (Project Details, Assign, Priority, Stage)
-  - Today Task + Team Performance score widget
-  - Tasks Progress donut chart
-- [ ] Project summary report
-- [ ] Team productivity report
-- [ ] Task allocation report
-- [ ] Timesheet report
+- [x] Role-based stats dashboard — fully live (F-026):
+  - Stat cards: Active Projects, Total Tasks, Assigned Tasks, Completed Tasks (live DB)
+  - Team Activity Summary bar chart (real 12-month WorkItem data)
+  - My Task table (Project Details, Assign, Priority, Stage) — live DB
+  - Today Task widget — real WorkItem due today for logged-in user
+  - Team Performance score — real avg completion ratio
+  - Projects Progress panel (Super User / Admin only) — per-project: team size, tasks, bugs, progress %
+  - Tasks Progress donut chart (live task counts)
+- [x] Project summary report (F-021)
+- [x] Task allocation report (F-021)
+- [x] Timesheet report (F-021)
+- [x] PDF / CSV export (F-021)
 - [ ] Bug report (with Internal vs External breakdown)
 - [ ] KPI appraisal report
-- [ ] PDF / CSV export
 - [ ] Announcements / What's New
 - [ ] Toast notifications
-- [ ] Loading and error states
-- [ ] Responsive design
+
+---
+
+### Phase 11 — Leave Management ✅ COMPLETE
+- [x] **F-025** — Leave / overtime application form (date, type, hours, description)
+- [x] **F-025** — My log history view with status badges
+- [x] **F-025** — Admin / Project Manager approval / rejection / cancel flow
+- [x] **F-025** — `LeaveLog` model: `userId`, `date`, `type` (LEAVE/OVERTIME), `hours`, `status` (PENDING/APPROVED/REJECTED/CANCELLED)
+- [x] **F-025** — RBAC: EMPLOYEE sees own logs; ADMIN/SUPER_USER see all
+- [x] **F-025** — 33 tests (19 BE + 14 FE + 14 E2E)
+
+---
+
+### Phase 12 — JIRA Kanban Board + Dynamic KPI & Reports ✅ COMPLETE
+- [x] **F-022** — Full JIRA-style board, Sprint manager, WorkItem hierarchy, TimesheetEntry ("Log Work"), WorkItemModal 5 tabs, drag-and-drop, board filters
+- [x] **F-023** — Live KPI (13 metrics auto-computed), Monthly Capacity matrix, 6 live report endpoints
+- [x] **F-024** — Two-panel WorkItemModal, Phase 9 Bug fields on WorkItem, 4 new enums, parent selector, milestone dropdowns
+- [x] **F-026** — Fully live dashboard: 12-month activity chart, Projects Progress panel, Today's Task, Team Performance score
+
+---
+
+### Phase 13 — Enhancements, Polish & Platform Features ✅ COMPLETE
+- [x] **F-027** — Project Team Activity Dashboard — per-project activity feed, team productivity metrics
+- [x] **F-028** — Dynamic Reports KPI RBAC — API-level data scoping for all report/KPI endpoints
+- [x] **F-029** — Kanban Board Enhancements — QA workflow, test case type, client filter, bulk team add, global spinner
+- [x] **F-030** — AI Chat SQL Agent — Ollama LLM, keyword pre-router, natural language project queries, chat widget
+- [x] **F-031** — Work Item Display ID — project-prefix + sequential number (e.g. HOR10001), back-fill migration
+- [x] **F-032** — Edit Profile Page — avatar upload, password change, gear-icon dropdown, `/profile` route
+- [x] **F-033** — Project Role-Based Access Control — full `ProjectRoleGuard` enforcement, frontend RBAC gating
+- [x] **F-034** — User Activity Audit Log — append-only audit trail, fire-and-forget writes, RBAC-scoped read, Activity Log page
+
+---
+
+### Phase 14 — Infrastructure & DevOps
+- [ ] **F-035** — CI/CD On-Premise Deployment — self-hosted GitHub Actions runner, automated deploy workflow, health check integration
+- [ ] Docker Compose full stack bundle (PostgreSQL + pgAdmin + backend + frontend)
+- [ ] Environment variable hardening (`.env.example`, secrets management)
+- [ ] Socket.io notification gateway (bug reminders, real-time updates)
+
+---
+
+### Phase 15 — Smart Email Notifications & Workflow Automation
+
+> **Guiding principle:** 100% free stack — NestJS `@nestjs/schedule` + Company SMTP via Nodemailer + Groq API. No paid services.
+
+- [x] **F-037 — Forgot Password Email Flow** ✅
+  - `PasswordResetToken` Prisma model (token, userId, expiresAt, usedAt)
+  - `POST /auth/forgot-password` — generates token, sends branded HTML email via company SMTP
+  - `POST /auth/reset-password` — validates token, hashes new password, revokes all refresh tokens
+  - `ResetPasswordPage` frontend at `/reset-password?token=xxx`
+  - Token expires in 1 hour; previous unused tokens invalidated on new request
+
+- [ ] **F-038 — Email Notification Infrastructure**
+  - Extend `EmailModule` with generic `sendEmail(to, subject, html)` method
+  - Reusable branded HTML template wrapper (header/footer consistent with reset email)
+  - `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM_EMAIL`, `SMTP_FROM_NAME` env vars (already in `.env`)
+  - Foundation used by all subsequent notification features
+
+- [ ] **F-039 — Task Deadline & Timesheet Reminders**
+  - Install `@nestjs/schedule` + `@types/cron`
+  - `NotificationsCronService` with two cron jobs:
+    - **Daily 9 AM** — query tasks where `dueDate = tomorrow AND status != COMPLETED` → email each assignee
+    - **Friday 4 PM** — query employees with 0 `TimesheetEntry` hours this week → send reminder email
+  - Both jobs use `EmailService` for delivery
+  - RBAC: emails sent only to active users
+
+- [ ] **F-040 — Overdue Task Escalation & Weekly Project Health Report**
+  - **Daily cron** — tasks where `dueDate < today AND status != COMPLETED` overdue ≥ 2 days → group by project → email each Project Manager with table of overdue tasks (assignee, task title, days overdue)
+  - **Monday 8 AM cron** — per-project summary email to PM: tasks completed vs pending vs overdue, open bug count, milestone status, team size
+  - Skip projects with no assigned PM
+
+- [ ] **F-041 — New User Welcome Email & Monthly KPI Digest**
+  - **Event hook** — `UsersService.create()` calls `EmailService` after user created → branded welcome email (name, login link, role)
+  - **1st of month cron** — for each employee, compile KPI scores for previous month → email to their manager/PM and CC employee
+  - **Monthly leave report** — email admin/super-user: team leave usage summary (total days taken per employee)
+
+- [ ] **F-042 — AI-Powered Smart Automation (Groq)**
+  - **Smart task description** — `WorkItemsService.create()` hook: if `description.length < 30` → call Groq API to expand into detailed description (steps, acceptance criteria)
+  - **Blocker detection cron** — daily scan of `WorkItemComment` text for keywords (blocked, stuck, waiting on, can't proceed) → group by project → email PM with list of flagged items + comment excerpt
+  - **Sprint planning suggestion** — new endpoint `POST /sprints/:id/suggest` — Groq analyses open backlog items, team velocity from last 2 sprints, member count → returns ranked list of suggested items with reasoning
+
+---
+
+### Phase 16 — Collaboration & Real-Time
+
+- [ ] **F-043 — In-App Notification Center**
+  - `Notification` Prisma model (`id`, `userId`, `type`, `title`, `body`, `entityId`, `entityType`, `isRead`, `createdAt`)
+  - `NotificationsGateway` (Socket.io) — push real-time notifications to connected clients on task assignment, leave approval/rejection, @mention, sprint activation, status change
+  - REST fallback: `GET /notifications` (paginated, unread-first), `PATCH /notifications/:id/read`, `PATCH /notifications/read-all`
+  - Bell icon in topbar with unread count badge; slide-out notification panel
+  - RBAC: each user sees only their own notifications
+
+- [ ] **F-044 — @mention in Comments**
+  - `@name` autocomplete in work item and bug comment editors — fetches project members as candidates
+  - On submit: extract mentions from comment text, create `Notification` records (F-043) for each mentioned user + trigger email via `EmailService`
+  - Frontend: mention picker dropdown with avatar + name; highlighted `@mention` chips in rendered comment text
+
+- [ ] **F-045 — Daily Standup Log**
+  - `StandupLog` Prisma model (`id`, `userId`, `projectId`, `date`, `yesterday`, `today`, `blockers`, `createdAt`)
+  - `POST /standup-logs` — employee submits once per calendar day per project (unique constraint on `userId + projectId + date`)
+  - `GET /standup-logs` — PM/Team Lead view team standups filtered by project + date range; Employee sees own logs
+  - `/standup` page with today's quick-entry form + recent log history
+  - Satisfies KPI "Standup Logs" (Dependency & Agile Management) metric auto-computation
+
+---
+
+### Phase 17 — Visibility & Planning
+
+- [ ] **F-046 — My Work Page**
+  - `/my-work` route — lists all `WorkItem` records assigned to the authenticated user across all projects
+  - Filters: status, priority, due date range, project selector
+  - Sort: due date (soonest first), priority (critical first), last updated
+  - Inline status update (same PATCH endpoint as board)
+  - Stat chips: Overdue count, Due Today, In Progress
+  - `GET /work-items/my` endpoint — RBAC: always scoped to `req.user.id`
+
+- [ ] **F-047 — Sprint Velocity & Burndown Charts**
+  - Add optional `storyPoints` (Int?) field to `WorkItem` Prisma model
+  - `GET /projects/:id/sprint-analytics` — returns per-sprint committed vs delivered points (last 6 sprints) + active sprint daily burndown data
+  - Sprint analytics panel on board page: velocity bar chart (Recharts) + burndown line chart
+  - Visible to PROJECT_MANAGER, TEAM_LEAD, ADMIN, SUPER_USER
+
+- [ ] **F-048 — Gantt / Timeline View**
+  - `/projects/:id/timeline` route — per-project Gantt chart
+  - Horizontal bars: milestones (coloured by status) and sprints (coloured by active/inactive) plotted on date axis
+  - Today marker; zoom levels: Month view / Quarter view (toggle)
+  - SVG or Recharts ComposedChart implementation — no drag-and-drop for MVP
+  - `GET /projects/:id/timeline` — returns milestones + sprints with start/end dates
+  - Accessible to all project members (read-only)
+
+---
+
+### Phase 18 — Developer Productivity
+
+- [ ] **F-049 — Work Timer**
+  - Start/stop timer button on work item board cards and WorkItemModal header
+  - Active timer state in Zustand store + persisted to localStorage (survives page refresh)
+  - One active timer per user at a time — starting a new timer auto-stops the previous
+  - On Stop: opens pre-filled timesheet log modal with elapsed hours (rounded to nearest 0.25h)
+  - Client-side only — no new Prisma model; reuses existing timesheet `POST /timesheet-entries`
+
+- [ ] **F-050 — Task Dependencies**
+  - `WorkItemDependency` Prisma model (`id`, `blockerId`, `blockedId`, `projectId`) — within-project only
+  - `GET /work-items/:id/dependencies`, `POST /work-items/:id/dependencies`, `DELETE /work-items/:id/dependencies/:depId`
+  - Dependency list tab in WorkItemModal — search and add blockers; remove link
+  - Board card: red "Blocked" badge when item has unresolved blockers (all blockers must be QA_DONE/DONE to clear)
+  - Feeds F-042 blocker detection — structural blockers take precedence over comment-based detection
+
+- [ ] **F-051 — Custom Labels / Tags**
+  - `Label` Prisma model (`id`, `projectId`, `name`, `colour`) + `WorkItemLabel` join table (`workItemId`, `labelId`)
+  - `GET/POST/PUT/DELETE /projects/:id/labels` — PROJECT_MANAGER+ can manage labels; all members read
+  - `POST/DELETE /work-items/:id/labels/:labelId` — add/remove label on work item (assignee+)
+  - Board toolbar: label multi-select filter
+  - Board cards: coloured label chips (max 3 shown + count overflow)
+
+---
+
+### Phase 19 — Knowledge & Docs
+
+- [ ] **F-052 — Project Wiki / Notes**
+  - `WikiPage` Prisma model (`id`, `projectId`, `title`, `content`, `createdById`, `updatedAt`)
+  - `GET /projects/:id/wiki` (list), `GET /projects/:id/wiki/:pageId`, `POST`, `PUT`, `DELETE`
+  - RBAC: PROJECT_MANAGER+ create/edit/delete; all project members read
+  - `/projects/:id/wiki` frontend: page list sidebar + rich-text editor (reuses `RichTextEditor` component)
+  - "Wiki" tab on ProjectDetailPage
+
+- [ ] **F-053 — Global Search**
+  - `GET /search?q=&types[]=work-items,bugs,projects,users` — RBAC-filtered: employees see only results in their projects
+  - Backend: `ILIKE %q%` queries across `WorkItem.title`, `WorkItem.displayId`, `Bug.title`, `Project.name`, `User.fullName` — no new model
+  - Frontend: Ctrl+K / Cmd+K opens full-screen search overlay; results grouped by type with icons; debounced 300 ms; click navigates to detail page
+  - Search input also in topbar for permanent access
 
 ---
 
@@ -897,4 +1119,135 @@ npm run dev                       # React app on http://localhost:5173
 
 ---
 
-*Plan version: 3.0 — Updated: 2026-05-25 | Backend: NestJS + Prisma + PostgreSQL*
+*Plan version: 6.0 — Updated: 2026-06-09 | Backend: NestJS + Prisma + PostgreSQL | 53 features tracked (F-001–F-041 complete, F-042–F-053 planned) | Email: Company SMTP (Nodemailer) — Brevo removed*
+
+---
+
+## Deployment Environments — QA & Production
+
+### Overview
+
+Two independent instances run on the **same Windows machine** (DEVLOPMNET), each on separate ports with separate databases and separate PM2 process names. Deploying to QA never affects production and vice versa.
+
+| | QA | Production |
+|---|---|---|
+| **Purpose** | Internal testing — validate features before releasing to team | Team-facing release instance |
+| **Branch** | `main` | `production` |
+| **Workflow file** | `.github/workflows/deploy-local.yml` | `.github/workflows/deploy-production.yml` |
+| **Backend port** | `3000` | `3001` |
+| **Frontend port** | `5173` | `5174` |
+| **Backend files** | `D:\PMS\pms-backend\` | `D:\PMS\pms-prod-backend\` |
+| **Frontend files** | `D:\PMS\pms-frontend\` | `D:\PMS\pms-prod-frontend\` |
+| **Uploads** | `D:\PMS\pms-uploads\` | `D:\PMS\pms-prod-uploads\` |
+
+| **Database** | `pms_db` | `pms_prod_db` |
+| **PM2 backend** | `pms-backend` | `pms-prod-backend` |
+| **PM2 frontend** | `pms-frontend` | `pms-prod-frontend` |
+| **URL** | http://203.193.165.229:5173 | http://203.193.165.229:5174 |
+
+### Deployment Flow
+
+```
+feature/F-XXX branch
+        │
+        ▼  (PR merge)
+      main  ──── GitHub Actions ────► QA auto-deploys
+        │
+        ▼  (QA validated, merge main → production)
+  production ──── GitHub Actions ────► Production auto-deploys
+```
+
+**Promoting to production:**
+```bash
+git checkout production
+git merge main
+git push origin production
+```
+
+### Why backend runs from a fixed directory (not the workspace)
+
+If the backend ran from the GitHub Actions workspace directory (`_work/.../backend/dist/`), any subsequent workflow checkout would overwrite those files — crashing the process on the next restart. By copying build artifacts to a fixed location (`D:\pms-backend\` or `D:\pms-prod-backend\`) the workspace is freely reusable by both workflows without cross-contamination.
+
+All artifacts live under a single parent `D:\PMS\` for easy management:
+
+```
+D:\PMS\
+├── pms-backend\          ← QA backend (dist + node_modules + prisma + .env)
+├── pms-frontend\         ← QA frontend (built static files, served on :5173)
+├── pms-uploads\          ← QA file uploads
+├── pms-prod-backend\     ← Production backend
+├── pms-prod-frontend\    ← Production frontend (served on :5174)
+└── pms-prod-uploads\     ← Production file uploads
+```
+
+Build artifacts copied per deploy:
+- `backend/dist/` → `D:\PMS\pms-backend\dist\` (or prod equivalent)
+- `backend/node_modules/` → `D:\PMS\pms-backend\node_modules\` (via `robocopy /MIR` — only changed files)
+- `backend/prisma/` → `D:\PMS\pms-backend\prisma\`
+- `backend/.env` → `D:\PMS\pms-backend\.env`
+
+PM2 is started with `--cwd D:\PMS\pms-backend` (or prod equivalent) so NestJS picks up the correct `.env`.
+
+### GitHub Secrets Required
+
+#### Shared (used by both workflows)
+| Secret | Purpose |
+|---|---|
+| `GROQ_API_KEY` | AI features |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM_NAME`, `SMTP_FROM_EMAIL` | Email |
+| `AUTOMATION_AP_BASE`, `AP_BUG_WEBHOOK_ID`, `AP_SPRINT_WEBHOOK_ID`, `AUTOMATION_NODERED_WEBHOOK`, `AP_TASK_ASSIGNED_WEBHOOK_ID`, `AP_CRITICAL_BUG_WEBHOOK_ID`, `AP_BUG_REOPENED_WEBHOOK_ID`, `AP_ITEM_BLOCKED_WEBHOOK_ID` | Automation webhooks |
+| `GITHUB_WEBHOOK_SECRET` | GitHub webhook |
+
+#### QA-specific (already exist)
+| Secret | Value |
+|---|---|
+| `DATABASE_URL` | `postgresql://postgres:postgres@localhost:5432/pms_db` |
+| `DIRECT_URL` | same |
+| `JWT_SECRET` | QA JWT secret |
+| `JWT_REFRESH_SECRET` | QA refresh secret |
+| `FRONTEND_URL` | `http://203.193.165.229:5173` |
+| `VITE_API_BASE_URL` | `http://203.193.165.229:3000` |
+
+#### Production-specific (must be added)
+| Secret | Value |
+|---|---|
+| `PROD_DATABASE_URL` | `postgresql://postgres:postgres@localhost:5432/pms_prod_db` |
+| `PROD_DIRECT_URL` | same |
+| `PROD_JWT_SECRET` | new secure random string (different from QA) |
+| `PROD_JWT_REFRESH_SECRET` | new secure random string (different from QA) |
+| `PROD_FRONTEND_URL` | `http://203.193.165.229:5174` |
+| `PROD_VITE_API_BASE_URL` | `http://203.193.165.229:3001` |
+
+### One-Time Manual Setup Steps
+
+Run once on the DEVLOPMNET machine before the first production deploy:
+
+**1. Create the `D:\PMS\` parent directory** on the DEVLOPMNET machine:
+```powershell
+New-Item -ItemType Directory -Force -Path "D:\PMS"
+```
+
+> **Note — QA path migration:** Existing QA artifacts live at `D:\pms-frontend\`, `D:\pms-uploads\`, etc. (root of D:). The updated QA workflow will write to `D:\PMS\pms-frontend\`, `D:\PMS\pms-backend\`, etc. After the first successful deploy under the new workflow, the old `D:\pms-*` directories at the root can be deleted manually and the old `D:\pms-frontend.config.js` PM2 config file can be removed.
+
+**2. Create production database:**
+```sql
+-- connect to PostgreSQL as postgres
+CREATE DATABASE pms_prod_db;
+```
+
+**3. Create the production branch:**
+```bash
+git checkout -b production
+git push origin production
+```
+
+**4. Add the 6 PROD_* secrets** in GitHub → repository Settings → Secrets and variables → Actions.
+
+**5. Trigger first deploy** — push to `production` branch or trigger `.github/workflows/deploy-production.yml` via `workflow_dispatch` in GitHub Actions.
+
+### Files To Create / Modify
+
+| File | Action | Description |
+|---|---|---|
+| `.github/workflows/deploy-local.yml` | Modify | Add artifact copy step; start pms-backend from `D:\pms-backend\`; remove stop-PM2 from test job |
+| `.github/workflows/deploy-production.yml` | Create | Full production deploy workflow |

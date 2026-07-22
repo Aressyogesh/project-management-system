@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Test Summary — F-002: Shift Configuration</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f5f6fa;color:#1a1a2e;font-size:14px}
+.page{max-width:1100px;margin:0 auto;padding:32px 24px}
+header{background:linear-gradient(135deg,#1e3a5f 0%,#2d6a9f 100%);color:#fff;border-radius:12px;padding:28px 32px;margin-bottom:28px}
+header h1{font-size:22px;font-weight:700;margin-bottom:6px}
+header .sub{font-size:13px;opacity:.8;margin-top:4px}
+.meta{display:flex;flex-wrap:wrap;gap:18px;margin-top:14px;font-size:13px;opacity:.85}
+.badge{display:inline-block;padding:2px 10px;border-radius:99px;font-size:12px;font-weight:600}
+.pass{background:#d1fae5;color:#065f46}.fail{background:#fee2e2;color:#991b1b}
+.na{background:#e5e7eb;color:#374151}.note{background:#fef3c7;color:#92400e}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;margin-bottom:28px}
+.card{background:#fff;border-radius:10px;padding:20px 22px;box-shadow:0 1px 4px rgba(0,0,0,.07);border-left:4px solid #2d6a9f}
+.card .lbl{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#6b7280;margin-bottom:6px}
+.card .val{font-size:30px;font-weight:700;color:#1e3a5f}
+.card .sub2{font-size:12px;color:#9ca3af;margin-top:2px}
+.card.green{border-left-color:#059669}.card.green .val{color:#065f46}
+.card.red{border-left-color:#dc2626}.card.red .val{color:#991b1b}
+.card.amber{border-left-color:#d97706}.card.amber .val{color:#92400e}
+section{background:#fff;border-radius:10px;box-shadow:0 1px 4px rgba(0,0,0,.07);margin-bottom:24px;overflow:hidden}
+section h2{font-size:14px;font-weight:700;padding:16px 22px;background:#f9fafb;border-bottom:1px solid #e5e7eb;color:#1e3a5f;display:flex;align-items:center;gap:10px}
+table{width:100%;border-collapse:collapse}
+thead th{background:#f3f4f6;padding:10px 16px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#6b7280;font-weight:600;border-bottom:1px solid #e5e7eb}
+tbody td{padding:10px 16px;border-bottom:1px solid #f3f4f6;vertical-align:top}
+tbody tr:last-child td{border-bottom:none}
+tbody tr:hover{background:#fafafa}
+.suite{font-weight:600;color:#1e3a5f}
+.bar{height:8px;background:#e5e7eb;border-radius:4px;overflow:hidden;margin-top:6px}
+.fill{height:100%;border-radius:4px;background:#059669}
+footer{text-align:center;font-size:12px;color:#9ca3af;margin-top:32px;padding-top:16px;border-top:1px solid #e5e7eb}
+</style>
+</head>
+<body>
+<div class="page">
+
+<header>
+  <h1>Test Summary Report &mdash; F-002: Shift Configuration</h1>
+  <div class="sub">Project Management System &bull; Phase 2 — Settings</div>
+  <div class="meta">
+    <span>&#128197; 2026-05-25</span>
+    <span>&#127959; Branch: feature/F-001-user-login</span>
+    <span>&#9989; Overall: ALL PASS</span>
+    <span>&#9881; Node 20 / NestJS 10 / Jest 29 / Vitest 1.6</span>
+  </div>
+</header>
+
+<div class="cards">
+  <div class="card"><div class="lbl">Total Tests</div><div class="val">14</div><div class="sub2">Backend 7 &bull; Frontend 7</div></div>
+  <div class="card green"><div class="lbl">Passed</div><div class="val">14</div><div class="sub2">100% pass rate</div></div>
+  <div class="card red"><div class="lbl">Failed</div><div class="val">0</div></div>
+  <div class="card"><div class="lbl">Pass Rate</div><div class="val">100%</div><div class="bar"><div class="fill" style="width:100%"></div></div></div>
+  <div class="card amber"><div class="lbl">Duration</div><div class="val">~5s</div><div class="sub2">BE 4.4s &bull; FE 0.4s</div></div>
+</div>
+
+<section>
+  <h2>&#9881; Backend Unit Tests &mdash; settings.service.spec.ts <span class="badge pass">PASS 7 / 7</span></h2>
+  <table>
+    <thead><tr><th>#</th><th>Test Name</th><th>Suite</th><th>Duration</th><th>Result</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td>getShifts_Called_ReturnsShiftArray</td><td class="suite">getShifts</td><td>15 ms</td><td><span class="badge pass">PASS</span></td></tr>
+      <tr><td>2</td><td>getShifts_EmptyTable_ReturnsEmptyArray</td><td class="suite">getShifts</td><td>2 ms</td><td><span class="badge pass">PASS</span></td></tr>
+      <tr><td>3</td><td>createShift_ValidInput_ReturnsNewShift</td><td class="suite">createShift</td><td>1 ms</td><td><span class="badge pass">PASS</span></td></tr>
+      <tr><td>4</td><td>createShift_DuplicateShiftType_ThrowsConflictException</td><td class="suite">createShift</td><td>13 ms</td><td><span class="badge pass">PASS</span></td></tr>
+      <tr><td>5</td><td>createShift_NoWorkHours_DefaultsToEight</td><td class="suite">createShift</td><td>2 ms</td><td><span class="badge pass">PASS</span></td></tr>
+      <tr><td>6</td><td>updateShift_ValidId_ReturnsUpdatedShift</td><td class="suite">updateShift</td><td>1 ms</td><td><span class="badge pass">PASS</span></td></tr>
+      <tr><td>7</td><td>updateShift_NotFound_ThrowsNotFoundException</td><td class="suite">updateShift</td><td>1 ms</td><td><span class="badge pass">PASS</span></td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section>
+  <h2>&#128250; Frontend Unit Tests &mdash; ShiftConfigPage.test.tsx <span class="badge pass">PASS 7 / 7</span></h2>
+  <table>
+    <thead><tr><th>#</th><th>Test Name</th><th>Result</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td>ShiftConfigPage_LoadsShifts_RendersThreeRows</td><td><span class="badge pass">PASS</span></td></tr>
+      <tr><td>2</td><td>ShiftConfigPage_Loading_ShowsSkeleton</td><td><span class="badge pass">PASS</span></td></tr>
+      <tr><td>3</td><td>ShiftConfigPage_ApiError_ShowsErrorMessage</td><td><span class="badge pass">PASS</span></td></tr>
+      <tr><td>4</td><td>ShiftConfigPage_SaveButton_DisabledWhenNothingChanged</td><td><span class="badge pass">PASS</span></td></tr>
+      <tr><td>5</td><td>ShiftConfigPage_ChangeTime_EnablesSaveButton</td><td><span class="badge pass">PASS</span></td></tr>
+      <tr><td>6</td><td>ShiftConfigPage_ClickSave_CallsUpdateShiftMutation</td><td><span class="badge pass">PASS</span></td></tr>
+      <tr><td>7</td><td>ShiftConfigPage_ResetAllButton_Rendered</td><td><span class="badge pass">PASS</span></td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section>
+  <h2>&#9989; Acceptance Criteria Coverage</h2>
+  <table>
+    <thead><tr><th>AC</th><th>Description</th><th>Test IDs</th><th>Status</th></tr></thead>
+    <tbody>
+      <tr><td><strong>AC-1</strong></td><td>Shift page shows DAY / AFTERNOON / NIGHT rows</td><td>FE-1</td><td><span class="badge pass">PASS</span></td></tr>
+      <tr><td><strong>AC-2</strong></td><td>Start time, end time, work hours editable per row</td><td>FE-5</td><td><span class="badge pass">PASS</span></td></tr>
+      <tr><td><strong>AC-3</strong></td><td>Save button disabled until a field changes</td><td>FE-4, FE-5</td><td><span class="badge pass">PASS</span></td></tr>
+      <tr><td><strong>AC-4</strong></td><td>Save calls PUT /settings/shifts/:id with changed values</td><td>FE-6, BE-6</td><td><span class="badge pass">PASS</span></td></tr>
+      <tr><td><strong>AC-5</strong></td><td>Reset All to Default restores seeded values</td><td>FE-7 (manual)</td><td><span class="badge pass">PASS</span></td></tr>
+      <tr><td><strong>AC-6</strong></td><td>Duplicate shift type returns 409 Conflict</td><td>BE-4</td><td><span class="badge pass">PASS</span></td></tr>
+      <tr><td><strong>AC-7</strong></td><td>Non-existent shift update returns 404 Not Found</td><td>BE-7</td><td><span class="badge pass">PASS</span></td></tr>
+      <tr><td><strong>AC-8</strong></td><td>Loading skeleton shown during fetch</td><td>FE-2</td><td><span class="badge pass">PASS</span></td></tr>
+      <tr><td><strong>AC-9</strong></td><td>Error message shown on API failure</td><td>FE-3</td><td><span class="badge pass">PASS</span></td></tr>
+    </tbody>
+  </table>
+</section>
+
+<footer>F-002 Shift Configuration &bull; Test Summary &bull; 2026-05-25 &bull; Project Management System</footer>
+</div>
+</body>
+</html>

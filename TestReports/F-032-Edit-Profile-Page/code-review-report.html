@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<title>Code Review Report — F-032 Edit Profile Page</title>
+<style>
+  body{font-family:system-ui,sans-serif;margin:0;padding:24px;background:#f8fafc;color:#1e293b}
+  h1{font-size:1.4rem;font-weight:700;margin-bottom:4px}
+  .meta{color:#64748b;font-size:.85rem;margin-bottom:24px}
+  table{width:100%;border-collapse:collapse;background:#fff;border-radius:10px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.08)}
+  th{background:#1e293b;color:#fff;padding:10px 14px;text-align:left;font-size:.82rem;text-transform:uppercase;letter-spacing:.04em}
+  td{padding:10px 14px;font-size:.88rem;border-bottom:1px solid #f1f5f9;vertical-align:top}
+  tr:last-child td{border-bottom:none}
+  .pass{background:#dcfce7;color:#166534;padding:2px 10px;border-radius:99px;font-size:.78rem;font-weight:600}
+  .warn{background:#fef9c3;color:#92400e;padding:2px 10px;border-radius:99px;font-size:.78rem;font-weight:600}
+  .summary{display:flex;gap:16px;margin-bottom:20px}
+  .chip{background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:12px 20px;font-size:.85rem;box-shadow:0 1px 3px rgba(0,0,0,.05)}
+  .chip b{display:block;font-size:1.4rem;font-weight:700;color:#0f172a}
+</style>
+</head>
+<body>
+<h1>Code Review Report</h1>
+<div class="meta">F-032 — Edit Profile Page &nbsp;|&nbsp; Reviewer: Claude Sonnet 4.6 &nbsp;|&nbsp; Date: 2026-06-03</div>
+
+<div class="summary">
+  <div class="chip"><b>8</b> Checks</div>
+  <div class="chip"><b style="color:#166534">8</b> Passed</div>
+  <div class="chip"><b style="color:#b45309">0</b> Warnings</div>
+</div>
+
+<table>
+  <thead><tr><th>#</th><th>Check</th><th>Finding</th><th>Status</th></tr></thead>
+  <tbody>
+    <tr><td>CR-1</td><td>API Contract Alignment</td><td>GET /users/profile and PATCH /users/profile match REQ-F-032. Multipart form-data accepted for photo upload. Response shape matches AuthUser type extension.</td><td><span class="pass">PASS</span></td></tr>
+    <tr><td>CR-2</td><td>Auth &amp; Role Guards</td><td>Profile endpoints use method-level @Roles(SUPER_USER, ADMIN, EMPLOYEE) which overrides class-level admin-only guard via getAllAndOverride. All authenticated users can access their profile.</td><td><span class="pass">PASS</span></td></tr>
+    <tr><td>CR-3</td><td>Password Change Logic</td><td>updateProfile() requires currentPassword when newPassword is supplied; bcrypt.compare() validates current password before hashing new one. Correct guard sequence.</td><td><span class="pass">PASS</span></td></tr>
+    <tr><td>CR-4</td><td>Email Uniqueness</td><td>Conflict check skips the user's own id (conflict.id !== userId). Emails stored lowercase. Duplicate detection is correct.</td><td><span class="pass">PASS</span></td></tr>
+    <tr><td>CR-5</td><td>Frontend State Sync</td><td>authStore.updateUser() called on success to propagate fullName, email, and profilePhoto. Topbar Welcome greeting reflects updated name immediately.</td><td><span class="pass">PASS</span></td></tr>
+    <tr><td>CR-6</td><td>File Upload Constraints</td><td>2 MB fileSize limit enforced at Multer level. File field name 'photo' matches interceptor config. Hidden input uses accept="image/jpeg,image/png,image/webp".</td><td><span class="pass">PASS</span></td></tr>
+    <tr><td>CR-7</td><td>UX — Password Mismatch</td><td>Client-side inline validation shows "Passwords do not match" before submit. Server-side mutation also throws if mismatch, providing defence-in-depth.</td><td><span class="pass">PASS</span></td></tr>
+    <tr><td>CR-8</td><td>Gear Icon Dropdown (RBAC)</td><td>"Edit Profile" visible to all roles. "Company Settings" gated on canAccessSettings (SUPER_USER | ADMIN). Click-outside handler closes dropdown correctly via useRef + mousedown.</td><td><span class="pass">PASS</span></td></tr>
+  </tbody>
+</table>
+</body>
+</html>

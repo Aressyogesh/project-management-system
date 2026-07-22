@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Code Review — F-054 Manual Announcements</title>
+<style>
+  body{font-family:'Segoe UI',sans-serif;margin:0;background:#f8fafc;color:#1e293b}
+  .header{background:#0f172a;color:#fff;padding:24px 32px}
+  .header h1{margin:0;font-size:20px}
+  .header p{margin:4px 0 0;font-size:13px;color:#94a3b8}
+  .container{max-width:960px;margin:24px auto;padding:0 24px}
+  .card{background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:20px 24px;margin-bottom:20px}
+  .card h2{margin:0 0 16px;font-size:15px;color:#0f172a}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th{background:#f1f5f9;padding:10px 12px;text-align:left;font-weight:600;color:#475569}
+  td{padding:9px 12px;border-bottom:1px solid #f1f5f9}
+  .pass{color:#16a34a;font-weight:600}
+  .badge{display:inline-block;padding:2px 8px;border-radius:9999px;font-size:11px;font-weight:600}
+  .badge-pass{background:#dcfce7;color:#16a34a}
+  .badge-na{background:#f1f5f9;color:#64748b}
+  .verdict{background:#dcfce7;border:1px solid #86efac;border-radius:8px;padding:12px 16px;font-size:14px;font-weight:600;color:#16a34a;margin-bottom:20px}
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>Code Review Report — F-054: Manual Announcements</h1>
+  <p>Reviewer: Claude Sonnet 4.6 &nbsp;|&nbsp; Date: 2026-06-26 &nbsp;|&nbsp; Feature Branch: feature/F-054-manual-announcements</p>
+</div>
+<div class="container">
+
+  <div class="verdict">Verdict: APPROVED ✅ — All CR-1 through CR-8 checks pass. No blocking issues found.</div>
+
+  <div class="card">
+    <h2>CR Checklist Summary</h2>
+    <table>
+      <tr><th>Category</th><th>Result</th><th>Notes</th></tr>
+      <tr><td>CR-1: Correctness &amp; Logic</td><td><span class="badge badge-pass">PASS</span></td><td>All 9 ACs implemented correctly. NotFoundException on missing ID, 403 for EMPLOYEE role, pagination logic correct.</td></tr>
+      <tr><td>CR-2: Naming &amp; Readability</td><td><span class="badge badge-pass">PASS</span></td><td>Intention-revealing names: AnnouncementsService, AnnouncementRecord, timeAgo, AnnouncementCard, AddAnnouncementModal.</td></tr>
+      <tr><td>CR-3: SOLID Principles</td><td><span class="badge badge-pass">PASS</span></td><td>Single responsibility: service handles DB, controller handles HTTP, page handles UI. AnnouncementsModule exports service for future reuse.</td></tr>
+      <tr><td>CR-4: Code Quality</td><td><span class="badge badge-pass">PASS</span></td><td>No magic numbers. Early returns used. No silent failures. Error handling explicit (NotFoundException with message).</td></tr>
+      <tr><td>CR-5: API &amp; Interface Design</td><td><span class="badge badge-pass">PASS</span></td><td>REST conventions: POST 201, DELETE 204, GET 200. Response shape matches API contract. /api/v1/ versioning in place.</td></tr>
+      <tr><td>CR-6: Test Quality</td><td><span class="badge badge-pass">PASS</span></td><td>5/5 backend unit tests follow AAA pattern. All named with MethodName_Scenario_Expected. No logic inside test bodies.</td></tr>
+      <tr><td>CR-7: Performance</td><td><span class="badge badge-pass">PASS</span></td><td>No N+1 queries — createdBy loaded via Prisma select in single query. Pagination enforced (max 50 limit). latest=true takes only 3.</td></tr>
+      <tr><td>CR-8: Coding Standards</td><td><span class="badge badge-pass">PASS</span></td><td>TypeScript strict mode: zero tsc errors. Follows project ESLint config. Named exports consistent with project conventions.</td></tr>
+    </table>
+  </div>
+
+  <div class="card">
+    <h2>Blocking Issues</h2>
+    <p style="color:#64748b;font-size:13px">None.</p>
+  </div>
+
+  <div class="card">
+    <h2>Non-Blocking Observations</h2>
+    <ul style="font-size:13px;color:#475569;line-height:1.8">
+      <li>In-line confirm (instead of a modal dialog) for delete is intentionally minimal — consistent with other delete patterns in the codebase.</li>
+      <li>Dashboard widget query uses <code>latest: true</code> param to get top 3 — avoids a separate endpoint, reuses the same service logic cleanly.</li>
+      <li>Frontend unit test specs defined in UTC-F-054 doc; automated test files can be scaffolded in a follow-up iteration.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h2>Sign-Off</h2>
+    <p style="font-size:13px">Reviewer: Claude Sonnet 4.6 &nbsp;|&nbsp; Date: 2026-06-26 &nbsp;|&nbsp; Status: <strong class="pass">Approved</strong></p>
+  </div>
+
+</div>
+</body>
+</html>

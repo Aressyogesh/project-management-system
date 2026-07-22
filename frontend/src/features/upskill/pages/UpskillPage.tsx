@@ -1,0 +1,1177 @@
+﻿import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { upskillApi, type CreateAssignmentDto, type UpskillAssignment, type UpskillStatus } from '../../../api/upskillApi';
+import { useAuthStore } from '../../../store/authStore';
+import { Pagination } from '../../../components/shared/Pagination';
+
+// ─── Toast ────────────────────────────────────────────────────────────────────
+
+interface ToastState { message: string; type: 'success' | 'error' }
+
+function Toast({ toast, onClose }: { toast: ToastState; onClose: () => void }) {
+  return (
+    <div className="fixed bottom-6 right-6 z-[100] flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg text-sm font-medium text-white bg-gray-900 min-w-[240px] max-w-xs animate-fade-in">
+      <svg className="w-4 h-4 shrink-0 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+      </svg>
+      <span className="flex-1">{toast.message}</span>
+      <button onClick={onClose} className="text-gray-400 hover:text-white transition ml-1">
+        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+    </div>
+  );
+}
+
+// ─── Status Badge ─────────────────────────────────────────────────────────────
+
+const STATUS_CONFIG: Record<UpskillStatus, { label: string; cls: string }> = {
+  ASSIGNED:    { label: 'Assigned',    cls: 'bg-gray-100 text-gray-600' },
+  IN_PROGRESS: { label: 'In Progress', cls: 'bg-blue-100 text-blue-700' },
+  SUBMITTED:   { label: 'Submitted',   cls: 'bg-amber-100 text-amber-700' },
+  APPROVED:    { label: 'Approved',    cls: 'bg-green-100 text-green-700' },
+  REJECTED:    { label: 'Rejected',    cls: 'bg-red-100 text-red-700' },
+};
+
+function StatusBadge({ status }: { status: UpskillStatus }) {
+  const cfg = STATUS_CONFIG[status];
+  return (
+    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold ${cfg.cls}`}>
+      {cfg.label}
+    </span>
+  );
+}
+
+// ─── Month helpers ────────────────────────────────────────────────────────────
+
+function computeMonthLabels(startStr: string, endStr: string): string[] {
+  if (!startStr || !endStr || endStr <= startStr) return [];
+  const [sy, sm] = startStr.split('-').map(Number);
+  const [ey, em] = endStr.split('-').map(Number);
+  const labels: string[] = [];
+  let y = sy, m = sm;
+  while (y < ey || (y === ey && m <= em)) {
+    labels.push(new Date(y, m - 1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }));
+    m++;
+    if (m > 12) { m = 1; y++; }
+  }
+  return labels;
+}
+
+function monthLabelFromIso(iso: string): string {
+  const d = new Date(iso);
+  return d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+}
+
+function invalidateUpskill(qc: ReturnType<typeof useQueryClient>) {
+  qc.invalidateQueries({ queryKey: ['upskill-assignments'] });
+  qc.invalidateQueries({ queryKey: ['upskill-mine-all'] });
+}
+
+// ─── Create Assignment Modal ──────────────────────────────────────────────────
+
+function CreateAssignmentModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
+  const qc = useQueryClient();
+  const { data: users = [] } = useQuery({
+    queryKey: ['upskill-assignable-users'],
+    queryFn: () => upskillApi.assignableUsers(),
+    staleTime: 60_000,
+  });
+
+  const [form, setForm] = useState<Partial<CreateAssignmentDto>>({ type: 'LEARNING' });
+  const [error, setError] = useState('');
+
+  const createMutation = useMutation({
+    mutationFn: () => upskillApi.createAssignment(form as CreateAssignmentDto),
+    onSuccess: () => {
+      invalidateUpskill(qc);
+      onCreated();
+      onClose();
+    },
+    onError: (err: any) => setError(err?.response?.data?.message ?? 'Failed to create assignment'),
+  });
+
+  const inputCls = 'w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500';
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    if (!form.assignedToId) {
+      setError('Please select a resource');
+      return;
+    }
+    if (!form.startDate || !form.endDate) {
+      setError('Start date and end date are required');
+      return;
+    }
+    if (form.endDate <= form.startDate) {
+      setError('End date must be after start date');
+      return;
+    }
+    createMutation.mutate();
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6">
+        <div className="flex items-center justify-between mb-5">
+          <h2 className="text-base font-semibold text-gray-900">Create Assignment</h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Assign Resource <span className="text-red-500">*</span></label>
+            <select
+              required
+              value={form.assignedToId ?? ''}
+              onChange={(e) => setForm((p) => ({ ...p, assignedToId: e.target.value }))}
+              className={inputCls}
+            >
+              <option value="">Select a resource…</option>
+              {users.map((u) => (
+                <option key={u.id} value={u.id}>{u.fullName}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Tool / Script <span className="text-gray-400">(optional)</span></label>
+            <input
+              value={form.toolScript ?? ''}
+              onChange={(e) => setForm((p) => ({ ...p, toolScript: e.target.value }))}
+              placeholder="e.g. Selenium regression suite"
+              className={inputCls}
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">
+              Description <span className="text-red-500">*</span>
+            </label>
+            <textarea
+              required
+              rows={3}
+              value={form.description ?? ''}
+              onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))}
+              placeholder="Describe the learning and/or automation goal…"
+              className={`${inputCls} resize-none`}
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Start Date <span className="text-red-500">*</span></label>
+              <input
+                type="date"
+                required
+                value={form.startDate ?? ''}
+                onChange={(e) => setForm((p) => ({ ...p, startDate: e.target.value }))}
+                className={inputCls}
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">End Date <span className="text-red-500">*</span></label>
+              <input
+                type="date"
+                required
+                min={form.startDate ? (() => { const d = new Date(form.startDate!); d.setDate(d.getDate() + 1); return d.toISOString().split('T')[0]; })() : undefined}
+                value={form.endDate ?? ''}
+                onChange={(e) => setForm((p) => ({ ...p, endDate: e.target.value }))}
+                className={inputCls}
+              />
+            </div>
+          </div>
+
+          {(() => {
+            const months = computeMonthLabels(form.startDate ?? '', form.endDate ?? '');
+            if (months.length <= 1) return null;
+            return (
+              <div className="rounded-xl bg-indigo-50 border border-indigo-100 px-4 py-3 space-y-1.5">
+                <p className="text-xs font-semibold text-indigo-700">
+                  This will create {months.length} monthly sub-tasks
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  {months.map((label) => (
+                    <span key={label} className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-indigo-100 text-indigo-700">
+                      {label}
+                    </span>
+                  ))}
+                </div>
+                <p className="text-[10px] text-indigo-500">Each month is tracked and approved independently.</p>
+              </div>
+            );
+          })()}
+
+          {error && <p className="text-xs text-red-600">{error}</p>}
+
+          <div className="flex gap-2 justify-end pt-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="text-sm px-4 py-2 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 transition"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={createMutation.isPending}
+              className="text-sm px-4 py-2 rounded-lg bg-primary-600 text-white hover:bg-primary-700 disabled:opacity-60 transition"
+            >
+              {createMutation.isPending ? 'Creating…' : 'Create Assignment'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// ─── Progress Log Drawer ──────────────────────────────────────────────────────
+
+function ProgressDrawer({ assignment, onClose }: { assignment: UpskillAssignment; onClose: () => void }) {
+  const qc = useQueryClient();
+  const { user } = useAuthStore();
+  const [pct, setPct] = useState('');
+  const [hrs, setHrs] = useState('');
+  const [notes, setNotes] = useState('');
+  const [formErr, setFormErr] = useState('');
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [fileErr, setFileErr] = useState('');
+
+  const { data: detail } = useQuery({
+    queryKey: ['upskill-detail', assignment.id],
+    queryFn: () => upskillApi.getAssignment(assignment.id),
+    staleTime: 10_000,
+  });
+
+  const currentStatus = detail?.status ?? assignment.status;
+  const isOwner = user?.id === assignment.assignedToId;
+  const canLog = isOwner && currentStatus !== 'APPROVED' && currentStatus !== 'SUBMITTED';
+  const canSubmit = isOwner && (currentStatus === 'ASSIGNED' || currentStatus === 'IN_PROGRESS' || currentStatus === 'REJECTED');
+
+  const logMutation = useMutation({
+    mutationFn: () =>
+      upskillApi.logProgress(assignment.id, {
+        percentComplete: Number(pct),
+        hoursSpent: Number(hrs),
+        notes: notes.trim() || undefined,
+      }),
+    onSuccess: () => {
+      invalidateUpskill(qc);
+      qc.invalidateQueries({ queryKey: ['upskill-detail', assignment.id] });
+      setPct(''); setHrs(''); setNotes(''); setFormErr('');
+    },
+    onError: (err: any) => setFormErr(err?.response?.data?.message ?? 'Failed to log progress'),
+  });
+
+  const submitMutation = useMutation({
+    mutationFn: (file: File) => upskillApi.submitEvidence(assignment.id, file),
+    onSuccess: () => {
+      invalidateUpskill(qc);
+      qc.invalidateQueries({ queryKey: ['upskill-detail', assignment.id] });
+      setFileErr('');
+    },
+    onError: (err: any) => setFileErr(err?.response?.data?.message ?? 'Failed to submit evidence'),
+  });
+
+  const logs = detail?.progressLogs ?? assignment.progressLogs ?? [];
+
+  const inputCls = 'w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500';
+
+  function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 10 * 1024 * 1024) {
+      setFileErr('File size must not exceed 10 MB');
+      return;
+    }
+    setFileErr('');
+    submitMutation.mutate(file);
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex justify-end bg-black/30">
+      <div className="w-full max-w-lg bg-white h-full overflow-y-auto shadow-2xl flex flex-col">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+          <div>
+            <h2 className="text-sm font-semibold text-gray-900">Progress — {assignment.assignedTo?.fullName}</h2>
+            <p className="text-xs text-gray-400 mt-0.5">Learn & Automate Assignment</p>
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5">
+          {/* Status + rejection reason */}
+          <div className="flex items-center gap-3">
+            <StatusBadge status={detail?.status ?? assignment.status} />
+            {(detail?.status ?? assignment.status) === 'REJECTED' && (detail?.rejectionReason ?? assignment.rejectionReason) && (
+              <p className="text-xs text-red-600 bg-red-50 px-3 py-1 rounded-lg border border-red-100 flex-1">
+                Rejection: {detail?.rejectionReason ?? assignment.rejectionReason}
+              </p>
+            )}
+          </div>
+
+          {/* Assignment info */}
+          <div className="bg-gray-50 rounded-xl p-4 space-y-1 text-xs text-gray-600">
+            <p><span className="font-medium">Description:</span> {assignment.description}</p>
+            {assignment.toolScript && <p><span className="font-medium">Tool/Script:</span> {assignment.toolScript}</p>}
+            <p><span className="font-medium">Duration:</span> {new Date(assignment.startDate).toLocaleDateString()} – {new Date(assignment.endDate).toLocaleDateString()}</p>
+          </div>
+
+          {/* Progress history */}
+          <div>
+            <h3 className="text-xs font-semibold text-gray-700 mb-2">Progress History</h3>
+            {logs.length === 0 ? (
+              <p className="text-xs text-gray-400 text-center py-4">No progress logged yet.</p>
+            ) : (
+              <div className="space-y-2">
+                {logs.map((log) => (
+                  <div key={log.id} className="p-3 bg-blue-50/40 border border-blue-100 rounded-xl">
+                    <div className="flex items-center gap-3 mb-1">
+                      <span className="text-xs font-semibold text-blue-700">{log.percentComplete}%</span>
+                      <span className="text-xs text-gray-500">{log.hoursSpent}h spent</span>
+                      <span className="text-[10px] text-gray-400 ml-auto">{new Date(log.createdAt).toLocaleDateString()}</span>
+                    </div>
+                    {log.notes && <p className="text-[10px] text-gray-500">{log.notes}</p>}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Log progress form */}
+          {canLog && (
+            <div className="border-t border-gray-100 pt-4">
+              <h3 className="text-xs font-semibold text-gray-700 mb-3">Log Progress</h3>
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">% Complete *</label>
+                    <input
+                      type="number"
+                      min={0}
+                      max={100}
+                      value={pct}
+                      onChange={(e) => setPct(e.target.value)}
+                      placeholder="0–100"
+                      className={inputCls}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Hours Spent *</label>
+                    <input
+                      type="number"
+                      min={0.5}
+                      step={0.5}
+                      value={hrs}
+                      onChange={(e) => setHrs(e.target.value)}
+                      placeholder="e.g. 2.5"
+                      className={inputCls}
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Notes (optional)</label>
+                  <textarea
+                    rows={2}
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    className={`${inputCls} resize-none`}
+                  />
+                </div>
+                {formErr && <p className="text-xs text-red-600">{formErr}</p>}
+                <button
+                  onClick={() => {
+                    if (!pct || !hrs) { setFormErr('% Complete and Hours Spent are required'); return; }
+                    if (Number(pct) < 0 || Number(pct) > 100) { setFormErr('Must be between 0 and 100'); return; }
+                    logMutation.mutate();
+                  }}
+                  disabled={logMutation.isPending}
+                  className="w-full text-sm py-2 rounded-lg bg-primary-600 text-white hover:bg-primary-700 disabled:opacity-60 transition"
+                >
+                  {logMutation.isPending ? 'Saving…' : 'Save Progress'}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Final submission */}
+          {canSubmit && (
+            <div className="border-t border-gray-100 pt-4">
+              <h3 className="text-xs font-semibold text-gray-700 mb-1">Final Submission</h3>
+              <p className="text-xs text-gray-400 mb-3">Attach certificate or evidence (PDF, DOCX, PNG, JPG, PPTX, XLSX, ZIP — max 10 MB)</p>
+              <input
+                ref={fileRef}
+                type="file"
+                accept=".pdf,.docx,.png,.jpg,.jpeg,.pptx,.xlsx,.zip"
+                className="hidden"
+                onChange={handleFileSelect}
+              />
+              <button
+                onClick={() => fileRef.current?.click()}
+                disabled={submitMutation.isPending}
+                className="w-full text-sm py-2 rounded-lg border-2 border-dashed border-primary-300 text-primary-600 hover:bg-primary-50 disabled:opacity-60 transition"
+              >
+                {submitMutation.isPending ? 'Uploading…' : '+ Attach & Submit Evidence'}
+              </button>
+              {fileErr && <p className="text-xs text-red-600 mt-1">{fileErr}</p>}
+            </div>
+          )}
+
+          {!isOwner && (() => {
+            const status = detail?.status ?? assignment.status;
+            const fileName = detail?.evidenceFileName ?? assignment.evidenceFileName;
+            if (!fileName) return null;
+            return (
+              <div className="border-t border-gray-100 pt-4 space-y-2">
+                {status === 'SUBMITTED' && (
+                  <p className="text-xs text-amber-600 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
+                    Evidence submitted — awaiting your approval.
+                  </p>
+                )}
+                <button
+                  onClick={() => upskillApi.downloadEvidence(assignment.id, fileName)}
+                  className="w-full text-sm py-2 rounded-lg bg-gray-50 border border-gray-200 text-gray-700 hover:bg-gray-100 transition flex items-center justify-center gap-2"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                  </svg>
+                  Download Evidence — {fileName}
+                </button>
+              </div>
+            );
+          })()}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Edit Assignment Modal ────────────────────────────────────────────────────
+
+function EditAssignmentModal({ assignment, onClose }: { assignment: UpskillAssignment; onClose: () => void }) {
+  const qc = useQueryClient();
+  const { data: users = [] } = useQuery({
+    queryKey: ['upskill-assignable-users'],
+    queryFn: () => upskillApi.assignableUsers(),
+    staleTime: 60_000,
+  });
+
+  const [form, setForm] = useState({
+    assignedToId: assignment.assignedToId,
+    description: assignment.description,
+    toolScript: assignment.toolScript ?? '',
+    startDate: assignment.startDate.split('T')[0],
+    endDate: assignment.endDate.split('T')[0],
+  });
+  const [error, setError] = useState('');
+
+  const updateMutation = useMutation({
+    mutationFn: () => upskillApi.updateAssignment(assignment.id, {
+      assignedToId: form.assignedToId,
+      description: form.description,
+      toolScript: form.toolScript || undefined,
+      startDate: form.startDate,
+      endDate: form.endDate,
+    }),
+    onSuccess: () => { invalidateUpskill(qc); onClose(); },
+    onError: (err: any) => setError(err?.response?.data?.message ?? 'Failed to update assignment'),
+  });
+
+  const inputCls = 'w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500';
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    if (!form.startDate || !form.endDate) { setError('Start date and end date are required'); return; }
+    if (form.endDate <= form.startDate) { setError('End date must be after start date'); return; }
+    updateMutation.mutate();
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6">
+        <div className="flex items-center justify-between mb-5">
+          <h2 className="text-base font-semibold text-gray-900">Edit Assignment</h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Assign Resource <span className="text-red-500">*</span></label>
+            <select value={form.assignedToId} onChange={(e) => setForm((p) => ({ ...p, assignedToId: e.target.value }))} className={inputCls}>
+              {users.map((u) => <option key={u.id} value={u.id}>{u.fullName}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Tool / Script <span className="text-gray-400">(optional)</span></label>
+            <input value={form.toolScript} onChange={(e) => setForm((p) => ({ ...p, toolScript: e.target.value }))} className={inputCls} />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Description <span className="text-red-500">*</span></label>
+            <textarea rows={3} value={form.description} onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))} className={`${inputCls} resize-none`} />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Start Date <span className="text-red-500">*</span></label>
+              <input type="date" value={form.startDate} onChange={(e) => setForm((p) => ({ ...p, startDate: e.target.value }))} className={inputCls} />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">End Date <span className="text-red-500">*</span></label>
+              <input type="date" value={form.endDate}
+                min={form.startDate ? (() => { const d = new Date(form.startDate); d.setDate(d.getDate() + 1); return d.toISOString().split('T')[0]; })() : undefined}
+                onChange={(e) => setForm((p) => ({ ...p, endDate: e.target.value }))} className={inputCls} />
+            </div>
+          </div>
+          {error && <p className="text-xs text-red-600">{error}</p>}
+          <div className="flex gap-2 justify-end pt-2">
+            <button type="button" onClick={onClose} className="text-sm px-4 py-2 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 transition">Cancel</button>
+            <button type="submit" disabled={updateMutation.isPending} className="text-sm px-4 py-2 rounded-lg bg-primary-600 text-white hover:bg-primary-700 disabled:opacity-60 transition">
+              {updateMutation.isPending ? 'Saving…' : 'Save Changes'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// ─── Assignment Row ───────────────────────────────────────────────────────────
+
+function AssignmentRow({
+  asgn,
+  isManager,
+  onProgress,
+  onApprove,
+  onReject,
+  onEdit,
+  onDelete,
+}: {
+  asgn: UpskillAssignment;
+  isManager: boolean;
+  onProgress: (a: UpskillAssignment) => void;
+  onApprove: (id: string) => void;
+  onReject: (a: UpskillAssignment) => void;
+  onEdit: (a: UpskillAssignment) => void;
+  onDelete: (id: string) => void;
+}) {
+  const consolidatedPct = Math.min(
+    100,
+    asgn.progressLogs?.reduce((s, l) => s + l.percentComplete, 0) ?? 0,
+  );
+  const totalHours = asgn.progressLogs?.reduce((s, l) => s + l.hoursSpent, 0) ?? 0;
+
+  return (
+    <tr className="hover:bg-gray-50 transition-colors">
+      <td className="px-4 py-3">
+        <p className="text-sm font-medium text-gray-800">{asgn.assignedTo?.fullName ?? '—'}</p>
+        <p className="text-[10px] text-gray-400">{asgn.createdBy?.fullName}</p>
+      </td>
+      <td className="px-4 py-3 text-sm text-gray-600 max-w-xs">
+        <p className="truncate">{asgn.description}</p>
+        {asgn.toolScript && <p className="text-[10px] text-gray-400 truncate">{asgn.toolScript}</p>}
+      </td>
+      <td className="px-4 py-3 text-xs text-gray-500 whitespace-nowrap">
+        {new Date(asgn.startDate).toLocaleDateString()} –<br />{new Date(asgn.endDate).toLocaleDateString()}
+      </td>
+      <td className="px-4 py-3 text-xs text-gray-500">
+        <span className="font-medium">{consolidatedPct}%</span>
+        {totalHours > 0 && <span className="text-gray-400"> · {totalHours}h</span>}
+      </td>
+      <td className="px-4 py-3">
+        <StatusBadge status={asgn.status} />
+      </td>
+      <td className="px-4 py-3">
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => onProgress(asgn)}
+            className="text-xs px-2.5 py-1 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 transition"
+          >
+            View
+          </button>
+          {isManager && asgn.status === 'ASSIGNED' && (
+            <>
+              <button onClick={() => onEdit(asgn)} className="text-xs px-2.5 py-1 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition">Edit</button>
+              <button onClick={() => onDelete(asgn.id)} className="text-xs px-2.5 py-1 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition">Delete</button>
+            </>
+          )}
+          {isManager && asgn.status === 'SUBMITTED' && (
+            <>
+              <button onClick={() => onApprove(asgn.id)} className="text-xs px-2.5 py-1 rounded-lg bg-green-100 text-green-700 hover:bg-green-200 transition">Approve</button>
+              <button onClick={() => onReject(asgn)} className="text-xs px-2.5 py-1 rounded-lg bg-red-100 text-red-700 hover:bg-red-200 transition">Reject</button>
+            </>
+          )}
+        </div>
+      </td>
+    </tr>
+  );
+}
+
+// ─── Grouped Assignment Row ───────────────────────────────────────────────────
+
+function GroupedAssignmentRow({
+  assignments,
+  isManager,
+  onProgress,
+  onApprove,
+  onReject,
+  onEdit,
+  onDelete,
+}: {
+  assignments: UpskillAssignment[];
+  isManager: boolean;
+  onProgress: (a: UpskillAssignment) => void;
+  onApprove: (id: string) => void;
+  onReject: (a: UpskillAssignment) => void;
+  onEdit: (a: UpskillAssignment) => void;
+  onDelete: (id: string) => void;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const sorted = [...assignments].sort(
+    (a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime(),
+  );
+  const first = sorted[0];
+  const last = sorted[sorted.length - 1];
+
+  const statuses = sorted.map((a) => a.status);
+  const groupStatus: UpskillStatus = statuses.every((s) => s === 'APPROVED')
+    ? 'APPROVED'
+    : statuses.some((s) => s === 'REJECTED')
+    ? 'REJECTED'
+    : statuses.some((s) => s === 'SUBMITTED')
+    ? 'SUBMITTED'
+    : statuses.some((s) => s === 'IN_PROGRESS')
+    ? 'IN_PROGRESS'
+    : 'ASSIGNED';
+
+  return (
+    <>
+      <tr
+        className="hover:bg-indigo-50/40 transition-colors cursor-pointer border-l-2 border-indigo-300"
+        onClick={() => setExpanded((v) => !v)}
+      >
+        <td className="px-4 py-3">
+          <div className="flex items-center gap-2">
+            <svg
+              className={`w-3.5 h-3.5 text-gray-400 flex-shrink-0 transition-transform duration-150 ${expanded ? 'rotate-90' : ''}`}
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+            <div>
+              <p className="text-sm font-medium text-gray-800">{first.assignedTo?.fullName ?? '—'}</p>
+              <div className="flex items-center gap-1.5 mt-0.5">
+                <p className="text-[10px] text-gray-400">{first.createdBy?.fullName}</p>
+                <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-indigo-100 text-indigo-600">
+                  {sorted.length} months
+                </span>
+              </div>
+            </div>
+          </div>
+        </td>
+        <td className="px-4 py-3 text-sm text-gray-600 max-w-xs">
+          <p className="truncate">{first.description}</p>
+          {first.toolScript && <p className="text-[10px] text-gray-400 truncate">{first.toolScript}</p>}
+        </td>
+        <td className="px-4 py-3 text-xs text-gray-500 whitespace-nowrap">
+          {new Date(first.startDate).toLocaleDateString()} –<br />
+          {new Date(last.endDate).toLocaleDateString()}
+        </td>
+        <td className="px-4 py-3 text-xs text-gray-400">—</td>
+        <td className="px-4 py-3">
+          <StatusBadge status={groupStatus} />
+        </td>
+        <td className="px-4 py-3">
+          <span className="text-[11px] text-indigo-500 font-medium">{expanded ? '▲ Collapse' : '▼ Expand'}</span>
+        </td>
+      </tr>
+
+      {expanded &&
+        sorted.map((asgn, i) => {
+          const consolidatedPct = Math.min(
+            100,
+            asgn.progressLogs?.reduce((s, l) => s + l.percentComplete, 0) ?? 0,
+          );
+          const totalHours = asgn.progressLogs?.reduce((s, l) => s + l.hoursSpent, 0) ?? 0;
+          const isLast = i === sorted.length - 1;
+          return (
+            <tr key={asgn.id} className="bg-indigo-50/20 border-l-2 border-indigo-200 hover:bg-indigo-50/50 transition-colors">
+              <td className="px-4 py-2.5 pl-10">
+                <p className="text-xs font-semibold text-indigo-700">
+                  {isLast ? '└' : '├'} {monthLabelFromIso(asgn.startDate)}
+                </p>
+              </td>
+              <td className="px-4 py-2.5 text-xs text-gray-500 whitespace-nowrap">
+                {new Date(asgn.startDate).toLocaleDateString()} – {new Date(asgn.endDate).toLocaleDateString()}
+              </td>
+              <td />
+              <td className="px-4 py-2.5 text-xs text-gray-500">
+                <span className="font-medium">{consolidatedPct}%</span>
+                {totalHours > 0 && <span className="text-gray-400"> · {totalHours}h</span>}
+              </td>
+              <td className="px-4 py-2.5">
+                <StatusBadge status={asgn.status} />
+              </td>
+              <td className="px-4 py-2.5">
+                <div className="flex items-center gap-1.5">
+                  <button
+                    onClick={(e) => { e.stopPropagation(); onProgress(asgn); }}
+                    className="text-xs px-2.5 py-1 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 transition"
+                  >
+                    View
+                  </button>
+                  {isManager && asgn.status === 'ASSIGNED' && (
+                    <>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); onEdit(asgn); }}
+                        className="text-xs px-2.5 py-1 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); onDelete(asgn.id); }}
+                        className="text-xs px-2.5 py-1 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition"
+                      >
+                        Delete
+                      </button>
+                    </>
+                  )}
+                  {isManager && asgn.status === 'SUBMITTED' && (
+                    <>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); onApprove(asgn.id); }}
+                        className="text-xs px-2.5 py-1 rounded-lg bg-green-100 text-green-700 hover:bg-green-200 transition"
+                      >
+                        Approve
+                      </button>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); onReject(asgn); }}
+                        className="text-xs px-2.5 py-1 rounded-lg bg-red-100 text-red-700 hover:bg-red-200 transition"
+                      >
+                        Reject
+                      </button>
+                    </>
+                  )}
+                </div>
+              </td>
+            </tr>
+          );
+        })}
+    </>
+  );
+}
+
+// ─── Reject Modal ─────────────────────────────────────────────────────────────
+
+function RejectModal({ assignment, onClose }: { assignment: UpskillAssignment; onClose: () => void }) {
+  const qc = useQueryClient();
+  const [reason, setReason] = useState('');
+  const [err, setErr] = useState('');
+
+  const rejectMutation = useMutation({
+    mutationFn: () => upskillApi.reject(assignment.id, reason.trim()),
+    onSuccess: () => {
+      invalidateUpskill(qc);
+      onClose();
+    },
+    onError: (e: Error) => setErr(e.message),
+  });
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
+        <h2 className="text-base font-semibold text-gray-900 mb-4">Reject Assignment</h2>
+        <p className="text-sm text-gray-600 mb-3">
+          Rejecting <span className="font-medium">{assignment.assignedTo?.fullName}</span>'s submission. Provide a reason so they can resubmit.
+        </p>
+        <textarea
+          rows={3}
+          value={reason}
+          onChange={(e) => setReason(e.target.value)}
+          placeholder="Reason for rejection…"
+          className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-400 resize-none"
+        />
+        {err && <p className="text-xs text-red-600 mt-1">{err}</p>}
+        <div className="flex gap-2 justify-end mt-4">
+          <button onClick={onClose} className="text-sm px-4 py-2 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200">Cancel</button>
+          <button
+            onClick={() => {
+              if (!reason.trim()) { setErr('Reason is required'); return; }
+              rejectMutation.mutate();
+            }}
+            disabled={rejectMutation.isPending}
+            className="text-sm px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 disabled:opacity-60 transition"
+          >
+            {rejectMutation.isPending ? 'Rejecting…' : 'Reject'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Main Upskill Page ────────────────────────────────────────────────────────
+
+
+const STATUS_FILTERS: { value: UpskillStatus | 'ALL'; label: string }[] = [
+  { value: 'ALL', label: 'All Statuses' },
+  { value: 'ASSIGNED', label: 'Assigned' },
+  { value: 'IN_PROGRESS', label: 'In Progress' },
+  { value: 'SUBMITTED', label: 'Submitted' },
+  { value: 'APPROVED', label: 'Approved' },
+  { value: 'REJECTED', label: 'Rejected' },
+];
+
+const PAGE_SIZE = 10;
+
+// ─── My Assignments Progress Section ─────────────────────────────────────────
+
+function UpskillCard({ asgn, onRefresh }: { asgn: UpskillAssignment; onRefresh: () => void }) {
+  const [showProgress, setShowProgress] = useState(false);
+  const [pct, setPct] = useState('');
+  const [hrs, setHrs] = useState('');
+  const [notes, setNotes] = useState('');
+  const [formErr, setFormErr] = useState('');
+  const [fileErr, setFileErr] = useState('');
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const canLog = asgn.status !== 'APPROVED' && asgn.status !== 'SUBMITTED';
+  const canSubmit = asgn.status === 'ASSIGNED' || asgn.status === 'IN_PROGRESS' || asgn.status === 'REJECTED';
+
+  const qc = useQueryClient();
+
+  const logMutation = useMutation({
+    mutationFn: () => upskillApi.logProgress(asgn.id, {
+      percentComplete: Number(pct), hoursSpent: Number(hrs), notes: notes.trim() || undefined,
+    }),
+    onSuccess: () => {
+      invalidateUpskill(qc);
+      onRefresh();
+      setPct(''); setHrs(''); setNotes(''); setShowProgress(false); setFormErr('');
+    },
+    onError: (err: any) => setFormErr(err?.response?.data?.message ?? 'Failed to log progress'),
+  });
+
+  const submitMutation = useMutation({
+    mutationFn: (file: File) => upskillApi.submitEvidence(asgn.id, file),
+    onSuccess: () => { invalidateUpskill(qc); onRefresh(); setFileErr(''); },
+    onError: (err: any) => setFileErr(err?.response?.data?.message ?? 'Failed to submit evidence'),
+  });
+
+  const latestPct = Math.min(100, (asgn.progressLogs ?? []).reduce((s, l) => s + l.percentComplete, 0));
+  const cfg = STATUS_CONFIG[asgn.status];
+  const inputCls = 'w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500';
+
+  return (
+    <div className="bg-white rounded-2xl border border-[#cccccc] shadow-sm p-4">
+      <div className="flex items-start justify-between gap-3 mb-3">
+        <div>
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-[10px] font-semibold uppercase tracking-wide text-primary-600 bg-primary-50 px-2 py-0.5 rounded-full">
+              Learn & Automate
+            </span>
+            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold ${cfg.cls}`}>{cfg.label}</span>
+          </div>
+          <p className="text-sm font-medium text-gray-800 line-clamp-2">{asgn.description}</p>
+          {asgn.toolScript && <p className="text-[10px] text-gray-400 mt-0.5">Tool: {asgn.toolScript}</p>}
+        </div>
+        <div className="text-right shrink-0">
+          <p className="text-lg font-bold text-primary-600">{latestPct}%</p>
+          <p className="text-[10px] text-gray-400">complete</p>
+        </div>
+      </div>
+
+      {asgn.status === 'REJECTED' && asgn.rejectionReason && (
+        <div className="mb-3 px-3 py-2 bg-red-50 border border-red-100 rounded-lg text-xs text-red-600">
+          Rejected: {asgn.rejectionReason}
+        </div>
+      )}
+
+      <p className="text-[10px] text-gray-400 mb-3">
+        {new Date(asgn.startDate).toLocaleDateString()} – {new Date(asgn.endDate).toLocaleDateString()}
+        {' · '}by {asgn.createdBy?.fullName}
+      </p>
+
+      <div className="flex gap-2">
+        {canLog && (
+          <button
+            onClick={() => setShowProgress((v) => !v)}
+            className="text-xs px-3 py-1.5 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 transition"
+          >
+            Log Progress
+          </button>
+        )}
+        {canSubmit && (
+          <>
+            <input ref={fileRef} type="file" accept=".pdf,.docx,.png,.jpg,.jpeg,.pptx,.xlsx,.zip" className="hidden" onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (!file) return;
+              if (file.size > 10 * 1024 * 1024) { setFileErr('File size must not exceed 10 MB'); return; }
+              setFileErr('');
+              submitMutation.mutate(file);
+            }} />
+            <button
+              onClick={() => fileRef.current?.click()}
+              disabled={submitMutation.isPending}
+              className="text-xs px-3 py-1.5 rounded-lg bg-green-50 text-green-700 hover:bg-green-100 disabled:opacity-60 transition"
+            >
+              {submitMutation.isPending ? 'Uploading…' : 'Submit Evidence'}
+            </button>
+          </>
+        )}
+      </div>
+
+      {fileErr && <p className="text-xs text-red-600 mt-1">{fileErr}</p>}
+      {canSubmit && <p className="text-[10px] text-gray-400 mt-1">Supported: PDF, DOCX, PPTX, XLSX, ZIP, PNG, JPG · max 10 MB</p>}
+
+      {showProgress && canLog && (
+        <div className="mt-3 p-3 bg-gray-50 rounded-xl space-y-2">
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="block text-[10px] font-medium text-gray-600 mb-1">% Complete *</label>
+              <input type="number" min={0} max={100} value={pct} onChange={(e) => setPct(e.target.value)} placeholder="0–100" className={inputCls} />
+            </div>
+            <div>
+              <label className="block text-[10px] font-medium text-gray-600 mb-1">Hours Spent *</label>
+              <input type="number" min={0.5} step={0.5} value={hrs} onChange={(e) => setHrs(e.target.value)} placeholder="e.g. 2" className={inputCls} />
+            </div>
+          </div>
+          <textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Notes (optional)" className={`${inputCls} resize-none`} />
+          {formErr && <p className="text-[10px] text-red-600">{formErr}</p>}
+          <div className="flex gap-2 justify-end">
+            <button onClick={() => setShowProgress(false)} className="text-xs px-3 py-1.5 rounded-lg bg-gray-200 text-gray-600 hover:bg-gray-300">Cancel</button>
+            <button
+              onClick={() => {
+                if (!pct || !hrs) { setFormErr('Both fields required'); return; }
+                if (Number(pct) < 0 || Number(pct) > 100) { setFormErr('Must be between 0 and 100'); return; }
+                logMutation.mutate();
+              }}
+              disabled={logMutation.isPending}
+              className="text-xs px-3 py-1.5 rounded-lg bg-primary-600 text-white hover:bg-primary-700 disabled:opacity-60"
+            >
+              {logMutation.isPending ? 'Saving…' : 'Save'}
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function MyAssignmentsSection() {
+  const { data: result, refetch } = useQuery({
+    queryKey: ['upskill-mine-all'],
+    queryFn: () => upskillApi.listAssignments({ mine: true, limit: 50 }),
+    staleTime: 15_000,
+  });
+  const assignments = result?.data ?? [];
+
+  if (assignments.length === 0) return null;
+
+  return (
+    <div className="mt-8">
+      <h2 className="text-base font-semibold text-gray-800 mb-3">My Assignments</h2>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {assignments.map((a) => (
+          <UpskillCard key={a.id} asgn={a} onRefresh={() => refetch()} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+export function UpskillPage() {
+  const qc = useQueryClient();
+  const { user } = useAuthStore();
+  const [statusFilter, setStatusFilter] = useState<UpskillStatus | 'ALL'>('ALL');
+  const [page, setPage] = useState(1);
+  const [showCreate, setShowCreate] = useState(false);
+  const [editFor, setEditFor] = useState<UpskillAssignment | null>(null);
+  const [progressFor, setProgressFor] = useState<UpskillAssignment | null>(null);
+  const [rejectFor, setRejectFor] = useState<UpskillAssignment | null>(null);
+
+  const [toast, setToast] = useState<ToastState | null>(null);
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(null), 3000);
+    return () => clearTimeout(t);
+  }, [toast]);
+
+  const isPrivileged = user?.systemRole === 'SUPER_USER' || user?.systemRole === 'ADMIN';
+  const { data: managerCheck } = useQuery({
+    queryKey: ['upskill-is-manager'],
+    queryFn: () => upskillApi.isManager(),
+    staleTime: 5 * 60_000,
+    enabled: !!user && !isPrivileged,
+  });
+  const isManager = isPrivileged || (managerCheck?.isManager ?? false);
+
+  const { data: result, isLoading } = useQuery({
+    queryKey: ['upskill-assignments', statusFilter, page],
+    queryFn: () =>
+      upskillApi.listAssignments({
+        ...(statusFilter !== 'ALL' ? { status: statusFilter } : {}),
+        page,
+        limit: PAGE_SIZE,
+      }),
+    staleTime: 15_000,
+  });
+
+  const assignments = result?.data ?? [];
+
+  type TableRow =
+    | { kind: 'single'; asgn: UpskillAssignment }
+    | { kind: 'group'; groupId: string; assignments: UpskillAssignment[] };
+
+  const tableRows = useMemo((): TableRow[] => {
+    const seenGroups = new Set<string>();
+    const rows: TableRow[] = [];
+    for (const asgn of assignments) {
+      if (!asgn.groupId) {
+        rows.push({ kind: 'single', asgn });
+      } else if (!seenGroups.has(asgn.groupId)) {
+        seenGroups.add(asgn.groupId);
+        rows.push({ kind: 'group', groupId: asgn.groupId, assignments: assignments.filter((a) => a.groupId === asgn.groupId) });
+      }
+    }
+    return rows;
+  }, [assignments]);
+
+  const approveMutation = useMutation({
+    mutationFn: (id: string) => upskillApi.approve(id),
+    onSuccess: () => invalidateUpskill(qc),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => upskillApi.deleteAssignment(id),
+    onSuccess: () => invalidateUpskill(qc),
+  });
+
+  return (
+    <div className="p-6 max-w-7xl mx-auto">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-xl font-bold text-gray-900">Learn & Innovate</h1>
+          <p className="text-sm text-gray-400 mt-0.5">Assign and track learning & automation upskilling for your team</p>
+        </div>
+        {isManager && (
+          <button
+            onClick={() => setShowCreate(true)}
+            className="flex items-center gap-2 text-sm px-4 py-2 rounded-xl bg-primary-600 text-white hover:bg-primary-700 transition font-medium"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            Create Assignment
+          </button>
+        )}
+      </div>
+
+      {/* Filters */}
+      <div className="flex items-center gap-3 mb-4">
+        <select
+          value={statusFilter}
+          onChange={(e) => { setStatusFilter(e.target.value as UpskillStatus | 'ALL'); setPage(1); }}
+          className="text-sm px-3 py-1.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white"
+        >
+          {STATUS_FILTERS.map((f) => (
+            <option key={f.value} value={f.value}>{f.label}</option>
+          ))}
+        </select>
+        <span className="text-xs text-gray-400">{result?.total ?? 0} assignment{(result?.total ?? 0) !== 1 ? 's' : ''}</span>
+      </div>
+
+      {/* Table */}
+      <div className="bg-white rounded-2xl border border-[#cccccc] shadow-sm overflow-hidden">
+        {isLoading ? (
+          <div className="flex items-center justify-center py-16 text-sm text-gray-400">Loading…</div>
+        ) : assignments.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-16 text-center">
+            <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center mb-3">
+              <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+              </svg>
+            </div>
+            <p className="text-sm font-medium text-gray-600">No assignments yet</p>
+            <p className="text-xs text-gray-400 mt-1">
+              {isManager ? 'Create an assignment to get started' : 'No assignments have been given to you yet'}
+            </p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left">
+              <thead className="bg-gray-50 border-b border-gray-100">
+                <tr>
+                  <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Resource</th>
+                  <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                    Description / Tool
+                  </th>
+                  <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Duration</th>
+                  <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Progress</th>
+                  <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Status</th>
+                  <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {tableRows.map((row) =>
+                  row.kind === 'single' ? (
+                    <AssignmentRow
+                      key={row.asgn.id}
+                      asgn={row.asgn}
+                      isManager={isManager}
+                      onProgress={(a) => setProgressFor(a)}
+                      onApprove={(id) => approveMutation.mutate(id)}
+                      onReject={(a) => setRejectFor(a)}
+                      onEdit={(a) => setEditFor(a)}
+                      onDelete={(id) => { if (confirm('Delete this assignment?')) deleteMutation.mutate(id); }}
+                    />
+                  ) : (
+                    <GroupedAssignmentRow
+                      key={row.groupId}
+                      assignments={row.assignments}
+                      isManager={isManager}
+                      onProgress={(a) => setProgressFor(a)}
+                      onApprove={(id) => approveMutation.mutate(id)}
+                      onReject={(a) => setRejectFor(a)}
+                      onEdit={(a) => setEditFor(a)}
+                      onDelete={(id) => { if (confirm('Delete this monthly sub-task?')) deleteMutation.mutate(id); }}
+                    />
+                  )
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {result && result.total > PAGE_SIZE && (
+        <Pagination page={page} pageSize={PAGE_SIZE} total={result.total} onChange={setPage} />
+      )}
+
+      <MyAssignmentsSection />
+
+      {/* Modals */}
+      {showCreate && <CreateAssignmentModal onClose={() => setShowCreate(false)} onCreated={() => setToast({ message: 'Assignment created successfully', type: 'success' })} />}
+      {editFor && <EditAssignmentModal assignment={editFor} onClose={() => setEditFor(null)} />}
+      {progressFor && <ProgressDrawer assignment={progressFor} onClose={() => setProgressFor(null)} />}
+      {rejectFor && <RejectModal assignment={rejectFor} onClose={() => setRejectFor(null)} />}
+      {toast && <Toast toast={toast} onClose={() => setToast(null)} />}
+    </div>
+  );
+}

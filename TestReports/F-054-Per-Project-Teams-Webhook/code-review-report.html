@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Code Review Report — F-054 Per-Project Teams Webhook</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; margin: 0; padding: 24px; background: #f9fafb; color: #111827; }
+  h1 { font-size: 1.25rem; font-weight: 700; margin-bottom: 4px; }
+  .meta { font-size: 0.8rem; color: #6b7280; margin-bottom: 24px; }
+  table { width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.07); }
+  th { background: #1e293b; color: white; text-align: left; padding: 10px 14px; font-size: 0.78rem; font-weight: 600; }
+  td { padding: 10px 14px; font-size: 0.82rem; border-bottom: 1px solid #f1f5f9; vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  .pass { color: #16a34a; font-weight: 600; }
+  .warn { color: #d97706; font-weight: 600; }
+  .summary { display: flex; gap: 16px; margin-top: 20px; }
+  .chip { padding: 6px 14px; border-radius: 20px; font-size: 0.78rem; font-weight: 600; }
+  .chip-green { background: #dcfce7; color: #15803d; }
+  .chip-yellow { background: #fef9c3; color: #92400e; }
+</style>
+</head>
+<body>
+<h1>Code Review Report — F-054 Per-Project Teams Webhook Configuration</h1>
+<p class="meta">Reviewer: Claude Sonnet 4.6 &nbsp;|&nbsp; Date: 2026-07-15 &nbsp;|&nbsp; Branch: feature/F-054-per-project-teams-webhook</p>
+
+<table>
+  <thead>
+    <tr><th>CR#</th><th>Check</th><th>File(s)</th><th>Status</th><th>Notes</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>CR-1</td>
+      <td>Single responsibility — new method focused on webhook only</td>
+      <td>projects.service.ts — setTeamsWebhook</td>
+      <td class="pass">PASS</td>
+      <td>Method does one thing: auth check + DB update.</td>
+    </tr>
+    <tr>
+      <td>CR-2</td>
+      <td>Input validation — DTO uses class-validator decorators</td>
+      <td>project.dto.ts — SetTeamsWebhookDto</td>
+      <td class="pass">PASS</td>
+      <td>@IsUrl with require_protocol+https, @MaxLength(2000), @IsOptional, @ValidateIf on null.</td>
+    </tr>
+    <tr>
+      <td>CR-3</td>
+      <td>RBAC enforced in service layer (not just controller)</td>
+      <td>projects.service.ts</td>
+      <td class="pass">PASS</td>
+      <td>Checks SystemRole then falls back to projectMember.projectRole === PROJECT_MANAGER. Throws ForbiddenException.</td>
+    </tr>
+    <tr>
+      <td>CR-4</td>
+      <td>No N+1 queries — single project lookup in automation service</td>
+      <td>automation.service.ts — getProjectWebhookUrl</td>
+      <td class="pass">PASS</td>
+      <td>Private helper does a single select with only teamsWebhookUrl field. Reused by all notify methods.</td>
+    </tr>
+    <tr>
+      <td>CR-5</td>
+      <td>Fire-and-forget pattern preserved — no breaking change to automation calls</td>
+      <td>automation.service.ts</td>
+      <td class="pass">PASS</td>
+      <td>All notify methods remain void return. DB lookup chained inside existing promise pattern with .catch() logging.</td>
+    </tr>
+    <tr>
+      <td>CR-6</td>
+      <td>Frontend — no prop drilling, state initialised from query cache</td>
+      <td>ProjectDetailPage.tsx</td>
+      <td class="pass">PASS</td>
+      <td>useEffect syncs teamsWebhookInput from project.teamsWebhookUrl. onSuccess updates query cache directly via qc.setQueryData.</td>
+    </tr>
+    <tr>
+      <td>CR-7</td>
+      <td>Prisma select projection — teamsWebhookUrl added to PROJECT_SELECT</td>
+      <td>projects.service.ts</td>
+      <td class="pass">PASS</td>
+      <td>Field now returned by findOne, findAll, update, setStatus, setTeamsWebhook.</td>
+    </tr>
+    <tr>
+      <td>CR-8</td>
+      <td>Existing tests pass after changes</td>
+      <td>projects.service.spec.ts</td>
+      <td class="pass">PASS</td>
+      <td>7/7 tests pass. TypeScript: 0 errors (backend + frontend).</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="summary">
+  <span class="chip chip-green">8 / 8 PASS</span>
+  <span class="chip chip-yellow">0 WARNINGS</span>
+</div>
+</body>
+</html>

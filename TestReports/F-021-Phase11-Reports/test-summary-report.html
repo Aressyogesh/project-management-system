@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Test Summary — F-021 Phase 11 Complete Reports</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f8fafc; margin: 0; padding: 24px; color: #1e293b; }
+  .container { max-width: 960px; margin: 0 auto; }
+  h1 { font-size: 1.5rem; font-weight: 700; margin-bottom: 4px; }
+  .meta { color: #64748b; font-size: 0.875rem; margin-bottom: 24px; }
+  .summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+  .card { background: #fff; border-radius: 12px; padding: 20px; text-align: center; border: 1px solid #e2e8f0; }
+  .card .num { font-size: 2rem; font-weight: 800; }
+  .card .label { font-size: 0.75rem; color: #64748b; margin-top: 4px; }
+  .green { color: #10b981; } .red { color: #ef4444; } .blue { color: #3b82f6; } .gray { color: #94a3b8; }
+  table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 12px; overflow: hidden; border: 1px solid #e2e8f0; font-size: 0.875rem; }
+  thead { background: #f1f5f9; }
+  th { padding: 10px 16px; text-align: left; font-size: 0.75rem; font-weight: 600; color: #475569; text-transform: uppercase; letter-spacing: 0.05em; }
+  td { padding: 10px 16px; border-top: 1px solid #f1f5f9; }
+  .pass { display: inline-block; background: #d1fae5; color: #065f46; font-size: 0.7rem; font-weight: 700; padding: 2px 8px; border-radius: 999px; }
+  .fail { display: inline-block; background: #fee2e2; color: #991b1b; font-size: 0.7rem; font-weight: 700; padding: 2px 8px; border-radius: 999px; }
+  .section-title { font-weight: 600; font-size: 1rem; margin: 24px 0 10px; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>Test Summary Report — F-021</h1>
+  <p class="meta">Feature: Phase 11 Complete — Task Allocation, Timesheet &amp; Export Reports &nbsp;|&nbsp; Date: 2026-05-28 &nbsp;|&nbsp; Framework: Vitest + React Testing Library</p>
+
+  <div class="summary-grid">
+    <div class="card"><div class="num green">31</div><div class="label">Total Tests</div></div>
+    <div class="card"><div class="num green">31</div><div class="label">Passed</div></div>
+    <div class="card"><div class="num red">0</div><div class="label">Failed</div></div>
+    <div class="card"><div class="num blue">100%</div><div class="label">Pass Rate</div></div>
+  </div>
+
+  <div class="section-title">F-020 Tests (carried forward — 16 tests)</div>
+  <table>
+    <thead><tr><th>ID</th><th>Title</th><th>Suite</th><th>Result</th></tr></thead>
+    <tbody>
+      <tr><td>UTC-F020-FE-001</td><td>Renders Reports page heading for ADMIN</td><td>ReportsPage render</td><td><span class="pass">PASS</span></td></tr>
+      <tr><td>UTC-F020-FE-002</td><td>Renders all 4 tab buttons</td><td>ReportsPage tabs</td><td><span class="pass">PASS</span></td></tr>
+      <tr><td>UTC-F020-FE-003</td><td>Team Productivity tab active by default</td><td>ReportsPage tabs</td><td><span class="pass">PASS</span></td></tr>
+      <tr><td>UTC-F020-FE-004</td><td>Clicking KPI Appraisal tab shows KPI content</td><td>ReportsPage tabs</td><td><span class="pass">PASS</span></td></tr>
+      <tr><td>UTC-F020-FE-005</td><td>Clicking Project Summary tab shows project content</td><td>ReportsPage tabs</td><td><span class="pass">PASS</span></td></tr>
+      <tr><td>UTC-F020-FE-006</td><td>Clicking Bug Summary tab shows bug content</td><td>ReportsPage tabs</td><td><span class="pass">PASS</span></td></tr>
+      <tr><td>UTC-F020-FE-007</td><td>STATIC_PRODUCTIVITY_DATA has 14 entries</td><td>Static data — productivity</td><td><span class="pass">PASS</span></td></tr>
+      <tr><td>UTC-F020-FE-008</td><td>Hemant Atre is highest productivity scorer</td><td>Static data — productivity</td><td><span class="pass">PASS</span></td></tr>
+      <tr><td>UTC-F020-FE-009</td><td>Jayvant Bagul is lowest productivity scorer</td><td>Static data — productivity</td><td><span class="pass">PASS</span></td></tr>
+      <tr><td>UTC-F020-FE-010</td><td>STATIC_PROJECT_DATA has 3 projects</td><td>Static data — projects</td><td><span class="pass">PASS</span></td></tr>
+      <tr><td>UTC-F020-FE-011</td><td>SalesForce Integration project is Completed</td><td>Static data — projects</td><td><span class="pass">PASS</span></td></tr>
+      <tr><td>UTC-F020-FE-012</td><td>Total bug count sums to 40</td><td>Static data — bugs</td><td><span class="pass">PASS</span></td></tr>
+      <tr><td>UTC-F020-FE-013</td><td>Shows Hemant Atre in productivity table</td><td>ReportsPage render — team productivity</td><td><span class="pass">PASS</span></td></tr>
+      <tr><td>UTC-F020-FE-014</td><td>KPI tab shows Yogesh Lolage</td><td>ReportsPage — KPI tab</td><td><span class="pass">PASS</span></td></tr>
+      <tr><td>UTC-F020-FE-015</td><td>Announcements widget renders</td><td>AnnouncementsWidget</td><td><span class="pass">PASS</span></td></tr>
+      <tr><td>UTC-F020-FE-016</td><td>Employee sees personal summary card</td><td>ReportsPage — EMPLOYEE role</td><td><span class="pass">PASS</span></td></tr>
+    </tbody>
+  </table>
+
+  <div class="section-title">F-021 Tests (15 new tests)</div>
+  <table>
+    <thead><tr><th>ID</th><th>Title</th><th>Suite</th><th>Result</th></tr></thead>
+    <tbody>
+      <tr><td>UTC-F021-FE-001</td><td>Renders all 6 tab buttons after F-021</td><td>ReportsPage tabs — F-021</td><td><span class="pass">PASS</span></td></tr>
+      <tr><td>UTC-F021-FE-002</td><td>Clicking Task Allocation tab shows allocation content</td><td>Task Allocation &amp; Timesheet tabs</td><td><span class="pass">PASS</span></td></tr>
+      <tr><td>UTC-F021-FE-003</td><td>Clicking Timesheet tab shows timesheet content</td><td>Task Allocation &amp; Timesheet tabs</td><td><span class="pass">PASS</span></td></tr>
+      <tr><td>UTC-F021-FE-004</td><td>STATIC_ALLOCATION_DATA has 14 entries</td><td>Static data — allocation</td><td><span class="pass">PASS</span></td></tr>
+      <tr><td>UTC-F021-FE-005</td><td>Hemant Atre has highest allocation hours</td><td>Static data — allocation</td><td><span class="pass">PASS</span></td></tr>
+      <tr><td>UTC-F021-FE-006</td><td>Jayvant Bagul has lowest allocation hours</td><td>Static data — allocation</td><td><span class="pass">PASS</span></td></tr>
+      <tr><td>UTC-F021-FE-007</td><td>STATIC_TIMESHEET_DATA has 14 entries</td><td>Static data — timesheet</td><td><span class="pass">PASS</span></td></tr>
+      <tr><td>UTC-F021-FE-008</td><td>Total timesheet hours sums correctly (1562)</td><td>Static data — timesheet</td><td><span class="pass">PASS</span></td></tr>
+      <tr><td>UTC-F021-FE-009</td><td>Approved timesheet count is 8</td><td>Static data — timesheet</td><td><span class="pass">PASS</span></td></tr>
+      <tr><td>UTC-F021-FE-010</td><td>Shows Hemant Atre in allocation table</td><td>Rendered allocation &amp; timesheet data</td><td><span class="pass">PASS</span></td></tr>
+      <tr><td>UTC-F021-FE-011</td><td>Shows Yogesh Lolage in timesheet table</td><td>Rendered allocation &amp; timesheet data</td><td><span class="pass">PASS</span></td></tr>
+      <tr><td>UTC-F021-FE-012</td><td>Export CSV button present on Task Allocation tab</td><td>CSV Export buttons</td><td><span class="pass">PASS</span></td></tr>
+      <tr><td>UTC-F021-FE-013</td><td>Export CSV button present on Timesheet tab</td><td>CSV Export buttons</td><td><span class="pass">PASS</span></td></tr>
+      <tr><td>UTC-F021-FE-014</td><td>Employee sees personal allocation summary</td><td>EMPLOYEE allocation view</td><td><span class="pass">PASS</span></td></tr>
+      <tr><td>UTC-F021-FE-015</td><td>Total allocated hours across all users is 1600</td><td>Static data — allocation totals</td><td><span class="pass">PASS</span></td></tr>
+    </tbody>
+  </table>
+</div>
+</body>
+</html>

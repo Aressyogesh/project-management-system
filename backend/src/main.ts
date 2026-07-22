@@ -1,10 +1,31 @@
 import { ValidationPipe } from '@nestjs/common';
 import { NestFactory, Reflector } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import * as express from 'express';
+import { mkdirSync } from 'fs';
+import helmet from 'helmet';
+import { join } from 'path';
 import { AppModule } from './app.module';
 
 async function bootstrap(): Promise<void> {
+  const uploadsBase = process.env.UPLOAD_DEST ?? join(process.cwd(), 'uploads');
+  mkdirSync(join(uploadsBase, 'avatars'), { recursive: true });
+  mkdirSync(join(uploadsBase, 'images'), { recursive: true });
+
   const app = await NestFactory.create(AppModule);
+
+  app.use(helmet({ contentSecurityPolicy: false, crossOriginResourcePolicy: { policy: 'cross-origin' } }));
+  app.use(express.json({
+    limit: '20mb',
+    verify: (req: unknown, _res: unknown, buf: Buffer) => { (req as Record<string, unknown>)['rawBody'] = buf; },
+  }));
+  app.use(express.urlencoded({ limit: '20mb', extended: true }));
+  // Evidence files under /uploads/upskill are served only via the authenticated
+  // GET /upskill/assignments/:id/evidence endpoint — block raw static access.
+  app.use('/uploads/upskill', (_req: express.Request, res: express.Response) => {
+    res.status(403).json({ statusCode: 403, message: 'Forbidden' });
+  });
+  app.use('/uploads', express.static(uploadsBase));
 
   app.setGlobalPrefix('api/v1');
 
