@@ -136,7 +136,6 @@ export class AnalyticsService {
     // ── Phase 1: parallel fetch ─────────────────────────────────────────────────
     const [
       allAssignedItems,
-      bugItems,
       manualScores,
       leaveRequests,
       lateComingLogs,
@@ -152,16 +151,6 @@ export class AnalyticsService {
           projectId: { in: activeProjectIds },
         },
         select: { id: true, status: true, completedAt: true, inReviewAt: true, dueDate: true, reopenCount: true, qaReopenCount: true, type: true, storyPoints: true, estimatedHours: true },
-      }),
-      // Bug items the developer is responsible for (defect leakage)
-      this.prisma.workItem.findMany({
-        where: {
-          responsibleUserId: userId,
-          type: WorkItemType.BUG,
-          createdAt: { gte: start, lt: end },
-          projectId: { in: activeProjectIds },
-        },
-        select: { id: true, bugClassification: true },
       }),
       // PM-entered manual KPI scores
       this.prisma.kpiRecord.findMany({
@@ -204,12 +193,6 @@ export class AnalyticsService {
     // All metrics use allAssignedItems regardless of sprint existence.
     const allAssignedItemIds = allAssignedItems.map((i) => i.id);
 
-    const codeReviewBugIds = bugItems
-      .filter((b) => b.bugClassification === BugClassification.CODE_REVIEW)
-      .map((b) => b.id);
-    const functionalBugIds = bugItems
-      .filter((b) => b.bugClassification !== null && b.bugClassification !== BugClassification.CODE_REVIEW)
-      .map((b) => b.id);
     // Rework = items dragged specifically from IN_QA → IN_PROGRESS (same definition as Internal Rework Ratio)
     const reworkItemIds = allAssignedItems.filter((i) => i.qaReopenCount > 0).map((i) => i.id);
 
@@ -224,20 +207,35 @@ export class AnalyticsService {
         },
         _sum: { hours: true },
       }),
-      // Hours logged on CODE_REVIEW bugs
-      codeReviewBugIds.length > 0
-        ? this.prisma.timesheetEntry.aggregate({
-            where: { userId, workItemId: { in: codeReviewBugIds } },
-            _sum: { hours: true },
-          })
-        : Promise.resolve({ _sum: { hours: 0 } }),
-      // Hours logged on functional (non-CODE_REVIEW) bugs
-      functionalBugIds.length > 0
-        ? this.prisma.timesheetEntry.aggregate({
-            where: { userId, workItemId: { in: functionalBugIds } },
-            _sum: { hours: true },
-          })
-        : Promise.resolve({ _sum: { hours: 0 } }),
+      // Hours this developer logged on CODE_REVIEW bugs — regardless of assignment field
+      this.prisma.timesheetEntry.aggregate({
+        where: {
+          userId,
+          date: { gte: start, lt: end },
+          workItem: {
+            type: WorkItemType.BUG,
+            bugClassification: BugClassification.CODE_REVIEW,
+            projectId: { in: activeProjectIds },
+          },
+        },
+        _sum: { hours: true },
+      }),
+      // Hours this developer logged on functional (non-CODE_REVIEW) bugs
+      this.prisma.timesheetEntry.aggregate({
+        where: {
+          userId,
+          date: { gte: start, lt: end },
+          workItem: {
+            type: WorkItemType.BUG,
+            AND: [
+              { bugClassification: { not: null } },
+              { bugClassification: { not: BugClassification.CODE_REVIEW } },
+            ],
+            projectId: { in: activeProjectIds },
+          },
+        },
+        _sum: { hours: true },
+      }),
       // Hours logged on reopened/rework items
       reworkItemIds.length > 0
         ? this.prisma.timesheetEntry.aggregate({
