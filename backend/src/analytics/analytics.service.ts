@@ -274,8 +274,15 @@ export class AnalyticsService {
     const dtBase = allAssignedItems.filter(
       (i) => i.type !== WorkItemType.EPIC && i.status !== BoardStatus.BLOCKED,
     );
+    // Compare calendar dates only — dueDate is a DATE (midnight UTC) but inReviewAt is a
+    // full timestamp. A card moved to IN_REVIEW at 3 PM IST on the due date is on time,
+    // but the raw timestamp comparison would wrongly fail (09:30Z > 00:00Z).
+    const toDateOnly = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
     const onTimeItems = dtBase.filter(
-      (i) => i.inReviewAt !== null && i.dueDate !== null && i.inReviewAt <= i.dueDate,
+      (i) =>
+        i.inReviewAt !== null &&
+        i.dueDate !== null &&
+        toDateOnly(i.inReviewAt) <= toDateOnly(i.dueDate),
     );
     const deliveryTimeliness = ratio10(onTimeItems.length, dtBase.length);
 
@@ -1110,20 +1117,26 @@ export class AnalyticsService {
           if (isCurrentMonth &&
               (userPlannedLeaves.has(dayNum) || userUnplannedLeaves.has(dayNum)) &&
               !userHalfDayLeaves.has(dayNum)) {
-            const wouldAllocate = Math.min(remaining, dailyCap);
-            thisWiLeaveSkips.set(dayNum, Math.round(((thisWiLeaveSkips.get(dayNum) ?? 0) + wouldAllocate) * 100) / 100);
+            const alreadyOnLeaveDay = userWorkItemEstHrs.get(dayNum) ?? 0;
+            const leaveRoom = Math.max(0, dailyCap - alreadyOnLeaveDay);
+            const wouldAllocate = Math.min(remaining, leaveRoom);
+            if (wouldAllocate > 0) {
+              thisWiLeaveSkips.set(dayNum, Math.round(((thisWiLeaveSkips.get(dayNum) ?? 0) + wouldAllocate) * 100) / 100);
+            }
             continue;
           }
 
-          const allocatedForDay = Math.min(remaining, dailyCap);
+          // Respect capacity already consumed by earlier work items on this day.
+          // This ensures hours spill to the next day rather than stacking above the cap.
+          const alreadyOnDay = userWorkItemEstHrs.get(dayNum) ?? 0;
+          const dayRoom = Math.max(0, dailyCap - alreadyOnDay);
+          const allocatedForDay = Math.min(remaining, dayRoom);
           remaining = Math.round((remaining - allocatedForDay) * 100) / 100;
 
-          if (isCurrentMonth) {
+          if (isCurrentMonth && allocatedForDay > 0) {
             userWorkDays.add(dayNum);
-            if (allocatedForDay > 0) {
-              const prev = userWorkItemEstHrs.get(dayNum) ?? 0;
-              userWorkItemEstHrs.set(dayNum, Math.round((prev + allocatedForDay) * 100) / 100);
-            }
+            const prev = userWorkItemEstHrs.get(dayNum) ?? 0;
+            userWorkItemEstHrs.set(dayNum, Math.round((prev + allocatedForDay) * 100) / 100);
           }
         }
 

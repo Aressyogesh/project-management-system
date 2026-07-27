@@ -159,6 +159,43 @@ describe('AnalyticsService — KPI computation', () => {
     expect(metric.points).toBe(10);
   });
 
+  it('Delivery Timeliness: inReviewAt same calendar day as dueDate but later in the day counts as on time', async () => {
+    // dueDate stored as midnight UTC (DATE type); inReviewAt is a full timestamp later that same day.
+    // E.g., developer moves card at 3 PM IST (09:30 UTC) and dueDate is midnight UTC of the same date.
+    const dueDate = new Date('2026-07-15T00:00:00.000Z');   // midnight UTC — how PostgreSQL DATE is returned
+    const inReviewAt = new Date('2026-07-15T09:30:00.000Z'); // 3 PM IST same calendar day
+    setupUserKpiMocks({
+      allItems: [
+        wi(BoardStatus.QA_DONE, { inReviewAt, dueDate }),
+        wi(BoardStatus.CLOSED,   { inReviewAt, dueDate }),
+      ],
+    });
+    const [result] = await service.getKpi('2026-05', 'user-1', true);
+    const metric = result.metrics.find((m) => m.metricId === 'delivery_timeliness')!;
+    // Both cards moved to IN_REVIEW on the due date calendar day — should be 10
+    expect(metric.points).toBe(10);
+  });
+
+  it('Delivery Timeliness: UAT scenario — 7 cards, 1 blocked, all non-blocked on time = 10', async () => {
+    const dueDate = new Date('2026-07-15T00:00:00.000Z');
+    const inReviewAt = new Date('2026-07-15T06:00:00.000Z'); // same day, IST afternoon
+    setupUserKpiMocks({
+      allItems: [
+        wi(BoardStatus.IN_QA,    { inReviewAt, dueDate }),
+        wi(BoardStatus.QA_DONE,  { inReviewAt, dueDate }),
+        wi(BoardStatus.CLOSED,   { inReviewAt, dueDate }),
+        wi(BoardStatus.CLOSED,   { inReviewAt, dueDate }),
+        wi(BoardStatus.CLOSED,   { inReviewAt, dueDate }),
+        wi(BoardStatus.CLOSED,   { inReviewAt, dueDate }),
+        wi(BoardStatus.BLOCKED),                             // excluded from denominator
+      ],
+    });
+    const [result] = await service.getKpi('2026-05', 'user-1', true);
+    const metric = result.metrics.find((m) => m.metricId === 'delivery_timeliness')!;
+    // 6 eligible (7 - 1 BLOCKED), all 6 on time → 10.0
+    expect(metric.points).toBe(10);
+  });
+
   // ── Estimation Accuracy ───────────────────────────────────────────────────────
 
   it('Estimation Accuracy: ≤15% variance returns 10', async () => {
@@ -179,6 +216,43 @@ describe('AnalyticsService — KPI computation', () => {
     const [result] = await service.getKpi('2026-05', 'user-1', true);
     const metric = result.metrics.find((m) => m.metricId === 'estimation_accuracy')!;
     expect(metric.points).toBe(0);
+  });
+
+  // ── Throughput & Complexity ───────────────────────────────────────────────────
+
+  it('Throughput: BLOCKED items excluded from denominator (UAT scenario)', async () => {
+    // 7 cards: Closed=2, QA Done=1, IN_QA=1, Ready for QA=1, In Review=1, Blocked=1
+    // Denominator should be 6 (7 - 1 BLOCKED), so throughput = 2/6 * 10 = 3.3
+    setupUserKpiMocks({
+      allItems: [
+        wi(BoardStatus.CLOSED),
+        wi(BoardStatus.CLOSED),
+        wi(BoardStatus.QA_DONE),
+        wi(BoardStatus.IN_QA),
+        wi(BoardStatus.READY_FOR_QA),
+        wi(BoardStatus.IN_REVIEW),
+        wi(BoardStatus.BLOCKED),
+      ],
+    });
+    const [result] = await service.getKpi('2026-05', 'user-1', true);
+    const metric = result.metrics.find((m) => m.metricId === 'throughput_complexity')!;
+    expect(metric.points).toBe(3.3);
+  });
+
+  it('Throughput: EPIC items excluded from denominator', async () => {
+    // 4 cards: Closed=2, In Progress=1, Epic=1; denominator=3 (4-1 EPIC)
+    setupUserKpiMocks({
+      allItems: [
+        wi(BoardStatus.CLOSED),
+        wi(BoardStatus.CLOSED),
+        wi(BoardStatus.IN_PROGRESS),
+        wi(BoardStatus.IN_PROGRESS, { type: WorkItemType.EPIC }),
+      ],
+    });
+    const [result] = await service.getKpi('2026-05', 'user-1', true);
+    const metric = result.metrics.find((m) => m.metricId === 'throughput_complexity')!;
+    // 2 CLOSED / 3 eligible (4 total - 1 EPIC) * 10 = 6.7
+    expect(metric.points).toBe(6.7);
   });
 
   // ── Rework Ratio ─────────────────────────────────────────────────────────────
