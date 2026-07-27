@@ -73,7 +73,6 @@ describe('AnalyticsService — KPI computation', () => {
 
   function setupUserKpiMocks({
     allItems = [],
-    bugItems = [],
     manualScores = [],
     leaveRequests = [],
     lateComingLogs = [],
@@ -83,7 +82,6 @@ describe('AnalyticsService — KPI computation', () => {
     deliveryHours = 0,
   }: {
     allItems?: ReturnType<typeof wi>[];
-    bugItems?: { id: string; bugClassification: string | null }[];
     manualScores?: { metricId: string; points: number }[];
     leaveRequests?: { isPlanned: boolean; startDate: Date; endDate: Date; isHalfDay: boolean }[];
     lateComingLogs?: { minutesLate: number }[];
@@ -95,10 +93,8 @@ describe('AnalyticsService — KPI computation', () => {
     (prisma.user.findMany as jest.Mock).mockResolvedValue([mockUser]);
     (prisma.project.findMany as jest.Mock).mockResolvedValue([{ id: 'active-project-1' }]);
 
-    // Phase 1: workItem.findMany called twice — allAssignedItems first, then bugItems
-    (prisma.workItem.findMany as jest.Mock)
-      .mockResolvedValueOnce(allItems)
-      .mockResolvedValueOnce(bugItems);
+    // Phase 1: workItem.findMany called once — allAssignedItems only (bugItems removed, now via timesheetEntry relation filter)
+    (prisma.workItem.findMany as jest.Mock).mockResolvedValue(allItems);
 
     (prisma.kpiRecord.findMany as jest.Mock).mockResolvedValue(manualScores);
     (prisma.leaveRequest.findMany as jest.Mock).mockResolvedValue(leaveRequests);
@@ -109,8 +105,12 @@ describe('AnalyticsService — KPI computation', () => {
       .mockResolvedValueOnce(upskillApproved)
       .mockResolvedValueOnce(upskillRejected);
 
-    // Phase 1: total working hours aggregate (call 1)
-    // Phase 2: timesheet hours on assigned items (call 2), then conditional bug/rework aggregates
+    // timesheetEntry.aggregate call order:
+    //   1. Phase 1: total working hours
+    //   2. Phase 2: timesheetSum (hours on assigned items)
+    //   3. Phase 2: codeReviewHoursAgg
+    //   4. Phase 2: functionalBugHoursAgg
+    //   5. Phase 2: reworkHoursAgg (conditional — only if rework items exist)
     (prisma.timesheetEntry.aggregate as jest.Mock)
       .mockResolvedValueOnce({ _sum: { hours: totalHours } })
       .mockResolvedValue({ _sum: { hours: deliveryHours } });
@@ -159,6 +159,43 @@ describe('AnalyticsService — KPI computation', () => {
     expect(metric.points).toBe(10);
   });
 
+  it('Delivery Timeliness: inReviewAt same calendar day as dueDate but later in the day counts as on time', async () => {
+    // dueDate stored as midnight UTC (DATE type); inReviewAt is a full timestamp later that same day.
+    // E.g., developer moves card at 3 PM IST (09:30 UTC) and dueDate is midnight UTC of the same date.
+    const dueDate = new Date('2026-07-15T00:00:00.000Z');   // midnight UTC — how PostgreSQL DATE is returned
+    const inReviewAt = new Date('2026-07-15T09:30:00.000Z'); // 3 PM IST same calendar day
+    setupUserKpiMocks({
+      allItems: [
+        wi(BoardStatus.QA_DONE, { inReviewAt, dueDate }),
+        wi(BoardStatus.CLOSED,   { inReviewAt, dueDate }),
+      ],
+    });
+    const [result] = await service.getKpi('2026-05', 'user-1', true);
+    const metric = result.metrics.find((m) => m.metricId === 'delivery_timeliness')!;
+    // Both cards moved to IN_REVIEW on the due date calendar day — should be 10
+    expect(metric.points).toBe(10);
+  });
+
+  it('Delivery Timeliness: UAT scenario — 7 cards, 1 blocked, all non-blocked on time = 10', async () => {
+    const dueDate = new Date('2026-07-15T00:00:00.000Z');
+    const inReviewAt = new Date('2026-07-15T06:00:00.000Z'); // same day, IST afternoon
+    setupUserKpiMocks({
+      allItems: [
+        wi(BoardStatus.IN_QA,    { inReviewAt, dueDate }),
+        wi(BoardStatus.QA_DONE,  { inReviewAt, dueDate }),
+        wi(BoardStatus.CLOSED,   { inReviewAt, dueDate }),
+        wi(BoardStatus.CLOSED,   { inReviewAt, dueDate }),
+        wi(BoardStatus.CLOSED,   { inReviewAt, dueDate }),
+        wi(BoardStatus.CLOSED,   { inReviewAt, dueDate }),
+        wi(BoardStatus.BLOCKED),                             // excluded from denominator
+      ],
+    });
+    const [result] = await service.getKpi('2026-05', 'user-1', true);
+    const metric = result.metrics.find((m) => m.metricId === 'delivery_timeliness')!;
+    // 6 eligible (7 - 1 BLOCKED), all 6 on time → 10.0
+    expect(metric.points).toBe(10);
+  });
+
   // ── Estimation Accuracy ───────────────────────────────────────────────────────
 
   it('Estimation Accuracy: ≤15% variance returns 10', async () => {
@@ -181,6 +218,43 @@ describe('AnalyticsService — KPI computation', () => {
     expect(metric.points).toBe(0);
   });
 
+  // ── Throughput & Complexity ───────────────────────────────────────────────────
+
+  it('Throughput: BLOCKED items excluded from denominator (UAT scenario)', async () => {
+    // 7 cards: Closed=2, QA Done=1, IN_QA=1, Ready for QA=1, In Review=1, Blocked=1
+    // Denominator should be 6 (7 - 1 BLOCKED), so throughput = 2/6 * 10 = 3.3
+    setupUserKpiMocks({
+      allItems: [
+        wi(BoardStatus.CLOSED),
+        wi(BoardStatus.CLOSED),
+        wi(BoardStatus.QA_DONE),
+        wi(BoardStatus.IN_QA),
+        wi(BoardStatus.READY_FOR_QA),
+        wi(BoardStatus.IN_REVIEW),
+        wi(BoardStatus.BLOCKED),
+      ],
+    });
+    const [result] = await service.getKpi('2026-05', 'user-1', true);
+    const metric = result.metrics.find((m) => m.metricId === 'throughput_complexity')!;
+    expect(metric.points).toBe(3.3);
+  });
+
+  it('Throughput: EPIC items excluded from denominator', async () => {
+    // 4 cards: Closed=2, In Progress=1, Epic=1; denominator=3 (4-1 EPIC)
+    setupUserKpiMocks({
+      allItems: [
+        wi(BoardStatus.CLOSED),
+        wi(BoardStatus.CLOSED),
+        wi(BoardStatus.IN_PROGRESS),
+        wi(BoardStatus.IN_PROGRESS, { type: WorkItemType.EPIC }),
+      ],
+    });
+    const [result] = await service.getKpi('2026-05', 'user-1', true);
+    const metric = result.metrics.find((m) => m.metricId === 'throughput_complexity')!;
+    // 2 CLOSED / 3 eligible (4 total - 1 EPIC) * 10 = 6.7
+    expect(metric.points).toBe(6.7);
+  });
+
   // ── Rework Ratio ─────────────────────────────────────────────────────────────
 
   it('Rework Ratio: zero IN_QA reopens returns 5', async () => {
@@ -195,14 +269,14 @@ describe('AnalyticsService — KPI computation', () => {
   // ── Defect Leakage ────────────────────────────────────────────────────────────
 
   it('Technical Defect Leakage: zero code-review bugs returns 10', async () => {
-    setupUserKpiMocks({ allItems: [wi(BoardStatus.QA_DONE)], bugItems: [] });
+    setupUserKpiMocks({ allItems: [wi(BoardStatus.QA_DONE)] });
     const [result] = await service.getKpi('2026-05', 'user-1', true);
     const metric = result.metrics.find((m) => m.metricId === 'technical_defect_leakage')!;
     expect(metric.points).toBe(10);
   });
 
   it('Functional Defect Leakage: zero functional bugs returns 10', async () => {
-    setupUserKpiMocks({ allItems: [wi(BoardStatus.QA_DONE)], bugItems: [] });
+    setupUserKpiMocks({ allItems: [wi(BoardStatus.QA_DONE)] });
     const [result] = await service.getKpi('2026-05', 'user-1', true);
     const metric = result.metrics.find((m) => m.metricId === 'functional_defect_leakage')!;
     expect(metric.points).toBe(10);

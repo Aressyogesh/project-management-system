@@ -136,7 +136,6 @@ export class AnalyticsService {
     // ── Phase 1: parallel fetch ─────────────────────────────────────────────────
     const [
       allAssignedItems,
-      bugItems,
       manualScores,
       leaveRequests,
       lateComingLogs,
@@ -152,16 +151,6 @@ export class AnalyticsService {
           projectId: { in: activeProjectIds },
         },
         select: { id: true, status: true, completedAt: true, inReviewAt: true, dueDate: true, reopenCount: true, qaReopenCount: true, type: true, storyPoints: true, estimatedHours: true },
-      }),
-      // Bug items the developer is responsible for (defect leakage)
-      this.prisma.workItem.findMany({
-        where: {
-          responsibleUserId: userId,
-          type: WorkItemType.BUG,
-          createdAt: { gte: start, lt: end },
-          projectId: { in: activeProjectIds },
-        },
-        select: { id: true, bugClassification: true },
       }),
       // PM-entered manual KPI scores
       this.prisma.kpiRecord.findMany({
@@ -204,12 +193,6 @@ export class AnalyticsService {
     // All metrics use allAssignedItems regardless of sprint existence.
     const allAssignedItemIds = allAssignedItems.map((i) => i.id);
 
-    const codeReviewBugIds = bugItems
-      .filter((b) => b.bugClassification === BugClassification.CODE_REVIEW)
-      .map((b) => b.id);
-    const functionalBugIds = bugItems
-      .filter((b) => b.bugClassification !== null && b.bugClassification !== BugClassification.CODE_REVIEW)
-      .map((b) => b.id);
     // Rework = items dragged specifically from IN_QA → IN_PROGRESS (same definition as Internal Rework Ratio)
     const reworkItemIds = allAssignedItems.filter((i) => i.qaReopenCount > 0).map((i) => i.id);
 
@@ -224,20 +207,35 @@ export class AnalyticsService {
         },
         _sum: { hours: true },
       }),
-      // Hours logged on CODE_REVIEW bugs
-      codeReviewBugIds.length > 0
-        ? this.prisma.timesheetEntry.aggregate({
-            where: { userId, workItemId: { in: codeReviewBugIds } },
-            _sum: { hours: true },
-          })
-        : Promise.resolve({ _sum: { hours: 0 } }),
-      // Hours logged on functional (non-CODE_REVIEW) bugs
-      functionalBugIds.length > 0
-        ? this.prisma.timesheetEntry.aggregate({
-            where: { userId, workItemId: { in: functionalBugIds } },
-            _sum: { hours: true },
-          })
-        : Promise.resolve({ _sum: { hours: 0 } }),
+      // Hours this developer logged on CODE_REVIEW bugs — regardless of assignment field
+      this.prisma.timesheetEntry.aggregate({
+        where: {
+          userId,
+          date: { gte: start, lt: end },
+          workItem: {
+            type: WorkItemType.BUG,
+            bugClassification: BugClassification.CODE_REVIEW,
+            projectId: { in: activeProjectIds },
+          },
+        },
+        _sum: { hours: true },
+      }),
+      // Hours this developer logged on functional (non-CODE_REVIEW) bugs
+      this.prisma.timesheetEntry.aggregate({
+        where: {
+          userId,
+          date: { gte: start, lt: end },
+          workItem: {
+            type: WorkItemType.BUG,
+            AND: [
+              { bugClassification: { not: null } },
+              { bugClassification: { not: BugClassification.CODE_REVIEW } },
+            ],
+            projectId: { in: activeProjectIds },
+          },
+        },
+        _sum: { hours: true },
+      }),
       // Hours logged on reopened/rework items
       reworkItemIds.length > 0
         ? this.prisma.timesheetEntry.aggregate({
@@ -274,8 +272,15 @@ export class AnalyticsService {
     const dtBase = allAssignedItems.filter(
       (i) => i.type !== WorkItemType.EPIC && i.status !== BoardStatus.BLOCKED,
     );
+    // Compare calendar dates only — dueDate is a DATE (midnight UTC) but inReviewAt is a
+    // full timestamp. A card moved to IN_REVIEW at 3 PM IST on the due date is on time,
+    // but the raw timestamp comparison would wrongly fail (09:30Z > 00:00Z).
+    const toDateOnly = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
     const onTimeItems = dtBase.filter(
-      (i) => i.inReviewAt !== null && i.dueDate !== null && i.inReviewAt <= i.dueDate,
+      (i) =>
+        i.inReviewAt !== null &&
+        i.dueDate !== null &&
+        toDateOnly(i.inReviewAt) <= toDateOnly(i.dueDate),
     );
     const deliveryTimeliness = ratio10(onTimeItems.length, dtBase.length);
 
@@ -966,7 +971,10 @@ export class AnalyticsService {
             projectMembers: {
               ...(filterProjectId ? { where: { projectId: filterProjectId } } : {}),
               select: { projectRole: true, billing: true, engagement: true, engagementHours: true },
-              take: 1,
+              // Single-project filter: only the relevant membership matters.
+              // All-projects view: fetch all memberships to compute the correct
+              // combined daily cap (e.g. HALF_DAY on two projects = 8h, not 8.5h).
+              ...(filterProjectId ? { take: 1 } : {}),
             },
           },
           orderBy: { fullName: 'asc' },
@@ -1066,12 +1074,27 @@ export class AnalyticsService {
       const engagement      = member?.engagement ?? MemberEngagement.FULL_DAY;
       const engagementHoursVal = member?.engagementHours ?? null;
 
-      // Daily capacity cap used for work-item fill-to-capacity distribution
-      const dailyCap = isBillable
-        ? engagement === MemberEngagement.FULL_DAY ? 8.5
-          : engagement === MemberEngagement.HALF_DAY ? 4
-          : (engagementHoursVal ?? 4)
-        : 8.5;
+      // Daily capacity cap used for work-item fill-to-capacity distribution.
+      // Single-project view: use that project's engagement setting.
+      // All-projects view: sum each membership's commitment and cap at 8.5h so a
+      // developer who is HALF_DAY on two projects (4h + 4h = 8h) is not treated as
+      // full-day available.
+      let dailyCap: number;
+      if (isBillable) {
+        dailyCap = engagement === MemberEngagement.FULL_DAY ? 8.5
+                 : engagement === MemberEngagement.HALF_DAY ? 4
+                 : (engagementHoursVal ?? 4);
+      } else if (!filterProjectId && user.projectMembers.length > 0) {
+        const totalCommitted = user.projectMembers.reduce((sum, m) => {
+          const h = m.engagement === MemberEngagement.FULL_DAY ? 8.5
+                  : m.engagement === MemberEngagement.HALF_DAY ? 4
+                  : (m.engagementHours ?? 4);
+          return sum + h;
+        }, 0);
+        dailyCap = Math.min(totalCommitted, 8.5);
+      } else {
+        dailyCap = 8.5;
+      }
 
       // Resolve leave sets up front so the distribution loop can skip leave days
       const userPlannedLeaves   = plannedLeaveMap.get(user.id)   ?? new Set<number>();
@@ -1110,20 +1133,26 @@ export class AnalyticsService {
           if (isCurrentMonth &&
               (userPlannedLeaves.has(dayNum) || userUnplannedLeaves.has(dayNum)) &&
               !userHalfDayLeaves.has(dayNum)) {
-            const wouldAllocate = Math.min(remaining, dailyCap);
-            thisWiLeaveSkips.set(dayNum, Math.round(((thisWiLeaveSkips.get(dayNum) ?? 0) + wouldAllocate) * 100) / 100);
+            const alreadyOnLeaveDay = userWorkItemEstHrs.get(dayNum) ?? 0;
+            const leaveRoom = Math.max(0, dailyCap - alreadyOnLeaveDay);
+            const wouldAllocate = Math.min(remaining, leaveRoom);
+            if (wouldAllocate > 0) {
+              thisWiLeaveSkips.set(dayNum, Math.round(((thisWiLeaveSkips.get(dayNum) ?? 0) + wouldAllocate) * 100) / 100);
+            }
             continue;
           }
 
-          const allocatedForDay = Math.min(remaining, dailyCap);
+          // Respect capacity already consumed by earlier work items on this day.
+          // This ensures hours spill to the next day rather than stacking above the cap.
+          const alreadyOnDay = userWorkItemEstHrs.get(dayNum) ?? 0;
+          const dayRoom = Math.max(0, dailyCap - alreadyOnDay);
+          const allocatedForDay = Math.min(remaining, dayRoom);
           remaining = Math.round((remaining - allocatedForDay) * 100) / 100;
 
-          if (isCurrentMonth) {
+          if (isCurrentMonth && allocatedForDay > 0) {
             userWorkDays.add(dayNum);
-            if (allocatedForDay > 0) {
-              const prev = userWorkItemEstHrs.get(dayNum) ?? 0;
-              userWorkItemEstHrs.set(dayNum, Math.round((prev + allocatedForDay) * 100) / 100);
-            }
+            const prev = userWorkItemEstHrs.get(dayNum) ?? 0;
+            userWorkItemEstHrs.set(dayNum, Math.round((prev + allocatedForDay) * 100) / 100);
           }
         }
 

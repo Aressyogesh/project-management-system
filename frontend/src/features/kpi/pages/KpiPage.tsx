@@ -663,8 +663,24 @@ export function KpiPage() {
 
   const projectEmployees = useMemo(() => {
     if (!selectedProjectId) return employees;
-    return employees.filter((e) => projectMemberIds.includes(e.userId));
-  }, [employees, selectedProjectId, projectMemberIds]);
+    const withData = employees.filter((e) => projectMemberIds.includes(e.userId));
+    const withDataIds = new Set(withData.map((e) => e.userId));
+    const noDataMembers = projectMembers
+      .filter((m) => !withDataIds.has(m.user.id))
+      .map((m) =>
+        transformLiveKpi({
+          userId: m.user.id,
+          name: m.user.fullName,
+          role: m.projectRole,
+          department: m.user.department?.name ?? '',
+          period: effectiveMonths[0] ?? '',
+          metrics: [],
+          totalScore: 0,
+          hasNoActivity: true,
+        }),
+      );
+    return [...withData, ...noDataMembers];
+  }, [employees, selectedProjectId, projectMemberIds, projectMembers, effectiveMonths]);
 
   const filteredEmployees = useMemo(() => {
     if (!searchQuery) return projectEmployees;

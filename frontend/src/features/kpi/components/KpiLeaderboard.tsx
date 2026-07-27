@@ -14,7 +14,7 @@ const RANK_STYLES = [
 ];
 
 export function KpiLeaderboard({ employees }: Props) {
-  const top5 = [...employees].sort((a, b) => b.totalScore - a.totalScore).slice(0, 5);
+  const top5 = [...employees].filter((e) => !e.hasNoActivity && e.totalScore > 0).sort((a, b) => b.totalScore - a.totalScore).slice(0, 5);
 
   return (
     <div className="bg-white rounded-2xl border border-[#cccccc] p-5 shadow-sm">

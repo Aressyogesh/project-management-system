@@ -359,9 +359,9 @@ export function ListView({ columns, onCardClick, onDelete, canReassign, members 
 
                   {/* Title */}
                   <td className="px-4 py-3 max-w-0">
-                    <p className="text-sm font-medium text-gray-800 truncate">{item.title}</p>
+                    <p className="text-sm font-medium text-gray-800 truncate" title={item.title}>{item.title}</p>
                     {item.parent && (
-                      <p className="text-[10px] text-gray-400 mt-0.5 truncate">↳ {item.parent.title}</p>
+                      <p className="text-[10px] text-gray-400 mt-0.5 truncate" title={item.parent.title}>↳ {item.parent.title}</p>
                     )}
                   </td>
 

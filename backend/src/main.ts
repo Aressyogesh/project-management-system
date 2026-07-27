@@ -2,7 +2,7 @@ import { ValidationPipe } from '@nestjs/common';
 import { NestFactory, Reflector } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import * as express from 'express';
-import { mkdirSync } from 'fs';
+import { existsSync, mkdirSync, readFileSync } from 'fs';
 import helmet from 'helmet';
 import { join } from 'path';
 import { AppModule } from './app.module';
@@ -12,7 +12,14 @@ async function bootstrap(): Promise<void> {
   mkdirSync(join(uploadsBase, 'avatars'), { recursive: true });
   mkdirSync(join(uploadsBase, 'images'), { recursive: true });
 
-  const app = await NestFactory.create(AppModule);
+  const keyPath = process.env.SSL_KEY_PATH;
+  const certPath = process.env.SSL_CERT_PATH;
+  const httpsOptions =
+    keyPath && certPath && existsSync(keyPath) && existsSync(certPath)
+      ? { key: readFileSync(keyPath), cert: readFileSync(certPath) }
+      : undefined;
+
+  const app = await NestFactory.create(AppModule, { httpsOptions });
 
   app.use(helmet({ contentSecurityPolicy: false, crossOriginResourcePolicy: { policy: 'cross-origin' } }));
   app.use(express.json({
@@ -53,9 +60,10 @@ async function bootstrap(): Promise<void> {
   SwaggerModule.setup('api', app, document);
 
   const port = process.env.PORT ?? 3000;
+  const protocol = httpsOptions ? 'https' : 'http';
   await app.listen(port);
-  console.log(`PMS API running on http://localhost:${port}`);
-  console.log(`Swagger docs at http://localhost:${port}/api`);
+  console.log(`PMS API running on ${protocol}://localhost:${port}`);
+  console.log(`Swagger docs at ${protocol}://localhost:${port}/api`);
 }
 
 bootstrap();
