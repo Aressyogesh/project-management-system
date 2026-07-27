@@ -238,7 +238,7 @@ jobs:
         run: |
           npm install -g serve 2>$null; $true
           $serveMain = "$(npm root -g)/serve/build/main.js" -replace '\\','/'
-          $cfg = "module.exports={apps:[{name:'pms-prod-frontend',script:'$serveMain',args:'-s D:/PMS/pms-prod-frontend -l 5174',cwd:'D:/PMS'}]};"
+          $cfg = "module.exports={apps:[{name:'pms-prod-frontend',script:'$serveMain',args:'-s D:/PMS/pms-prod-frontend -l 5174 --ssl-cert D:/PMS/certs/cert.pem --ssl-key D:/PMS/certs/key.pem',cwd:'D:/PMS'}]};"
           $cfg | Out-File -FilePath "D:/PMS/pms-prod-frontend.config.js" -Encoding ASCII
           pm2 delete pms-prod-frontend 2>$null | Out-Null; $true
           pm2 start "D:/PMS/pms-prod-frontend.config.js" | Out-Null
