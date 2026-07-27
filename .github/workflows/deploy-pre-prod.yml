@@ -98,7 +98,9 @@ jobs:
             "AP_CRITICAL_BUG_WEBHOOK_ID=$env:AP_CRITICAL_BUG_WEBHOOK_ID",
             "AP_BUG_REOPENED_WEBHOOK_ID=$env:AP_BUG_REOPENED_WEBHOOK_ID",
             "AP_ITEM_BLOCKED_WEBHOOK_ID=$env:AP_ITEM_BLOCKED_WEBHOOK_ID",
-            "GITHUB_WEBHOOK_SECRET=$env:GITHUB_WEBHOOK_SECRET"
+            "GITHUB_WEBHOOK_SECRET=$env:GITHUB_WEBHOOK_SECRET",
+            "SSL_KEY_PATH=D:\PMS\certs\key.pem",
+            "SSL_CERT_PATH=D:\PMS\certs\cert.pem"
           ) | Out-File -FilePath ".env" -Encoding UTF8
         shell: pwsh
         env:
@@ -173,7 +175,7 @@ jobs:
           $ready = $false
           while ((Get-Date) -lt $deadline) {
             try {
-              $r = Invoke-WebRequest -Uri "http://localhost:3002/api/v1/health" -UseBasicParsing -TimeoutSec 3 -ErrorAction Stop
+              $r = Invoke-WebRequest -Uri "https://localhost:3002/api/v1/health" -UseBasicParsing -TimeoutSec 3 -SkipCertificateCheck -ErrorAction Stop
               $body = $r.Content | ConvertFrom-Json
               if ($r.StatusCode -eq 200 -and $body.status -eq 'ok') { $ready = $true; break }
             } catch {}
@@ -241,7 +243,7 @@ jobs:
           $delay = 5
           for ($i = 1; $i -le $maxAttempts; $i++) {
             try {
-              $response = Invoke-WebRequest -Uri "http://localhost:3002/api/v1/health" -UseBasicParsing -TimeoutSec 10
+              $response = Invoke-WebRequest -Uri "https://localhost:3002/api/v1/health" -UseBasicParsing -TimeoutSec 10 -SkipCertificateCheck
               $body = $response.Content | ConvertFrom-Json
               if ($response.StatusCode -eq 200 -and $body.status -eq 'ok') {
                 Write-Host "Health check passed on attempt $i"
