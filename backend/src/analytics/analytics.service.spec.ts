@@ -73,7 +73,6 @@ describe('AnalyticsService — KPI computation', () => {
 
   function setupUserKpiMocks({
     allItems = [],
-    bugItems = [],
     manualScores = [],
     leaveRequests = [],
     lateComingLogs = [],
@@ -83,7 +82,6 @@ describe('AnalyticsService — KPI computation', () => {
     deliveryHours = 0,
   }: {
     allItems?: ReturnType<typeof wi>[];
-    bugItems?: { id: string; bugClassification: string | null }[];
     manualScores?: { metricId: string; points: number }[];
     leaveRequests?: { isPlanned: boolean; startDate: Date; endDate: Date; isHalfDay: boolean }[];
     lateComingLogs?: { minutesLate: number }[];
@@ -95,10 +93,8 @@ describe('AnalyticsService — KPI computation', () => {
     (prisma.user.findMany as jest.Mock).mockResolvedValue([mockUser]);
     (prisma.project.findMany as jest.Mock).mockResolvedValue([{ id: 'active-project-1' }]);
 
-    // Phase 1: workItem.findMany called twice — allAssignedItems first, then bugItems
-    (prisma.workItem.findMany as jest.Mock)
-      .mockResolvedValueOnce(allItems)
-      .mockResolvedValueOnce(bugItems);
+    // Phase 1: workItem.findMany called once — allAssignedItems only (bugItems removed, now via timesheetEntry relation filter)
+    (prisma.workItem.findMany as jest.Mock).mockResolvedValue(allItems);
 
     (prisma.kpiRecord.findMany as jest.Mock).mockResolvedValue(manualScores);
     (prisma.leaveRequest.findMany as jest.Mock).mockResolvedValue(leaveRequests);
@@ -109,8 +105,12 @@ describe('AnalyticsService — KPI computation', () => {
       .mockResolvedValueOnce(upskillApproved)
       .mockResolvedValueOnce(upskillRejected);
 
-    // Phase 1: total working hours aggregate (call 1)
-    // Phase 2: timesheet hours on assigned items (call 2), then conditional bug/rework aggregates
+    // timesheetEntry.aggregate call order:
+    //   1. Phase 1: total working hours
+    //   2. Phase 2: timesheetSum (hours on assigned items)
+    //   3. Phase 2: codeReviewHoursAgg
+    //   4. Phase 2: functionalBugHoursAgg
+    //   5. Phase 2: reworkHoursAgg (conditional — only if rework items exist)
     (prisma.timesheetEntry.aggregate as jest.Mock)
       .mockResolvedValueOnce({ _sum: { hours: totalHours } })
       .mockResolvedValue({ _sum: { hours: deliveryHours } });
@@ -269,14 +269,14 @@ describe('AnalyticsService — KPI computation', () => {
   // ── Defect Leakage ────────────────────────────────────────────────────────────
 
   it('Technical Defect Leakage: zero code-review bugs returns 10', async () => {
-    setupUserKpiMocks({ allItems: [wi(BoardStatus.QA_DONE)], bugItems: [] });
+    setupUserKpiMocks({ allItems: [wi(BoardStatus.QA_DONE)] });
     const [result] = await service.getKpi('2026-05', 'user-1', true);
     const metric = result.metrics.find((m) => m.metricId === 'technical_defect_leakage')!;
     expect(metric.points).toBe(10);
   });
 
   it('Functional Defect Leakage: zero functional bugs returns 10', async () => {
-    setupUserKpiMocks({ allItems: [wi(BoardStatus.QA_DONE)], bugItems: [] });
+    setupUserKpiMocks({ allItems: [wi(BoardStatus.QA_DONE)] });
     const [result] = await service.getKpi('2026-05', 'user-1', true);
     const metric = result.metrics.find((m) => m.metricId === 'functional_defect_leakage')!;
     expect(metric.points).toBe(10);
