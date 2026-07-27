@@ -53,6 +53,9 @@ export const boardApi = {
   logTime: (workItemId: string, data: { date: string; hours: number; description?: string }): Promise<TimesheetEntry> =>
     apiClient.post(`/work-items/${workItemId}/timesheet-entries`, data).then((r) => r.data),
 
+  updateTimesheetEntry: (entryId: string, data: { description: string }): Promise<void> =>
+    apiClient.patch(`/timesheet-entries/${entryId}`, data).then(() => undefined),
+
   deleteTimesheetEntry: (entryId: string): Promise<void> =>
     apiClient.delete(`/timesheet-entries/${entryId}`).then(() => undefined),
 

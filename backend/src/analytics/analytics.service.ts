@@ -973,7 +973,10 @@ export class AnalyticsService {
             projectMembers: {
               ...(filterProjectId ? { where: { projectId: filterProjectId } } : {}),
               select: { projectRole: true, billing: true, engagement: true, engagementHours: true },
-              take: 1,
+              // Single-project filter: only the relevant membership matters.
+              // All-projects view: fetch all memberships to compute the correct
+              // combined daily cap (e.g. HALF_DAY on two projects = 8h, not 8.5h).
+              ...(filterProjectId ? { take: 1 } : {}),
             },
           },
           orderBy: { fullName: 'asc' },
@@ -1073,12 +1076,27 @@ export class AnalyticsService {
       const engagement      = member?.engagement ?? MemberEngagement.FULL_DAY;
       const engagementHoursVal = member?.engagementHours ?? null;
 
-      // Daily capacity cap used for work-item fill-to-capacity distribution
-      const dailyCap = isBillable
-        ? engagement === MemberEngagement.FULL_DAY ? 8.5
-          : engagement === MemberEngagement.HALF_DAY ? 4
-          : (engagementHoursVal ?? 4)
-        : 8.5;
+      // Daily capacity cap used for work-item fill-to-capacity distribution.
+      // Single-project view: use that project's engagement setting.
+      // All-projects view: sum each membership's commitment and cap at 8.5h so a
+      // developer who is HALF_DAY on two projects (4h + 4h = 8h) is not treated as
+      // full-day available.
+      let dailyCap: number;
+      if (isBillable) {
+        dailyCap = engagement === MemberEngagement.FULL_DAY ? 8.5
+                 : engagement === MemberEngagement.HALF_DAY ? 4
+                 : (engagementHoursVal ?? 4);
+      } else if (!filterProjectId && user.projectMembers.length > 0) {
+        const totalCommitted = user.projectMembers.reduce((sum, m) => {
+          const h = m.engagement === MemberEngagement.FULL_DAY ? 8.5
+                  : m.engagement === MemberEngagement.HALF_DAY ? 4
+                  : (m.engagementHours ?? 4);
+          return sum + h;
+        }, 0);
+        dailyCap = Math.min(totalCommitted, 8.5);
+      } else {
+        dailyCap = 8.5;
+      }
 
       // Resolve leave sets up front so the distribution loop can skip leave days
       const userPlannedLeaves   = plannedLeaveMap.get(user.id)   ?? new Set<number>();

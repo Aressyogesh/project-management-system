@@ -625,6 +625,18 @@ export function WorkItemModal({ item, sprints, members, milestones, canDelete = 
     },
   });
 
+  const [editingEntryId, setEditingEntryId] = useState<string | null>(null);
+  const [editingDesc, setEditingDesc] = useState('');
+
+  const updateEntryMut = useMutation({
+    mutationFn: ({ entryId, description }: { entryId: string; description: string }) =>
+      boardApi.updateTimesheetEntry(entryId, { description }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['workItem', item!.id] });
+      setEditingEntryId(null);
+    },
+  });
+
   const addCommentMut = useMutation({
     mutationFn: ({ content, mentions }: { content: string; mentions: string[] }) =>
       boardApi.addComment(item!.id, content, mentions),
@@ -1314,22 +1326,70 @@ export function WorkItemModal({ item, sprints, members, milestones, canDelete = 
                     )}
                     {!isPlaceholderData && (detail.timesheetEntries ?? []).length > 0 && (
                       <div className="space-y-1.5">
-                        {(detail.timesheetEntries ?? []).filter(e => !!e.id).map((entry) => (
-                          <div key={entry.id} className="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2">
-                            <div>
-                              <p className="text-xs font-medium text-gray-800">{fmtDate(entry.date)} · <span className="text-emerald-600">{entry.hours}h</span></p>
-                              {entry.description && <p className="text-xs text-gray-600 mt-0.5">{entry.description}</p>}
-                              <p className="text-[10px] text-gray-400">{entry.user?.fullName}</p>
+                        {(detail.timesheetEntries ?? []).filter(e => !!e.id).map((entry) => {
+                          const isOwn = entry.userId === user?.id;
+                          const isEditing = editingEntryId === entry.id;
+                          return (
+                            <div key={entry.id} className="bg-gray-50 rounded-lg px-3 py-2">
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-xs font-medium text-gray-800">{fmtDate(entry.date)} · <span className="text-emerald-600">{entry.hours}h</span></p>
+                                  {!isEditing && entry.description && (
+                                    <p className="text-xs text-gray-600 mt-0.5">{entry.description}</p>
+                                  )}
+                                  <p className="text-[10px] text-gray-400 mt-0.5">{entry.user?.fullName}</p>
+                                </div>
+                                {isOwn && (
+                                  <div className="flex items-center gap-1.5 shrink-0">
+                                    {!isEditing && (
+                                      <button
+                                        onClick={() => { setEditingEntryId(entry.id); setEditingDesc(entry.description ?? ''); }}
+                                        className="text-gray-400 hover:text-primary-600 transition"
+                                        title="Edit description"
+                                      >
+                                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                        </svg>
+                                      </button>
+                                    )}
+                                    <button onClick={() => deleteEntryMut.mutate(entry.id)} className="text-gray-400 hover:text-red-500 transition">
+                                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                      </svg>
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                              {isEditing && (
+                                <div className="mt-2 space-y-1.5">
+                                  <textarea
+                                    value={editingDesc}
+                                    onChange={(e) => setEditingDesc(e.target.value)}
+                                    rows={2}
+                                    maxLength={1000}
+                                    className="input-sm w-full text-xs resize-none"
+                                    autoFocus
+                                  />
+                                  <div className="flex gap-2">
+                                    <button
+                                      onClick={() => updateEntryMut.mutate({ entryId: entry.id, description: editingDesc.trim() })}
+                                      disabled={!editingDesc.trim() || updateEntryMut.isPending}
+                                      className="text-[11px] font-medium px-2.5 py-1 rounded-md bg-primary-600 text-white hover:bg-primary-700 disabled:opacity-50 transition"
+                                    >
+                                      {updateEntryMut.isPending ? 'Saving…' : 'Save'}
+                                    </button>
+                                    <button
+                                      onClick={() => setEditingEntryId(null)}
+                                      className="text-[11px] font-medium px-2.5 py-1 rounded-md bg-gray-200 text-gray-600 hover:bg-gray-300 transition"
+                                    >
+                                      Cancel
+                                    </button>
+                                  </div>
+                                </div>
+                              )}
                             </div>
-                            {(entry.userId === user?.id || user?.systemRole !== 'EMPLOYEE') && (
-                              <button onClick={() => deleteEntryMut.mutate(entry.id)} className="text-gray-400 hover:text-red-500">
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                </svg>
-                              </button>
-                            )}
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     )}
                   </div>
@@ -2605,6 +2665,20 @@ export function CreateWorkItemModal({
             </div>
           </div>
 
+          {/* Steps to Reproduce — shown immediately after Description for bugs */}
+          {type === 'BUG' && (
+            <div>
+              <label className={labelCls}>Steps to Reproduce</label>
+              <textarea
+                value={stepsToRepro}
+                onChange={(e) => setStepsToRepro(e.target.value)}
+                rows={6}
+                placeholder={'1. Go to…\n2. Click…\n3. Observe…'}
+                className={`${inputCls} resize-none`}
+              />
+            </div>
+          )}
+
           {/* Attachments */}
           <div>
             <label className={labelCls}>Attachments</label>
@@ -2876,16 +2950,6 @@ export function CreateWorkItemModal({
               <div>
                 <label className={labelCls}>Module</label>
                 <input type="text" value={module} onChange={(e) => setModule(e.target.value)} placeholder="e.g. Auth, Dashboard" className={inputCls} />
-              </div>
-              <div>
-                <label className={labelCls}>Steps to Reproduce</label>
-                <textarea
-                  value={stepsToRepro}
-                  onChange={(e) => setStepsToRepro(e.target.value)}
-                  rows={3}
-                  placeholder={'1. Go to…\n2. Click…\n3. Observe…'}
-                  className={`${inputCls} resize-none`}
-                />
               </div>
             </div>
           )}
