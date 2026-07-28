@@ -41,13 +41,13 @@ export function buildCalendarWeeks(year: number, month: number): (Date | null)[]
 
 export function dayColor(totalHours: number): string {
   if (totalHours === 0) return '';
-  if (totalHours >= 8) return 'bg-red-50 border-red-200';
+  if (totalHours >= 8.5) return 'bg-red-50 border-red-200';
   if (totalHours >= 6) return 'bg-yellow-50 border-yellow-200';
   return 'bg-green-50 border-green-200';
 }
 
 export function hoursBarColor(totalHours: number): string {
-  if (totalHours >= 8) return 'bg-red-400';
+  if (totalHours >= 8.5) return 'bg-red-400';
   if (totalHours >= 6) return 'bg-yellow-400';
   return 'bg-green-400';
 }

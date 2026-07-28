@@ -4,7 +4,7 @@ import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
 export class CreateTimesheetEntryDto {
   @ApiProperty() @IsDateString() date: string;
   @ApiProperty() @IsNumber() @Min(0.25) @Max(24) hours: number;
-  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(500) description?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(1000) description?: string;
 }
 
 export class UpdateTimesheetEntryDto extends PartialType(CreateTimesheetEntryDto) {}
