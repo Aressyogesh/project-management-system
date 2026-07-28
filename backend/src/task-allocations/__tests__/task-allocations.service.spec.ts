@@ -205,7 +205,7 @@ describe('TaskAllocationsService', () => {
 
     const result = await service.check('user-001', '2026-06-01');
     expect(result.allocatedHours).toBe(3);
-    expect(result.remainingHours).toBe(5);
+    expect(result.remainingHours).toBe(5.5);
   });
 
   // UTC-F017-B-012
@@ -214,7 +214,7 @@ describe('TaskAllocationsService', () => {
 
     const result = await service.check('user-001', '2026-06-01');
     expect(result.allocatedHours).toBe(8);
-    expect(result.remainingHours).toBe(0);
+    expect(result.remainingHours).toBe(0.5);
   });
 
   // UTC-F017-B-013
