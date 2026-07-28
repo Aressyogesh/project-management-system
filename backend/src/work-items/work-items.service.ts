@@ -423,6 +423,7 @@ export class WorkItemsService implements OnModuleInit {
     const pulledBackFromReviewViaEdit = !!dto.status && item.status === BoardStatus.IN_REVIEW && dto.status === BoardStatus.IN_PROGRESS;
     const isBackwardViaEdit = !!dto.status && dto.status !== item.status &&
       STATUS_ORDER.indexOf(dto.status) < STATUS_ORDER.indexOf(item.status);
+    const isQaReopenViaEdit = !!dto.status && item.status === BoardStatus.IN_QA && dto.status === BoardStatus.IN_PROGRESS;
     const updated = await this.prisma.workItem.update({
       where: { id },
       data: {
@@ -436,6 +437,7 @@ export class WorkItemsService implements OnModuleInit {
         ...(isBackwardViaEdit && { reopenCount: { increment: 1 } }),
         ...(enteringReviewViaEdit && { inReviewAt: new Date() }),
         ...(pulledBackFromReviewViaEdit && { inReviewAt: null }),
+        ...(isQaReopenViaEdit && { qaReopenCount: { increment: 1 } }),
       },
       include: {
         assignee: { select: { id: true, fullName: true, email: true, profilePhoto: true } },

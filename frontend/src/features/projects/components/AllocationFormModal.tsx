@@ -55,8 +55,8 @@ export function AllocationFormModal({ projectId, tasks, members, allocation, onC
     if (!allocation && !taskId) { setError('Please select a task'); return; }
     if (!allocation && !userId) { setError('Please select a team member'); return; }
     const hours = parseFloat(allocatedHours);
-    if (isNaN(hours) || hours < 0.5 || hours > 8) {
-      setError('Allocated hours must be between 0.5 and 8');
+    if (isNaN(hours) || hours < 0.5 || hours > 8.5) {
+      setError('Allocated hours must be between 0.5 and 8.5');
       return;
     }
     mutation.mutate();
@@ -150,12 +150,12 @@ export function AllocationFormModal({ projectId, tasks, members, allocation, onC
               value={allocatedHours}
               onChange={(e) => setAllocatedHours(e.target.value)}
               min="0.5"
-              max="8"
+              max="8.5"
               step="0.5"
               className={inputCls}
               autoFocus={!!allocation}
             />
-            <p className="text-xs text-gray-400 mt-1">Daily cap: 8h per user across all tasks.</p>
+            <p className="text-xs text-gray-400 mt-1">Daily cap: 8.5h per user across all tasks.</p>
           </div>
 
           <div className="flex justify-end gap-3 pt-1">

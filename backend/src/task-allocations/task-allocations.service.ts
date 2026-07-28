@@ -11,7 +11,7 @@ import {
   UpdateTaskAllocationDto,
 } from './dto/task-allocation.dto';
 
-const DAILY_CAP = 8;
+const DAILY_CAP = 8.5;
 
 const ALLOCATION_SELECT = {
   id: true,
