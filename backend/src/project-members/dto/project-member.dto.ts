@@ -1,4 +1,4 @@
-import { IsEnum, IsInt, IsOptional, IsUUID, Max, Min } from 'class-validator';
+import { IsEnum, IsNumber, IsOptional, IsUUID, Max, Min } from 'class-validator';
 import { MemberBilling, MemberEngagement, ProjectRole } from '@prisma/client';
 
 export class AddMemberDto {
@@ -28,8 +28,8 @@ export class UpdateMemberDto {
   engagement?: MemberEngagement;
 
   @IsOptional()
-  @IsInt()
-  @Min(1)
-  @Max(8)
+  @IsNumber({ maxDecimalPlaces: 1 })
+  @Min(0.5)
+  @Max(8.5)
   engagementHours?: number | null;
 }

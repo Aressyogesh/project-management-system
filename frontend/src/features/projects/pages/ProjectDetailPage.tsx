@@ -92,7 +92,7 @@ const ENGAGEMENT_OPTIONS: { value: MemberEngagement; label: string; hours?: numb
   { value: 'PARTIAL', label: 'Partial' },
 ];
 
-const PARTIAL_HOURS = [1, 2, 3, 4, 5, 6, 7, 8] as const;
+const PARTIAL_HOURS = [0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5, 5.5, 6, 6.5, 7, 7.5, 8, 8.5] as const;
 
 function Toast({ message, variant = 'success', onClose }: { message: string; variant?: 'success' | 'error'; onClose: () => void }) {
   return (
