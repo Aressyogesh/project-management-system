@@ -695,12 +695,16 @@ export class WorkItemsService implements OnModuleInit {
     const pulledBackFromReview = item.status === BoardStatus.IN_REVIEW && dto.status === BoardStatus.IN_PROGRESS;
     // qaReopenCount: incremented only for IN_QA → IN_PROGRESS (rework per KPI spec).
     const isQaReopen = item.status === BoardStatus.IN_QA && dto.status === BoardStatus.IN_PROGRESS;
+    // When a QA member picks up the item (→ IN_QA), reassign to them so the
+    // capacity report reflects their workload rather than the original developer's.
+    const enteringInQaByQa = isQa && dto.status === BoardStatus.IN_QA && item.status !== BoardStatus.IN_QA;
 
     const result = await this.prisma.workItem.update({
       where: { id },
       data: {
         status: dto.status,
         position: dto.position ?? 0,
+        ...(enteringInQaByQa && { assigneeId: userId }),
         ...(isCompletingNow && { completedAt: new Date() }),
         ...(isUncompletingNow && { completedAt: null }),
         ...(isBackward && { reopenCount: { increment: 1 } }),

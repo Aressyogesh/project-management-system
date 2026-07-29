@@ -1201,33 +1201,38 @@ export class AnalyticsService {
           }
         } else if (isBillable) {
           if (engagement === MemberEngagement.FULL_DAY) {
-            // Full-day engagement sets the daily cap at 8.5h but does NOT
-            // pre-occupy every day. Color follows actual work item allocation,
-            // same as non-billable, so the PM sees real gaps (red = nothing assigned).
-            if (workItemHours >= 8.5)   { status = 'occupied'; cellHours = workItemHours; }
-            else if (workItemHours > 0) { status = 'partial';  cellHours = workItemHours; }
-            else                        { status = 'available'; cellHours = 0; }
+            // Use the higher of work-item estimated hours or actual timesheet hours.
+            // This ensures past days with logged time show correctly (not red/available)
+            // even when no open work item is assigned, and future days show estimated load.
+            const effectiveHours = Math.max(workItemHours, hours);
+            if (effectiveHours >= 8.5)   { status = 'occupied'; cellHours = effectiveHours; }
+            else if (effectiveHours > 0) { status = 'partial';  cellHours = effectiveHours; }
+            else                         { status = 'available'; cellHours = 0; }
           } else if (engagement === MemberEngagement.HALF_DAY) {
             // Split cell: top half = committed 4h slot, bottom = rest of day.
             // Green top when work fills the slot; amber when slot has no tasks yet.
+            const effectiveHours = Math.max(workItemHours, hours);
             cellIsHalfDay       = true;
             cellRestOfDayStatus = 'available';
-            cellHours           = workItemHours > 0 ? workItemHours : 4;
-            status              = workItemHours >= 4 ? 'occupied' : 'partial';
+            cellHours           = effectiveHours > 0 ? effectiveHours : 4;
+            status              = effectiveHours >= 4 ? 'occupied' : 'partial';
           } else {
             // PARTIAL — split cell, custom engagement hours per day
-            const cap           = engagementHoursVal ?? 4;
+            const cap            = engagementHoursVal ?? 4;
+            const effectiveHours = Math.max(workItemHours, hours);
             cellIsHalfDay       = true;
             cellRestOfDayStatus = 'available';
-            cellHours           = workItemHours > 0 ? workItemHours : cap;
-            status              = workItemHours >= cap ? 'occupied' : 'partial';
+            cellHours           = effectiveHours > 0 ? effectiveHours : cap;
+            status              = effectiveHours >= cap ? 'occupied' : 'partial';
           }
         } else {
-          // Non-billable: current behaviour — work items + timesheets
-          if (hours >= 8.5 || workItemHours >= 8.5) status = 'occupied';
-          else if (hasWorkItem)                     status = 'partial';
-          else                                      status = 'available';
-          cellHours = hours;
+          // Non-billable: show work-item estimated hours when no timesheet logged yet,
+          // so future tasks are visible in the cell (not just a colour with no numbers).
+          const effectiveHours = Math.max(workItemHours, hours);
+          if (effectiveHours >= 8.5 || workItemHours >= 8.5) status = 'occupied';
+          else if (hasWorkItem)                               status = 'partial';
+          else                                               status = 'available';
+          cellHours = effectiveHours;
         }
 
         return {
