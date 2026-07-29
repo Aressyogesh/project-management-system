@@ -984,31 +984,27 @@ export class WorkItemsService implements OnModuleInit {
     const headers = [
       'Title', 'Work Item Type', 'Assignee Email', 'Sprint Name', 'Priority',
       'Story Points', 'Est. Hours', 'Billing Status', 'Start Date', 'Due Date',
-      'Parent ID', 'Labels', 'Release Milestone', 'Description',
+      'Parent ID', 'Release Milestone', 'Description',
     ];
     const sampleRows = [
       [
         'User Authentication Epic', 'EPIC', 'member@yourcompany.com', 'Sprint 1',
-        'HIGH', '20', '40', 'BILLABLE', '07-01-2026', '07-31-2026', '',
-        'auth', '',
+        'HIGH', '20', '', 'BILLABLE', '7/1/2026', '7/31/2026', '', '',
         'Epic covering all user authentication and authorisation work',
       ],
       [
         'User Login Module', 'USER_STORY', 'member@yourcompany.com', 'Sprint 1',
-        'HIGH', '8', '16', 'BILLABLE', '07-01-2026', '07-15-2026', 'User Authentication Epic',
-        'auth,security', '',
+        'HIGH', '8', '', 'BILLABLE', '7/1/2026', '7/15/2026', 'User Authentication Epic', '',
         'As a user, I want to log in securely using email and password',
       ],
       [
         'Create Login API', 'TASK', 'developer@yourcompany.com', 'Sprint 1', 'HIGH', '3', '8',
-        'BILLABLE', '07-01-2026', '07-08-2026', 'User Login Module',
-        'api,backend', '',
+        'BILLABLE', '7/1/2026', '7/8/2026', 'User Login Module', '',
         'Implement POST /auth/login endpoint with JWT token generation',
       ],
       [
         'Login fails with wrong password', 'BUG', 'developer@yourcompany.com', 'Sprint 1', 'HIGH', '', '2',
-        'BILLABLE', '07-08-2026', '07-10-2026', 'User Login Module',
-        'auth,bug', '',
+        'BILLABLE', '7/8/2026', '7/10/2026', 'User Login Module', '',
         'User receives a 500 error instead of 401 when entering an incorrect password',
       ],
     ];
@@ -1016,7 +1012,7 @@ export class WorkItemsService implements OnModuleInit {
     ws['!cols'] = [
       { wch: 35 }, { wch: 18 }, { wch: 28 }, { wch: 15 }, { wch: 12 },
       { wch: 14 }, { wch: 12 }, { wch: 16 }, { wch: 14 }, { wch: 14 },
-      { wch: 12 }, { wch: 20 }, { wch: 22 }, { wch: 50 },
+      { wch: 12 }, { wch: 22 }, { wch: 50 },
     ];
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Work Items');
@@ -1095,10 +1091,10 @@ export class WorkItemsService implements OnModuleInit {
       } else if (!VALID_PRIORITIES.has(priorityRaw)) {
         errors.push('Priority must be LOW, MEDIUM, HIGH, or CRITICAL');
       }
-      if (!estHoursRaw) errors.push('Est. Hours is required');
+      if (!estHoursRaw && (typeRaw === 'TASK' || typeRaw === 'BUG')) errors.push('Est. Hours is required for TASK and BUG');
       if (!billingRaw) errors.push('Billing Status is required (BILLABLE or NON_BILLABLE)');
-      if (!startDateRaw) errors.push('Start Date is required (MM-DD-YYYY)');
-      if (!dueDateRaw) errors.push('Due Date is required (MM-DD-YYYY)');
+      if (!startDateRaw) errors.push('Start Date is required (M/D/YYYY, e.g. 7/29/2026)');
+      if (!dueDateRaw) errors.push('Due Date is required (M/D/YYYY, e.g. 7/29/2026)');
       if (!description) errors.push('Description is required');
       // Parent ID is optional — USER_STORY/TASK may exist without a parent
 
@@ -1185,17 +1181,17 @@ export class WorkItemsService implements OnModuleInit {
 
       let startDate: Date | undefined;
       if (startDateRaw) {
-        const [mm, dd, yyyy] = startDateRaw.split('-').map(Number);
+        const [mm, dd, yyyy] = startDateRaw.split('/').map(Number);
         const d = new Date(yyyy, mm - 1, dd);
-        if (!mm || !dd || !yyyy || isNaN(d.getTime())) errors.push(`Start Date "${startDateRaw}" is not a valid date (use MM-DD-YYYY)`);
+        if (!mm || !dd || !yyyy || isNaN(d.getTime())) errors.push(`Start Date "${startDateRaw}" is not a valid date (use M/D/YYYY, e.g. 7/29/2026)`);
         else startDate = d;
       }
 
       let dueDate: Date | undefined;
       if (dueDateRaw) {
-        const [mm, dd, yyyy] = dueDateRaw.split('-').map(Number);
+        const [mm, dd, yyyy] = dueDateRaw.split('/').map(Number);
         const d = new Date(yyyy, mm - 1, dd);
-        if (!mm || !dd || !yyyy || isNaN(d.getTime())) errors.push(`Due Date "${dueDateRaw}" is not a valid date (use MM-DD-YYYY)`);
+        if (!mm || !dd || !yyyy || isNaN(d.getTime())) errors.push(`Due Date "${dueDateRaw}" is not a valid date (use M/D/YYYY, e.g. 7/29/2026)`);
         else dueDate = d;
       }
 
