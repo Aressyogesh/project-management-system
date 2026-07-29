@@ -372,9 +372,15 @@ export class WorkItemsService implements OnModuleInit {
       throw new ForbiddenException('You can only edit items assigned to or reported by you');
     }
 
-    // Status changes: only the assignee or PM (not TL, not reporter-only)
+    // Status changes: only the assignee, PM, or QA (for QA-column transitions)
     if (dto.status !== undefined && dto.status !== item.status) {
-      if (!isAdmin && !isPm && item.assigneeId !== userId) {
+      const isQa = userProjectRole === ProjectRole.QA;
+      const isQaSourceStatus = (
+        item.status === BoardStatus.READY_FOR_QA ||
+        item.status === BoardStatus.IN_QA ||
+        item.status === BoardStatus.QA_DONE
+      );
+      if (!isAdmin && !isPm && !(isQa && isQaSourceStatus) && item.assigneeId !== userId) {
         throw new ForbiddenException('Only the assigned team member or Project Manager can change the status');
       }
     }
@@ -663,7 +669,13 @@ export class WorkItemsService implements OnModuleInit {
 
     const isAdmin = userSystemRole === SystemRole.SUPER_USER || userSystemRole === SystemRole.ADMIN;
     const isPm = userProjectRole === ProjectRole.PROJECT_MANAGER;
-    if (!isAdmin && !isPm && item.assigneeId !== userId) {
+    const isQa = userProjectRole === ProjectRole.QA;
+    const isQaSourceStatus = (
+      item.status === BoardStatus.READY_FOR_QA ||
+      item.status === BoardStatus.IN_QA ||
+      item.status === BoardStatus.QA_DONE
+    );
+    if (!isAdmin && !isPm && !(isQa && isQaSourceStatus) && item.assigneeId !== userId) {
       throw new ForbiddenException('Only the assigned team member or Project Manager can change the status');
     }
 
