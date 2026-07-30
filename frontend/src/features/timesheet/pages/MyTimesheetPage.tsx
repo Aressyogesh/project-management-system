@@ -115,11 +115,21 @@ export function MyTimesheetPage() {
   const from = `${year}-${String(month).padStart(2, '0')}-01`;
   const to   = `${year}-${String(month).padStart(2, '0')}-${String(new Date(year, month, 0).getDate()).padStart(2, '0')}`;
 
-  const { data: allProjects = [] } = useQuery({
+  const { data: adminProjects = [] } = useQuery({
     queryKey: ['projects'],
     queryFn: () => projectsApi.list(),
+    enabled: isAdminOrSuper,
   });
-  const projects = allProjects.filter((p) => p.status !== 'ARCHIVE');
+
+  const { data: myProjects = [] } = useQuery({
+    queryKey: ['my-projects'],
+    queryFn: analyticsApi.getMyProjects,
+    enabled: !isAdminOrSuper,
+  });
+
+  const projects = isAdminOrSuper
+    ? adminProjects.filter((p) => p.status !== 'ARCHIVE')
+    : myProjects;
 
   const { data: members = [] } = useQuery({
     queryKey: ['project-members', selectedProjectId],
