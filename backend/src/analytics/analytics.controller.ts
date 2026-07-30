@@ -90,6 +90,11 @@ export class AnalyticsController {
     return this.analyticsService.getAllocationReport(period, projectId, req.user.id, isAdmin);
   }
 
+  @Get('my-projects')
+  getMyProjects(@Request() req: { user: AuthUser }) {
+    return this.analyticsService.getMyProjects(req.user.id);
+  }
+
   @Get('my-project-role')
   async getMyProjectRole(@Request() req: { user: AuthUser }) {
     const isAdmin =

@@ -440,6 +440,7 @@ export class AnalyticsService {
       const managedIds = await this.getManagedProjectIds(requestingUserId);
       if (managedIds.length > 0) {
         activeProjectIds = projectId ? managedIds.filter((id) => id === projectId) : managedIds;
+        if (activeProjectIds.length === 0) return [];
       } else {
         selfOnly = true;
         const memberIds = await this.getMemberProjectIds(requestingUserId);
@@ -541,6 +542,7 @@ export class AnalyticsService {
       const managedIds = await this.getManagedProjectIds(requestingUserId);
       if (managedIds.length > 0) {
         const scoped = projectId ? managedIds.filter((id) => id === projectId) : managedIds;
+        if (scoped.length === 0) return [];
         projectWhere = { status: 'ACTIVE', id: { in: scoped } };
       } else {
         const memberIds = await this.getMemberProjectIds(requestingUserId);
@@ -694,6 +696,7 @@ export class AnalyticsService {
       const managedIds = await this.getManagedProjectIds(requestingUserId);
       if (managedIds.length > 0) {
         activeProjectIds = projectId ? managedIds.filter((id) => id === projectId) : managedIds;
+        if (activeProjectIds.length === 0) return [];
       } else {
         selfOnly = true;
         const memberIds = await this.getMemberProjectIds(requestingUserId);
@@ -754,6 +757,16 @@ export class AnalyticsService {
     return results.sort((a, b) => b.hoursAllocated - a.hoursAllocated);
   }
 
+  async getMyProjects(userId: string): Promise<{ id: string; name: string }[]> {
+    const memberships = await this.prisma.projectMember.findMany({
+      where: { userId },
+      select: { project: { select: { id: true, name: true, status: true } } },
+    });
+    return memberships
+      .filter((m) => m.project.status === 'ACTIVE')
+      .map((m) => ({ id: m.project.id, name: m.project.name }));
+  }
+
   async getManagedProjectIds(userId: string): Promise<string[]> {
     const memberships = await this.prisma.projectMember.findMany({
       where: {
@@ -782,6 +795,7 @@ export class AnalyticsService {
       const managedIds = await this.getManagedProjectIds(requestingUserId);
       if (managedIds.length > 0) {
         activeProjectIds = projectId ? managedIds.filter((id) => id === projectId) : managedIds;
+        if (activeProjectIds.length === 0) return [];
       } else {
         selfOnly = true;
         const memberIds = await this.getMemberProjectIds(requestingUserId);
@@ -842,6 +856,7 @@ export class AnalyticsService {
       const managedIds = await this.getManagedProjectIds(requestingUserId);
       if (managedIds.length > 0) {
         scopedProjectIds = projectId ? managedIds.filter((id) => id === projectId) : managedIds;
+        if (scopedProjectIds.length === 0) return [];
       } else {
         selfOnly = true;
         const memberIds = await this.getMemberProjectIds(requestingUserId);
@@ -941,7 +956,10 @@ export class AnalyticsService {
     if (filterProjectId) {
       if (!isAdmin && requestingUserId) {
         const managedIds = await this.getManagedProjectIds(requestingUserId);
-        scopedProjectIds = managedIds.includes(filterProjectId) ? [filterProjectId] : [];
+        if (!managedIds.includes(filterProjectId)) {
+          return { period, year, month, daysInMonth, days: [], employees: [] };
+        }
+        scopedProjectIds = [filterProjectId];
       } else {
         scopedProjectIds = [filterProjectId];
       }

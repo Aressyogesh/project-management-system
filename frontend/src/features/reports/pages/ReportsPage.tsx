@@ -1559,17 +1559,28 @@ export function ReportsPage() {
   });
   const isManager = isAdmin || (projectRoleData?.isManager ?? false);
 
-  const { data: projectsList = [] } = useQuery({
+  const { data: adminProjectsList = [] } = useQuery({
     queryKey: ['projects-list', 'active'],
     queryFn: () => projectsApi.list({ status: 'ACTIVE' }),
     staleTime: 120_000,
+    enabled: isAdmin,
   });
 
-  // Admin sees "All Projects" option; non-admin must pick one of their assigned projects
+  const { data: myProjectsList = [] } = useQuery({
+    queryKey: ['my-projects'],
+    queryFn: analyticsApi.getMyProjects,
+    staleTime: 120_000,
+    enabled: !isAdmin,
+  });
+
+  // Admin sees all projects + "All Projects" option; non-admin sees only their own projects
   const projectOptions = useMemo(() => {
-    const mapped = (projectsList as { id: string; name: string }[]).map((p) => ({ value: p.id, label: p.name }));
-    return isAdmin ? [{ value: 'all', label: 'All Projects' }, ...mapped] : mapped;
-  }, [projectsList, isAdmin]);
+    if (isAdmin) {
+      const mapped = (adminProjectsList as { id: string; name: string }[]).map((p) => ({ value: p.id, label: p.name }));
+      return [{ value: 'all', label: 'All Projects' }, ...mapped];
+    }
+    return myProjectsList.map((p) => ({ value: p.id, label: p.name }));
+  }, [adminProjectsList, myProjectsList, isAdmin]);
 
   return (
     <div className="space-y-6">
