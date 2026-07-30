@@ -33,7 +33,7 @@ export class MilestonesController {
 
   @Post('projects/:projectId/milestones')
   @UseGuards(ProjectRoleGuard)
-  @ProjectRoles(ProjectRole.PROJECT_MANAGER)
+  @ProjectRoles(ProjectRole.PROJECT_MANAGER, ProjectRole.TEAM_LEAD)
   @ProjectIdFrom('param')
   create(
     @Param('projectId') projectId: string,
@@ -45,7 +45,7 @@ export class MilestonesController {
 
   @Patch('milestones/:id')
   @UseGuards(ProjectRoleGuard)
-  @ProjectRoles(ProjectRole.PROJECT_MANAGER)
+  @ProjectRoles(ProjectRole.PROJECT_MANAGER, ProjectRole.TEAM_LEAD)
   @ProjectIdFrom('milestone')
   update(@Param('id') id: string, @Body() dto: UpdateMilestoneDto, @Request() req: any) {
     return this.service.update(id, dto, req.user.id);
@@ -53,7 +53,7 @@ export class MilestonesController {
 
   @Delete('milestones/:id')
   @UseGuards(ProjectRoleGuard)
-  @ProjectRoles(ProjectRole.PROJECT_MANAGER)
+  @ProjectRoles(ProjectRole.PROJECT_MANAGER, ProjectRole.TEAM_LEAD)
   @ProjectIdFrom('milestone')
   @HttpCode(HttpStatus.NO_CONTENT)
   remove(@Param('id') id: string, @Request() req: any) {
