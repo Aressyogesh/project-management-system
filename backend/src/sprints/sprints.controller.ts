@@ -61,7 +61,7 @@ export class SprintsController {
   @Delete('sprints/:id')
   @HttpCode(HttpStatus.NO_CONTENT)
   @UseGuards(ProjectRoleGuard)
-  @ProjectRoles(ProjectRole.PROJECT_MANAGER)
+  @ProjectRoles(ProjectRole.PROJECT_MANAGER, ProjectRole.TEAM_LEAD)
   @ProjectIdFrom('sprint')
   @ApiOperation({ summary: 'Delete sprint' })
   remove(@Param('id') id: string, @Request() req: any) {

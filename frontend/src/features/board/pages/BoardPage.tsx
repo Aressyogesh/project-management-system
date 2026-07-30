@@ -179,9 +179,9 @@ export function BoardPage() {
 
   const canManageSprints  = isAdminOrSuper || isMgmt;
   const canDeleteWorkItem = isAdminOrSuper || isMgmt;
-  const canChangeBilling  = isAdminOrSuper || myProjectRole === 'PROJECT_MANAGER';
-  const canEditSidebar    = isAdminOrSuper || myProjectRole === 'PROJECT_MANAGER';
-  const canChangeAssignee = isAdminOrSuper || myProjectRole === 'PROJECT_MANAGER';
+  const canChangeBilling  = isAdminOrSuper || isMgmt;
+  const canEditSidebar    = isAdminOrSuper || isMgmt;
+  const canChangeAssignee = isAdminOrSuper || isMgmt;
   const canEditColumns    = isAdminOrSuper || isMgmt;
   const canCreateItem     = isAdminOrSuper || !!myProjectRole;
   const bugOnly           = canCreateItem && !canEditSidebar;

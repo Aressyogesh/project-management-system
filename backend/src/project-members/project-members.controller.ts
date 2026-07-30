@@ -31,7 +31,7 @@ export class ProjectMembersController {
 
   @Post()
   @UseGuards(ProjectRoleGuard)
-  @ProjectRoles(ProjectRole.PROJECT_MANAGER)
+  @ProjectRoles(ProjectRole.PROJECT_MANAGER, ProjectRole.TEAM_LEAD)
   @ProjectIdFrom('param')
   addMember(
     @Param('projectId') projectId: string,
@@ -43,7 +43,7 @@ export class ProjectMembersController {
 
   @Patch(':userId')
   @UseGuards(ProjectRoleGuard)
-  @ProjectRoles(ProjectRole.PROJECT_MANAGER)
+  @ProjectRoles(ProjectRole.PROJECT_MANAGER, ProjectRole.TEAM_LEAD)
   @ProjectIdFrom('param')
   updateMember(
     @Param('projectId') projectId: string,
@@ -56,7 +56,7 @@ export class ProjectMembersController {
 
   @Delete(':userId')
   @UseGuards(ProjectRoleGuard)
-  @ProjectRoles(ProjectRole.PROJECT_MANAGER)
+  @ProjectRoles(ProjectRole.PROJECT_MANAGER, ProjectRole.TEAM_LEAD)
   @ProjectIdFrom('param')
   @HttpCode(HttpStatus.NO_CONTENT)
   removeMember(

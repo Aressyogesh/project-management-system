@@ -156,8 +156,8 @@ export function ProjectDetailPage() {
     enabled: !!projectId,
   });
 
-  const isUserPM = members.some((m) => m.user.id === user?.id && m.projectRole === 'PROJECT_MANAGER');
-  const canEdit = isAdminOrSuper || isUserPM;
+  const isUserPMorTL = members.some((m) => m.user.id === user?.id && (m.projectRole === 'PROJECT_MANAGER' || m.projectRole === 'TEAM_LEAD'));
+  const canEdit = isAdminOrSuper || isUserPMorTL;
 
   const { data: milestones = [], isLoading: milestonesLoading } = useQuery({
     queryKey: ['milestones', projectId],
