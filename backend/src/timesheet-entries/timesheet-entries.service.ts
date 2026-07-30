@@ -124,31 +124,51 @@ export class TimesheetEntriesService {
       isManager = !!pmMembership;
     }
 
-    const canViewAll = isAdmin || isManager;
-
-    // Build where clause
     const where: Record<string, unknown> = {};
 
-    // Non-admin managers can only view team data for projects they belong to.
-    // Without this check a PM on Project A could view Project B's team timesheet.
-    let projectMembershipVerified = isAdmin;
-    if (!isAdmin && isManager && projectId) {
-      const membership = await this.prisma.projectMember.findFirst({
-        where: { userId: requestingUserId, projectId },
-        select: { id: true },
+    if (isAdmin) {
+      // Admins see all entries; optionally filtered by a specific user
+      if (queryUserId) where['userId'] = queryUserId;
+    } else {
+      // Non-admin path: always scope to the projects this user belongs to.
+      // A manager on Project A must NOT see Project B's team data.
+      const membershipRows = await this.prisma.projectMember.findMany({
+        where: { userId: requestingUserId },
+        select: { projectId: true },
       });
-      projectMembershipVerified = !!membership;
-    }
+      const userProjectIds = membershipRows.map((m) => m.projectId);
 
-    const effectiveCanViewAll = canViewAll && (!projectId || projectMembershipVerified);
-
-    // User filter: admins/verified-project-managers can view any user; others only see their own
-    if (effectiveCanViewAll && queryUserId) {
-      where['userId'] = queryUserId;
-    } else if (!effectiveCanViewAll) {
-      where['userId'] = requestingUserId;
+      if (projectId && !userProjectIds.includes(projectId)) {
+        // Requested a project they don't belong to → restrict to own entries only
+        // (create() enforces assignee/reporter, so this will naturally be empty)
+        where['userId'] = requestingUserId;
+      } else if (isManager) {
+        // Manager on one of their own projects (or no specific project selected)
+        if (queryUserId) {
+          where['userId'] = queryUserId;
+        }
+        // No project selected → scope workItems to their member projects so they
+        // don't see entries from projects they have no membership in
+        if (!projectId) {
+          if (userProjectIds.length === 0) {
+            where['userId'] = requestingUserId;
+          } else {
+            const wiRows = await this.prisma.workItem.findMany({
+              where: { projectId: { in: userProjectIds } },
+              select: { id: true },
+            });
+            if (wiRows.length > 0) {
+              where['workItemId'] = { in: wiRows.map((w) => w.id) };
+            } else {
+              where['userId'] = requestingUserId;
+            }
+          }
+        }
+      } else {
+        // Regular employee: own entries only
+        where['userId'] = requestingUserId;
+      }
     }
-    // If effectiveCanViewAll && !queryUserId → no userId filter (see everyone on that project)
 
     // Date range filter
     if (from || to) {
@@ -158,7 +178,9 @@ export class TimesheetEntriesService {
       };
     }
 
-    // Project filter — resolve via explicit workItemId lookup
+    // Project filter — resolve via explicit workItemId lookup.
+    // Only applies when a specific project is selected; the no-project path above
+    // already sets workItemId scoped to member projects.
     if (projectId) {
       const projectWorkItems = await this.prisma.workItem.findMany({
         where: { projectId },
