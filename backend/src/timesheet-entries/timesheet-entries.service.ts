@@ -129,13 +129,26 @@ export class TimesheetEntriesService {
     // Build where clause
     const where: Record<string, unknown> = {};
 
-    // User filter: admins/managers can view any user; others only see their own
-    if (canViewAll && queryUserId) {
+    // Non-admin managers can only view team data for projects they belong to.
+    // Without this check a PM on Project A could view Project B's team timesheet.
+    let projectMembershipVerified = isAdmin;
+    if (!isAdmin && isManager && projectId) {
+      const membership = await this.prisma.projectMember.findFirst({
+        where: { userId: requestingUserId, projectId },
+        select: { id: true },
+      });
+      projectMembershipVerified = !!membership;
+    }
+
+    const effectiveCanViewAll = canViewAll && (!projectId || projectMembershipVerified);
+
+    // User filter: admins/verified-project-managers can view any user; others only see their own
+    if (effectiveCanViewAll && queryUserId) {
       where['userId'] = queryUserId;
-    } else if (!canViewAll) {
+    } else if (!effectiveCanViewAll) {
       where['userId'] = requestingUserId;
     }
-    // If canViewAll && !queryUserId → no userId filter (see everyone)
+    // If effectiveCanViewAll && !queryUserId → no userId filter (see everyone on that project)
 
     // Date range filter
     if (from || to) {
