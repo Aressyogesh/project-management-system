@@ -372,9 +372,15 @@ export class WorkItemsService implements OnModuleInit {
       throw new ForbiddenException('You can only edit items assigned to or reported by you');
     }
 
-    // Status changes: only the assignee or PM (not TL, not reporter-only)
+    // Status changes: only the assignee, PM, or QA (for QA-column transitions)
     if (dto.status !== undefined && dto.status !== item.status) {
-      if (!isAdmin && !isPm && item.assigneeId !== userId) {
+      const isQa = userProjectRole === ProjectRole.QA;
+      const isQaSourceStatus = (
+        item.status === BoardStatus.READY_FOR_QA ||
+        item.status === BoardStatus.IN_QA ||
+        item.status === BoardStatus.QA_DONE
+      );
+      if (!isAdmin && !isPm && !(isQa && isQaSourceStatus) && item.assigneeId !== userId) {
         throw new ForbiddenException('Only the assigned team member or Project Manager can change the status');
       }
     }
@@ -663,7 +669,13 @@ export class WorkItemsService implements OnModuleInit {
 
     const isAdmin = userSystemRole === SystemRole.SUPER_USER || userSystemRole === SystemRole.ADMIN;
     const isPm = userProjectRole === ProjectRole.PROJECT_MANAGER;
-    if (!isAdmin && !isPm && item.assigneeId !== userId) {
+    const isQa = userProjectRole === ProjectRole.QA;
+    const isQaSourceStatus = (
+      item.status === BoardStatus.READY_FOR_QA ||
+      item.status === BoardStatus.IN_QA ||
+      item.status === BoardStatus.QA_DONE
+    );
+    if (!isAdmin && !isPm && !(isQa && isQaSourceStatus) && item.assigneeId !== userId) {
       throw new ForbiddenException('Only the assigned team member or Project Manager can change the status');
     }
 
@@ -683,12 +695,16 @@ export class WorkItemsService implements OnModuleInit {
     const pulledBackFromReview = item.status === BoardStatus.IN_REVIEW && dto.status === BoardStatus.IN_PROGRESS;
     // qaReopenCount: incremented only for IN_QA → IN_PROGRESS (rework per KPI spec).
     const isQaReopen = item.status === BoardStatus.IN_QA && dto.status === BoardStatus.IN_PROGRESS;
+    // When a QA member picks up the item (→ IN_QA), reassign to them so the
+    // capacity report reflects their workload rather than the original developer's.
+    const enteringInQaByQa = isQa && dto.status === BoardStatus.IN_QA && item.status !== BoardStatus.IN_QA;
 
     const result = await this.prisma.workItem.update({
       where: { id },
       data: {
         status: dto.status,
         position: dto.position ?? 0,
+        ...(enteringInQaByQa && { assigneeId: userId }),
         ...(isCompletingNow && { completedAt: new Date() }),
         ...(isUncompletingNow && { completedAt: null }),
         ...(isBackward && { reopenCount: { increment: 1 } }),
@@ -968,30 +984,35 @@ export class WorkItemsService implements OnModuleInit {
     const headers = [
       'Title', 'Work Item Type', 'Assignee Email', 'Sprint Name', 'Priority',
       'Story Points', 'Est. Hours', 'Billing Status', 'Start Date', 'Due Date',
-      'Parent ID', 'Labels', 'Release Milestone', 'Description',
+      'Parent ID', 'Release Milestone', 'Description',
     ];
     const sampleRows = [
       [
-        'User Authentication Module', 'USER_STORY', 'john.doe@company.com', 'Sprint 1',
-        'HIGH', '8', '16', 'BILLABLE', '07-01-2026', '07-15-2026', '', 'auth,security', '',
+        'User Authentication Epic', 'EPIC', 'member@yourcompany.com', 'Sprint 1',
+        'HIGH', '20', '', 'BILLABLE', '7/1/2026', '7/31/2026', '', '',
+        'Epic covering all user authentication and authorisation work',
+      ],
+      [
+        'User Login Module', 'USER_STORY', 'member@yourcompany.com', 'Sprint 1',
+        'HIGH', '8', '', 'BILLABLE', '7/1/2026', '7/15/2026', 'User Authentication Epic', '',
         'As a user, I want to log in securely using email and password',
       ],
       [
-        'Create Login API', 'TASK', 'jane.smith@company.com', 'Sprint 1', 'HIGH', '3', '8',
-        'BILLABLE', '07-01-2026', '07-08-2026', 'MEP10001', 'api,backend', '',
+        'Create Login API', 'TASK', 'developer@yourcompany.com', 'Sprint 1', 'HIGH', '3', '8',
+        'BILLABLE', '7/1/2026', '7/8/2026', 'User Login Module', '',
         'Implement POST /auth/login endpoint with JWT token generation',
       ],
       [
-        'Write Login Unit Tests', 'SUB_TASK', '', 'Sprint 1', 'MEDIUM', '1', '4',
-        'NON_BILLABLE', '07-05-2026', '07-08-2026', 'MEP10002', 'testing', '',
-        'Unit tests for login service and controller',
+        'Login fails with wrong password', 'BUG', 'developer@yourcompany.com', 'Sprint 1', 'HIGH', '', '2',
+        'BILLABLE', '7/8/2026', '7/10/2026', 'User Login Module', '',
+        'User receives a 500 error instead of 401 when entering an incorrect password',
       ],
     ];
     const ws = XLSX.utils.aoa_to_sheet([headers, ...sampleRows]);
     ws['!cols'] = [
       { wch: 35 }, { wch: 18 }, { wch: 28 }, { wch: 15 }, { wch: 12 },
       { wch: 14 }, { wch: 12 }, { wch: 16 }, { wch: 14 }, { wch: 14 },
-      { wch: 12 }, { wch: 20 }, { wch: 22 }, { wch: 50 },
+      { wch: 12 }, { wch: 22 }, { wch: 50 },
     ];
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Work Items');
@@ -1023,9 +1044,16 @@ export class WorkItemsService implements OnModuleInit {
     const sprintByName = new Map(sprints.map((s) => [s.name.toLowerCase(), s.id]));
     const milestoneByDesc = new Map(milestones.filter((m) => m.description).map((m) => [(m.description as string).toLowerCase(), m.id]));
 
-    const VALID_TYPES = new Set(['USER_STORY', 'TASK', 'SUB_TASK']);
+    const VALID_TYPES = new Set(['EPIC', 'USER_STORY', 'TASK', 'BUG']);
     const VALID_PRIORITIES = new Set(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL', '']);
     const VALID_BILLING = new Set(['BILLABLE', 'NON_BILLABLE', '']);
+
+    // Normalize: lowercase + collapse all internal whitespace to a single space
+    const norm = (s: string) => s.toLowerCase().replace(/\s+/g, ' ').trim();
+
+    // Pre-index all row titles and types for within-file parent resolution
+    const rowTitles = rows.map((r) => norm(String(r['Title'] ?? '')));
+    const rowTypes  = rows.map((r) => String(r['Work Item Type'] ?? '').trim().toUpperCase().replace(/\s+/g, '_'));
 
     const parsedItems: (Record<string, any> | null)[] = [];
     const results: ImportRowResult[] = [];
@@ -1035,50 +1063,40 @@ export class WorkItemsService implements OnModuleInit {
       const rowNum = i + 2;
       const errors: string[] = [];
 
-      const title = String(row['Title'] ?? '').trim();
-      const typeRaw = String(row['Work Item Type'] ?? '').trim().toUpperCase().replace(/\s+/g, '_');
+      const title        = String(row['Title'] ?? '').trim();
+      const typeRaw      = String(row['Work Item Type'] ?? '').trim().toUpperCase().replace(/\s+/g, '_');
       const assigneeEmail = String(row['Assignee Email'] ?? '').trim().toLowerCase();
-      const sprintName = String(row['Sprint Name'] ?? '').trim();
-      const priorityRaw = String(row['Priority'] ?? '').trim().toUpperCase();
+      const sprintName   = String(row['Sprint Name'] ?? '').trim();
+      const priorityRaw  = String(row['Priority'] ?? '').trim().toUpperCase();
       const storyPointsRaw = String(row['Story Points'] ?? '').trim();
-      const estHoursRaw = String(row['Est. Hours'] ?? '').trim();
-      const billingRaw = String(row['Billing Status'] ?? '').trim().toUpperCase().replace(/\s+/g, '_');
+      const estHoursRaw  = String(row['Est. Hours'] ?? '').trim();
+      const billingRaw   = String(row['Billing Status'] ?? '').trim().toUpperCase().replace(/\s+/g, '_');
       const startDateRaw = String(row['Start Date'] ?? '').trim();
-      const dueDateRaw = String(row['Due Date'] ?? '').trim();
-      const parentIdRaw = String(row['Parent ID'] ?? '').trim().toUpperCase();
-      const labelsRaw = String(row['Labels'] ?? '').trim();
+      const dueDateRaw   = String(row['Due Date'] ?? '').trim();
+      // Parent ID accepts either an existing display ID (e.g. HOR10001) or the exact Title of an earlier row
+      const parentRef    = String(row['Parent ID'] ?? '').trim();
+      const labelsRaw    = String(row['Labels'] ?? '').trim();
       const milestoneRaw = String(row['Release Milestone'] ?? '').trim().toLowerCase();
-      const description = String(row['Description'] ?? '').trim();
+      const description  = String(row['Description'] ?? '').trim();
 
-      // Required fields
       if (!title) errors.push('Title is required');
-
       if (!typeRaw) {
         errors.push('Work Item Type is required');
       } else if (!VALID_TYPES.has(typeRaw)) {
-        errors.push(`Work Item Type must be USER_STORY, TASK, or SUB_TASK (got: "${row['Work Item Type']}")`);
+        errors.push(`Work Item Type must be EPIC, USER_STORY, TASK, or BUG (got: "${row['Work Item Type']}")`);
       }
-
       if (!assigneeEmail) errors.push('Assignee Email is required');
-
       if (!priorityRaw) {
         errors.push('Priority is required (LOW, MEDIUM, HIGH, CRITICAL)');
       } else if (!VALID_PRIORITIES.has(priorityRaw)) {
         errors.push('Priority must be LOW, MEDIUM, HIGH, or CRITICAL');
       }
-
-      if (!estHoursRaw) errors.push('Est. Hours is required');
-
-      if (!billingRaw) {
-        errors.push('Billing Status is required (BILLABLE or NON_BILLABLE)');
-      }
-
-      if (!startDateRaw) errors.push('Start Date is required (MM-DD-YYYY)');
-      if (!dueDateRaw) errors.push('Due Date is required (MM-DD-YYYY)');
-      if (!parentIdRaw) errors.push('Parent ID is required');
+      if (!estHoursRaw && (typeRaw === 'TASK' || typeRaw === 'BUG')) errors.push('Est. Hours is required for TASK and BUG');
+      if (!billingRaw) errors.push('Billing Status is required (BILLABLE or NON_BILLABLE)');
+      if (!startDateRaw) errors.push('Start Date is required (M/D/YYYY, e.g. 7/29/2026)');
+      if (!dueDateRaw) errors.push('Due Date is required (M/D/YYYY, e.g. 7/29/2026)');
       if (!description) errors.push('Description is required');
-
-      // Sprint Name, Story Points, Labels, Release Milestone are optional
+      // Parent ID is optional — USER_STORY/TASK may exist without a parent
 
       let assigneeId: string | undefined;
       if (assigneeEmail) {
@@ -1094,20 +1112,46 @@ export class WorkItemsService implements OnModuleInit {
         else sprintId = sid;
       }
 
-      let parentId: string | undefined;
-      if (parentIdRaw) {
-        const parent = await this.prisma.workItem.findFirst({
-          where: { projectId, displayId: parentIdRaw },
+      // Parent resolution — try DB display ID first, then within-file title match
+      let parentId: string | undefined;       // UUID (resolved now from DB)
+      let parentRefDeferred: string | undefined; // title ref to resolve at creation time
+
+      if (parentRef) {
+        const dbParent = await this.prisma.workItem.findFirst({
+          where: { projectId, displayId: parentRef.toUpperCase() },
           select: { id: true, type: true },
         });
-        if (!parent) {
-          errors.push(`Parent ID "${parentIdRaw}" not found in this project`);
-        } else {
+
+        if (dbParent) {
           const validParents = VALID_PARENT_TYPES[typeRaw as WorkItemType];
-          if (validParents && !validParents.includes(parent.type)) {
-            errors.push(`${typeRaw} cannot have a ${parent.type} as parent. Valid: ${validParents.join(', ')}`);
+          if (validParents && !validParents.includes(dbParent.type)) {
+            errors.push(`${typeRaw} cannot have a ${dbParent.type} as parent. Valid: ${validParents.join(', ')}`);
           } else {
-            parentId = parent.id;
+            parentId = dbParent.id;
+          }
+        } else {
+          // Try matching against titles of earlier rows using normalized comparison
+          const parentNorm = norm(parentRef);
+          const earlierTitles = rowTitles.slice(0, i);
+          const parentRowIdx = earlierTitles.indexOf(parentNorm);
+
+          if (parentRowIdx === -1) {
+            // Suggest the closest partial match to help the user correct typos / truncations
+            const suggestion = earlierTitles.find(
+              (t) => t.includes(parentNorm) || parentNorm.includes(t),
+            );
+            const hint = suggestion
+              ? ` Did you mean "${rows[earlierTitles.indexOf(suggestion)]['Title']}"?`
+              : '';
+            errors.push(`Parent "${parentRef}" not found — use an existing Display ID (e.g. HOR10001) or the exact Title of an earlier row in this file.${hint}`);
+          } else {
+            const parentRowType = rowTypes[parentRowIdx] as WorkItemType;
+            const validParents = VALID_PARENT_TYPES[typeRaw as WorkItemType];
+            if (validParents && !validParents.includes(parentRowType)) {
+              errors.push(`${typeRaw} cannot have a ${parentRowType} as parent. Valid: ${validParents.join(', ')}`);
+            } else {
+              parentRefDeferred = parentRef; // resolved at creation time via titleToCreatedId map
+            }
           }
         }
       }
@@ -1135,20 +1179,19 @@ export class WorkItemsService implements OnModuleInit {
         }
       }
 
-      // Parse dates as MM-DD-YYYY
       let startDate: Date | undefined;
       if (startDateRaw) {
-        const [mm, dd, yyyy] = startDateRaw.split('-').map(Number);
+        const [mm, dd, yyyy] = startDateRaw.split('/').map(Number);
         const d = new Date(yyyy, mm - 1, dd);
-        if (!mm || !dd || !yyyy || isNaN(d.getTime())) errors.push(`Start Date "${startDateRaw}" is not a valid date (use MM-DD-YYYY)`);
+        if (!mm || !dd || !yyyy || isNaN(d.getTime())) errors.push(`Start Date "${startDateRaw}" is not a valid date (use M/D/YYYY, e.g. 7/29/2026)`);
         else startDate = d;
       }
 
       let dueDate: Date | undefined;
       if (dueDateRaw) {
-        const [mm, dd, yyyy] = dueDateRaw.split('-').map(Number);
+        const [mm, dd, yyyy] = dueDateRaw.split('/').map(Number);
         const d = new Date(yyyy, mm - 1, dd);
-        if (!mm || !dd || !yyyy || isNaN(d.getTime())) errors.push(`Due Date "${dueDateRaw}" is not a valid date (use MM-DD-YYYY)`);
+        if (!mm || !dd || !yyyy || isNaN(d.getTime())) errors.push(`Due Date "${dueDateRaw}" is not a valid date (use M/D/YYYY, e.g. 7/29/2026)`);
         else dueDate = d;
       }
 
@@ -1169,7 +1212,10 @@ export class WorkItemsService implements OnModuleInit {
               type: typeRaw as WorkItemType,
               title, description,
               priority: (priorityRaw || 'MEDIUM') as TaskPriority,
-              assigneeId, sprintId, parentId, storyPoints, estimatedHours,
+              assigneeId, sprintId,
+              parentId,           // UUID if resolved from DB now
+              parentRefDeferred,  // title string if deferred to creation phase
+              storyPoints, estimatedHours,
               billingStatus, startDate, dueDate, labels, releaseMilestoneId,
             }
           : null,
@@ -1182,9 +1228,18 @@ export class WorkItemsService implements OnModuleInit {
       throw new BadRequestException('Import has validation errors. Run with dryRun=true first.');
     }
 
+    // Map title (lowercase) → UUID for items created in this batch
+    const titleToCreatedId = new Map<string, string>();
+
     for (const parsed of parsedItems) {
       if (!parsed) continue;
-      await this.prisma.$transaction(async (tx) => {
+
+      // Resolve within-file parent reference using items already created in this import
+      const resolvedParentId = parsed.parentId ?? (
+        parsed.parentRefDeferred ? titleToCreatedId.get(norm(parsed.parentRefDeferred)) : undefined
+      );
+
+      const created = await this.prisma.$transaction(async (tx) => {
         const project = await tx.project.update({
           where: { id: projectId },
           data: { workItemCounter: { increment: 1 } },
@@ -1192,18 +1247,21 @@ export class WorkItemsService implements OnModuleInit {
         });
         const prefix = generateWorkItemPrefix(project.name);
         const displayId = `${prefix}${project.workItemCounter}`;
-        await tx.workItem.create({
+        return tx.workItem.create({
           data: {
             projectId, reporterId, displayId,
             type: parsed.type, title: parsed.title, description: parsed.description,
-            priority: parsed.priority, parentId: parsed.parentId, sprintId: parsed.sprintId,
+            priority: parsed.priority, parentId: resolvedParentId, sprintId: parsed.sprintId,
             assigneeId: parsed.assigneeId, storyPoints: parsed.storyPoints,
             estimatedHours: parsed.estimatedHours, labels: parsed.labels ?? [],
             billingStatus: parsed.billingStatus, startDate: parsed.startDate,
             dueDate: parsed.dueDate, releaseMilestoneId: parsed.releaseMilestoneId,
           },
+          select: { id: true },
         });
       });
+
+      titleToCreatedId.set(norm(parsed.title), created.id);
     }
 
     return { results, success: true };
