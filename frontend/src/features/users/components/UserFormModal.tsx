@@ -95,9 +95,13 @@ export function UserFormModal({ mode, user, onClose, onSuccess }: Props) {
 
   const createMutation = useMutation({
     mutationFn: (payload: CreateUserPayload) => usersApi.create(payload),
-    onSuccess: () => {
+    onSuccess: (data: any) => {
       qc.invalidateQueries({ queryKey: ['users'] });
-      onSuccess?.('User created successfully');
+      if (data.emailSent === false) {
+        onSuccess?.(`User created. Welcome email failed — use the Resend button. (${data.emailError ?? 'Unknown error'})`);
+      } else {
+        onSuccess?.('User created. Welcome email sent successfully.');
+      }
       onClose();
     },
     onError: (err: any) => setError(err?.response?.data?.message ?? 'Failed to create user'),

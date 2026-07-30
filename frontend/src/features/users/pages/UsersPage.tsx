@@ -28,6 +28,22 @@ function StatusBadge({ isActive }: { isActive: boolean }) {
   );
 }
 
+// ── Full-screen loader ─────────────────────────────────────────────────────────
+
+function SendingOverlay() {
+  return (
+    <div className="fixed inset-0 z-[200] flex flex-col items-center justify-center bg-black/40 backdrop-blur-sm">
+      <div className="bg-white rounded-2xl shadow-xl px-10 py-8 flex flex-col items-center gap-4 min-w-[220px]">
+        <svg className="w-10 h-10 animate-spin text-primary-600" fill="none" viewBox="0 0 24 24">
+          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+        </svg>
+        <p className="text-sm font-medium text-gray-700">Sending email…</p>
+      </div>
+    </div>
+  );
+}
+
 // ── Toast ──────────────────────────────────────────────────────────────────────
 
 interface ToastState { message: string }
@@ -91,6 +107,12 @@ export function UsersPage() {
       qc.invalidateQueries({ queryKey: ['users'] });
       showToast(variables.isActive ? 'User activated' : 'User deactivated');
     },
+  });
+
+  const resendMutation = useMutation({
+    mutationFn: (id: string) => usersApi.resendWelcomeEmail(id),
+    onSuccess: (data) => showToast(data.message),
+    onError: (err: any) => showToast(`Resend failed: ${err?.response?.data?.message ?? 'Unknown error'}`),
   });
 
   function openAdd() { setEditTarget(undefined); setModalMode('create'); }
@@ -210,6 +232,16 @@ export function UsersPage() {
                       </td>
                       <td className="px-5 py-3.5 text-right">
                         <div className="flex items-center justify-end gap-2">
+                          <button
+                            onClick={() => resendMutation.mutate(u.id)}
+                            disabled={resendMutation.isPending}
+                            title="Resend welcome email"
+                            className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition">
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                                d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                            </svg>
+                          </button>
                           <button onClick={() => openEdit(u)} title="Edit user"
                             className="p-1.5 rounded-lg text-gray-400 hover:text-primary-600 hover:bg-primary-50 transition">
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -304,6 +336,8 @@ export function UsersPage() {
           </>
         )}
       </div>
+
+      {resendMutation.isPending && <SendingOverlay />}
 
       {modalMode && (
         <UserFormModal mode={modalMode} user={editTarget} onClose={closeModal} onSuccess={showToast} />
