@@ -43,6 +43,9 @@ export const usersApi = {
   setStatus: (id: string, isActive: boolean) =>
     apiClient.patch<User>(`/users/${id}/status`, { isActive }).then((r) => r.data),
 
+  resendWelcomeEmail: (id: string) =>
+    apiClient.post<{ message: string }>(`/users/${id}/resend-welcome`).then((r) => r.data),
+
   uploadPhoto: (id: string, file: File) => {
     const form = new FormData();
     form.append('file', file);

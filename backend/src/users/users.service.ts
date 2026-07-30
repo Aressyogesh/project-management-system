@@ -139,15 +139,19 @@ export class UsersService {
         If you did not expect this email, please contact your administrator.
       </p>`;
 
+    let emailSent = false;
+    let emailError: string | undefined;
     try {
       await this.email.sendEmail(
         user.email,
         `Welcome to PMS, ${user.fullName}!`,
         this.email.wrapHtml('Welcome to PMS', body),
       );
+      emailSent = true;
     } catch (err) {
+      emailError = (err as Error).message;
       this.logger.error(
-        `Failed to send welcome email to ${user.email}: ${(err as Error).message}`,
+        `Failed to send welcome email to ${user.email}: ${emailError}`,
       );
     }
 
@@ -162,7 +166,7 @@ export class UsersService {
       });
     }
 
-    return user;
+    return { ...user, emailSent, emailError };
   }
 
   async updateUser(id: string, dto: UpdateUserDto, adminUserId?: string) {
@@ -317,6 +321,62 @@ export class UsersService {
     });
 
     return updated;
+  }
+
+  async resendWelcomeEmail(id: string, adminUserId?: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id },
+      select: { id: true, fullName: true, email: true, systemRole: true },
+    });
+    if (!user) throw new NotFoundException('User not found');
+
+    const tempPassword =
+      crypto.randomBytes(6).toString('hex').toUpperCase().slice(0, 8) +
+      crypto.randomBytes(2).toString('hex').slice(0, 2);
+    const passwordHash = await bcrypt.hash(tempPassword, 10);
+
+    await this.prisma.user.update({
+      where: { id },
+      data: { passwordHash, mustResetPassword: true },
+    });
+
+    const loginUrl = this.config.get<string>('APP_FRONTEND_URL') ?? 'http://localhost:5173';
+    const body = `
+      <p style="margin:0 0 16px;color:#374151;font-size:15px;">
+        Hi ${user.fullName}, your PMS account credentials have been reset by an administrator.
+      </p>
+      <table style="width:100%;border-collapse:collapse;font-size:14px;margin-bottom:20px;">
+        <tbody>
+          <tr><td style="padding:8px 12px;color:#6b7280;">Email</td><td style="padding:8px 12px;">${user.email}</td></tr>
+          <tr><td style="padding:8px 12px;color:#6b7280;">New Temporary Password</td><td style="padding:8px 12px;font-weight:600;font-family:monospace;letter-spacing:2px;">${tempPassword}</td></tr>
+        </tbody>
+      </table>
+      <p style="margin:0 0 16px;color:#374151;font-size:13px;"><strong>You will be required to change this password on your next login.</strong></p>
+      <a href="${loginUrl}/login" style="display:inline-block;background:#1a6ab1;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:700;font-size:14px;">
+        Log In to PMS
+      </a>
+      <p style="margin:16px 0 0;color:#6b7280;font-size:13px;">
+        If you did not expect this email, please contact your administrator.
+      </p>`;
+
+    await this.email.sendEmail(
+      user.email,
+      'Your PMS credentials have been reset',
+      this.email.wrapHtml('Account Credentials Reset', body),
+    );
+
+    if (adminUserId) {
+      this.auditLogs.log({
+        userId: adminUserId,
+        action: AuditAction.USER_UPDATED,
+        entity: AuditEntity.USER,
+        entityId: user.id,
+        entityTitle: `${user.fullName} (${user.email})`,
+        metadata: { action: 'resend_welcome_email' },
+      });
+    }
+
+    return { message: `Welcome email resent to ${user.email}` };
   }
 
   async getCelebrationsToday(requesterId: string, requesterRole: SystemRole, requesterManagedBuId?: string | null) {

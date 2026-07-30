@@ -94,6 +94,13 @@ export class UsersController {
     return this.usersService.updateUser(id, dto, req.user.id);
   }
 
+  @Post(':id/resend-welcome')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Resend welcome email with a new temporary password' })
+  resendWelcomeEmail(@Param('id') id: string, @Request() req: { user: { id: string } }) {
+    return this.usersService.resendWelcomeEmail(id, req.user.id);
+  }
+
   @Patch(':id/status')
   @HttpCode(200)
   @ApiOperation({ summary: 'Activate or deactivate a user' })
