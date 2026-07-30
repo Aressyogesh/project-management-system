@@ -185,8 +185,8 @@ export class ProjectsService {
         where: { projectId: id, userId: actorId },
         select: { projectRole: true },
       });
-      if (!membership || membership.projectRole !== ProjectRole.PROJECT_MANAGER) {
-        throw new ForbiddenException('Only Project Managers, Admins, or Super Users can configure project integrations');
+      if (!membership || (membership.projectRole !== ProjectRole.PROJECT_MANAGER && membership.projectRole !== ProjectRole.TEAM_LEAD)) {
+        throw new ForbiddenException('Only Project Managers, Team Leads, Admins, or Super Users can configure project integrations');
       }
     }
 

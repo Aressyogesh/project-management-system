@@ -169,7 +169,7 @@ export class WorkItemsController {
 
   @Get('projects/:projectId/work-items/import/template')
   @UseGuards(ProjectRoleGuard)
-  @ProjectRoles(ProjectRole.PROJECT_MANAGER)
+  @ProjectRoles(ProjectRole.PROJECT_MANAGER, ProjectRole.TEAM_LEAD)
   @ProjectIdFrom('param')
   @ApiOperation({ summary: 'Download Excel import template with sample data' })
   async getImportTemplate(@Res() res: Response) {
@@ -181,9 +181,9 @@ export class WorkItemsController {
 
   @Post('projects/:projectId/work-items/import')
   @UseGuards(ProjectRoleGuard)
-  @ProjectRoles(ProjectRole.PROJECT_MANAGER)
+  @ProjectRoles(ProjectRole.PROJECT_MANAGER, ProjectRole.TEAM_LEAD)
   @ProjectIdFrom('param')
-  @ApiOperation({ summary: 'Import work items from Excel file (PM only)' })
+  @ApiOperation({ summary: 'Import work items from Excel file' })
   @UseInterceptors(
     FileInterceptor('file', {
       storage: memoryStorage(),

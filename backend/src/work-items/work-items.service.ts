@@ -401,8 +401,8 @@ export class WorkItemsService implements OnModuleInit {
           where: { projectId_userId: { projectId: item.projectId, userId } },
           select: { projectRole: true },
         });
-        if (membership?.projectRole !== ProjectRole.PROJECT_MANAGER) {
-          throw new ForbiddenException('Only the Project Manager can change the billing status');
+        if (membership?.projectRole !== ProjectRole.PROJECT_MANAGER && membership?.projectRole !== ProjectRole.TEAM_LEAD) {
+          throw new ForbiddenException('Only the Project Manager or Team Lead can change the billing status');
         }
       }
     }

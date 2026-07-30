@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as nodemailer from 'nodemailer';
+import * as path from 'path';
 
 @Injectable()
 export class EmailService {
@@ -21,9 +22,6 @@ export class EmailService {
   }
 
   wrapHtml(title: string, bodyHtml: string): string {
-    const frontendUrl =
-      this.config.get<string>('APP_FRONTEND_URL') || 'http://localhost:5173';
-
     return `<!DOCTYPE html>
 <html>
 <head>
@@ -42,7 +40,7 @@ export class EmailService {
               <table cellpadding="0" cellspacing="0" border="0" style="margin:0 auto 12px auto;">
                 <tr>
                   <td style="background:#ffffff;border-radius:12px;padding:12px 24px;text-align:center;">
-                    <img src="${frontendUrl}/pms-logo.png"
+                    <img src="cid:pms-logo"
                          alt="Aress PMS"
                          width="140"
                          style="height:auto;display:block;margin:0 auto;" />
@@ -87,6 +85,11 @@ export class EmailService {
         to,
         subject,
         html,
+        attachments: [{
+          filename: 'pms-logo.png',
+          path: path.join(process.cwd(), 'assets', 'pms-logo.png'),
+          cid: 'pms-logo',
+        }],
       });
       this.logger.log(`Email sent to ${to} — "${subject}"`);
     } catch (err) {
