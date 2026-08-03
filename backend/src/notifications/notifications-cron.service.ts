@@ -593,7 +593,7 @@ export class NotificationsCronService {
   }
 
   @Cron('0 8 1 * *', { name: 'monthly-kpi-digest' })
-  async handleMonthlyKpiDigest(overridePeriod?: string): Promise<{ sent: number; period: string }> {
+  async handleMonthlyKpiDigest(overridePeriod?: string, filterUserIds?: string[]): Promise<{ sent: number; period: string }> {
     this.logger.log('Running monthly KPI digest cron');
 
     const now = new Date();
@@ -601,7 +601,10 @@ export class NotificationsCronService {
     const period = overridePeriod ?? `${prevMonth.getFullYear()}-${String(prevMonth.getMonth() + 1).padStart(2, '0')}`;
 
     // Compute all 14 metrics for every active non-admin user and persist the 10 auto-computed ones
-    const userResults = await this.analytics.computeAndSaveAutoMetrics(period);
+    const allResults = await this.analytics.computeAndSaveAutoMetrics(period);
+    const userResults = filterUserIds?.length
+      ? allResults.filter((r) => filterUserIds.includes(r.userId))
+      : allResults;
 
     let sent = 0;
     for (const result of userResults) {

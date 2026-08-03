@@ -39,8 +39,8 @@ export class NotificationsController {
   @Post('kpi-digest/send')
   @UseGuards(RolesGuard)
   @Roles(SystemRole.SUPER_USER, SystemRole.ADMIN)
-  async sendKpiDigest(@Body() body: { period?: string }) {
-    const result = await this.cron.handleMonthlyKpiDigest(body?.period);
+  async sendKpiDigest(@Body() body: { period?: string; userIds?: string[] }) {
+    const result = await this.cron.handleMonthlyKpiDigest(body?.period, body?.userIds);
     return { message: `Monthly Performance Scorecard sent to ${result.sent} user(s) for period ${result.period}.` };
   }
 }

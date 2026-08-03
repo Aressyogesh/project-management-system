@@ -597,7 +597,15 @@ export function KpiPage() {
   const isStrictAdmin = user?.systemRole === 'SUPER_USER' || user?.systemRole === 'ADMIN';
 
   const sendDigestMutation = useMutation({
-    mutationFn: () => notificationsApi.sendKpiDigest(periodType === 'MONTHLY' ? selectedPeriod : undefined),
+    mutationFn: () => {
+      const period = periodType === 'MONTHLY' ? selectedPeriod : undefined;
+      const userIds = selectedMemberId
+        ? [selectedMemberId]
+        : selectedProjectId
+        ? projectMemberIds
+        : undefined;
+      return notificationsApi.sendKpiDigest(period, userIds);
+    },
     onSuccess: (data) => {
       setDigestSent(data.message);
       setTimeout(() => setDigestSent(null), 6000);
@@ -823,7 +831,8 @@ export function KpiPage() {
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="overflow-x-auto pb-1">
+        <div className="flex items-center gap-2 min-w-max">
           {/* Enter scores — monthly mode only */}
           {periodType === 'MONTHLY' && !selectedMemberId && (
             <button
@@ -839,13 +848,19 @@ export function KpiPage() {
           )}
 
           {/* Send Performance Scorecard — admin only */}
-          {isStrictAdmin && periodType === 'MONTHLY' && !selectedMemberId && (
+          {isStrictAdmin && periodType === 'MONTHLY' && (
             <div className="flex items-center gap-2">
               <button
                 onClick={() => sendDigestMutation.mutate()}
                 disabled={sendDigestMutation.isPending}
                 className="flex items-center gap-1.5 text-xs font-medium text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 px-3 py-1.5 rounded-lg transition"
-                title={`Send Monthly Performance Scorecard to all team members for ${selectedPeriod}`}
+                title={
+                  selectedMemberId
+                    ? `Send scorecard to ${projects.find((p) => p.id === selectedProjectId) ? projectMembers.find((m) => m.user.id === selectedMemberId)?.user.fullName ?? 'selected member' : 'selected member'} for ${selectedPeriod}`
+                    : selectedProjectId
+                    ? `Send scorecard to all members of ${projects.find((p) => p.id === selectedProjectId)?.name ?? 'selected project'} for ${selectedPeriod}`
+                    : `Send scorecard to all team members for ${selectedPeriod}`
+                }
               >
                 <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
@@ -935,6 +950,7 @@ export function KpiPage() {
               Back to Team
             </button>
           )}
+        </div>
         </div>
       </div>
 
