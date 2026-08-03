@@ -1,5 +1,5 @@
 import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   CartesianGrid,
   Line,
@@ -26,6 +26,33 @@ import {
   buildTeamSummary,
   transformLiveKpi,
 } from '../data/kpiStaticData';
+
+// ─── Toast ────────────────────────────────────────────────────────────────────
+
+interface ToastState { message: string; type: 'success' | 'error' }
+
+function Toast({ toast, onClose }: { toast: ToastState; onClose: () => void }) {
+  const isError = toast.type === 'error';
+  return (
+    <div className="fixed bottom-6 right-6 z-[100] flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg text-sm font-medium text-white bg-gray-900 min-w-[260px] max-w-sm animate-fade-in">
+      {isError ? (
+        <svg className="w-4 h-4 shrink-0 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      ) : (
+        <svg className="w-4 h-4 shrink-0 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+        </svg>
+      )}
+      <span className="flex-1">{toast.message}</span>
+      <button onClick={onClose} className="text-gray-400 hover:text-white transition ml-1">
+        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+    </div>
+  );
+}
 
 // ─── Period types ─────────────────────────────────────────────────────────────
 
@@ -592,7 +619,13 @@ export function KpiPage() {
   const [showScoreEntry, setShowScoreEntry] = useState(false);
   const [expandedUserId, setExpandedUserId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [digestSent, setDigestSent] = useState<string | null>(null);
+  const [toast, setToast] = useState<ToastState | null>(null);
+
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(null), 5000);
+    return () => clearTimeout(t);
+  }, [toast]);
 
   const isStrictAdmin = user?.systemRole === 'SUPER_USER' || user?.systemRole === 'ADMIN';
 
@@ -606,10 +639,8 @@ export function KpiPage() {
         : undefined;
       return notificationsApi.sendKpiDigest(period, userIds);
     },
-    onSuccess: (data) => {
-      setDigestSent(data.message);
-      setTimeout(() => setDigestSent(null), 6000);
-    },
+    onSuccess: (data) => setToast({ message: data.message, type: 'success' }),
+    onError: () => setToast({ message: 'Failed to send scorecard. Please try again.', type: 'error' }),
   });
 
   // Effective months to fetch
@@ -819,7 +850,7 @@ export function KpiPage() {
   return (
     <div className="space-y-6">
       {/* ── Page header ── */}
-      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+      <div className="space-y-3">
         <div>
           <h1 className="text-xl font-bold text-gray-900">KPI Dashboard</h1>
           <p className="text-sm text-gray-400 mt-0.5">
@@ -831,8 +862,7 @@ export function KpiPage() {
           </p>
         </div>
 
-        <div className="overflow-x-auto pb-1">
-        <div className="flex items-center gap-2 min-w-max">
+        <div className="flex flex-wrap items-center gap-2">
           {/* Enter scores — monthly mode only */}
           {periodType === 'MONTHLY' && !selectedMemberId && (
             <button
@@ -868,14 +898,6 @@ export function KpiPage() {
                 </svg>
                 {sendDigestMutation.isPending ? 'Sending…' : 'Send Scorecard'}
               </button>
-              {digestSent && (
-                <span className="text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-1 rounded-md">
-                  {digestSent}
-                </span>
-              )}
-              {sendDigestMutation.isError && (
-                <span className="text-xs text-red-600">Failed to send. Try again.</span>
-              )}
             </div>
           )}
 
@@ -950,7 +972,6 @@ export function KpiPage() {
               Back to Team
             </button>
           )}
-        </div>
         </div>
       </div>
 
@@ -1117,6 +1138,8 @@ export function KpiPage() {
           onClose={() => setShowScoreEntry(false)}
         />
       )}
+
+      {toast && <Toast toast={toast} onClose={() => setToast(null)} />}
     </div>
   );
 }
