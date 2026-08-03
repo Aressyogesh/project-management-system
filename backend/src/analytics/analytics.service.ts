@@ -383,6 +383,90 @@ export class AnalyticsService {
     };
   }
 
+  // ─── KPI Digest ──────────────────────────────────────────────────────────────
+
+  // Metrics computed from live data (not PM-entered) — safe to auto-persist monthly.
+  private static readonly AUTO_METRIC_IDS = new Set([
+    'sprint_reliability', 'delivery_timeliness', 'estimation_accuracy',
+    'throughput_complexity', 'internal_rework_ratio', 'technical_defect_leakage',
+    'functional_defect_leakage', 'attendance', 'timeliness', 'learning_velocity',
+  ]);
+
+  async computeAndSaveAutoMetrics(period: string): Promise<Array<{
+    userId: string;
+    fullName: string;
+    email: string | null;
+    metrics: { metricId: string; points: number }[];
+    totalScore: number;
+    hasNoActivity: boolean;
+  }>> {
+    const { start, end } = periodToRange(period);
+
+    const activeProjectIds = (await this.prisma.project.findMany({
+      where: { status: 'ACTIVE' },
+      select: { id: true },
+    })).map((p) => p.id);
+
+    const users = await this.prisma.user.findMany({
+      where: {
+        isActive: true,
+        systemRole: { notIn: [SystemRole.SUPER_USER, SystemRole.ADMIN] },
+      },
+      select: {
+        id: true,
+        fullName: true,
+        email: true,
+        systemRole: true,
+        department: { select: { name: true } },
+        projectMembers: { select: { projectRole: true } },
+      },
+    });
+
+    const results = await Promise.all(
+      users.map((user) => this.computeUserKpi(user, period, start, end, activeProjectIds)),
+    );
+
+    // Persist auto-computed metrics without overwriting PM manual entries
+    await Promise.all(
+      results.map(async (result) => {
+        const autoMetrics = result.metrics.filter((m) =>
+          AnalyticsService.AUTO_METRIC_IDS.has(m.metricId),
+        );
+        for (const metric of autoMetrics) {
+          await this.prisma.kpiRecord.upsert({
+            where: {
+              userId_period_metricId: {
+                userId: result.userId,
+                period,
+                metricId: metric.metricId,
+              },
+            },
+            create: {
+              userId: result.userId,
+              period,
+              metricId: metric.metricId,
+              points: metric.points,
+              enteredById: result.userId,
+            },
+            update: {
+              points: metric.points,
+              enteredById: result.userId,
+            },
+          });
+        }
+      }),
+    );
+
+    return results.map((r, i) => ({
+      userId: r.userId,
+      fullName: r.name,
+      email: users[i].email,
+      metrics: r.metrics,
+      totalScore: r.totalScore,
+      hasNoActivity: r.hasNoActivity,
+    }));
+  }
+
   // ─── KPI Notes ───────────────────────────────────────────────────────────────
 
   async getKpiNotes(userId: string, period: string) {

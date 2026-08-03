@@ -12,6 +12,7 @@ import {
 } from 'recharts';
 import { analyticsApi } from '../../../api/analyticsApi';
 import type { LiveEmployeeKpiRecord, KpiNote } from '../../../api/analyticsApi';
+import { notificationsApi } from '../../../api/notificationsApi';
 import { dashboardApi } from '../../../api/dashboard.api';
 import { projectsApi } from '../../../api/projects.api';
 import { useAuthStore } from '../../../store/authStore';
@@ -591,6 +592,17 @@ export function KpiPage() {
   const [showScoreEntry, setShowScoreEntry] = useState(false);
   const [expandedUserId, setExpandedUserId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [digestSent, setDigestSent] = useState<string | null>(null);
+
+  const isStrictAdmin = user?.systemRole === 'SUPER_USER' || user?.systemRole === 'ADMIN';
+
+  const sendDigestMutation = useMutation({
+    mutationFn: () => notificationsApi.sendKpiDigest(periodType === 'MONTHLY' ? selectedPeriod : undefined),
+    onSuccess: (data) => {
+      setDigestSent(data.message);
+      setTimeout(() => setDigestSent(null), 6000);
+    },
+  });
 
   // Effective months to fetch
   const effectiveMonths = useMemo(() => {
@@ -824,6 +836,32 @@ export function KpiPage() {
               </svg>
               Enter Monthly Scores
             </button>
+          )}
+
+          {/* Send Performance Scorecard — admin only */}
+          {isStrictAdmin && periodType === 'MONTHLY' && !selectedMemberId && (
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => sendDigestMutation.mutate()}
+                disabled={sendDigestMutation.isPending}
+                className="flex items-center gap-1.5 text-xs font-medium text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 px-3 py-1.5 rounded-lg transition"
+                title={`Send Monthly Performance Scorecard to all team members for ${selectedPeriod}`}
+              >
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                    d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                </svg>
+                {sendDigestMutation.isPending ? 'Sending…' : 'Send Scorecard'}
+              </button>
+              {digestSent && (
+                <span className="text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-1 rounded-md">
+                  {digestSent}
+                </span>
+              )}
+              {sendDigestMutation.isError && (
+                <span className="text-xs text-red-600">Failed to send. Try again.</span>
+              )}
+            </div>
           )}
 
           {/* View type */}

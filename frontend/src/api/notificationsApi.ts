@@ -23,4 +23,7 @@ export const notificationsApi = {
 
   markAllRead: (): Promise<void> =>
     apiClient.patch('/notifications/read-all').then(() => undefined),
+
+  sendKpiDigest: (period?: string): Promise<{ message: string }> =>
+    apiClient.post('/notifications/kpi-digest/send', { period }).then((r) => r.data),
 };
