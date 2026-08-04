@@ -1,4 +1,5 @@
 import {
+  BadGatewayException,
   BadRequestException,
   ConflictException,
   Injectable,
@@ -359,11 +360,16 @@ export class UsersService {
         If you did not expect this email, please contact your administrator.
       </p>`;
 
-    await this.email.sendEmail(
-      user.email,
-      'Your PMS credentials have been reset',
-      this.email.wrapHtml('Account Credentials Reset', body),
-    );
+    try {
+      await this.email.sendEmail(
+        user.email,
+        'Your PMS credentials have been reset',
+        this.email.wrapHtml('Account Credentials Reset', body),
+      );
+    } catch (err) {
+      this.logger.error(`resendWelcomeEmail: SMTP failed for ${user.email}: ${(err as Error).message}`);
+      throw new BadGatewayException('Password was reset but email delivery failed. Please check SMTP configuration.');
+    }
 
     if (adminUserId) {
       this.auditLogs.log({
