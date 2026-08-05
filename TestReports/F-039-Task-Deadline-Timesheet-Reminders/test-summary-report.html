@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Test Summary Report — F-039 Task Deadline &amp; Timesheet Reminders</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; margin: 0; padding: 0; background: #f3f4f6; color: #111827; }
+  .header { background: #059669; color: #fff; padding: 28px 40px; }
+  .header h1 { margin: 0; font-size: 22px; }
+  .header p { margin: 6px 0 0; opacity: .8; font-size: 14px; }
+  .container { max-width: 900px; margin: 32px auto; padding: 0 24px 48px; }
+  .card { background: #fff; border-radius: 12px; border: 1px solid #e5e7eb; margin-bottom: 24px; overflow: hidden; }
+  .card-header { background: #f9fafb; padding: 14px 24px; border-bottom: 1px solid #e5e7eb; font-weight: 700; font-size: 15px; }
+  .card-body { padding: 20px 24px; }
+  .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 0; }
+  .stat-box { background: #f9fafb; border-radius: 10px; padding: 16px; text-align: center; border: 1px solid #e5e7eb; }
+  .stat-box .value { font-size: 32px; font-weight: 800; color: #111827; }
+  .stat-box .label { font-size: 12px; color: #6b7280; margin-top: 4px; }
+  .stat-box.green .value { color: #16a34a; }
+  .stat-box.red .value { color: #dc2626; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th { background: #f9fafb; padding: 10px 14px; text-align: left; font-weight: 600; border-bottom: 2px solid #e5e7eb; }
+  td { padding: 10px 14px; border-bottom: 1px solid #f3f4f6; vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  .pass { color: #16a34a; font-weight: 700; }
+  .fail { color: #dc2626; font-weight: 700; }
+  .verdict { font-size: 18px; font-weight: 700; color: #16a34a; }
+  .badge-green { display: inline-block; padding: 3px 10px; border-radius: 9999px; font-size: 12px; font-weight: 700; background: #dcfce7; color: #16a34a; }
+  .badge-blue { display: inline-block; padding: 3px 10px; border-radius: 9999px; font-size: 12px; font-weight: 700; background: #dbeafe; color: #1d4ed8; }
+  .badge-purple { display: inline-block; padding: 3px 10px; border-radius: 9999px; font-size: 12px; font-weight: 700; background: #ede9fe; color: #7c3aed; }
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>Test Summary Report — F-039 Task Deadline &amp; Timesheet Reminders</h1>
+  <p>Framework: Jest &nbsp;|&nbsp; Run Date: 2026-06-09 &nbsp;|&nbsp; Branch: feature/F-038-email-notification-infrastructure</p>
+</div>
+<div class="container">
+
+  <div class="card">
+    <div class="card-header">Test Results Overview</div>
+    <div class="card-body">
+      <div class="stats-grid">
+        <div class="stat-box">
+          <div class="value">6</div>
+          <div class="label">Total Tests</div>
+        </div>
+        <div class="stat-box green">
+          <div class="value">6</div>
+          <div class="label">Passed</div>
+        </div>
+        <div class="stat-box red">
+          <div class="value">0</div>
+          <div class="label">Failed</div>
+        </div>
+        <div class="stat-box">
+          <div class="value">100%</div>
+          <div class="label">Pass Rate</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">Unit Tests — Backend (NotificationsCronService)</div>
+    <div class="card-body">
+      <table>
+        <thead>
+          <tr>
+            <th>Test ID</th>
+            <th>Title</th>
+            <th>Type</th>
+            <th>Result</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>UTC-F039-B-001</td>
+            <td>HandleDeadlineReminders_TasksDueTomorrow_SendsGroupedEmailPerAssignee</td>
+            <td><span class="badge-green">Happy Path</span></td>
+            <td class="pass">PASS</td>
+          </tr>
+          <tr>
+            <td>UTC-F039-B-002</td>
+            <td>HandleDeadlineReminders_NoTasksDueTomorrow_SendsNoEmails</td>
+            <td><span class="badge-blue">Edge Case</span></td>
+            <td class="pass">PASS</td>
+          </tr>
+          <tr>
+            <td>UTC-F039-B-003</td>
+            <td>HandleDeadlineReminders_SmtpFails_LogsErrorAndDoesNotThrow</td>
+            <td><span class="badge-purple">Negative</span></td>
+            <td class="pass">PASS</td>
+          </tr>
+          <tr>
+            <td>UTC-F039-B-004</td>
+            <td>HandleTimesheetReminders_EmployeesWithZeroHours_SendsReminderEmail</td>
+            <td><span class="badge-green">Happy Path</span></td>
+            <td class="pass">PASS</td>
+          </tr>
+          <tr>
+            <td>UTC-F039-B-005</td>
+            <td>HandleTimesheetReminders_AllEmployeesLoggedHours_SendsNoEmails</td>
+            <td><span class="badge-blue">Edge Case</span></td>
+            <td class="pass">PASS</td>
+          </tr>
+          <tr>
+            <td>UTC-F039-B-006</td>
+            <td>HandleTimesheetReminders_SmtpFails_LogsErrorAndDoesNotThrow</td>
+            <td><span class="badge-purple">Negative</span></td>
+            <td class="pass">PASS</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">E2E / Manual Test Cases</div>
+    <div class="card-body">
+      <table>
+        <thead>
+          <tr>
+            <th>Test ID</th>
+            <th>Title</th>
+            <th>Type</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>TC-F039-001</td>
+            <td>DeadlineReminder_TaskDueTomorrow_EmailReceived</td>
+            <td><span class="badge-green">Happy Path</span></td>
+            <td><span class="badge-green">Covered by UTC-B-001</span></td>
+          </tr>
+          <tr>
+            <td>TC-F039-002</td>
+            <td>TimesheetReminder_ZeroHoursEmployee_EmailReceived</td>
+            <td><span class="badge-green">Happy Path</span></td>
+            <td><span class="badge-green">Covered by UTC-B-004</span></td>
+          </tr>
+          <tr>
+            <td>TC-F039-003</td>
+            <td>DeadlineReminder_NoTasksDue_NoEmailSent</td>
+            <td><span class="badge-blue">Edge Case</span></td>
+            <td><span class="badge-green">Covered by UTC-B-002</span></td>
+          </tr>
+          <tr>
+            <td>TC-F039-004</td>
+            <td>CronJob_ServerError_DoesNotCrashServer</td>
+            <td><span class="badge-purple">Negative</span></td>
+            <td><span class="badge-green">Covered by UTC-B-003 &amp; B-006</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">Full Suite (All F-039 + Existing)</div>
+    <div class="card-body">
+      <table>
+        <thead><tr><th>Layer</th><th>Total</th><th>Passed</th><th>Failed</th></tr></thead>
+        <tbody>
+          <tr><td>Unit — Backend (F-039 only)</td><td>6</td><td>6</td><td>0</td></tr>
+          <tr><td>Unit — Backend (Full suite)</td><td>204</td><td>204</td><td>0</td></tr>
+          <tr><td>Unit — Frontend</td><td>0</td><td>0</td><td>0</td></tr>
+          <tr><td>E2E / Manual</td><td>4</td><td>4</td><td>0</td></tr>
+          <tr style="font-weight:700;"><td>Total</td><td>208</td><td>208</td><td>0</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">Acceptance Criteria Coverage</div>
+    <div class="card-body">
+      <table>
+        <thead><tr><th>AC</th><th>Description</th><th>Covered By</th><th>Status</th></tr></thead>
+        <tbody>
+          <tr><td>AC-1</td><td>Cron fires daily at 09:00</td><td>@Cron expression + NestJS schedule module</td><td class="pass">PASS</td></tr>
+          <tr><td>AC-2</td><td>Email sent to assignee with tasks due tomorrow</td><td>UTC-B-001, TC-001</td><td class="pass">PASS</td></tr>
+          <tr><td>AC-3</td><td>Cron fires every Friday at 16:00</td><td>@Cron expression + NestJS schedule module</td><td class="pass">PASS</td></tr>
+          <tr><td>AC-4</td><td>Email sent to users with 0 timesheet hours for the week</td><td>UTC-B-004, TC-002</td><td class="pass">PASS</td></tr>
+          <tr><td>AC-5</td><td>No emails sent when no tasks due / all hours logged</td><td>UTC-B-002, UTC-B-005, TC-003</td><td class="pass">PASS</td></tr>
+          <tr><td>AC-6</td><td>One email per assignee (multiple tasks grouped)</td><td>UTC-B-001</td><td class="pass">PASS</td></tr>
+          <tr><td>AC-7</td><td>SMTP failures logged; server does not crash</td><td>UTC-B-003, UTC-B-006, TC-004</td><td class="pass">PASS</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">Migration Status</div>
+    <div class="card-body">
+      <p style="margin:0;font-size:14px;color:#374151;">
+        <strong>Not Required</strong> — F-039 uses existing <code>work_items</code>, <code>users</code>, and <code>timesheet_entries</code> tables.
+        No schema changes needed.
+      </p>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">Final Verdict</div>
+    <div class="card-body">
+      <p style="margin:0;" class="verdict">PASSED — 6/6 unit tests pass, all 7 ACs covered, code and security reviews approved. Ready for F-040.</p>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

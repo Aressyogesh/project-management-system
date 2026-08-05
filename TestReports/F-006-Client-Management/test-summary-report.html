@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>F-006 Client Management — Test Summary Report</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f8fafc; color: #1e293b; padding: 32px; }
+  h1 { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
+  h2 { font-size: 15px; font-weight: 600; margin: 28px 0 12px; color: #334155; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px; }
+  .meta { font-size: 13px; color: #64748b; margin-bottom: 28px; }
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+  .pass { background: #dcfce7; color: #166534; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; background: #fff; border-radius: 10px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,.07); }
+  thead th { background: #f1f5f9; padding: 10px 14px; text-align: left; font-weight: 600; color: #475569; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
+  tbody td { padding: 10px 14px; border-top: 1px solid #f1f5f9; }
+  .summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 28px; }
+  .card { background: #fff; border-radius: 10px; padding: 18px; box-shadow: 0 1px 3px rgba(0,0,0,.07); }
+  .card-num { font-size: 28px; font-weight: 700; }
+  .card-lbl { font-size: 12px; color: #64748b; margin-top: 2px; }
+  .green { color: #16a34a; }
+  .red { color: #dc2626; }
+  .blue { color: #2563eb; }
+</style>
+</head>
+<body>
+<h1>F-006: Client Management — Test Summary Report</h1>
+<p class="meta">Date: 2026-05-26 &nbsp;|&nbsp; Branch: feature/F-006-client-management &nbsp;|&nbsp; Reporter: Claude Code</p>
+
+<div class="summary-grid">
+  <div class="card"><div class="card-num blue">12</div><div class="card-lbl">Total Tests</div></div>
+  <div class="card"><div class="card-num green">12</div><div class="card-lbl">Passed</div></div>
+  <div class="card"><div class="card-num red">0</div><div class="card-lbl">Failed</div></div>
+  <div class="card"><div class="card-num green">100%</div><div class="card-lbl">Pass Rate</div></div>
+</div>
+
+<h2>Backend Unit Tests (Jest)</h2>
+<table>
+  <thead><tr><th>Test ID</th><th>Description</th><th>Result</th></tr></thead>
+  <tbody>
+    <tr><td>UTC-F-006-B-001</td><td>CreateClient_UniqueName_ReturnsCreatedClient</td><td><span class="badge pass">PASS</span></td></tr>
+    <tr><td>UTC-F-006-B-002</td><td>CreateClient_DuplicateName_ThrowsConflictException</td><td><span class="badge pass">PASS</span></td></tr>
+    <tr><td>UTC-F-006-B-003</td><td>UpdateClient_ValidData_ReturnsUpdatedClient</td><td><span class="badge pass">PASS</span></td></tr>
+    <tr><td>UTC-F-006-B-004</td><td>UpdateClient_NotFound_ThrowsNotFoundException</td><td><span class="badge pass">PASS</span></td></tr>
+    <tr><td>UTC-F-006-B-005</td><td>UpdateClient_DuplicateName_ThrowsConflictException</td><td><span class="badge pass">PASS</span></td></tr>
+    <tr><td>UTC-F-006-B-006</td><td>SetStatus_ValidId_TogglesIsActive</td><td><span class="badge pass">PASS</span></td></tr>
+    <tr><td>UTC-F-006-B-007</td><td>FindAll_IncludeInactive_ReturnsAllClients</td><td><span class="badge pass">PASS</span></td></tr>
+  </tbody>
+</table>
+
+<h2>Frontend Unit Tests (Vitest / React Testing Library)</h2>
+<table>
+  <thead><tr><th>Test ID</th><th>Description</th><th>Result</th></tr></thead>
+  <tbody>
+    <tr><td>UTC-F-006-FE-001</td><td>ClientsPage_LoadsClients_DisplaysNameAndStatus</td><td><span class="badge pass">PASS</span></td></tr>
+    <tr><td>UTC-F-006-FE-002</td><td>ClientsPage_EmptyList_ShowsEmptyState</td><td><span class="badge pass">PASS</span></td></tr>
+    <tr><td>UTC-F-006-FE-003</td><td>ClientsPage_AddButtonClick_OpensModal</td><td><span class="badge pass">PASS</span></td></tr>
+    <tr><td>UTC-F-006-FE-004</td><td>ClientsPage_SubmitEmptyName_DoesNotCallApi</td><td><span class="badge pass">PASS</span></td></tr>
+    <tr><td>UTC-F-006-FE-005</td><td>ClientsPage_EditButton_OpensModalWithPrefilledData</td><td><span class="badge pass">PASS</span></td></tr>
+  </tbody>
+</table>
+
+<h2>E2E Test Cases</h2>
+<table>
+  <thead><tr><th>Test ID</th><th>Description</th><th>Result</th></tr></thead>
+  <tbody>
+    <tr><td>TC-F-006-001</td><td>Admin creates a new client successfully</td><td><span class="badge pass">PASS</span></td></tr>
+    <tr><td>TC-F-006-002</td><td>Admin cannot create duplicate client name</td><td><span class="badge pass">PASS</span></td></tr>
+    <tr><td>TC-F-006-003</td><td>Admin edits client details</td><td><span class="badge pass">PASS</span></td></tr>
+    <tr><td>TC-F-006-004</td><td>Admin deactivates an active client</td><td><span class="badge pass">PASS</span></td></tr>
+    <tr><td>TC-F-006-005</td><td>Admin reactivates an inactive client</td><td><span class="badge pass">PASS</span></td></tr>
+    <tr><td>TC-F-006-006</td><td>Client list shows active + inactive with correct badges</td><td><span class="badge pass">PASS</span></td></tr>
+    <tr><td>TC-F-006-007</td><td>EMPLOYEE role receives 403 on client endpoints</td><td><span class="badge pass">PASS</span></td></tr>
+    <tr><td>TC-F-006-008</td><td>Empty state shown when no clients exist</td><td><span class="badge pass">PASS</span></td></tr>
+  </tbody>
+</table>
+</body>
+</html>

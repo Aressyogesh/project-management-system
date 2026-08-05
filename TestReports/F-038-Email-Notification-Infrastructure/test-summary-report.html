@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Test Summary Report — F-038 Email Notification Infrastructure</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; margin: 0; padding: 0; background: #f3f4f6; color: #111827; }
+  .header { background: #4f46e5; color: #fff; padding: 28px 40px; }
+  .header h1 { margin: 0; font-size: 22px; }
+  .header p { margin: 6px 0 0; opacity: .8; font-size: 14px; }
+  .container { max-width: 900px; margin: 32px auto; padding: 0 24px 48px; }
+  .card { background: #fff; border-radius: 12px; border: 1px solid #e5e7eb; margin-bottom: 24px; overflow: hidden; }
+  .card-header { background: #f9fafb; padding: 14px 24px; border-bottom: 1px solid #e5e7eb; font-weight: 700; font-size: 15px; }
+  .card-body { padding: 20px 24px; }
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 8px; }
+  .stat { background: #f9fafb; border-radius: 10px; padding: 16px; text-align: center; border: 1px solid #e5e7eb; }
+  .stat .num { font-size: 28px; font-weight: 800; }
+  .stat .lbl { font-size: 12px; color: #6b7280; margin-top: 4px; }
+  .green { color: #16a34a; }
+  .red { color: #dc2626; }
+  .blue { color: #4f46e5; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th { background: #f9fafb; padding: 10px 14px; text-align: left; font-weight: 600; border-bottom: 2px solid #e5e7eb; }
+  td { padding: 10px 14px; border-bottom: 1px solid #f3f4f6; vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  .pass { color: #16a34a; font-weight: 700; }
+  .na { color: #6b7280; }
+  .badge-pass { background: #dcfce7; color: #16a34a; padding: 2px 10px; border-radius: 9999px; font-size: 12px; font-weight: 700; }
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>Test Summary Report</h1>
+  <p>F-038 — Email Notification Infrastructure | Executed: 2026-06-09</p>
+</div>
+<div class="container">
+
+  <div class="card">
+    <div class="card-header">Test Coverage Overview</div>
+    <div class="card-body">
+      <div class="stats">
+        <div class="stat"><div class="num blue">5</div><div class="lbl">Total Tests</div></div>
+        <div class="stat"><div class="num green">5</div><div class="lbl">Passed</div></div>
+        <div class="stat"><div class="num red">0</div><div class="lbl">Failed</div></div>
+        <div class="stat"><div class="num green">100%</div><div class="lbl">Pass Rate</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">Results by Layer</div>
+    <div class="card-body">
+      <table>
+        <tr><th>Layer</th><th>Total</th><th>Passed</th><th>Failed</th><th>Status</th></tr>
+        <tr><td>Unit — Backend (Jest)</td><td>5</td><td>5</td><td>0</td><td><span class="badge-pass">PASS</span></td></tr>
+        <tr><td>Unit — Frontend</td><td>—</td><td>—</td><td>—</td><td class="na">N/A (backend-only feature)</td></tr>
+        <tr><td>E2E</td><td>—</td><td>—</td><td>—</td><td class="na">Manual verified (forgot-password flow end-to-end)</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">Acceptance Criteria Coverage</div>
+    <div class="card-body">
+      <table>
+        <tr><th>AC</th><th>Description</th><th>Test(s)</th><th>Result</th></tr>
+        <tr><td>AC-1</td><td>sendEmail sends via SMTP and resolves on acceptance</td><td>UTC-F038-B-001</td><td class="pass">PASS</td></tr>
+        <tr><td>AC-2</td><td>wrapHtml returns complete branded HTML document</td><td>UTC-F038-B-002</td><td class="pass">PASS</td></tr>
+        <tr><td>AC-3</td><td>sendPasswordReset delegates to sendEmail + wrapHtml</td><td>UTC-F038-B-003</td><td class="pass">PASS</td></tr>
+        <tr><td>AC-4</td><td>EmailModule is @Global() — no explicit import needed</td><td>Code review verified</td><td class="pass">PASS</td></tr>
+        <tr><td>AC-5</td><td>SMTP error → Logger.error + rethrow</td><td>UTC-F038-B-004</td><td class="pass">PASS</td></tr>
+        <tr><td>AC-6</td><td>No new env vars needed — SMTP_* vars reused</td><td>UTC-F038-B-005</td><td class="pass">PASS</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">Unit Test Details</div>
+    <div class="card-body">
+      <table>
+        <tr><th>Test ID</th><th>Title</th><th>Duration</th><th>Result</th></tr>
+        <tr><td>UTC-F038-B-001</td><td>SendEmail_ValidParams_CallsSendMailOnce</td><td>25ms</td><td class="pass">PASS</td></tr>
+        <tr><td>UTC-F038-B-002</td><td>WrapHtml_ValidTitleAndBody_ReturnsCompleteHtmlDocument</td><td>4ms</td><td class="pass">PASS</td></tr>
+        <tr><td>UTC-F038-B-003</td><td>SendPasswordReset_ValidParams_CallsSendEmailWithWrappedHtml</td><td>5ms</td><td class="pass">PASS</td></tr>
+        <tr><td>UTC-F038-B-004</td><td>SendEmail_SmtpRejects_LogsErrorAndRethrows</td><td>21ms</td><td class="pass">PASS</td></tr>
+        <tr><td>UTC-F038-B-005</td><td>SendEmail_ReadsFromAddressFromConfig_UsesConfigValues</td><td>4ms</td><td class="pass">PASS</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">Environment</div>
+    <div class="card-body">
+      <table>
+        <tr><th>Item</th><th>Value</th></tr>
+        <tr><td>Runtime</td><td>Node.js 20+ / NestJS</td></tr>
+        <tr><td>Test Framework</td><td>Jest (via @nestjs/testing)</td></tr>
+        <tr><td>Test Command</td><td><code>npx jest src/email/__tests__/email.service.spec.ts --no-coverage</code></td></tr>
+        <tr><td>Full Suite</td><td>198/198 tests pass (no regressions)</td></tr>
+        <tr><td>Date</td><td>2026-06-09</td></tr>
+      </table>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>E2E Test Report — F-008 Project Member Management</title>
+<style>
+  body { font-family: system-ui, sans-serif; margin: 0; background: #f8fafc; color: #1e293b; }
+  .header { background: #1e3a5f; color: #fff; padding: 24px 32px; }
+  .header h1 { margin: 0 0 4px; font-size: 1.4rem; }
+  .header p { margin: 0; opacity: .75; font-size: .875rem; }
+  .summary { display: flex; gap: 16px; padding: 20px 32px; flex-wrap: wrap; }
+  .chip { padding: 8px 18px; border-radius: 999px; font-size: .85rem; font-weight: 600; }
+  .pass { background: #dcfce7; color: #15803d; }
+  .manual { background: #f3e8ff; color: #7c3aed; }
+  table { width: calc(100% - 64px); margin: 0 32px 32px; border-collapse: collapse; background: #fff; border-radius: 10px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,.08); }
+  th { background: #f1f5f9; text-align: left; padding: 10px 14px; font-size: .78rem; color: #64748b; text-transform: uppercase; letter-spacing: .05em; }
+  td { padding: 11px 14px; font-size: .85rem; border-top: 1px solid #f1f5f9; vertical-align: top; }
+  .badge { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: .75rem; font-weight: 600; }
+  .badge-pass { background: #dcfce7; color: #15803d; }
+  code { background: #f1f5f9; padding: 1px 5px; border-radius: 4px; font-size: .8rem; }
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>E2E Test Report — F-008: Project Member Management</h1>
+  <p>Manual Verification • Generated 2026-05-26</p>
+</div>
+<div class="summary">
+  <span class="chip pass">9 Passed</span>
+  <span class="chip" style="background:#fee2e2;color:#b91c1c">0 Failed</span>
+  <span class="chip manual">Manual</span>
+</div>
+<table>
+  <thead>
+    <tr><th>Test ID</th><th>Scenario</th><th>Steps</th><th>Expected</th><th>Result</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>TC-F-008-001</code></td><td>View project detail page</td><td>Click project card from /projects</td><td>Detail page at /projects/:id with project header info</td><td><span class="badge badge-pass">PASS</span></td></tr>
+    <tr><td><code>TC-F-008-002</code></td><td>View member list</td><td>Open any project detail page with members</td><td>Team Members table with member rows</td><td><span class="badge badge-pass">PASS</span></td></tr>
+    <tr><td><code>TC-F-008-003</code></td><td>Add first member</td><td>Click Add Member, select user, choose Developer, confirm</td><td>New row in table with correct name and Developer badge</td><td><span class="badge badge-pass">PASS</span></td></tr>
+    <tr><td><code>TC-F-008-004</code></td><td>Add duplicate member</td><td>Try to add same user again</td><td>Error shown; no duplicate row created</td><td><span class="badge badge-pass">PASS</span></td></tr>
+    <tr><td><code>TC-F-008-005</code></td><td>Change member role</td><td>Click edit icon, change dropdown to Team Lead, save</td><td>Role badge updates to Team Lead immediately</td><td><span class="badge badge-pass">PASS</span></td></tr>
+    <tr><td><code>TC-F-008-006</code></td><td>Remove member</td><td>Click remove (trash) icon on member row</td><td>Row disappears from table</td><td><span class="badge badge-pass">PASS</span></td></tr>
+    <tr><td><code>TC-F-008-007</code></td><td>Non-admin read-only view</td><td>Log in as EMPLOYEE, open project detail</td><td>No Add Member button; no edit/remove icons</td><td><span class="badge badge-pass">PASS</span></td></tr>
+    <tr><td><code>TC-F-008-008</code></td><td>Back navigation</td><td>Click "Back to Projects" link</td><td>Returns to /projects list</td><td><span class="badge badge-pass">PASS</span></td></tr>
+    <tr><td><code>TC-F-008-009</code></td><td>Empty member list</td><td>Open project with no members</td><td>"No members yet." empty state shown</td><td><span class="badge badge-pass">PASS</span></td></tr>
+  </tbody>
+</table>
+</body>
+</html>

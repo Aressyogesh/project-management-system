@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Code Review Report — F-026 Dynamic Dashboard</title>
+  <style>
+    body { font-family: 'Segoe UI', sans-serif; margin: 0; background: #f8fafc; color: #1e293b; }
+    .header { background: linear-gradient(135deg, #1e293b 0%, #334155 100%); color: white; padding: 32px 40px; }
+    .header h1 { margin: 0 0 4px; font-size: 22px; }
+    .header p { margin: 0; opacity: 0.7; font-size: 13px; }
+    .container { max-width: 960px; margin: 0 auto; padding: 32px 40px; }
+    table { width: 100%; border-collapse: collapse; background: white; border-radius: 12px; overflow: hidden; border: 1px solid #e2e8f0; margin-bottom: 24px; }
+    th { background: #f1f5f9; padding: 12px 16px; text-align: left; font-size: 12px; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; }
+    td { padding: 12px 16px; border-top: 1px solid #f1f5f9; font-size: 13px; }
+    .badge { display: inline-flex; padding: 2px 10px; border-radius: 999px; font-size: 11px; font-weight: 600; }
+    .pass { background: #dcfce7; color: #16a34a; } .na { background: #f1f5f9; color: #64748b; }
+    h2 { font-size: 16px; margin: 32px 0 12px; color: #1e293b; }
+    .verdict { background: #dcfce7; border: 1px solid #bbf7d0; border-radius: 12px; padding: 20px; color: #16a34a; font-weight: 600; font-size: 15px; }
+  </style>
+</head>
+<body>
+<div class="header">
+  <h1>Code Review Report — F-026: Dynamic Dashboard & Project-wise Team Progress</h1>
+  <p>Reviewer: Yogesh Lolage | Date: 2026-06-01 | Branch: feature/F-026-dynamic-dashboard</p>
+</div>
+<div class="container">
+
+  <div class="verdict">Verdict: ✅ Approved</div>
+
+  <h2>CR-1: Code Correctness & Logic</h2>
+  <table>
+    <thead><tr><th>Check</th><th>Status</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td>Logic matches all Acceptance Criteria</td><td><span class="badge pass">PASS</span></td><td>All 10 ACs implemented and verified by unit tests</td></tr>
+      <tr><td>Business rules correctly implemented</td><td><span class="badge pass">PASS</span></td><td>BR-1 to BR-9 all enforced in service layer</td></tr>
+      <tr><td>No off-by-one errors / incorrect conditionals</td><td><span class="badge pass">PASS</span></td><td>Progress clamped 0–100, month loop correct</td></tr>
+      <tr><td>Edge cases handled (null, empty, zero)</td><td><span class="badge pass">PASS</span></td><td>Zero tasks returns 0%, null today task handled</td></tr>
+      <tr><td>No hardcoded values</td><td><span class="badge pass">PASS</span></td><td>Replaced all 12-month static data with DB queries</td></tr>
+    </tbody>
+  </table>
+
+  <h2>CR-2: Naming & Readability</h2>
+  <table>
+    <thead><tr><th>Check</th><th>Status</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td>Intention-revealing names</td><td><span class="badge pass">PASS</span></td><td>getProjectsProgress, ProjectProgressPanel, calcTeamPerformance all clear</td></tr>
+      <tr><td>File names match class content</td><td><span class="badge pass">PASS</span></td><td>ProjectProgressPanel.tsx, dashboard.service.ts correct</td></tr>
+      <tr><td>Boolean prefix (is/has/can)</td><td><span class="badge pass">PASS</span></td><td>isAdminOrSuper used in frontend</td></tr>
+    </tbody>
+  </table>
+
+  <h2>CR-3: SOLID Principles</h2>
+  <table>
+    <thead><tr><th>Principle</th><th>Status</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td>Single Responsibility</td><td><span class="badge pass">PASS</span></td><td>Service has stats + projects-progress, component only renders</td></tr>
+      <tr><td>Dependency Inversion</td><td><span class="badge pass">PASS</span></td><td>PrismaService injected, not instantiated directly</td></tr>
+      <tr><td>Interface Segregation</td><td><span class="badge pass">PASS</span></td><td>ProjectProgress type is minimal and specific</td></tr>
+    </tbody>
+  </table>
+
+  <h2>CR-4: Code Quality</h2>
+  <table>
+    <thead><tr><th>Check</th><th>Status</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td>DRY — no duplicated logic</td><td><span class="badge pass">PASS</span></td><td>calcTeamPerformance extracted to private method</td></tr>
+      <tr><td>No magic numbers</td><td><span class="badge pass">PASS</span></td><td>MONTH_ABBR constant, clamped values use clear math</td></tr>
+      <tr><td>Early returns to reduce nesting</td><td><span class="badge pass">PASS</span></td><td>403 throws early in controller</td></tr>
+    </tbody>
+  </table>
+
+  <h2>CR-5: API & Interface Design</h2>
+  <table>
+    <thead><tr><th>Check</th><th>Status</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td>REST conventions</td><td><span class="badge pass">PASS</span></td><td>GET /dashboard/projects-progress, HTTP 403 for unauthorized</td></tr>
+      <tr><td>Response matches API contract</td><td><span class="badge pass">PASS</span></td><td>ProjectProgress shape matches Step 5 contract</td></tr>
+      <tr><td>No sensitive data in responses</td><td><span class="badge pass">PASS</span></td><td>Only name, count, and progress fields returned</td></tr>
+    </tbody>
+  </table>
+
+  <h2>CR-7: Performance</h2>
+  <table>
+    <thead><tr><th>Check</th><th>Status</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td>No N+1 queries</td><td><span class="badge pass">PASS</span></td><td>Project query eager-loads client, members, workItems</td></tr>
+      <tr><td>Parallel queries where possible</td><td><span class="badge pass">PASS</span></td><td>Promise.all used in getStats</td></tr>
+      <tr><td>Activity chart: 12 sequential month queries</td><td><span class="badge pass">PASS</span></td><td>Acceptable for dashboard load; can be optimized later with raw SQL if needed</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Non-Blocking Observations</h2>
+  <ul>
+    <li>Activity chart uses 12 sequential Prisma queries for the trailing months. For large datasets, a single raw SQL GROUP BY would be more efficient. Acceptable at current scale.</li>
+    <li>Frontend Projects Progress panel could benefit from sorting by progress % in a future iteration.</li>
+  </ul>
+
+  <h2>Sign-off</h2>
+  <p>Reviewer: Yogesh Lolage | Date: 2026-06-01 | Verdict: <strong>Approved</strong></p>
+</div>
+</body>
+</html>

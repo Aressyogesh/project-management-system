@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<title>Code Review Report — F-035 CI/CD On-Premise Deployment</title>
+<style>
+  body{font-family:system-ui,sans-serif;margin:0;padding:24px;background:#f8fafc;color:#1e293b}
+  h1{font-size:1.4rem;font-weight:700;margin-bottom:4px}
+  .meta{color:#64748b;font-size:.85rem;margin-bottom:24px}
+  table{width:100%;border-collapse:collapse;background:#fff;border-radius:10px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.08)}
+  th{background:#1e293b;color:#fff;padding:10px 14px;text-align:left;font-size:.82rem;text-transform:uppercase;letter-spacing:.04em}
+  td{padding:10px 14px;font-size:.88rem;border-bottom:1px solid #f1f5f9;vertical-align:top}
+  tr:last-child td{border-bottom:none}
+  .pass{background:#dcfce7;color:#166534;padding:2px 10px;border-radius:99px;font-size:.78rem;font-weight:600}
+  .summary{display:flex;gap:16px;margin-bottom:20px}
+  .chip{background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:12px 20px;font-size:.85rem;box-shadow:0 1px 3px rgba(0,0,0,.05)}
+  .chip b{display:block;font-size:1.4rem;font-weight:700;color:#0f172a}
+</style>
+</head>
+<body>
+<h1>Code Review Report</h1>
+<div class="meta">F-035 — CI/CD On-Premise Deployment &nbsp;|&nbsp; Reviewer: Claude Sonnet 4.6 &nbsp;|&nbsp; Date: 2026-06-03</div>
+
+<div class="summary">
+  <div class="chip"><b>8</b> Checks</div>
+  <div class="chip"><b style="color:#166534">8</b> Passed</div>
+  <div class="chip"><b style="color:#b45309">0</b> Warnings</div>
+</div>
+
+<table>
+  <thead><tr><th>#</th><th>Check</th><th>Finding</th><th>Status</th></tr></thead>
+  <tbody>
+    <tr><td>CR-1</td><td>Two-Job Structure</td><td>Workflow correctly separates <code>test</code> (runs on all triggers) from <code>deploy</code> (main branch only, needs: test). PRs run the test gate but never deploy. Condition <code>github.event_name != 'pull_request'</code> guards the deploy job.</td><td><span class="pass">PASS</span></td></tr>
+    <tr><td>CR-2</td><td>Secrets — No Hard-Coded Values</td><td>All environment-specific values injected via <code>${{ secrets.* }}</code>. DATABASE_URL, DIRECT_URL, VITE_API_BASE_URL are never literal strings in the YAML. Confirmed by grepping raw file for connection strings.</td><td><span class="pass">PASS</span></td></tr>
+    <tr><td>CR-3</td><td>Health Check Retry Logic</td><td>PowerShell retry loop (3 attempts, 5s delay) uses <code>Invoke-WebRequest</code> with <code>-TimeoutSec 10</code>. <code>exit 0</code> on success, <code>exit 1</code> after exhausted attempts. Non-zero exit correctly fails the workflow step.</td><td><span class="pass">PASS</span></td></tr>
+    <tr><td>CR-4</td><td>PM2 Idempotency</td><td>Both backend and frontend restart steps check <code>pm2 describe &lt;name&gt;</code> before deciding between <code>pm2 restart</code> and <code>pm2 start</code>. <code>pm2 save</code> persists the process list across reboots. Safe for repeated deploys.</td><td><span class="pass">PASS</span></td></tr>
+    <tr><td>CR-5</td><td>Prisma Generate + Migrate</td><td><code>prisma generate</code> runs before <code>prisma migrate deploy</code>, ensuring the Prisma client is regenerated with the latest schema before the build step. Correct order: generate → migrate → build.</td><td><span class="pass">PASS</span></td></tr>
+    <tr><td>CR-6</td><td>Health Endpoint Shape</td><td><code>HealthController.check()</code> returns <code>{ status: 'ok', timestamp: ISO string, uptime: number }</code>. Decorated with <code>@Public()</code> — no JWT required. Covered by the <code>@ApiOperation</code> Swagger annotation.</td><td><span class="pass">PASS</span></td></tr>
+    <tr><td>CR-7</td><td>Windows PowerShell Compatibility</td><td>All multi-line run steps use <code>shell: pwsh</code>. <code>$null</code> used instead of <code>/dev/null</code>. <code>Start-Sleep</code> used instead of <code>sleep</code>. <code>Invoke-WebRequest</code> used instead of <code>curl</code>. Correct for Windows runner.</td><td><span class="pass">PASS</span></td></tr>
+    <tr><td>CR-8</td><td>Setup Guide Completeness</td><td>SETUP.md covers: prerequisites (Node 18+, PostgreSQL, PowerShell 7+), PM2 install, runner registration (Admin PowerShell), service install, secrets setup, first deploy trigger (push + manual), monitoring commands, and 9 troubleshooting entries.</td><td><span class="pass">PASS</span></td></tr>
+  </tbody>
+</table>
+</body>
+</html>

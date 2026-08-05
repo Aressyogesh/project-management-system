@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>E2E Test Report — F-014</title>
+<style>
+  body { font-family: Arial, sans-serif; margin: 32px; background: #f9fafb; color: #111; }
+  h1 { font-size: 1.4rem; color: #1e40af; }
+  .meta { color: #6b7280; font-size: 0.85rem; margin-bottom: 24px; }
+  .summary-box { background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px 24px; display: inline-flex; gap: 40px; margin-bottom: 28px; }
+  .stat { text-align: center; }
+  .stat .num { font-size: 2rem; font-weight: 700; }
+  .stat .lbl { font-size: 0.75rem; color: #6b7280; }
+  .green { color: #16a34a; }
+  table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.07); }
+  th { background: #f3f4f6; text-align: left; padding: 10px 14px; font-size: 0.75rem; text-transform: uppercase; color: #6b7280; }
+  td { padding: 10px 14px; border-top: 1px solid #f3f4f6; font-size: 0.85rem; }
+  .badge { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 0.75rem; font-weight: 600; }
+  .pass { background: #dcfce7; color: #16a34a; }
+</style>
+</head>
+<body>
+<h1>E2E Test Report — F-014 My Task Widget (Live DB Data)</h1>
+<p class="meta">Generated: 2026-05-26 &nbsp;|&nbsp; Framework: Playwright &nbsp;|&nbsp; Environment: local dev</p>
+
+<div class="summary-box">
+  <div class="stat"><div class="num green">6</div><div class="lbl">Tests</div></div>
+  <div class="stat"><div class="num green">6</div><div class="lbl">Passed</div></div>
+  <div class="stat"><div class="num" style="color:#ef4444">0</div><div class="lbl">Failed</div></div>
+  <div class="stat"><div class="num green">~9s</div><div class="lbl">Duration</div></div>
+</div>
+
+<table>
+  <thead>
+    <tr><th>Test ID</th><th>Title</th><th>Status</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>TC-F-014-001</td><td>My Task table shows assigned tasks</td><td><span class="badge pass">PASS</span></td></tr>
+    <tr><td>TC-F-014-002</td><td>My Task empty state when no tasks</td><td><span class="badge pass">PASS</span></td></tr>
+    <tr><td>TC-F-014-003</td><td>Tasks Progress reflects real counts</td><td><span class="badge pass">PASS</span></td></tr>
+    <tr><td>TC-F-014-004</td><td>Stat card Active Projects is live</td><td><span class="badge pass">PASS</span></td></tr>
+    <tr><td>TC-F-014-005</td><td>Stat card Total Tasks is live</td><td><span class="badge pass">PASS</span></td></tr>
+    <tr><td>TC-F-014-006</td><td>My Task limited to 10 items</td><td><span class="badge pass">PASS</span></td></tr>
+  </tbody>
+</table>
+</body>
+</html>

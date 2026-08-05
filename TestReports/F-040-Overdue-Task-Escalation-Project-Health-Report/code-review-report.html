@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Code Review Report — F-040 Overdue Task Escalation &amp; Project Health Report</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; margin: 0; padding: 0; background: #f3f4f6; color: #111827; }
+  .header { background: #4f46e5; color: #fff; padding: 28px 40px; }
+  .header h1 { margin: 0; font-size: 22px; }
+  .header p { margin: 6px 0 0; opacity: .8; font-size: 14px; }
+  .container { max-width: 900px; margin: 32px auto; padding: 0 24px 48px; }
+  .card { background: #fff; border-radius: 12px; border: 1px solid #e5e7eb; margin-bottom: 24px; overflow: hidden; }
+  .card-header { background: #f9fafb; padding: 14px 24px; border-bottom: 1px solid #e5e7eb; font-weight: 700; font-size: 15px; }
+  .card-body { padding: 20px 24px; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th { background: #f9fafb; padding: 10px 14px; text-align: left; font-weight: 600; border-bottom: 2px solid #e5e7eb; }
+  td { padding: 10px 14px; border-bottom: 1px solid #f3f4f6; vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  .pass { color: #16a34a; font-weight: 700; }
+  .na { color: #6b7280; font-weight: 600; }
+  .verdict { font-size: 18px; font-weight: 700; color: #16a34a; }
+  .meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 14px; }
+  .meta-item label { display: block; color: #6b7280; font-size: 12px; margin-bottom: 2px; }
+  .meta-item span { font-weight: 600; }
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>Code Review Report — F-040 Overdue Task Escalation &amp; Project Health Report</h1>
+  <p>Feature Branch: feature/F-038-email-notification-infrastructure &nbsp;|&nbsp; Reviewer: Claude Code &nbsp;|&nbsp; Date: 2026-06-09</p>
+</div>
+<div class="container">
+
+  <div class="card">
+    <div class="card-header">Review Metadata</div>
+    <div class="card-body">
+      <div class="meta-grid">
+        <div class="meta-item"><label>Feature ID</label><span>F-040</span></div>
+        <div class="meta-item"><label>Feature Name</label><span>Overdue Task Escalation &amp; Project Health Report</span></div>
+        <div class="meta-item"><label>Reviewer</label><span>Claude Code (Automated)</span></div>
+        <div class="meta-item"><label>Review Date</label><span>2026-06-09</span></div>
+        <div class="meta-item"><label>Files Changed</label><span>2 (cron service + spec)</span></div>
+        <div class="meta-item"><label>Overall Verdict</label><span class="verdict">APPROVED</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">CR-1: Code Correctness</div>
+    <div class="card-body">
+      <table>
+        <thead><tr><th>Check</th><th>Status</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td>Overdue condition: dueDate &lt; today AND status NOT IN [QA_DONE, QA] AND days ≥ 2</td><td class="pass">PASS</td><td>Query uses {lt: today, lte: twoDaysAgo} — correct dual bound for 2+ days</td></tr>
+          <tr><td>Type filter limits to TASK, USER_STORY, BUG</td><td class="pass">PASS</td><td>WorkItemType.TASK | USER_STORY | BUG; excludes EPIC and SUB_TASK per spec</td></tr>
+          <tr><td>Grouping overdue tasks by projectId before PM lookup</td><td class="pass">PASS</td><td>Map&lt;projectId, tasks[]&gt; — one PM lookup per project</td></tr>
+          <tr><td>PM found via ProjectMember.findFirst with projectRole = PROJECT_MANAGER</td><td class="pass">PASS</td><td>Correct Prisma query; isActive guard prevents email to inactive PMs</td></tr>
+          <tr><td>Days overdue calculation</td><td class="pass">PASS</td><td>Math.floor((today - dueDate) / ms_per_day) — correct integer day count</td></tr>
+          <tr><td>Health report uses Promise.all for parallel DB queries</td><td class="pass">PASS</td><td>6 parallel queries per project — efficient vs. sequential awaits</td></tr>
+          <tr><td>Pending count = total - completed (derived, not queried)</td><td class="pass">PASS</td><td>Avoids a 5th count query; mathematically correct</td></tr>
+          <tr><td>ProjectStatus.ACTIVE filter on project.findMany</td><td class="pass">PASS</td><td>Only active projects included in health report per AC-7</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">CR-2: Code Structure &amp; Maintainability</div>
+    <div class="card-body">
+      <table>
+        <thead><tr><th>Check</th><th>Status</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td>Methods added to existing NotificationsCronService (correct location)</td><td class="pass">PASS</td><td>No new service/module needed; cohesive with F-039 cron jobs</td></tr>
+          <tr><td>statusBadge helper defined inline as const lambda</td><td class="pass">PASS</td><td>Scoped to method, no pollution; appropriate for a one-use template helper</td></tr>
+          <tr><td>Error handling per email, not per project loop</td><td class="pass">PASS</td><td>One SMTP failure does not abort other projects</td></tr>
+          <tr><td>No duplication between escalation and health queries</td><td class="pass">PASS</td><td>Escalation uses findMany, health uses count — different shapes, no overlap</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">CR-3: Type Safety</div>
+    <div class="card-body">
+      <table>
+        <thead><tr><th>Check</th><th>Status</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td>MilestoneStatus, ProjectRole, ProjectStatus, WorkItemType imported from @prisma/client</td><td class="pass">PASS</td><td>Full enum import; no string literals</td></tr>
+          <tr><td>Record&lt;MilestoneStatus, string&gt; for status colour map</td><td class="pass">PASS</td><td>Exhaustive key coverage; TypeScript will error if new status added without colour</td></tr>
+          <tr><td>dueDate non-null assertion after conditional check</td><td class="pass">PASS</td><td>Query filters dueDate lt today so dueDate is guaranteed present; ! is safe</td></tr>
+          <tr><td>Promise.all destructuring with explicit count types</td><td class="pass">PASS</td><td>All 6 results typed as number from prisma.workItem.count / projectMember.count</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">CR-4: Test Coverage</div>
+    <div class="card-body">
+      <table>
+        <thead><tr><th>Test ID</th><th>Scenario</th><th>Status</th></tr></thead>
+        <tbody>
+          <tr><td>UTC-F040-B-001</td><td>Overdue tasks with PM — escalation email sent</td><td class="pass">PASS</td></tr>
+          <tr><td>UTC-F040-B-002</td><td>No overdue tasks — no emails</td><td class="pass">PASS</td></tr>
+          <tr><td>UTC-F040-B-003</td><td>No PM for project — project skipped</td><td class="pass">PASS</td></tr>
+          <tr><td>UTC-F040-B-004</td><td>SMTP failure (escalation) — does not throw</td><td class="pass">PASS</td></tr>
+          <tr><td>UTC-F040-B-005</td><td>Active projects with PM — health email per PM</td><td class="pass">PASS</td></tr>
+          <tr><td>UTC-F040-B-006</td><td>No PM for project (health) — project skipped</td><td class="pass">PASS</td></tr>
+          <tr><td>UTC-F040-B-007</td><td>SMTP failure (health) — does not throw</td><td class="pass">PASS</td></tr>
+        </tbody>
+      </table>
+      <p style="margin-top:12px;font-size:13px;color:#374151;">7/7 tests passing. 211/211 full suite green.</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">CR-5: Performance</div>
+    <div class="card-body">
+      <table>
+        <thead><tr><th>Check</th><th>Status</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td>Overdue escalation: one findMany + one findFirst per project</td><td class="pass">PASS</td><td>N+1 on PM lookup is acceptable — cron runs once daily, project count is bounded</td></tr>
+          <tr><td>Health report: Promise.all parallelises 6 queries per project</td><td class="pass">PASS</td><td>Good pattern — avoids sequential await latency for independent queries</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">CR-6 to CR-8: NestJS, Documentation, Integration</div>
+    <div class="card-body">
+      <table>
+        <thead><tr><th>Check</th><th>Status</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td>@Cron decorators correct ('0 8 * * *' and '0 8 * * 1') with unique names</td><td class="pass">PASS</td><td>08:00 daily and 08:00 Monday respectively; named for PM2 log observability</td></tr>
+          <tr><td>EmailService used via DI — no direct nodemailer calls</td><td class="pass">PASS</td><td>Correct layering</td></tr>
+          <tr><td>REQ, UTC, TC documentation created</td><td class="pass">PASS</td><td>All PROCEDURE.md Step 2 + 3 docs present</td></tr>
+          <tr><td>No new module wiring required (service in existing NotificationsCronService)</td><td class="pass">PASS</td><td>Correct — NotificationsCronService already in NotificationsModule providers</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">Summary</div>
+    <div class="card-body">
+      <table>
+        <thead><tr><th>Category</th><th>Checks</th><th>Passed</th><th>Failed</th></tr></thead>
+        <tbody>
+          <tr><td>CR-1 Correctness</td><td>8</td><td>8</td><td>0</td></tr>
+          <tr><td>CR-2 Structure</td><td>4</td><td>4</td><td>0</td></tr>
+          <tr><td>CR-3 Type Safety</td><td>4</td><td>4</td><td>0</td></tr>
+          <tr><td>CR-4 Test Coverage</td><td>7</td><td>7</td><td>0</td></tr>
+          <tr><td>CR-5 Performance</td><td>2</td><td>2</td><td>0</td></tr>
+          <tr><td>CR-6 to CR-8</td><td>4</td><td>4</td><td>0</td></tr>
+          <tr style="font-weight:700;"><td>Total</td><td>29</td><td>29</td><td>0</td></tr>
+        </tbody>
+      </table>
+      <p style="margin-top:16px;font-size:16px;" class="verdict">Verdict: APPROVED — No issues found. Ready for security review.</p>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

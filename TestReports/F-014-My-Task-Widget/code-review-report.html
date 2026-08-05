@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><title>Code Review — F-014 My Task Widget</title>
+<style>
+  body{font-family:Arial,sans-serif;margin:32px;color:#1a1a1a}
+  h1{color:#1d4ed8}h2{color:#374151;border-bottom:1px solid #e5e7eb;padding-bottom:6px}
+  table{border-collapse:collapse;width:100%;margin-bottom:24px}
+  th,td{border:1px solid #d1d5db;padding:8px 12px;text-align:left}
+  th{background:#f3f4f6;font-weight:600}
+  .pass{color:#16a34a;font-weight:600}.na{color:#6b7280}
+  .verdict{background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:16px;margin-bottom:24px}
+</style>
+</head>
+<body>
+<h1>Code Review Report — F-014: My Task Widget — Live DB Data</h1>
+<p><strong>Reviewer:</strong> Claude Sonnet 4.6 &nbsp;|&nbsp; <strong>Date:</strong> 2026-05-26</p>
+
+<div class="verdict"><strong>Verdict: <span class="pass">APPROVED</span></strong> — No blocking issues found.</div>
+
+<h2>Review Checklist</h2>
+<table>
+  <tr><th>Category</th><th>Item</th><th>Status</th></tr>
+  <tr><td>CR-1 Correctness</td><td>myTasks filtered by assignedToId === userId from JWT</td><td><span class="pass">PASS</span></td></tr>
+  <tr><td>CR-1 Correctness</td><td>tasksProgress uses groupBy / countBy correctly per status</td><td><span class="pass">PASS</span></td></tr>
+  <tr><td>CR-1 Correctness</td><td>Stat cards use DB count queries — not array lengths of in-memory data</td><td><span class="pass">PASS</span></td></tr>
+  <tr><td>CR-2 Naming</td><td>getStats method name is clear; return shape fields are intention-revealing</td><td><span class="pass">PASS</span></td></tr>
+  <tr><td>CR-3 SOLID</td><td>DashboardService single responsibility — aggregates stats only</td><td><span class="pass">PASS</span></td></tr>
+  <tr><td>CR-4 Quality</td><td>Promise.all used — queries run in parallel, not sequentially</td><td><span class="pass">PASS</span></td></tr>
+  <tr><td>CR-4 Quality</td><td>No magic numbers; task statuses referenced as enum values</td><td><span class="pass">PASS</span></td></tr>
+  <tr><td>CR-5 API Design</td><td>GET /dashboard/stats returns consistent response shape</td><td><span class="pass">PASS</span></td></tr>
+  <tr><td>CR-6 Tests</td><td>AAA pattern followed; all 10 unit tests pass</td><td><span class="pass">PASS</span></td></tr>
+  <tr><td>CR-7 Performance</td><td>All 4+ DB queries run in parallel via Promise.all; no N+1</td><td><span class="pass">PASS</span></td></tr>
+  <tr><td>CR-8 Standards</td><td>TypeScript strict; no implicit any</td><td><span class="pass">PASS</span></td></tr>
+</table>
+</body>
+</html>

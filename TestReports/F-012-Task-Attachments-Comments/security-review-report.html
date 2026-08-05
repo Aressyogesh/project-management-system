@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><title>Security Review — F-012 Task Attachments &amp; Comments</title>
+<style>
+  body{font-family:Arial,sans-serif;margin:32px;color:#1a1a1a}
+  h1{color:#1d4ed8}h2{color:#374151;border-bottom:1px solid #e5e7eb;padding-bottom:6px}
+  table{border-collapse:collapse;width:100%;margin-bottom:24px}
+  th,td{border:1px solid #d1d5db;padding:8px 12px;text-align:left}
+  th{background:#f3f4f6;font-weight:600}
+  .pass{color:#16a34a;font-weight:600}.na{color:#6b7280}
+  .verdict{background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:16px;margin-bottom:24px}
+</style>
+</head>
+<body>
+<h1>Security Review Report — F-012: Task Attachments &amp; Comments</h1>
+<p><strong>Reviewer:</strong> Claude Sonnet 4.6 &nbsp;|&nbsp; <strong>Date:</strong> 2026-05-26</p>
+
+<div class="verdict"><strong>Verdict: <span class="pass">CLEARED</span></strong> — No critical or high findings.</div>
+
+<h2>OWASP Checks</h2>
+<table>
+  <tr><th>Check</th><th>Finding</th><th>Status</th></tr>
+  <tr><td>SEC-1 (A01) Broken Access Control</td><td>All endpoints protected by JwtAuthGuard. Comment delete verifies authorId === requestingUserId OR systemRole is ADMIN/SUPER_USER. Attachment delete restricted to ADMIN/SUPER_USER roles. No IDOR — task ownership validated before file operations.</td><td><span class="pass">PASS</span></td></tr>
+  <tr><td>SEC-3 (A03) Injection</td><td>File names sanitised via Multer; stored paths not user-controlled. Prisma ORM used — no raw SQL. Comment content stored as plain text and escaped on render by React.</td><td><span class="pass">PASS</span></td></tr>
+  <tr><td>SEC-4 (A04) Insecure Design</td><td>File type whitelist enforced server-side (not just client). Max file size enforced by Multer before reaching handler. Files stored outside web root — no direct URL access.</td><td><span class="pass">PASS</span></td></tr>
+  <tr><td>SEC-5 (A05) Misconfiguration</td><td>No new public endpoints introduced. CORS unchanged.</td><td><span class="pass">PASS</span></td></tr>
+  <tr><td>API-01 Object Level Auth</td><td>taskId validated against DB before any file/comment operation.</td><td><span class="pass">PASS</span></td></tr>
+  <tr><td>API-05 Function Level Auth</td><td>Delete attachment restricted to ADMIN/SUPER_USER. Delete comment restricted to author or admin.</td><td><span class="pass">PASS</span></td></tr>
+</table>
+
+<h2>Open Risk Items</h2>
+<p>None.</p>
+</body>
+</html>

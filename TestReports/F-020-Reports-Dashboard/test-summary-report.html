@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Test Summary — F-020 Team Reports Dashboard</title>
+<style>
+  body { font-family: system-ui, sans-serif; max-width: 900px; margin: 40px auto; padding: 0 24px; color: #1f2937; }
+  h1 { font-size: 1.5rem; font-weight: 700; margin-bottom: 4px; }
+  .meta { color: #6b7280; font-size: .875rem; margin-bottom: 32px; }
+  .summary-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 32px; }
+  .card { border: 1px solid #e5e7eb; border-radius: 12px; padding: 16px; text-align: center; }
+  .card .num { font-size: 2rem; font-weight: 700; }
+  .card .label { font-size: .75rem; color: #6b7280; margin-top: 4px; }
+  .green { color: #059669; } .red { color: #dc2626; } .blue { color: #2563eb; }
+  table { width: 100%; border-collapse: collapse; font-size: .875rem; margin-bottom: 32px; }
+  th { background: #f9fafb; padding: 10px 14px; text-align: left; border-bottom: 1px solid #e5e7eb; font-weight: 600; }
+  td { padding: 10px 14px; border-bottom: 1px solid #f3f4f6; }
+  .pass { background:#d1fae5; color:#065f46; padding:2px 8px; border-radius:9999px; font-size:.75rem; font-weight:600; }
+  .verdict { display:inline-block; background:#d1fae5; color:#065f46; padding:6px 16px; border-radius:9999px; font-weight:700; }
+</style>
+</head>
+<body>
+<h1>Test Summary Report — F-020: Team Reports Dashboard</h1>
+<div class="meta">Date: 2026-05-28 &nbsp;|&nbsp; Framework: Vitest + React Testing Library &nbsp;|&nbsp; Branch: feature/F-020-reports-dashboard</div>
+
+<div class="summary-grid">
+  <div class="card"><div class="num blue">16</div><div class="label">Total Tests</div></div>
+  <div class="card"><div class="num green">16</div><div class="label">Passed</div></div>
+  <div class="card"><div class="num red">0</div><div class="label">Failed</div></div>
+</div>
+
+<table>
+  <thead>
+    <tr><th>Test ID</th><th>Suite</th><th>Title</th><th>Result</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>UTC-F020-FE-001</td><td>ReportsPage render</td><td>Renders Reports page heading for ADMIN</td><td><span class="pass">PASS</span></td></tr>
+    <tr><td>UTC-F020-FE-002</td><td>ReportsPage tabs</td><td>Renders all 4 tab buttons</td><td><span class="pass">PASS</span></td></tr>
+    <tr><td>UTC-F020-FE-003</td><td>ReportsPage tabs</td><td>Team Productivity tab is active by default</td><td><span class="pass">PASS</span></td></tr>
+    <tr><td>UTC-F020-FE-004</td><td>ReportsPage tabs</td><td>Clicking KPI Appraisal tab shows KPI content</td><td><span class="pass">PASS</span></td></tr>
+    <tr><td>UTC-F020-FE-005</td><td>ReportsPage tabs</td><td>Clicking Project Summary tab shows project content</td><td><span class="pass">PASS</span></td></tr>
+    <tr><td>UTC-F020-FE-006</td><td>ReportsPage tabs</td><td>Clicking Bug Summary tab shows bug content</td><td><span class="pass">PASS</span></td></tr>
+    <tr><td>UTC-F020-FE-007</td><td>Static data — productivity</td><td>STATIC_PRODUCTIVITY_DATA has 14 entries</td><td><span class="pass">PASS</span></td></tr>
+    <tr><td>UTC-F020-FE-008</td><td>Static data — productivity</td><td>Hemant Atre is highest productivity scorer</td><td><span class="pass">PASS</span></td></tr>
+    <tr><td>UTC-F020-FE-009</td><td>Static data — productivity</td><td>Jayvant Bagul is lowest productivity scorer</td><td><span class="pass">PASS</span></td></tr>
+    <tr><td>UTC-F020-FE-010</td><td>Static data — projects</td><td>STATIC_PROJECT_DATA has 3 projects</td><td><span class="pass">PASS</span></td></tr>
+    <tr><td>UTC-F020-FE-011</td><td>Static data — projects</td><td>SalesForce Integration project is Completed</td><td><span class="pass">PASS</span></td></tr>
+    <tr><td>UTC-F020-FE-012</td><td>Static data — bugs</td><td>Total bug count sums to 40</td><td><span class="pass">PASS</span></td></tr>
+    <tr><td>UTC-F020-FE-013</td><td>ReportsPage — productivity</td><td>Shows Hemant Atre in productivity table</td><td><span class="pass">PASS</span></td></tr>
+    <tr><td>UTC-F020-FE-014</td><td>ReportsPage — KPI tab</td><td>KPI tab shows Yogesh Lolage</td><td><span class="pass">PASS</span></td></tr>
+    <tr><td>UTC-F020-FE-015</td><td>AnnouncementsWidget</td><td>Announcements widget renders</td><td><span class="pass">PASS</span></td></tr>
+    <tr><td>UTC-F020-FE-016</td><td>ReportsPage — EMPLOYEE role</td><td>Employee sees personal summary card</td><td><span class="pass">PASS</span></td></tr>
+  </tbody>
+</table>
+
+<div><strong>Verdict:</strong> <span class="verdict">16/16 PASSED</span></div>
+</body>
+</html>

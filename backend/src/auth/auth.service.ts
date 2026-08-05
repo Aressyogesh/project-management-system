@@ -1,18 +1,24 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
-import { User } from '@prisma/client';
-import * as bcrypt from 'bcrypt';
+import { AuditAction, AuditEntity, ProjectRole, User } from '@prisma/client';
+import * as bcrypt from 'bcryptjs';
 import * as crypto from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
+import { AuditLogsService } from '../audit-logs/audit-logs.service';
+import { EmailService } from '../email/email.service';
 import { AuthResponseDto, TokenPairDto } from './dto/auth-response.dto';
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     private prisma: PrismaService,
     private jwtService: JwtService,
     private configService: ConfigService,
+    private auditLogs: AuditLogsService,
+    private emailService: EmailService,
   ) {}
 
   async validateUser(email: string, password: string): Promise<User | null | false> {
@@ -28,9 +34,24 @@ export class AuthService {
     const accessToken = this.generateAccessToken(user);
     const refreshToken = await this.createRefreshToken(user.id);
 
-    await this.prisma.user.update({
-      where: { id: user.id },
-      data: { lastLoginAt: new Date() },
+    const [, hasManagementRole, hasPmRole] = await Promise.all([
+      this.prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } }),
+      this.prisma.projectMember.count({
+        where: {
+          userId: user.id,
+          projectRole: { in: [ProjectRole.PROJECT_MANAGER, ProjectRole.TEAM_LEAD] },
+        },
+      }).then((n) => n > 0),
+      this.prisma.projectMember.count({
+        where: { userId: user.id, projectRole: ProjectRole.PROJECT_MANAGER },
+      }).then((n) => n > 0),
+    ]);
+
+    this.auditLogs.log({
+      userId: user.id,
+      action: AuditAction.LOGIN,
+      entity: AuditEntity.AUTH,
+      entityTitle: user.fullName,
     });
 
     return {
@@ -41,6 +62,11 @@ export class AuthService {
         fullName: user.fullName,
         email: user.email,
         systemRole: user.systemRole,
+        profilePhoto: user.profilePhoto ?? null,
+        hasManagementRole,
+        hasPmRole,
+        mustResetPassword: user.mustResetPassword,
+        managedBusinessUnitId: user.managedBusinessUnitId ?? null,
       },
     };
   }
@@ -70,6 +96,77 @@ export class AuthService {
     await this.prisma.refreshToken.updateMany({
       where: { token: refreshToken },
       data: { isRevoked: true },
+    });
+  }
+
+  async forgotPassword(email: string): Promise<void> {
+    const user = await this.prisma.user.findUnique({ where: { email } });
+    // Always return silently — don't reveal whether the email is registered
+    if (!user || !user.isActive) return;
+
+    // Invalidate any previous unused tokens for this user
+    await this.prisma.passwordResetToken.deleteMany({
+      where: { userId: user.id, usedAt: null },
+    });
+
+    const token = crypto.randomBytes(32).toString('hex');
+    const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+
+    await this.prisma.passwordResetToken.create({
+      data: { token, userId: user.id, expiresAt },
+    });
+
+    const frontendUrl =
+      this.configService.get<string>('APP_FRONTEND_URL') || 'http://localhost:5173';
+    const resetLink = `${frontendUrl}/reset-password?token=${token}`;
+
+    try {
+      await this.emailService.sendPasswordReset(user.email, user.fullName, resetLink);
+    } catch (err) {
+      this.logger.error('Failed to send password reset email', err);
+      throw err;
+    }
+  }
+
+  async validateResetToken(token: string): Promise<void> {
+    const record = await this.prisma.passwordResetToken.findUnique({ where: { token } });
+    if (!record || record.usedAt !== null || record.expiresAt < new Date()) {
+      throw new BadRequestException('Invalid or expired reset token');
+    }
+  }
+
+  async resetPassword(token: string, newPassword: string): Promise<void> {
+    const record = await this.prisma.passwordResetToken.findUnique({
+      where: { token },
+    });
+
+    if (!record || record.usedAt !== null || record.expiresAt < new Date()) {
+      throw new BadRequestException('Invalid or expired reset token');
+    }
+
+    const passwordHash = await bcrypt.hash(newPassword, 10);
+
+    await this.prisma.$transaction([
+      this.prisma.user.update({
+        where: { id: record.userId },
+        data: { passwordHash },
+      }),
+      this.prisma.passwordResetToken.update({
+        where: { id: record.id },
+        data: { usedAt: new Date() },
+      }),
+      this.prisma.refreshToken.updateMany({
+        where: { userId: record.userId },
+        data: { isRevoked: true },
+      }),
+    ]);
+  }
+
+  async changePassword(userId: string, newPassword: string): Promise<void> {
+    const passwordHash = await bcrypt.hash(newPassword, 10);
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { passwordHash, mustResetPassword: false },
     });
   }
 

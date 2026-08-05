@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Backend Unit Test Report — F-007 Project Management</title>
+<style>
+  body { font-family: system-ui, sans-serif; margin: 0; background: #f8fafc; color: #1e293b; }
+  .header { background: #1e3a5f; color: #fff; padding: 24px 32px; }
+  .header h1 { margin: 0 0 4px; font-size: 1.4rem; }
+  .header p { margin: 0; opacity: .75; font-size: .875rem; }
+  .summary { display: flex; gap: 16px; padding: 20px 32px; flex-wrap: wrap; }
+  .chip { padding: 8px 18px; border-radius: 999px; font-size: .85rem; font-weight: 600; }
+  .pass { background: #dcfce7; color: #15803d; }
+  .fail { background: #fee2e2; color: #b91c1c; }
+  .skip { background: #fef3c7; color: #b45309; }
+  .info { background: #e0f2fe; color: #0369a1; }
+  table { width: calc(100% - 64px); margin: 0 32px 32px; border-collapse: collapse; background: #fff; border-radius: 10px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,.08); }
+  th { background: #f1f5f9; text-align: left; padding: 10px 14px; font-size: .78rem; color: #64748b; text-transform: uppercase; letter-spacing: .05em; }
+  td { padding: 11px 14px; font-size: .85rem; border-top: 1px solid #f1f5f9; vertical-align: top; }
+  .badge { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: .75rem; font-weight: 600; }
+  .badge-pass { background: #dcfce7; color: #15803d; }
+  .badge-fail { background: #fee2e2; color: #b91c1c; }
+  .badge-skip { background: #fef3c7; color: #b45309; }
+  code { background: #f1f5f9; padding: 1px 5px; border-radius: 4px; font-size: .8rem; }
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>Backend Unit Test Report — F-007: Project Management</h1>
+  <p>ProjectsService • Generated 2026-05-26</p>
+</div>
+<div class="summary">
+  <span class="chip pass">7 Passed</span>
+  <span class="chip fail">0 Failed</span>
+  <span class="chip skip">0 Skipped</span>
+  <span class="chip info">Suite: ProjectsService</span>
+</div>
+<table>
+  <thead>
+    <tr>
+      <th>Test ID</th><th>Description</th><th>Method Tested</th><th>Result</th><th>Notes</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>UTC-F-007-B-001</code></td>
+      <td>CreateProject_ValidData_ReturnsCreatedProject</td>
+      <td><code>create()</code></td>
+      <td><span class="badge badge-pass">PASS</span></td>
+      <td>Prisma <code>create</code> called once; returned project has correct name</td>
+    </tr>
+    <tr>
+      <td><code>UTC-F-007-B-002</code></td>
+      <td>CreateProject_EndDateBeforeStartDate_ThrowsBadRequestException</td>
+      <td><code>create()</code></td>
+      <td><span class="badge badge-pass">PASS</span></td>
+      <td><code>BadRequestException</code> thrown; Prisma <code>create</code> never called</td>
+    </tr>
+    <tr>
+      <td><code>UTC-F-007-B-003</code></td>
+      <td>UpdateProject_ValidData_ReturnsUpdatedProject</td>
+      <td><code>update()</code></td>
+      <td><span class="badge badge-pass">PASS</span></td>
+      <td>findUnique returns existing project; update called with new name</td>
+    </tr>
+    <tr>
+      <td><code>UTC-F-007-B-004</code></td>
+      <td>UpdateProject_NotFound_ThrowsNotFoundException</td>
+      <td><code>update()</code></td>
+      <td><span class="badge badge-pass">PASS</span></td>
+      <td>findUnique returns null → <code>NotFoundException</code></td>
+    </tr>
+    <tr>
+      <td><code>UTC-F-007-B-005</code></td>
+      <td>SetStatus_Archive_UpdatesStatusToArchive</td>
+      <td><code>setStatus()</code></td>
+      <td><span class="badge badge-pass">PASS</span></td>
+      <td>Returns project with <code>status: ARCHIVE</code></td>
+    </tr>
+    <tr>
+      <td><code>UTC-F-007-B-006</code></td>
+      <td>GetSummary_ReturnsCorrectCounts</td>
+      <td><code>getSummary()</code></td>
+      <td><span class="badge badge-pass">PASS</span></td>
+      <td>active=2, archive=1, dedicated=1, overdue=1 for seeded mock data</td>
+    </tr>
+    <tr>
+      <td><code>UTC-F-007-B-007</code></td>
+      <td>FindAll_WithStatusFilter_ReturnsFilteredProjects</td>
+      <td><code>findAll()</code></td>
+      <td><span class="badge badge-pass">PASS</span></td>
+      <td>Prisma <code>findMany</code> called with <code>where: { status: 'ACTIVE' }</code></td>
+    </tr>
+  </tbody>
+</table>
+</body>
+</html>

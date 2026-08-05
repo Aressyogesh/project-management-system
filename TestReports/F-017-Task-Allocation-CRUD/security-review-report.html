@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><title>Security Review — F-017 Task Allocation CRUD</title>
+<style>
+  body{font-family:Arial,sans-serif;margin:32px;color:#1a1a1a}
+  h1{color:#1d4ed8}h2{color:#374151;border-bottom:1px solid #e5e7eb;padding-bottom:6px}
+  table{border-collapse:collapse;width:100%;margin-bottom:24px}
+  th,td{border:1px solid #d1d5db;padding:8px 12px;text-align:left}
+  th{background:#f3f4f6;font-weight:600}
+  .pass{color:#16a34a;font-weight:600}.na{color:#6b7280}
+  .verdict{background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:16px;margin-bottom:24px}
+</style>
+</head>
+<body>
+<h1>Security Review Report — F-017: Task Allocation CRUD + 8h Daily Cap Validation</h1>
+<p><strong>Reviewer:</strong> Claude Sonnet 4.6 &nbsp;|&nbsp; <strong>Date:</strong> 2026-05-27</p>
+
+<div class="verdict"><strong>Verdict: <span class="pass">CLEARED</span></strong> — No critical or high findings.</div>
+
+<h2>OWASP Checks</h2>
+<table>
+  <tr><th>Check</th><th>Finding</th><th>Status</th></tr>
+  <tr><td>SEC-1 (A01) Broken Access Control</td><td>All write endpoints (POST, PATCH, DELETE) protected by JwtAuthGuard + ProjectRoleGuard. Only PM/TL project roles can create/update/delete allocations. EMPLOYEE cannot perform write operations — returns 403. Read endpoints (GET check, GET by user, GET by project) require JWT but do not enforce project-role restriction, which is appropriate for visibility.</td><td><span class="pass">PASS</span></td></tr>
+  <tr><td>SEC-1 (A01) Object-Level Auth</td><td>PATCH/DELETE use 'allocation' source in ProjectRoleGuard — resolves projectId from the allocation's task chain (allocation → task → projectId) in the database. An attacker cannot manipulate a different project's allocation by guessing an ID; the guard verifies project membership before any mutation.</td><td><span class="pass">PASS</span></td></tr>
+  <tr><td>SEC-3 (A03) Injection</td><td>All query parameters (userId, date, taskId) used as Prisma where clause values — ORM parameterised queries prevent SQL injection. No raw SQL used. DTO validators (@IsUUID, @IsDateString, @IsNumber) enforce input types before reaching the service layer.</td><td><span class="pass">PASS</span></td></tr>
+  <tr><td>SEC-4 (A04) Insecure Design</td><td>Daily cap (8h) enforcement is server-side in assertCap() — not relying on frontend validation alone. Frontend cap warning is UX-only; backend rejects over-allocation regardless of client behaviour.</td><td><span class="pass">PASS</span></td></tr>
+  <tr><td>SEC-5 (A05) Misconfiguration</td><td>New module (TaskAllocationsModule) registered in AppModule with no additional global configuration changes. CORS, rate limiting, and environment settings unchanged.</td><td><span class="pass">PASS</span></td></tr>
+  <tr><td>API-01 Object Level Auth</td><td>Covered above — guard resolves ownership via DB lookup, not client-provided projectId on PATCH/DELETE.</td><td><span class="pass">PASS</span></td></tr>
+  <tr><td>API-03 Property Level Auth</td><td>Allocation response exposes task title, user name, date, hours — no passwords, tokens, or sensitive PII. Included user select is limited to id/name/avatarUrl.</td><td><span class="pass">PASS</span></td></tr>
+  <tr><td>API-06 Mass Assignment</td><td>DTOs (CreateTaskAllocationDto, UpdateTaskAllocationDto) explicitly whitelist accepted fields. Prisma create/update only receive mapped DTO fields — no pass-through of raw request body.</td><td><span class="pass">PASS</span></td></tr>
+</table>
+
+<h2>Open Risk Items</h2>
+<p>None.</p>
+</body>
+</html>

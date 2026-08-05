@@ -931,11 +931,17 @@ Trigger Condition
 
 ---
 
-### Step 7a — Generate Test Execution Report
+### Step 7a — Generate Reports (Test + Code Review + Security Review)
 
-Generate a consolidated HTML report covering all unit and E2E test results for the feature.
+Generate three HTML reports per feature **and** update the project-wide consolidated report. All HTML reports are stored in the `TestReports/` folder hierarchy.
 
-#### Report Tools (adapt to your stack)
+---
+
+#### 7a-i — Feature Test Execution Report
+
+Covers all unit and E2E test results for the feature.
+
+##### Report Tools (adapt to your stack)
 
 | Test Layer | Reporting Tool Options |
 |-----------|------------------------|
@@ -944,17 +950,17 @@ Generate a consolidated HTML report covering all unit and E2E test results for t
 | E2E tests | Playwright HTML Reporter / Allure / Extent |
 | Combined summary | Allure / ExtentReports merged report |
 
-#### Storage Rule
+##### Storage Rule
 ```
 TestReports/
 └── <F-XXX>-<Feature-Name>/
-    ├── unit-backend.<ext>       ← backend unit test report
-    ├── unit-frontend.<ext>      ← frontend unit test report
-    ├── e2e-report.<ext>         ← E2E test report
-    └── summary-report.html      ← consolidated pass/fail per AC
+    ├── unit-backend-report.html    ← backend unit test results
+    ├── unit-frontend-report.html   ← frontend unit test results
+    ├── e2e-report.html             ← E2E test results
+    └── test-summary-report.html    ← consolidated pass/fail per AC
 ```
 
-#### Summary Report Must Include
+##### Test Summary Report Must Include
 
 | Section | Content |
 |---------|---------|
@@ -963,6 +969,96 @@ TestReports/
 | AC Coverage | Each AC mapped to test IDs with PASS / FAIL |
 | Failures | Error message + screenshot or stack trace for any failure |
 | Environment | App URL(s), runtime versions, DB version |
+
+---
+
+#### 7a-ii — Feature Code Review Report (HTML)
+
+Summarises all findings from Step 6c in an auditable HTML report.
+
+##### Storage Rule
+```
+TestReports/
+└── <F-XXX>-<Feature-Name>/
+    └── code-review-report.html
+```
+
+##### Code Review Report Must Include
+
+| Section | Content |
+|---------|---------|
+| Feature Info | Feature ID, name, reviewer, date |
+| Checklist Summary | Each CR-X category with PASS / FAIL / N/A |
+| Verdict | Approved / Approved with comments / Needs changes |
+| Blocking Issues | File, line, description, fix required (table) |
+| Non-Blocking Observations | Bullet list |
+| Sign-off | Reviewer name + date |
+
+##### Source
+Translate the completed `Document/CodeReview/CR-<F-XXX>-<Feature-Name>.md` into HTML. Use the generic template at `Document/CodeReview/CODE-REVIEW-TEMPLATE.md` as the structure reference.
+
+---
+
+#### 7a-iii — Feature Security Review Report (HTML)
+
+Summarises all OWASP findings from Step 6d in an auditable HTML report.
+
+##### Storage Rule
+```
+TestReports/
+└── <F-XXX>-<Feature-Name>/
+    └── security-review-report.html
+```
+
+##### Security Review Report Must Include
+
+| Section | Content |
+|---------|---------|
+| Feature Info | Feature ID, name, reviewer, date |
+| OWASP Web Top 10 | Each risk with Applicable, Status, Notes |
+| OWASP API Top 10 | Each risk with Applicable, Status, Notes |
+| Feature-Specific Checks | Each C-X item with PASS / FAIL / N/A |
+| Dependency Audit Results | Critical / High / Moderate counts |
+| SAST Findings | File, line, severity, resolution |
+| Verdict | Cleared / Cleared with mitigations / Blocked |
+| Open Risk Items | Description + planned remediation |
+| Sign-off | Reviewer name + date |
+
+##### Source
+Translate the completed `Document/SecurityReview/SR-<F-XXX>-<Feature-Name>.md` into HTML. Use the generic template at `Document/SecurityReview/OWASP-SECURITY-REVIEW-TEMPLATE.md` as the structure reference.
+
+---
+
+#### 7a-iv — Consolidated Project Report (HTML)
+
+A single HTML report that aggregates all features delivered to date across the project. Updated every time a new feature completes Step 7a.
+
+##### Storage Rule
+```
+TestReports/
+└── consolidated-report.html        ← updated after every feature delivery
+```
+
+##### Consolidated Report Must Include
+
+| Section | Content |
+|---------|---------|
+| Project Info | Project name, report generated date, total features delivered |
+| Features Summary Table | Feature ID, Feature Name, Unit Tests (pass/total), E2E Tests (pass/total), Code Review Verdict, Security Review Verdict, Overall Status |
+| Test Totals | Sum of all unit + E2E tests across all features; total pass %, total fail % |
+| Code Review Summary | Count of Approved / Approved with comments / Needs changes across all features |
+| Security Review Summary | Count of Cleared / Cleared with mitigations / Blocked across all features |
+| Open Risk Register | All open risk items from all security reviews (feature, risk, severity, planned fix) |
+| Definition of Done Tracker | Each feature's DoD checklist completion status |
+
+##### Update Rule
+```
+After every feature's Step 7a:
+  1. Add a new row for <F-XXX> in the Features Summary Table
+  2. Update all totals (test counts, verdicts)
+  3. Append any new open risk items to the Open Risk Register
+  4. Save and commit consolidated-report.html with the feature commit
+```
 
 ---
 
@@ -1024,7 +1120,7 @@ git commit -m "feat(F-XXX): <short feature description>
 
 - <bullet: what was built>
 - <bullet: tests written and passing>
-- Extent report: TestReports/F-XXX-<Feature-Name>/summary-report.html
+- Reports: TestReports/F-XXX-<Feature-Name>/ (test-summary, code-review, security-review)
 
 Closes: F-XXX
 AC: AC-1, AC-2, AC-3 ..."
@@ -1071,8 +1167,13 @@ Epic: <Epic Name>
 | E2E            |       |        |        |
 | **Total**      |       |        |        |
 
-## Extent Report
-`TestReports/F-XXX-<Feature-Name>/summary-report.html`
+## Reports
+| Report | Path |
+|--------|------|
+| Test Summary | `TestReports/F-XXX-<Feature-Name>/test-summary-report.html` |
+| Code Review | `TestReports/F-XXX-<Feature-Name>/code-review-report.html` |
+| Security Review | `TestReports/F-XXX-<Feature-Name>/security-review-report.html` |
+| Consolidated | `TestReports/consolidated-report.html` |
 
 ## Acceptance Criteria
 - [ ] AC-1: <description>
@@ -1092,7 +1193,7 @@ Epic: <Epic Name>
 - A PR must never be raised if any test is failing
 - Assign at least one reviewer
 
-#### Command
+#### Command — Option A: GitHub CLI (recommended)
 ```bash
 gh pr create \
   --title "feat(F-XXX): <Feature Name>" \
@@ -1100,6 +1201,23 @@ gh pr create \
   --head feature/F-XXX-<feature-name> \
   --body "<PR body from template above>"
 ```
+
+> **`gh` not installed?**  
+> Install it from [cli.github.com](https://cli.github.com) then run `gh auth login`.
+
+#### Command — Option B: Manual via GitHub web (fallback)
+
+When `gh` is not available, the PR URL is printed by `git push` itself:
+
+```
+remote: Create a pull request for 'feature/F-XXX-…' on GitHub by visiting:
+remote:     https://github.com/<org>/<repo>/pull/new/feature/F-XXX-<feature-name>
+```
+
+1. Copy that URL from the push output and open it in a browser.
+2. Set **base** to `main` and **compare** to `feature/F-XXX-<feature-name>`.
+3. Paste the PR body from the template above into the description field.
+4. Click **Create pull request**.
 
 ---
 
@@ -1118,8 +1236,14 @@ Test Results
   Unit Tests (Frontend) : <N>/<N>  PASSED ✅
   E2E Tests             : <N>/<N>  PASSED ✅
 
-Extent Report
-  TestReports/F-XXX-<Feature-Name>/summary-report.html
+Code Review     : Approved ✅
+Security Review : Cleared ✅
+
+Reports (HTML)
+  Test Summary     : TestReports/F-XXX-<Feature-Name>/test-summary-report.html
+  Code Review      : TestReports/F-XXX-<Feature-Name>/code-review-report.html
+  Security Review  : TestReports/F-XXX-<Feature-Name>/security-review-report.html
+  Consolidated     : TestReports/consolidated-report.html
 
 GitHub Branch
   feature/F-XXX-<feature-name>
@@ -1191,11 +1315,15 @@ Security Review (Step 6d — OWASP) — ALL CRITICAL and HIGH items PASS
 [ ] Dependency scan run with no CRITICAL / HIGH CVEs unresolved
 
 Delivery
-[ ] Extent Report generated at TestReports/<F-XXX>/summary-report.html
+[ ] HTML reports generated in TestReports/<F-XXX>-<Feature-Name>/
+    [ ] test-summary-report.html  (unit + E2E results)
+    [ ] code-review-report.html   (Step 6c findings)
+    [ ] security-review-report.html (Step 6d OWASP findings)
+[ ] Consolidated report updated: TestReports/consolidated-report.html
 [ ] Remote repo URL confirmed with developer
 [ ] Feature branch created and pushed: feature/F-XXX-<name>
-[ ] PR raised to main — all ACs checked, report path included
-[ ] Developer notified with PR URL and test summary
+[ ] PR raised to main — all ACs checked, all report paths included
+[ ] Developer notified with PR URL, test summary, and review verdicts
 ```
 
 ---
@@ -1281,12 +1409,15 @@ STEP 6d — Security Review / OWASP (all CRITICAL+HIGH must PASS before Step 7)
 
 STEP 7 — Report → Branch → PR → Notify
 [ ] 7a  All unit tests pass + all E2E tests pass
-[ ] 7a  Extent Report at TestReports/F-XXX/summary-report.html
+[ ] 7a  test-summary-report.html  → TestReports/F-XXX-<Feature-Name>/
+[ ] 7a  code-review-report.html   → TestReports/F-XXX-<Feature-Name>/
+[ ] 7a  security-review-report.html → TestReports/F-XXX-<Feature-Name>/
+[ ] 7a  consolidated-report.html updated → TestReports/
 [ ] 7b  Remote repo URL confirmed with developer
 [ ] 7b  Base branch confirmed (default: main)
 [ ] 7b  Branch created & pushed: feature/F-XXX-<name>
-[ ] 7c  PR raised (all ACs checked, code review + OWASP sign-off in PR body)
-[ ] 7d  Developer notified with PR URL + test summary
+[ ] 7c  PR raised (all ACs checked, all 3 report paths + consolidated in PR body)
+[ ] 7d  Developer notified with PR URL, test summary, code review + security verdicts
 
 DEFINITION OF DONE — ALL boxes above must be checked
 ```
@@ -1308,6 +1439,8 @@ This document is a **living standard**. It is expected to improve over time as t
 | 3.0 | 2026-05-25 | Added Extent Report, GitHub branch, PR, and Notify (Step 7) | Team |
 | 4.0 | 2026-05-25 | Made fully generic — tech-stack agnostic, applicable to any project | Team |
 | 5.0 | 2026-05-25 | Added Step 6c (Code Review — Clean Code, SOLID, linting) and Step 6d (Security Review — OWASP Top 10, ASVS, API Security Top 10) | Team |
+| 6.0 | 2026-05-25 | Step 7a expanded: feature-wise HTML reports for test results, code review, and security review stored in Test Cases/; added project-wide consolidated-report.html updated after every feature delivery | Team |
+| 7.0 | 2026-05-26 | Step 7c: added Option B (manual PR via GitHub web) as a fallback when `gh` CLI is not installed; URL is printed by `git push` output | Team |
 
 ### How to Propose a Change
 
@@ -1341,6 +1474,6 @@ These gates are non-negotiable regardless of project pressure:
 
 ---
 
-*Procedure version: 5.0 — Updated: 2026-05-25*
+*Procedure version: 7.0 — Updated: 2026-05-26*
 *This document is universal and mandatory for every feature on every project.*
 *Adapt the tooling to your stack — the steps and gates never change.*

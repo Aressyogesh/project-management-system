@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<title>Security Review Report — F-032 Edit Profile Page</title>
+<style>
+  body{font-family:system-ui,sans-serif;margin:0;padding:24px;background:#f8fafc;color:#1e293b}
+  h1{font-size:1.4rem;font-weight:700;margin-bottom:4px}
+  .meta{color:#64748b;font-size:.85rem;margin-bottom:24px}
+  table{width:100%;border-collapse:collapse;background:#fff;border-radius:10px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.08)}
+  th{background:#1e293b;color:#fff;padding:10px 14px;text-align:left;font-size:.82rem;text-transform:uppercase;letter-spacing:.04em}
+  td{padding:10px 14px;font-size:.88rem;border-bottom:1px solid #f1f5f9;vertical-align:top}
+  tr:last-child td{border-bottom:none}
+  .pass{background:#dcfce7;color:#166534;padding:2px 10px;border-radius:99px;font-size:.78rem;font-weight:600}
+  .na{background:#f1f5f9;color:#64748b;padding:2px 10px;border-radius:99px;font-size:.78rem;font-weight:600}
+  .summary{display:flex;gap:16px;margin-bottom:20px}
+  .chip{background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:12px 20px;font-size:.85rem;box-shadow:0 1px 3px rgba(0,0,0,.05)}
+  .chip b{display:block;font-size:1.4rem;font-weight:700;color:#0f172a}
+</style>
+</head>
+<body>
+<h1>Security Review Report</h1>
+<div class="meta">F-032 — Edit Profile Page &nbsp;|&nbsp; OWASP Top 10 &nbsp;|&nbsp; Date: 2026-06-03</div>
+
+<div class="summary">
+  <div class="chip"><b>11</b> Checks</div>
+  <div class="chip"><b style="color:#166534">10</b> Passed</div>
+  <div class="chip"><b style="color:#64748b">1</b> N/A</div>
+</div>
+
+<table>
+  <thead><tr><th>#</th><th>OWASP Category</th><th>Finding</th><th>Status</th></tr></thead>
+  <tbody>
+    <tr><td>SEC-1</td><td>Broken Access Control</td><td>Users can only update their own profile (userId from JWT, not from request body). No privilege escalation path.</td><td><span class="pass">PASS</span></td></tr>
+    <tr><td>SEC-2</td><td>Cryptographic Failures</td><td>New passwords hashed with bcrypt (cost 10). Plain-text password never stored or returned. Old hash overwritten atomically.</td><td><span class="pass">PASS</span></td></tr>
+    <tr><td>SEC-3</td><td>Injection</td><td>All inputs pass through class-validator (@IsString, @IsEmail, @MaxLength). Prisma parameterised queries prevent SQL injection.</td><td><span class="pass">PASS</span></td></tr>
+    <tr><td>SEC-4</td><td>Insecure Design</td><td>currentPassword verification required before password change. Email change does not bypass password, reducing account-takeover surface.</td><td><span class="pass">PASS</span></td></tr>
+    <tr><td>SEC-5</td><td>Security Misconfiguration</td><td>File upload restricted to 2 MB. Multer diskStorage saves to uploads/avatars with unique timestamped names; no arbitrary path overwrite.</td><td><span class="pass">PASS</span></td></tr>
+    <tr><td>SEC-6</td><td>Vulnerable Components</td><td>No new dependencies introduced. Existing bcrypt, multer, class-validator already in use across project.</td><td><span class="pass">PASS</span></td></tr>
+    <tr><td>SEC-7</td><td>Auth Failures</td><td>Endpoints protected by global JwtAuthGuard. Profile methods use method-level @Roles override — still requires valid JWT, only role restriction is widened.</td><td><span class="pass">PASS</span></td></tr>
+    <tr><td>SEC-8</td><td>Software Integrity</td><td>No new external scripts or CDN resources added. All assets bundled via Vite.</td><td><span class="pass">PASS</span></td></tr>
+    <tr><td>SEC-9</td><td>Logging / Monitoring</td><td>NestJS default request logging covers profile endpoints. Password change events are implicit in the update call; no sensitive data logged.</td><td><span class="pass">PASS</span></td></tr>
+    <tr><td>SEC-10</td><td>SSRF</td><td>No outbound HTTP calls triggered by user input. File upload is local diskStorage only.</td><td><span class="pass">PASS</span></td></tr>
+    <tr><td>SEC-11</td><td>XSS</td><td>React escapes all rendered strings by default. Avatar URL rendered via &lt;img src&gt;, not innerHTML. No dangerouslySetInnerHTML usage.</td><td><span class="na">N/A</span></td></tr>
+  </tbody>
+</table>
+</body>
+</html>

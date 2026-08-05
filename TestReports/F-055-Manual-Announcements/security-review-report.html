@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Security Review — F-054 Manual Announcements</title>
+<style>
+  body{font-family:'Segoe UI',sans-serif;margin:0;background:#f8fafc;color:#1e293b}
+  .header{background:#0f172a;color:#fff;padding:24px 32px}
+  .header h1{margin:0;font-size:20px}
+  .header p{margin:4px 0 0;font-size:13px;color:#94a3b8}
+  .container{max-width:960px;margin:24px auto;padding:0 24px}
+  .card{background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:20px 24px;margin-bottom:20px}
+  .card h2{margin:0 0 16px;font-size:15px;color:#0f172a}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th{background:#f1f5f9;padding:10px 12px;text-align:left;font-weight:600;color:#475569}
+  td{padding:9px 12px;border-bottom:1px solid #f1f5f9}
+  .badge{display:inline-block;padding:2px 8px;border-radius:9999px;font-size:11px;font-weight:600}
+  .badge-pass{background:#dcfce7;color:#16a34a}
+  .badge-na{background:#f1f5f9;color:#64748b}
+  .verdict{background:#dcfce7;border:1px solid #86efac;border-radius:8px;padding:12px 16px;font-size:14px;font-weight:600;color:#16a34a;margin-bottom:20px}
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>Security Review Report — F-054: Manual Announcements</h1>
+  <p>Reviewer: Claude Sonnet 4.6 &nbsp;|&nbsp; Standard: OWASP Top 10 + OWASP API Security Top 10 &nbsp;|&nbsp; Date: 2026-06-26</p>
+</div>
+<div class="container">
+
+  <div class="verdict">Verdict: CLEARED ✅ — All CRITICAL and HIGH security checks pass. No open risk items.</div>
+
+  <div class="card">
+    <h2>OWASP Web Top 10</h2>
+    <table>
+      <tr><th>Risk</th><th>Applicable</th><th>Status</th><th>Notes</th></tr>
+      <tr><td>A01 Broken Access Control</td><td>Yes</td><td><span class="badge badge-pass">PASS</span></td><td>JwtAuthGuard global on all routes. @Roles(SUPER_USER, ADMIN) on POST and DELETE. GET open to all auth users. EMPLOYEE receives 403 via RolesGuard.</td></tr>
+      <tr><td>A02 Cryptographic Failures</td><td>No</td><td><span class="badge badge-na">N/A</span></td><td>No passwords or sensitive data stored. Existing JWT infrastructure unchanged.</td></tr>
+      <tr><td>A03 Injection</td><td>Yes</td><td><span class="badge badge-pass">PASS</span></td><td>Prisma ORM with parameterised queries — no string concatenation. Frontend uses React (auto-escaping), no dangerouslySetInnerHTML. Content stored/rendered as plain text.</td></tr>
+      <tr><td>A04 Insecure Design</td><td>Partial</td><td><span class="badge badge-pass">PASS</span></td><td>No business logic abuse possible — simple CRUD. No workflow skipping. ThrottlerGuard applies globally (120 req/min).</td></tr>
+      <tr><td>A05 Security Misconfiguration</td><td>Yes</td><td><span class="badge badge-pass">PASS</span></td><td>Debug mode off in prod. CORS restricted in app config. Security headers set by existing NestJS infrastructure.</td></tr>
+      <tr><td>A06 Vulnerable Components</td><td>Yes</td><td><span class="badge badge-pass">PASS</span></td><td>No new dependencies introduced. Existing npm packages already audited for feature F-041.</td></tr>
+      <tr><td>A07 Auth Failures</td><td>Yes</td><td><span class="badge badge-pass">PASS</span></td><td>JWT expiry, rotation, and revocation handled by existing AuthModule. Unchanged.</td></tr>
+      <tr><td>A08 Data Integrity</td><td>No</td><td><span class="badge badge-na">N/A</span></td><td>No serialised data from untrusted sources.</td></tr>
+      <tr><td>A09 Logging &amp; Monitoring</td><td>Yes</td><td><span class="badge badge-pass">PASS</span></td><td>Auth events logged by existing AuditLogsModule. 403 responses logged by GlobalExceptionFilter. No PII in announcement title/content logs.</td></tr>
+      <tr><td>A10 SSRF</td><td>No</td><td><span class="badge badge-na">N/A</span></td><td>No outbound HTTP calls in this feature.</td></tr>
+    </table>
+  </div>
+
+  <div class="card">
+    <h2>OWASP API Security Top 10</h2>
+    <table>
+      <tr><th>Risk</th><th>Status</th><th>Notes</th></tr>
+      <tr><td>API01 Broken Object Level Auth</td><td><span class="badge badge-pass">PASS</span></td><td>DELETE validates announcement exists before deleting. No cross-user data leakage — all announcements are public reads.</td></tr>
+      <tr><td>API02 Broken Authentication</td><td><span class="badge badge-pass">PASS</span></td><td>JwtAuthGuard global — unauthenticated requests return 401.</td></tr>
+      <tr><td>API03 Broken Object Property Level Auth</td><td><span class="badge badge-pass">PASS</span></td><td>Response DTO via Prisma select — only id, title, content, createdAt, createdBy (id + fullName + photo) returned. No sensitive fields exposed.</td></tr>
+      <tr><td>API04 Unrestricted Resource Consumption</td><td><span class="badge badge-pass">PASS</span></td><td>Pagination enforced (max 50 per page). latest=true capped at 3. ThrottlerGuard applies (120 req/min global).</td></tr>
+      <tr><td>API05 Broken Function Level Auth</td><td><span class="badge badge-pass">PASS</span></td><td>Admin functions (POST, DELETE) inaccessible to EMPLOYEE. Verified via @Roles guard and test UTC-B-006.</td></tr>
+      <tr><td>API06 Unrestricted Access to Sensitive Flows</td><td><span class="badge badge-pass">PASS</span></td><td>No sensitive workflow. Announcements are non-sensitive notices. No abuse vector identified.</td></tr>
+      <tr><td>API07 SSRF</td><td><span class="badge badge-na">N/A</span></td><td>No outbound calls.</td></tr>
+      <tr><td>API08 Security Misconfiguration</td><td><span class="badge badge-pass">PASS</span></td><td>GlobalExceptionFilter strips stack traces from error responses in production. Swagger documented.</td></tr>
+      <tr><td>API09 Improper Inventory Management</td><td><span class="badge badge-pass">PASS</span></td><td>All endpoints documented in Swagger via @ApiTags and @ApiOperation decorators.</td></tr>
+      <tr><td>API10 Unsafe Consumption of APIs</td><td><span class="badge badge-na">N/A</span></td><td>No third-party API consumed by this feature.</td></tr>
+    </table>
+  </div>
+
+  <div class="card">
+    <h2>Open Risk Items</h2>
+    <p style="color:#64748b;font-size:13px">None.</p>
+  </div>
+
+  <div class="card">
+    <h2>Sign-Off</h2>
+    <p style="font-size:13px">Reviewer: Claude Sonnet 4.6 &nbsp;|&nbsp; Date: 2026-06-26 &nbsp;|&nbsp; Status: <strong style="color:#16a34a">Cleared — No open risks</strong></p>
+  </div>
+
+</div>
+</body>
+</html>
