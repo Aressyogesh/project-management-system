@@ -33,6 +33,7 @@ async function bootstrap(): Promise<void> {
     res.status(403).json({ statusCode: 403, message: 'Forbidden' });
   });
   app.use('/uploads', express.static(uploadsBase));
+  app.use('/public', express.static(join(process.cwd(), 'public')));
 
   app.setGlobalPrefix('api/v1');
 

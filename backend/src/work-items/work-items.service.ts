@@ -380,15 +380,15 @@ export class WorkItemsService implements OnModuleInit {
         item.status === BoardStatus.IN_QA ||
         item.status === BoardStatus.QA_DONE
       );
-      if (!isAdmin && !isPm && !(isQa && isQaSourceStatus) && item.assigneeId !== userId) {
-        throw new ForbiddenException('Only the assigned team member or Project Manager can change the status');
+      if (!isAdmin && !isPmOrTl && !(isQa && isQaSourceStatus) && item.assigneeId !== userId) {
+        throw new ForbiddenException('Only the assigned team member, Project Manager, or Team Lead can change the status');
       }
     }
 
-    // Assignee changes: only PM or admin
+    // Assignee changes: only PM, Team Lead, or admin
     if (dto.assigneeId !== undefined && dto.assigneeId !== item.assigneeId) {
-      if (!isAdmin && !isPm) {
-        throw new ForbiddenException('Only the Project Manager can change the assignee');
+      if (!isAdmin && !isPmOrTl) {
+        throw new ForbiddenException('Only the Project Manager or Team Lead can change the assignee');
       }
     }
 
@@ -668,15 +668,15 @@ export class WorkItemsService implements OnModuleInit {
     const item = await this.findOneOrFail(id);
 
     const isAdmin = userSystemRole === SystemRole.SUPER_USER || userSystemRole === SystemRole.ADMIN;
-    const isPm = userProjectRole === ProjectRole.PROJECT_MANAGER;
+    const isPmOrTl = userProjectRole === ProjectRole.PROJECT_MANAGER || userProjectRole === ProjectRole.TEAM_LEAD;
     const isQa = userProjectRole === ProjectRole.QA;
     const isQaSourceStatus = (
       item.status === BoardStatus.READY_FOR_QA ||
       item.status === BoardStatus.IN_QA ||
       item.status === BoardStatus.QA_DONE
     );
-    if (!isAdmin && !isPm && !(isQa && isQaSourceStatus) && item.assigneeId !== userId) {
-      throw new ForbiddenException('Only the assigned team member or Project Manager can change the status');
+    if (!isAdmin && !isPmOrTl && !(isQa && isQaSourceStatus) && item.assigneeId !== userId) {
+      throw new ForbiddenException('Only the assigned team member, Project Manager, or Team Lead can change the status');
     }
 
     const fromIdx = STATUS_ORDER.indexOf(item.status);

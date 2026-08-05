@@ -1,6 +1,6 @@
 # PMS — Feature Tracker
 
-> Last updated: 2026-07-29 (F-076 added — Project Methodology & Adaptive KPI/Reports)
+> Last updated: 2026-07-30 (F-079 added — In-App Support Ticket System; F-080 added — Role-Based User Manual)
 > ~~Strikethrough~~ = completed and in production. Plain text = pending development.
 
 ---
@@ -266,8 +266,209 @@
 
 - **F-074 — Audit Log Gap Coverage** — Extend the existing `AuditLog` system (F-034) to cover all portal activities currently missing from the activity log. **High priority gaps:** `SETTINGS_UPDATED` action is defined in the enum but never fired — wire it into `SettingsService` for all company/portal config saves; KPI manual score entries by PM (`KpiRecordsService`) — new `KPI_SCORE_ENTERED` action; Department CRUD (`DepartmentsService`) — new `DEPARTMENT_CREATED`, `DEPARTMENT_UPDATED`, `DEPARTMENT_DELETED` actions; Business Unit CRUD (`BusinessUnitsService`) — new `BU_CREATED`, `BU_UPDATED`, `BU_STATUS_CHANGED` actions. **Medium priority:** Task Allocation create/update/delete — new `ALLOCATION_CREATED`, `ALLOCATION_UPDATED`, `ALLOCATION_DELETED` actions; Password reset — new `PASSWORD_RESET` action on `POST /auth/reset-password`. **Cleanup:** remove or wire up dead enum values `WORK_ITEM_ASSIGNED` (currently subsumed under `WORK_ITEM_UPDATED`) and `CLIENT_DELETED` (defined but never called). **IP Address logging:** add `ipAddress String?` column to `audit_logs` table; capture `req.ip` (falling back to `X-Forwarded-For` header) in every audit log write — on LAN this records the private IP of the user's machine (e.g. `192.168.1.45`), uniquely identifying the device; display as a new "IP Address" column in the Super Admin Activity Log table. **Schema change required** — `ipAddress` column migration on `audit_logs`; all new actions/entities added to existing `AuditAction` and `AuditEntity` enums; activity log UI filters updated to include new action types.
 
-- **F-076 — Project Methodology & Adaptive KPI/Reports** — Add a `methodology` enum (`HOURS_BASED` | `AGILE` | `HYBRID`) to the `Project` model so KPI scoring and report tabs adapt automatically to how each project operates. **Schema:** new `methodology ProjectMethodology @default(HOURS_BASED)` column on `projects` table (migration required); new `ProjectMethodology` enum. **Project UI:** methodology dropdown on the Create/Edit Project form; badge shown on project card and detail page. **KPI changes:** metrics not applicable to the project's methodology are excluded from scoring and their points redistributed proportionally so the total always stays 100 — `Estimation Accuracy` is excluded for `AGILE` projects (no `estimatedHours`); a new `Velocity` metric (story points delivered per sprint vs committed) is included for `AGILE` and `HYBRID` projects and excluded for `HOURS_BASED`. **Reports changes:** `Planned vs Actual` tab hidden for `AGILE` projects; `Sprint Velocity` and `Sprint Burndown` tabs shown only for `AGILE` and `HYBRID` projects (new analytics endpoints — `GET /analytics/reports/sprint-velocity` returns committed vs delivered story points per sprint for the last 6 sprints; `GET /analytics/reports/sprint-burndown` returns remaining story points per day for the active sprint, reconstructed from `WorkItemActivity` status-change log — no new snapshot table required); `Timesheet` tab hidden for `AGILE` projects unless the project also has timesheet entries. **RBAC:** methodology field editable by PROJECT_MANAGER, ADMIN, SUPER_USER only. **No impact on existing projects** — all default to `HOURS_BASED` preserving current behaviour.
+- **F-076 — Story Point to Hours Conversion Config** — Allow a Project Manager to define a story-point-to-hours conversion rate at the project level (e.g. "1 story point = 3 hours") for projects that run sprints and track story points instead of explicit estimated hours. This unlocks hour-based reporting and KPI accuracy for story-point-driven teams without requiring them to fill in `estimatedHours` on every work item.
+
+  **Applies to:** Projects that use sprints and story points. Projects that already log `estimatedHours` directly are unaffected.
+
+  **Schema:** new `storyPointHours Decimal? @db.Decimal(5,2)` column on `projects` table (migration required). Nullable — null means not configured (feature inactive for that project). No new enum. No breaking change to existing projects.
+
+  **Project UI:** "Story Points Config" section on the Project Edit page (visible to PROJECT_MANAGER, ADMIN, SUPER_USER only). Single input: `1 story point = [___] hours`. Accepts decimals (e.g. 2.5). Cleared by setting to blank. Displayed as an info badge on the Project Detail page when set.
+
+  **RBAC:** Only PROJECT_MANAGER, ADMIN, SUPER_USER can set or clear this value. Read-only for all other roles.
+
+  **How derived hours are computed:**
+  When `storyPointHours` is set on a project, for any work item in that project where `estimatedHours` is null and `storyPoints` is set:
+  `derivedHours = storyPoints × storyPointHours`
+  Explicit `estimatedHours` always takes priority over the derived value — if both exist, explicit wins.
+
+  **Impact on Planned vs Actual report:**
+  Currently "Planned Hours" = SUM of `estimatedHours`. With this feature, for story-point-only projects, Planned Hours = SUM of `derivedHours`. The report shows a note: "Estimated hours derived from story points (1 SP = Xh)".
+
+  **Impact on KPI — Estimation Accuracy:**
+  Currently scores 0 when `estimatedHours` is null. With conversion rate set, derived hours are used as the estimated baseline, so Estimation Accuracy becomes meaningful for story-point-driven teams.
+
+  **Impact on Sprint Velocity:**
+  Sprint Velocity (story points committed vs delivered) is unaffected — it always works on raw story points. The conversion rate optionally adds an "hours equivalent" column to the velocity table (e.g. 34 SP = 102h at 3h/SP).
+
+  **No impact when not configured:** Projects without `storyPointHours` behave exactly as today. No regressions.
+
+  **Migration:** Required — add `storyPointHours` nullable decimal column to `projects` table.
 
 - **F-075 — Time-Log Enforcement & Gap Report** — Expand the existing time-log guard in `WorkItemsService.move()` to block **any forward status move** (not just IN_PROGRESS → IN_REVIEW) for all non-EPIC work item types unless the assignee has at least one TimesheetEntry logged. Exempt transitions: TODO → IN_PROGRESS (pick-up) and READY_FOR_QA → IN_QA (QA pick-up) — these are report-only. Moving to BLOCKED is always exempt. EPIC type is fully exempt. USER_STORY is checked via its children's entries (existing behaviour). New **`GET /analytics/reports/timelog-gaps`** endpoint returns all non-EPIC work items in any status beyond IN_PROGRESS with zero time logged; filterable by `projectId`, `assigneeId`, `status`; restricted to ADMIN / SUPER_USER / PROJECT_MANAGER. New **"Time Log Gaps"** tab on the Reports page shows a filterable table with CSV export — surfaces items that bypassed time logging via exempt transitions or historical data. No schema changes required.
+
+- **F-077 — Portal Load Testing** — Validate PMS performance under concurrent user load using **k6** (Grafana) before production rollout or after major feature additions. No code changes to the portal — this is a DevOps/QA activity documented here for repeatability.
+
+  **Tool:** k6 — single binary, JavaScript scripts, Windows-compatible, free. Install: `winget install k6 --source winget`.
+
+  **Endpoints under test (priority order):**
+  | Priority | Endpoint | Reason |
+  |---|---|---|
+  | High | `GET /analytics/kpi` | 13-metric multi-aggregation per user |
+  | High | `GET /analytics/reports/team-productivity` | Cross-table aggregation |
+  | High | `GET /analytics/reports/planned-vs-actual` | SUM across work items + timesheet |
+  | Medium | `GET /work-items?projectId=xxx` | Board load — full sprint item list |
+  | Medium | `GET /dashboard/stats` | Multi-query parallel fetch |
+  | Low | `POST /auth/login` | JWT generation baseline |
+
+  **Load profile (k6 stages):**
+  ```
+  1 min  → 10 VUs   (warm up)
+  2 min  → 50 VUs   (ramp up)
+  2 min  → 100 VUs  (peak load)
+  1 min  → 0 VUs    (ramp down)
+  ```
+  Quick smoke test before full run: `k6 run --vus 5 --duration 30s load-test.js`
+
+  **Acceptance thresholds:**
+  | Metric | Pass | Investigate |
+  |---|---|---|
+  | p95 response time | < 500ms | > 1s |
+  | p99 response time | < 1s | > 3s |
+  | Error rate | < 0.5% | > 1% |
+  | DB active connections | < 8 | Hitting 10 (pool exhausted) |
+  | Node.js memory | Stable | Climbing without plateau |
+
+  **Server monitoring during test:** `pm2 monit` (CPU + memory per process); `SELECT count(*) FROM pg_stat_activity WHERE state = 'active'` (DB connections).
+
+  **Quick wins if thresholds are breached:**
+  | Problem | Fix |
+  |---|---|
+  | KPI/Reports slow | Add DB indexes on `workItems.assigneeId`, `timesheetEntries.workItemId` |
+  | DB pool exhausted | Add `?connection_limit=20` to `DATABASE_URL` in `.env` |
+  | Node.js CPU maxed | Enable PM2 clustering (`instances: 2`) |
+  | Memory leak | Profile with `--inspect` + Chrome DevTools |
+
+  **Script location:** `load-tests/pms-load-test.js` (to be created). **No schema changes. No migration.**
+
+- **F-078 — Day-wise Application Log** — Capture all portal activity and errors into structured day-wise log files on the server, with a read-only viewer inside the portal UI for Admin and Super User.
+
+  **Why separate from Audit Log (F-034):** Audit Log is DB-stored, user-action focused, for compliance. This is file-based, technically focused, for debugging and operational monitoring.
+
+  **What gets logged:**
+  - All API requests — method, path, HTTP status, response time (ms), userId if authenticated
+  - Errors and exceptions — stack trace, endpoint, sanitised request body (passwords/tokens stripped)
+  - Auth events — login success/fail with IP, logout, failed login attempts, token refresh
+  - Background cron jobs — job name, start time, end time, result (success/failure), item counts
+  - DB errors — query failures with error message
+
+  **Implementation:** `winston` + `winston-daily-rotate-file` — async, non-blocking writes; zero impact on request/response cycle. Log format: JSON (structured, parseable). File path: `logs/pms-YYYY-MM-DD.log`. Retention: 30 days (`maxFiles: '30d'` in Winston config — auto-deletes older files).
+
+  **Performance impact:** None on normal portal operations — Winston writes are fire-and-forget. Log viewer reads use tail-based pagination (last 200 lines by default) to keep memory flat regardless of file size.
+
+  **Portal UI — `/system-logs` page (ADMIN / SUPER_USER only):**
+  - Date picker to select which day's log to view
+  - Log level filter: ERROR / WARN / INFO / ALL
+  - Keyword search (by endpoint, userId, error message) — scoped to selected day's file, capped at 500 matches
+  - Tail-based pagination — default shows last 200 lines; "Load more" fetches next 200 lines upward
+  - Auto-refresh toggle (every 30s) — for live monitoring
+  - Download button — exports raw `.log` file for the selected date
+  - Read-only — no editing, no deletion from UI
+
+  **Backend:** `GET /system-logs?date=YYYY-MM-DD&level=ERROR&search=xxx&page=1` — reads and filters log file server-side; rate-limited to prevent abuse. **Schema change:** None. **Migration:** Not required.
+
+---
+
+## Phase 21 — Support & Documentation
+
+- **F-079 — In-App Support Ticket System** — Any logged-in user (all system roles) can raise a support ticket for issues, enhancement requests, or suggestions related to the PMS portal. Tickets are directed to ADMIN / SUPER_USER for resolution. Users can track the status of their own raised tickets from a "My Tickets" view in the left nav.
+
+  **Ticket fields:** `title` (required), `description` (required, rich text), `category` (ISSUE / ENHANCEMENT / SUGGESTION), `priority` (LOW / MEDIUM / HIGH — default LOW), `status` (OPEN / IN_PROGRESS / RESOLVED / CLOSED — default OPEN), `resolvedNote` (admin-only, visible to user when resolved/closed), `createdByUserId`, `assignedToUserId` (optional — admin can assign to a specific admin/superadmin), timestamps.
+
+  **Schema:** New `SupportTicket` model on `prisma/schema.prisma`. Migration required.
+
+  **Endpoints:**
+  - `POST /support-tickets` — any authenticated user; creates ticket with status OPEN
+  - `GET /support-tickets` — ADMIN/SUPER_USER only; returns all tickets with filters (status, category, priority, search by title)
+  - `GET /support-tickets/my` — any authenticated user; returns only their own tickets (all statuses)
+  - `GET /support-tickets/:id` — creator or ADMIN/SUPER_USER; returns single ticket
+  - `PATCH /support-tickets/:id` — ADMIN/SUPER_USER only; update status, resolvedNote, assignedToUserId
+  - `DELETE /support-tickets/:id` — SUPER_USER only; hard delete
+
+  **Email notifications:**
+  - On ticket creation → send email to all ADMIN and SUPER_USER users with ticket title, category, priority, and description
+  - On ticket status change (OPEN → IN_PROGRESS, any → RESOLVED, any → CLOSED) → send email to the ticket creator with new status and resolvedNote (if set)
+
+  **Frontend — Left nav "Support" link (all users):**
+  - **My Tickets tab (default):** table showing own tickets — title, category, priority, status badge (colour-coded), created date, resolved note column (visible when RESOLVED/CLOSED). "Raise Ticket" button opens a modal with the create form.
+  - **All Tickets tab (ADMIN / SUPER_USER only):** table of all tickets with filters (status, category, priority, keyword search). Click a ticket row to open a detail/edit panel: view full description, change status, add resolved note, assign to admin. Status badge colours: OPEN=blue, IN_PROGRESS=amber, RESOLVED=green, CLOSED=gray.
+
+  **RBAC summary:**
+  | Action | Who |
+  |--------|-----|
+  | Create ticket | All authenticated users |
+  | View own tickets | All authenticated users |
+  | View all tickets | ADMIN / SUPER_USER |
+  | Update status / resolve | ADMIN / SUPER_USER |
+  | Delete ticket | SUPER_USER only |
+
+  **Migration:** Required — new `support_tickets` table + `TicketCategory` and `TicketStatus` and `TicketPriority` enums. **No changes to existing tables.**
+
+- **F-080 — Role-Based User Manual** — An in-app, role-aware user manual page accessible from the left nav bar (all users). Displays step-by-step guides for every feature the logged-in user has access to, with annotated screenshots and numbered instructions. Includes a "Download PDF" button that uses the browser's native print dialog with a dedicated print stylesheet.
+
+  **Content structure — sections rendered per role:**
+
+  | Section | Who sees it |
+  |---------|-------------|
+  | Login, Forgot Password, Reset Password, Remember Me | Everyone |
+  | Dashboard overview, Stat cards, My Tasks widget | Everyone |
+  | Edit Profile, Change Password, Upload Photo | Everyone |
+  | Timesheet — log work, calendar view, submit for approval | All project members |
+  | Kanban Board — view, update status, log time | All project members |
+  | Leave & OT — apply, view status | All project members |
+  | Bug management — raise, track, comment | Developer / QA / PM / TL / Admin |
+  | QA workflow — board columns, status transitions | QA / PM / TL / Admin |
+  | Sprint management — create, activate, delete sprints | PM / TL / Admin / SuperAdmin |
+  | Milestone management — create, track milestones | PM / TL / Admin / SuperAdmin |
+  | Project management — create, edit, archive projects | PM / Admin / SuperAdmin |
+  | Team management — add/remove members, assign roles | PM / TL / Admin / SuperAdmin |
+  | Work item import — download template, upload CSV | PM / TL / Admin / SuperAdmin |
+  | Reports — productivity, timesheet, billing, capacity | PM / TL / Admin / SuperAdmin |
+  | KPI — view scores, enter manual scores | Admin / SuperAdmin (full); Employee (own) |
+  | User Management — create, edit, deactivate users | Admin / SuperAdmin |
+  | Settings — shifts, holidays, portal config | Admin / SuperAdmin |
+  | Support Tickets — raise, track, manage (admin) | Everyone (scoped by role) |
+  | User Manual — how to use this page | Everyone |
+
+  **Frontend — `/user-manual` page:**
+  - Left nav link "User Manual" with a book icon; visible to all roles
+  - Page renders a vertical list of collapsible sections; only sections relevant to the logged-in user's system role + any project role are shown
+  - Each section contains: numbered steps, `<figure>` blocks with screenshot `<img>` and a `<figcaption>` description below
+  - Screenshot assets stored in `public/manual/` with explicit filenames (e.g. `login-screen.png`, `board-pm.png`, `user-management-admin.png`) — placeholder images shown until actual screenshots are dropped in
+  - "Download as PDF" button triggers `window.print()`; a `@media print` stylesheet hides the sidebar, topbar, and nav, prints white background, full-width content, page breaks between sections
+  - Role detection uses `useAuthStore()` + `analyticsApi.getMyProjectRole()` to determine which sections to render; no backend endpoint required
+
+  **No backend changes. No schema changes. No migration required.**
+
+  **Screenshot asset list (to be captured from the live system and placed in `public/manual/`):**
+  - `login-screen.png` — Login page full view
+  - `forgot-password.png` — Forgot Password page
+  - `reset-password.png` — Reset Password page
+  - `dashboard-admin.png` — Dashboard as Admin/SuperAdmin
+  - `dashboard-employee.png` — Dashboard as Employee
+  - `dashboard-pm.png` — Dashboard as Project Manager
+  - `profile-edit.png` — Edit Profile page
+  - `timesheet-log.png` — Log Work modal on a work item
+  - `timesheet-calendar.png` — Timesheet calendar view
+  - `board-overview.png` — Kanban board full view
+  - `board-workitem-modal.png` — Work item detail modal
+  - `board-sprint-manager.png` — Sprint manager panel
+  - `leave-apply.png` — Apply Leave form
+  - `leave-list.png` — Leave list with statuses
+  - `projects-list.png` — Projects card grid
+  - `project-detail.png` — Project detail page
+  - `project-members.png` — Team/Members section
+  - `milestones.png` — Milestones section
+  - `reports-productivity.png` — Productivity report tab
+  - `reports-timesheet.png` — Timesheet report tab
+  - `reports-billing.png` — Billing report tab
+  - `reports-capacity.png` — Capacity matrix tab
+  - `kpi-admin.png` — KPI dashboard (admin view)
+  - `kpi-employee.png` — KPI dashboard (employee view)
+  - `user-management.png` — Users list page (admin)
+  - `settings-portal.png` — Portal Configuration page
+  - `support-raise.png` — Raise Support Ticket modal
+  - `support-my-tickets.png` — My Tickets list
+
+---
 
 - **F-073 — Multi-Factor Authentication (TOTP / 2FA)** — TOTP-based two-factor authentication compatible with Google Authenticator and Authy. **Forced enrollment for all users:** on first login (when `mfaEnabled = false`), backend returns `{ mfaSetupRequired: true, tempToken }` instead of full JWT; frontend locks user into the MFA setup screen — no other navigation is accessible until setup is complete; this applies to every user including admins. **Setup flow:** backend generates a TOTP secret via `otplib`, returns a `otpauth://` URI rendered as a QR code (`qrcode` package); user scans with Google Authenticator / Authy, enters 6-digit code to confirm; backend verifies and sets `mfaEnabled = true` + stores `mfaSecret` on the user record; full JWT issued and user enters the app. **Login flow (subsequent logins):** `POST /auth/login` returns `{ mfaRequired: true, tempToken }`; frontend shows TOTP code input screen; `POST /auth/mfa/verify` validates code and issues full access + refresh tokens. **Disable flow:** user can turn off 2FA from Profile by entering current 6-digit code (re-login will force setup again). **Admin Reset flow:** Super Admin / Admin can reset MFA for any user from the User Management page (e.g. user lost phone or switched device); reset clears `mfaSecret` and sets `mfaEnabled = false` — user must re-enrol on next login; action is audit-logged. **DB:** `mfaEnabled Boolean @default(false)`, `mfaSecret String?` on `users` table (migration required). **Endpoints:** `GET /auth/mfa/setup`, `POST /auth/mfa/enable`, `POST /auth/mfa/verify`, `DELETE /auth/mfa/disable`, `DELETE /admin/users/:id/mfa/reset` (SUPER_USER / ADMIN only). **Frontend:** forced MFA setup screen after first login (full-screen, no sidebar/nav) with friendly onboarding copy — headline "Secure your account", explanation of what 2FA is, step-by-step instructions ("1. Download Google Authenticator or Authy on your phone 2. Scan the QR code below 3. Enter the 6-digit code to confirm"), download links for Google Authenticator and Authy; two-step login screen for subsequent logins (step 1: email + password, step 2: TOTP code input); Profile page "Security" section with Disable 2FA option; User Management page "Reset MFA" button per user (Admin / Super Admin only, shown only when `mfaEnabled = true`). **Packages:** `otplib`, `qrcode`. **RBAC:** all users are forced to enrol; Super Admin / Admin can reset any user's MFA; reset action emits audit log entry.

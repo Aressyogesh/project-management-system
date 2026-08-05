@@ -1,5 +1,5 @@
 import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   CartesianGrid,
   Line,
@@ -12,6 +12,7 @@ import {
 } from 'recharts';
 import { analyticsApi } from '../../../api/analyticsApi';
 import type { LiveEmployeeKpiRecord, KpiNote } from '../../../api/analyticsApi';
+import { notificationsApi } from '../../../api/notificationsApi';
 import { dashboardApi } from '../../../api/dashboard.api';
 import { projectsApi } from '../../../api/projects.api';
 import { useAuthStore } from '../../../store/authStore';
@@ -25,6 +26,33 @@ import {
   buildTeamSummary,
   transformLiveKpi,
 } from '../data/kpiStaticData';
+
+// ─── Toast ────────────────────────────────────────────────────────────────────
+
+interface ToastState { message: string; type: 'success' | 'error' }
+
+function Toast({ toast, onClose }: { toast: ToastState; onClose: () => void }) {
+  const isError = toast.type === 'error';
+  return (
+    <div className="fixed bottom-6 right-6 z-[100] flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg text-sm font-medium text-white bg-gray-900 min-w-[260px] max-w-sm animate-fade-in">
+      {isError ? (
+        <svg className="w-4 h-4 shrink-0 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      ) : (
+        <svg className="w-4 h-4 shrink-0 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+        </svg>
+      )}
+      <span className="flex-1">{toast.message}</span>
+      <button onClick={onClose} className="text-gray-400 hover:text-white transition ml-1">
+        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+    </div>
+  );
+}
 
 // ─── Period types ─────────────────────────────────────────────────────────────
 
@@ -591,6 +619,29 @@ export function KpiPage() {
   const [showScoreEntry, setShowScoreEntry] = useState(false);
   const [expandedUserId, setExpandedUserId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [toast, setToast] = useState<ToastState | null>(null);
+
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(null), 5000);
+    return () => clearTimeout(t);
+  }, [toast]);
+
+  const isStrictAdmin = user?.systemRole === 'SUPER_USER' || user?.systemRole === 'ADMIN';
+
+  const sendDigestMutation = useMutation({
+    mutationFn: () => {
+      const period = periodType === 'MONTHLY' ? selectedPeriod : undefined;
+      const userIds = selectedMemberId
+        ? [selectedMemberId]
+        : selectedProjectId
+        ? projectMemberIds
+        : undefined;
+      return notificationsApi.sendKpiDigest(period, userIds);
+    },
+    onSuccess: (data) => setToast({ message: data.message, type: 'success' }),
+    onError: () => setToast({ message: 'Failed to send scorecard. Please try again.', type: 'error' }),
+  });
 
   // Effective months to fetch
   const effectiveMonths = useMemo(() => {
@@ -799,7 +850,7 @@ export function KpiPage() {
   return (
     <div className="space-y-6">
       {/* ── Page header ── */}
-      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+      <div className="space-y-3">
         <div>
           <h1 className="text-xl font-bold text-gray-900">KPI Dashboard</h1>
           <p className="text-sm text-gray-400 mt-0.5">
@@ -824,6 +875,30 @@ export function KpiPage() {
               </svg>
               Enter Monthly Scores
             </button>
+          )}
+
+          {/* Send Performance Scorecard — admin only */}
+          {isStrictAdmin && periodType === 'MONTHLY' && (
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => sendDigestMutation.mutate()}
+                disabled={sendDigestMutation.isPending}
+                className="flex items-center gap-1.5 text-xs font-medium text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 px-3 py-1.5 rounded-lg transition"
+                title={
+                  selectedMemberId
+                    ? `Send scorecard to ${projects.find((p) => p.id === selectedProjectId) ? projectMembers.find((m) => m.user.id === selectedMemberId)?.user.fullName ?? 'selected member' : 'selected member'} for ${selectedPeriod}`
+                    : selectedProjectId
+                    ? `Send scorecard to all members of ${projects.find((p) => p.id === selectedProjectId)?.name ?? 'selected project'} for ${selectedPeriod}`
+                    : `Send scorecard to all team members for ${selectedPeriod}`
+                }
+              >
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                    d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                </svg>
+                {sendDigestMutation.isPending ? 'Sending…' : 'Send Scorecard'}
+              </button>
+            </div>
           )}
 
           {/* View type */}
@@ -1063,6 +1138,8 @@ export function KpiPage() {
           onClose={() => setShowScoreEntry(false)}
         />
       )}
+
+      {toast && <Toast toast={toast} onClose={() => setToast(null)} />}
     </div>
   );
 }
