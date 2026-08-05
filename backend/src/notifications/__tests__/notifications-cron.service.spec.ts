@@ -1,5 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { BoardStatus, MilestoneStatus } from '@prisma/client';
+import { AnalyticsService } from '../../analytics/analytics.service';
 import { EmailService } from '../../email/email.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { NotificationsCronService } from '../notifications-cron.service';
@@ -43,6 +44,10 @@ const mockEmail = {
   wrapHtml: jest.fn().mockReturnValue('<html>wrapped</html>'),
 };
 
+const mockAnalytics = {
+  computeAndSaveAutoMetrics: jest.fn().mockResolvedValue([]),
+};
+
 describe('NotificationsCronService', () => {
   let service: NotificationsCronService;
 
@@ -52,6 +57,7 @@ describe('NotificationsCronService', () => {
         NotificationsCronService,
         { provide: PrismaService, useValue: mockPrisma },
         { provide: EmailService, useValue: mockEmail },
+        { provide: AnalyticsService, useValue: mockAnalytics },
       ],
     }).compile();
 
@@ -59,6 +65,7 @@ describe('NotificationsCronService', () => {
     jest.clearAllMocks();
     mockEmail.sendEmail.mockResolvedValue(undefined);
     mockEmail.wrapHtml.mockReturnValue('<html>wrapped</html>');
+    mockAnalytics.computeAndSaveAutoMetrics.mockResolvedValue([]);
   });
 
   // ── Deadline reminders ────────────────────────────────────────────────────
@@ -257,10 +264,15 @@ describe('NotificationsCronService', () => {
 
   describe('handleMonthlyKpiDigest', () => {
     it('UTC-F041-B-003: HandleMonthlyKpiDigest_UsersWithKpiRecords_SendsDigestEmail', async () => {
-      mockPrisma.user.findMany.mockResolvedValue([mockAssigneeA]);
-      mockPrisma.kpiRecord.findMany.mockResolvedValue([
-        { metricId: 'QUALITY', points: 90 },
-        { metricId: 'DELIVERY', points: 85 },
+      mockAnalytics.computeAndSaveAutoMetrics.mockResolvedValueOnce([
+        {
+          userId: 'user-a',
+          fullName: 'Alice',
+          email: 'alice@pms.com',
+          metrics: [{ metricId: 'attendance', points: 5 }, { metricId: 'timeliness', points: 4 }],
+          totalScore: 9,
+          hasNoActivity: false,
+        },
       ]);
 
       await service.handleMonthlyKpiDigest();
@@ -268,12 +280,11 @@ describe('NotificationsCronService', () => {
       expect(mockEmail.sendEmail).toHaveBeenCalledTimes(1);
       const [to, subject] = mockEmail.sendEmail.mock.calls[0];
       expect(to).toBe('alice@pms.com');
-      expect(subject.toLowerCase()).toContain('kpi');
+      expect(subject.toLowerCase()).toContain('scorecard');
     });
 
-    it('UTC-F041-B-004: HandleMonthlyKpiDigest_UserHasNoKpiRecords_SkipsEmail', async () => {
-      mockPrisma.user.findMany.mockResolvedValue([mockAssigneeA]);
-      mockPrisma.kpiRecord.findMany.mockResolvedValue([]);
+    it('UTC-F041-B-004: HandleMonthlyKpiDigest_NoUsersReturned_SendsNoEmails', async () => {
+      mockAnalytics.computeAndSaveAutoMetrics.mockResolvedValueOnce([]);
 
       await service.handleMonthlyKpiDigest();
 
@@ -281,8 +292,16 @@ describe('NotificationsCronService', () => {
     });
 
     it('UTC-F041-B-005: HandleMonthlyKpiDigest_SmtpFails_LogsErrorAndDoesNotThrow', async () => {
-      mockPrisma.user.findMany.mockResolvedValue([mockAssigneeA]);
-      mockPrisma.kpiRecord.findMany.mockResolvedValue([{ metricId: 'QUALITY', points: 90 }]);
+      mockAnalytics.computeAndSaveAutoMetrics.mockResolvedValueOnce([
+        {
+          userId: 'user-a',
+          fullName: 'Alice',
+          email: 'alice@pms.com',
+          metrics: [{ metricId: 'attendance', points: 5 }],
+          totalScore: 5,
+          hasNoActivity: false,
+        },
+      ]);
       mockEmail.sendEmail.mockRejectedValueOnce(new Error('SMTP down'));
 
       await expect(service.handleMonthlyKpiDigest()).resolves.not.toThrow();

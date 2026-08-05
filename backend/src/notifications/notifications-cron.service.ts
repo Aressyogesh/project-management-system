@@ -1,8 +1,140 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { BoardStatus, BugReminderType, LeaveStatus, MilestoneStatus, ProjectRole, ProjectStatus, SystemRole, WorkItemType } from '@prisma/client';
+import { AnalyticsService } from '../analytics/analytics.service';
 import { EmailService } from '../email/email.service';
 import { PrismaService } from '../prisma/prisma.service';
+
+// ─── KPI digest helpers ────────────────────────────────────────────────────────
+
+interface KpiMetricInfo {
+  name: string;
+  maxPoints: number;
+  coreValue: string;
+  subCategory: string | null;
+  badge: 'AUTO' | 'MANUAL' | 'SELF';
+}
+
+const METRIC_INFO: Record<string, KpiMetricInfo> = {
+  sprint_reliability:        { name: 'Sprint Reliability',               maxPoints: 10, coreValue: 'Diligent and Committed', subCategory: 'Delivery & Execution',             badge: 'AUTO'   },
+  delivery_timeliness:       { name: 'Delivery Timeliness',              maxPoints: 10, coreValue: 'Diligent and Committed', subCategory: 'Delivery & Execution',             badge: 'AUTO'   },
+  estimation_accuracy:       { name: 'Estimation Accuracy',              maxPoints: 10, coreValue: 'Diligent and Committed', subCategory: 'Delivery & Execution',             badge: 'AUTO'   },
+  throughput_complexity:     { name: 'Throughput & Complexity Handling',  maxPoints: 10, coreValue: 'Diligent and Committed', subCategory: 'Delivery & Execution',             badge: 'AUTO'   },
+  internal_rework_ratio:     { name: 'Internal Rework Ratio',            maxPoints: 5,  coreValue: 'Diligent and Committed', subCategory: 'Quality & Engineering Excellence', badge: 'AUTO'   },
+  technical_defect_leakage:  { name: 'Technical Defect Leakage',         maxPoints: 10, coreValue: 'Diligent and Committed', subCategory: 'Quality & Engineering Excellence', badge: 'AUTO'   },
+  functional_defect_leakage: { name: 'Functional Defect Leakage',        maxPoints: 10, coreValue: 'Diligent and Committed', subCategory: 'Quality & Engineering Excellence', badge: 'AUTO'   },
+  attendance:                { name: 'Attendance',                       maxPoints: 5,  coreValue: 'Diligent and Committed', subCategory: 'Attendance',                       badge: 'AUTO'   },
+  timeliness:                { name: 'Timeliness',                       maxPoints: 5,  coreValue: 'Diligent and Committed', subCategory: 'Attendance',                       badge: 'AUTO'   },
+  team_collaboration:        { name: 'Team Collaboration',               maxPoints: 5,  coreValue: 'Collaboration',          subCategory: null,                               badge: 'MANUAL' },
+  reporting_documentation:   { name: 'Reporting & Documentation',        maxPoints: 5,  coreValue: 'Collaboration',          subCategory: null,                               badge: 'MANUAL' },
+  learning_velocity:         { name: 'Learning Velocity',                maxPoints: 5,  coreValue: 'Continuous Learning',    subCategory: null,                               badge: 'AUTO'   },
+  positive_behaviour:        { name: 'Positive Behaviour & Conduct',     maxPoints: 5,  coreValue: 'Optimism',               subCategory: null,                               badge: 'MANUAL' },
+  gratitude:                 { name: 'Gratitude',                        maxPoints: 5,  coreValue: 'Gratitude',              subCategory: null,                               badge: 'MANUAL' },
+};
+
+const CORE_VALUE_GROUPS = [
+  {
+    coreValue: 'Diligent and Committed',
+    maxPoints: 75,
+    headerColor: '#D9EAD3',
+    headerTextColor: '#14532d',
+    subCategories: ['Delivery & Execution', 'Quality & Engineering Excellence', 'Attendance'] as (string | null)[],
+  },
+  { coreValue: 'Collaboration',       maxPoints: 10, headerColor: '#CCCCFF', headerTextColor: '#3b0764', subCategories: [null] as (string | null)[] },
+  { coreValue: 'Continuous Learning', maxPoints: 5,  headerColor: '#C9DAF8', headerTextColor: '#1e3a5f', subCategories: [null] as (string | null)[] },
+  { coreValue: 'Optimism',            maxPoints: 5,  headerColor: '#F4CCCC', headerTextColor: '#7f1d1d', subCategories: [null] as (string | null)[] },
+  { coreValue: 'Gratitude',           maxPoints: 5,  headerColor: '#FCE5CD', headerTextColor: '#7c2d12', subCategories: [null] as (string | null)[] },
+];
+
+function kpiGrade(total: number): { grade: string; label: string; color: string; bg: string } {
+  if (total >= 90) return { grade: 'A', label: 'Excellent',          color: '#065f46', bg: '#d1fae5' };
+  if (total >= 75) return { grade: 'B', label: 'Good',               color: '#1e3a5f', bg: '#dbeafe' };
+  if (total >= 60) return { grade: 'C', label: 'Average',            color: '#78350f', bg: '#fef3c7' };
+  return               { grade: 'D', label: 'Needs Improvement',  color: '#7f1d1d', bg: '#fee2e2' };
+}
+
+function buildKpiEmailBody(
+  fullName: string,
+  period: string,
+  metrics: { metricId: string; points: number }[],
+  totalScore: number,
+): string {
+  const scoreMap = new Map(metrics.map((m) => [m.metricId, m.points]));
+  const { grade, label, color, bg } = kpiGrade(totalScore);
+
+  const badgeHtml = (badge: 'AUTO' | 'MANUAL' | 'SELF') => {
+    const cfg = {
+      AUTO:   { bg: '#dcfce7', text: '#166534', label: 'AUTO'   },
+      MANUAL: { bg: '#ede9fe', text: '#5b21b6', label: 'MANUAL' },
+      SELF:   { bg: '#dbeafe', text: '#1d4ed8', label: 'SELF'   },
+    }[badge];
+    return `<span style="font-size:10px;padding:1px 5px;border-radius:3px;background:${cfg.bg};color:${cfg.text};font-weight:700;letter-spacing:0.03em;">${cfg.label}</span>`;
+  };
+
+  const sections = CORE_VALUE_GROUPS.map((group) => {
+    const groupMetrics = Object.entries(METRIC_INFO).filter(([ ,m]) => m.coreValue === group.coreValue);
+    const groupEarned = groupMetrics.reduce((s, [id]) => s + (scoreMap.get(id) ?? 0), 0);
+    const groupEarnedRounded = Math.round(groupEarned * 10) / 10;
+
+    let rows = '';
+    let lastSubCat: string | null | undefined = undefined;
+
+    for (const subCat of group.subCategories) {
+      const subMetrics = groupMetrics.filter(([, m]) => m.subCategory === subCat);
+      if (subMetrics.length === 0) continue;
+
+      if (subCat !== null && subCat !== lastSubCat) {
+        rows += `<tr>
+          <td colspan="3" style="padding:5px 12px 4px 16px;background:#f9fafb;color:#6b7280;font-size:11px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;">${subCat}</td>
+        </tr>`;
+      }
+      lastSubCat = subCat;
+
+      for (const [metricId, info] of subMetrics) {
+        const pts = scoreMap.get(metricId) ?? 0;
+        const ptsStr = Number.isInteger(pts) ? String(pts) : pts.toFixed(1);
+        const isZero = pts === 0;
+        rows += `<tr>
+          <td style="padding:7px 8px 7px ${subCat ? '24px' : '16px'};border-bottom:1px solid #f3f4f6;color:#374151;">${info.name}</td>
+          <td style="padding:7px 6px;border-bottom:1px solid #f3f4f6;">${badgeHtml(info.badge)}</td>
+          <td style="padding:7px 14px 7px 8px;border-bottom:1px solid #f3f4f6;text-align:right;font-weight:700;color:${isZero ? '#9ca3af' : '#111827'};">${ptsStr}&thinsp;/&thinsp;${info.maxPoints}</td>
+        </tr>`;
+      }
+    }
+
+    return `<tr>
+      <td colspan="3" style="padding:9px 14px;background:${group.headerColor};color:${group.headerTextColor};font-weight:700;font-size:13px;">
+        ${group.coreValue}
+        <span style="float:right;font-weight:600;font-size:12px;">${groupEarnedRounded}&thinsp;/&thinsp;${group.maxPoints} pts</span>
+      </td>
+    </tr>
+    ${rows}`;
+  });
+
+  const totalRounded = Math.round(totalScore * 10) / 10;
+
+  return `
+    <p style="margin:0 0 18px;color:#374151;font-size:15px;">
+      Hi <strong>${fullName}</strong>, here is your KPI summary for <strong>${period}</strong>.
+    </p>
+    <table style="width:100%;border-collapse:collapse;font-size:13px;margin-bottom:16px;">
+      <tbody>
+        ${sections.join('\n')}
+      </tbody>
+    </table>
+    <table style="width:100%;border-collapse:collapse;font-size:14px;border-radius:6px;overflow:hidden;">
+      <tbody>
+        <tr style="background:#1e293b;">
+          <td style="padding:11px 16px;color:#f1f5f9;font-weight:600;">Total Score</td>
+          <td style="padding:11px 16px;color:#f1f5f9;text-align:right;font-weight:700;font-size:16px;">${totalRounded}&thinsp;/&thinsp;100</td>
+        </tr>
+        <tr style="background:${bg};">
+          <td style="padding:10px 16px;color:${color};font-weight:600;">Grade</td>
+          <td style="padding:10px 16px;color:${color};text-align:right;font-weight:700;font-size:15px;">${grade} — ${label}</td>
+        </tr>
+      </tbody>
+    </table>`;
+}
 
 @Injectable()
 export class NotificationsCronService {
@@ -11,6 +143,7 @@ export class NotificationsCronService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly email: EmailService,
+    private readonly analytics: AnalyticsService,
   ) {}
 
   @Cron('0 9 * * *', { name: 'deadline-reminders' })
@@ -460,63 +593,42 @@ export class NotificationsCronService {
   }
 
   @Cron('0 8 1 * *', { name: 'monthly-kpi-digest' })
-  async handleMonthlyKpiDigest(): Promise<void> {
+  async handleMonthlyKpiDigest(overridePeriod?: string, filterUserIds?: string[]): Promise<{ sent: number; period: string }> {
     this.logger.log('Running monthly KPI digest cron');
 
     const now = new Date();
     const prevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-    const period = `${prevMonth.getFullYear()}-${String(prevMonth.getMonth() + 1).padStart(2, '0')}`;
+    const period = overridePeriod ?? `${prevMonth.getFullYear()}-${String(prevMonth.getMonth() + 1).padStart(2, '0')}`;
 
-    const activeUsers = await this.prisma.user.findMany({
-      where: { isActive: true },
-      select: { id: true, fullName: true, email: true },
-    });
+    // Compute all 14 metrics for every active non-admin user and persist the 10 auto-computed ones
+    const allResults = await this.analytics.computeAndSaveAutoMetrics(period);
+    const userResults = filterUserIds?.length
+      ? allResults.filter((r) => filterUserIds.includes(r.userId))
+      : allResults;
 
-    for (const user of activeUsers) {
-      const records = await this.prisma.kpiRecord.findMany({
-        where: { userId: user.id, period },
-        select: { metricId: true, points: true },
-      });
+    let sent = 0;
+    for (const result of userResults) {
+      if (!result.email) continue;
 
-      if (records.length === 0) continue;
-
-      const rows = records
-        .map(
-          (r) => `<tr>
-            <td style="padding:8px 12px;border-bottom:1px solid #f3f4f6;">${r.metricId}</td>
-            <td style="padding:8px 12px;border-bottom:1px solid #f3f4f6;text-align:right;font-weight:700;">${r.points}</td>
-          </tr>`,
-        )
-        .join('');
-
-      const body = `
-        <p style="margin:0 0 16px;color:#374151;font-size:15px;">
-          Hi ${user.fullName}, here is your KPI summary for <strong>${period}</strong>.
-        </p>
-        <table style="width:100%;border-collapse:collapse;font-size:14px;">
-          <thead>
-            <tr style="background:#f9fafb;">
-              <th style="padding:8px 12px;text-align:left;border-bottom:2px solid #e5e7eb;">Metric</th>
-              <th style="padding:8px 12px;text-align:right;border-bottom:2px solid #e5e7eb;">Points</th>
-            </tr>
-          </thead>
-          <tbody>${rows}</tbody>
-        </table>`;
+      const periodLabel = new Date(prevMonth).toLocaleString('en-GB', { month: 'long', year: 'numeric' });
+      const body = buildKpiEmailBody(result.fullName, periodLabel, result.metrics, result.totalScore);
 
       try {
         await this.email.sendEmail(
-          user.email,
-          `Your KPI Digest for ${period}`,
-          this.email.wrapHtml('Monthly KPI Digest', body),
+          result.email,
+          `Your Monthly Performance Scorecard — ${periodLabel}`,
+          this.email.wrapHtml('Monthly Performance Scorecard', body),
         );
+        sent++;
       } catch (err) {
         this.logger.error(
-          `Failed to send KPI digest to ${user.email}: ${(err as Error).message}`,
+          `Failed to send KPI digest to ${result.email}: ${(err as Error).message}`,
         );
       }
     }
 
-    this.logger.log(`Monthly KPI digest cron complete for period ${period}`);
+    this.logger.log(`Monthly KPI digest cron complete for period ${period} — ${sent} email(s) sent`);
+    return { sent, period };
   }
 
   @Cron('5 8 1 * *', { name: 'monthly-leave-report' })
