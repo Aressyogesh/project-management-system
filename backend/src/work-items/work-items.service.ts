@@ -1181,17 +1181,23 @@ export class WorkItemsService implements OnModuleInit {
 
       let startDate: Date | undefined;
       if (startDateRaw) {
-        const [mm, dd, yyyy] = startDateRaw.split('/').map(Number);
-        const d = new Date(yyyy, mm - 1, dd);
-        if (!mm || !dd || !yyyy || isNaN(d.getTime())) errors.push(`Start Date "${startDateRaw}" is not a valid date (use M/D/YYYY, e.g. 7/29/2026)`);
+        const [mm, dd, rawYyyy] = startDateRaw.split('/').map(Number);
+        // Excel with raw:false may return 2-digit year (e.g. "10/8/26"); normalise to 21st century
+        const yyyy = rawYyyy > 0 && rawYyyy < 100 ? 2000 + rawYyyy : rawYyyy;
+        // Use Date.UTC to avoid local-timezone midnight shifting the date back by one day
+        const d = new Date(Date.UTC(yyyy, mm - 1, dd));
+        if (!mm || !dd || !rawYyyy || isNaN(d.getTime())) errors.push(`Start Date "${startDateRaw}" is not a valid date (use M/D/YYYY, e.g. 7/29/2026)`);
         else startDate = d;
       }
 
       let dueDate: Date | undefined;
       if (dueDateRaw) {
-        const [mm, dd, yyyy] = dueDateRaw.split('/').map(Number);
-        const d = new Date(yyyy, mm - 1, dd);
-        if (!mm || !dd || !yyyy || isNaN(d.getTime())) errors.push(`Due Date "${dueDateRaw}" is not a valid date (use M/D/YYYY, e.g. 7/29/2026)`);
+        const [mm, dd, rawYyyy] = dueDateRaw.split('/').map(Number);
+        // Excel with raw:false may return 2-digit year (e.g. "10/8/26"); normalise to 21st century
+        const yyyy = rawYyyy > 0 && rawYyyy < 100 ? 2000 + rawYyyy : rawYyyy;
+        // Use Date.UTC to avoid local-timezone midnight shifting the date back by one day
+        const d = new Date(Date.UTC(yyyy, mm - 1, dd));
+        if (!mm || !dd || !rawYyyy || isNaN(d.getTime())) errors.push(`Due Date "${dueDateRaw}" is not a valid date (use M/D/YYYY, e.g. 7/29/2026)`);
         else dueDate = d;
       }
 
