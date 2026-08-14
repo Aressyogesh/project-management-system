@@ -180,7 +180,7 @@ export function DashboardPage() {
   const [searchParams] = useSearchParams();
 
   const [selectedProject, setSelectedProject] = useState(searchParams.get('projectId') ?? '');
-  const [selectedMonth,   setSelectedMonth]   = useState(MONTH_OPTIONS[0]);
+  const [selectedMonth] = useState(MONTH_OPTIONS[0]);
 
   // Admin/Super: fetch all active projects for the filter dropdown
   const { data: adminProjects = [], isLoading: adminProjectsLoading } = useQuery({
