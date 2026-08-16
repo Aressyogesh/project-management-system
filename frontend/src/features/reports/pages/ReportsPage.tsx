@@ -582,6 +582,7 @@ function ProjectSummaryTab({ period, project }: { period: string; project: strin
   });
 
   const [drillDown, setDrillDown] = useState<DrillDownState | null>(null);
+  const [showCalcInfo, setShowCalcInfo] = useState(false);
   const periodLabel = PERIOD_OPTIONS.find((p) => p.value === period)?.label ?? period;
 
   if (isLoading) return <TabSpinner />;
@@ -594,7 +595,15 @@ function ProjectSummaryTab({ period, project }: { period: string; project: strin
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-end">
+      <div className="flex items-center justify-between">
+        <button onClick={() => setShowCalcInfo(true)} title="How is this calculated?"
+          className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-primary-600 transition-colors">
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+              d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          How is this calculated?
+        </button>
         <CsvButton onClick={() => downloadCsv(`project-summary-report-${period}.csv`, [
           ['Project', 'Type', 'Total', 'Done', 'Complete %', 'Status'],
           ...projects.flatMap((p) =>
@@ -674,6 +683,84 @@ function ProjectSummaryTab({ period, project }: { period: string; project: strin
           </div>
         );
       })}
+
+      {showCalcInfo && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
+          onClick={() => setShowCalcInfo(false)}>
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg mx-4 p-6 max-h-[85vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-start justify-between mb-5">
+              <h2 className="text-base font-semibold text-gray-900">How Project Summary Works</h2>
+              <button onClick={() => setShowCalcInfo(false)} className="text-gray-400 hover:text-gray-600 transition-colors ml-4 shrink-0">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="space-y-5 text-sm text-gray-700">
+              <div>
+                <h3 className="font-semibold text-gray-800 mb-2">What This Report Shows</h3>
+                <p className="text-xs text-gray-500">
+                  Each project card breaks down work items by type (Epic, Story, Task, Sub-Task, Bug) for the selected period, showing how many exist and how many are done.
+                </p>
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-800 mb-2">Column Definitions</h3>
+                <div className="space-y-2 text-xs">
+                  {[
+                    ['Total', 'All work items of that type that exist in the project'],
+                    ['Done', 'Items whose status is QA Done or Closed'],
+                    ['Complete %', 'Done ÷ Total × 100, rounded to nearest integer'],
+                  ].map(([col, desc]) => (
+                    <div key={col} className="flex gap-3">
+                      <span className="font-medium text-gray-700 w-28 shrink-0">{col}</span>
+                      <span className="text-gray-500">{desc}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-800 mb-2">Overall Progress Bar</h3>
+                <div className="bg-gray-50 rounded-xl px-4 py-3 font-mono text-xs text-gray-700">
+                  Overall % = Total Done (all types) ÷ Total Items (all types) × 100
+                </div>
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-800 mb-3">Example — Alpha Platform, August 2026</h3>
+                <div className="rounded-xl border border-gray-200 overflow-hidden text-xs mb-3">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="bg-gray-50">
+                        <th className="px-4 py-2 text-left text-gray-500 font-medium">Type</th>
+                        <th className="px-4 py-2 text-right text-gray-500 font-medium">Total</th>
+                        <th className="px-4 py-2 text-right text-gray-500 font-medium">Done</th>
+                        <th className="px-4 py-2 text-right text-gray-500 font-medium">Complete %</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {[['Epic', '5', '4', '80%'], ['Story', '20', '12', '60%'], ['Task', '8', '6', '75%']].map(([type, total, done, pct]) => (
+                        <tr key={type} className="even:bg-gray-50">
+                          <td className="px-4 py-2 text-gray-600">{type}</td>
+                          <td className="px-4 py-2 text-right text-gray-800 font-semibold">{total}</td>
+                          <td className="px-4 py-2 text-right text-emerald-600 font-semibold">{done}</td>
+                          <td className="px-4 py-2 text-right text-gray-700 font-semibold">{pct}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <div className="bg-blue-50 rounded-xl px-4 py-3 text-xs space-y-1.5 text-gray-700">
+                  <div><span className="font-medium">Total Done</span> = 4 + 12 + 6 = <span className="font-semibold text-blue-700">22</span></div>
+                  <div><span className="font-medium">Total Items</span> = 5 + 20 + 8 = <span className="font-semibold text-blue-700">33</span></div>
+                  <div className="pt-1.5 border-t border-blue-200">
+                    <span className="font-medium">Overall Progress</span> = 22 ÷ 33 × 100 = <span className="font-semibold text-blue-700">67%</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -715,6 +802,7 @@ function BugSummaryTab({ period, project }: { period: string; project: string })
   });
 
   const [drillDown, setDrillDown] = useState<DrillDownState | null>(null);
+  const [showCalcInfo, setShowCalcInfo] = useState(false);
   const projectId = project && project !== 'all' ? project : undefined;
   const periodLabel = PERIOD_OPTIONS.find((p) => p.value === period)?.label ?? period;
 
@@ -727,7 +815,15 @@ function BugSummaryTab({ period, project }: { period: string; project: string })
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-end">
+      <div className="flex items-center justify-between">
+        <button onClick={() => setShowCalcInfo(true)} title="How is this calculated?"
+          className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-primary-600 transition-colors">
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+              d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          How is this calculated?
+        </button>
         <CsvButton onClick={() => {
           const severityRows = (data?.severity ?? []).filter((d) => d.count > 0);
           const classRows    = (data?.classification ?? []).filter((d) => d.count > 0);
@@ -826,6 +922,80 @@ function BugSummaryTab({ period, project }: { period: string; project: string })
         ))}
       </div>
       {drillDown && <DrillDownPanel state={drillDown} onClose={() => setDrillDown(null)} />}
+
+      {showCalcInfo && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
+          onClick={() => setShowCalcInfo(false)}>
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg mx-4 p-6 max-h-[85vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-start justify-between mb-5">
+              <h2 className="text-base font-semibold text-gray-900">How Bug Summary Works</h2>
+              <button onClick={() => setShowCalcInfo(false)} className="text-gray-400 hover:text-gray-600 transition-colors ml-4 shrink-0">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="space-y-5 text-sm text-gray-700">
+              <div>
+                <h3 className="font-semibold text-gray-800 mb-2">Severity Levels</h3>
+                <p className="text-xs text-gray-500 mb-2">Bugs are classified by how badly they affect the product, from most to least severe:</p>
+                <div className="space-y-1 text-xs">
+                  {[
+                    ['Show Stopper', 'System is completely broken; no workaround exists'],
+                    ['Blocker', 'Critical feature blocked; no workaround'],
+                    ['Critical', 'Major feature broken; workaround is difficult'],
+                    ['Major', 'Significant impact on usability'],
+                    ['Minor', 'Small impact; easy workaround exists'],
+                    ['Trivial', 'Cosmetic or low-impact issue'],
+                  ].map(([sev, desc]) => (
+                    <div key={sev} className="flex gap-3">
+                      <span className="font-medium text-gray-700 w-28 shrink-0">{sev}</span>
+                      <span className="text-gray-500">{desc}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-800 mb-2">Bug Classification</h3>
+                <p className="text-xs text-gray-500">Bugs are also tagged by the nature of the problem (Security, Crash/Hang, Performance, UI/Usability, etc.) to help identify systemic patterns.</p>
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-800 mb-2">% of Total</h3>
+                <div className="bg-gray-50 rounded-xl px-4 py-3 font-mono text-xs text-gray-700">
+                  % of Total = Count ÷ Total Bugs × 100
+                </div>
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-800 mb-3">Example — August 2026</h3>
+                <div className="rounded-xl border border-gray-200 overflow-hidden text-xs mb-3">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="bg-gray-50">
+                        <th className="px-4 py-2 text-left text-gray-500 font-medium">Severity</th>
+                        <th className="px-4 py-2 text-right text-gray-500 font-medium">Count</th>
+                        <th className="px-4 py-2 text-right text-gray-500 font-medium">% of 10</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {[['Blocker', '3', '30%'], ['Major', '5', '50%'], ['Minor', '2', '20%']].map(([sev, cnt, pct]) => (
+                        <tr key={sev} className="even:bg-gray-50">
+                          <td className="px-4 py-2 text-gray-600">{sev}</td>
+                          <td className="px-4 py-2 text-right font-semibold text-gray-800">{cnt}</td>
+                          <td className="px-4 py-2 text-right font-semibold text-gray-700">{pct}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <div className="bg-blue-50 rounded-xl px-4 py-3 text-xs text-gray-700">
+                  Total = 10 bugs. Blocker: 3 ÷ 10 × 100 = <span className="font-semibold text-blue-700">30%</span>. Click any severity count to drill down into the specific work items.
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -839,6 +1009,7 @@ function TaskAllocationTab({ currentUserId, period, project }: { currentUserId?:
     staleTime: 60_000,
   });
 
+  const [showCalcInfo, setShowCalcInfo] = useState(false);
   const chartData = data.slice(0, 10).map((r) => ({ name: r.name.split(' ')[0], hours: r.hoursAllocated }));
   const totalHours = data.reduce((s, r) => s + r.hoursAllocated, 0);
   const avgUtilisation = data.length > 0 ? Math.round(data.reduce((s, r) => s + r.utilisationPct, 0) / data.length) : 0;
@@ -890,8 +1061,15 @@ function TaskAllocationTab({ currentUserId, period, project }: { currentUserId?:
       </div>
 
       <div className="bg-white rounded-2xl border border-[#cccccc] shadow-sm overflow-hidden">
-        <div className="px-5 py-4 border-b border-gray-50">
+        <div className="px-5 py-4 border-b border-gray-50 flex items-center gap-2">
           <h3 className="text-sm font-semibold text-gray-800">Task Summary Details</h3>
+          <button onClick={() => setShowCalcInfo(true)} title="How is this calculated?"
+            className="text-gray-400 hover:text-primary-600 transition-colors">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </button>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -955,6 +1133,67 @@ function TaskAllocationTab({ currentUserId, period, project }: { currentUserId?:
             onPageChange={setPage} onPageSizeChange={setPageSize} />
         )}
       </div>
+
+      {showCalcInfo && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
+          onClick={() => setShowCalcInfo(false)}>
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg mx-4 p-6 max-h-[85vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-start justify-between mb-5">
+              <h2 className="text-base font-semibold text-gray-900">How Task Allocation Works</h2>
+              <button onClick={() => setShowCalcInfo(false)} className="text-gray-400 hover:text-gray-600 transition-colors ml-4 shrink-0">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="space-y-5 text-sm text-gray-700">
+              <div>
+                <h3 className="font-semibold text-gray-800 mb-2">Column Definitions</h3>
+                <div className="space-y-2 text-xs">
+                  {[
+                    ['Tasks', 'Number of tasks assigned to this person in the period'],
+                    ['Hours', 'Total hours logged on those tasks via timesheet entries'],
+                    ['Utilisation %', 'Hours Logged ÷ 176 × 100 (176 = standard monthly hours)'],
+                  ].map(([col, desc]) => (
+                    <div key={col} className="flex gap-3">
+                      <span className="font-medium text-gray-700 w-28 shrink-0">{col}</span>
+                      <span className="text-gray-500">{desc}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-800 mb-2">Utilisation Colour</h3>
+                <div className="flex gap-4 text-xs">
+                  <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-green-500 shrink-0" />≥ 80% — Good</span>
+                  <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-amber-500 shrink-0" />&lt; 80% — Low</span>
+                  <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-red-500 shrink-0" />&gt; 100% — Over</span>
+                </div>
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-800 mb-2">Example — Meera, August 2026</h3>
+                <div className="rounded-xl border border-gray-200 overflow-hidden text-xs mb-3">
+                  <table className="w-full">
+                    <tbody className="divide-y divide-gray-100">
+                      {[['Tasks assigned', '9'], ['Hours logged', '158h'], ['Standard monthly hours', '176h']].map(([label, val]) => (
+                        <tr key={label} className="even:bg-gray-50">
+                          <td className="px-4 py-2 text-gray-600">{label}</td>
+                          <td className="px-4 py-2 text-right font-semibold text-gray-800">{val}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <div className="bg-blue-50 rounded-xl px-4 py-3 text-xs space-y-1.5 text-gray-700">
+                  <div><span className="font-medium">Utilisation</span> = 158 ÷ 176 × 100 = <span className="font-semibold text-blue-700">89.7% → 90%</span></div>
+                  <div className="text-gray-500">Green bar — within normal range, not over-allocated.</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -968,6 +1207,7 @@ function TimesheetTab({ currentUserId, period, project }: { currentUserId?: stri
     staleTime: 60_000,
   });
 
+  const [showCalcInfo, setShowCalcInfo] = useState(false);
   const totalHours = data.reduce((s, r) => s + r.hoursLogged, 0);
   const { paginatedData, page, setPage, pageSize, setPageSize, totalPages, totalItems, startIndex, endIndex } = usePagination(data, 'timesheet');
   const periodLabel = PERIOD_OPTIONS.find((p) => p.value === period)?.label ?? period;
@@ -976,7 +1216,15 @@ function TimesheetTab({ currentUserId, period, project }: { currentUserId?: stri
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-end">
+      <div className="flex items-center justify-between">
+        <button onClick={() => setShowCalcInfo(true)} title="How is this calculated?"
+          className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-primary-600 transition-colors">
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+              d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          How is this calculated?
+        </button>
         <CsvButton onClick={() => downloadCsv(`timesheet-report-${period}.csv`, [
           ['Name', 'Role', 'Project', 'Hours Logged'],
           ...data.map((r) => [r.name, r.role, r.project, String(r.hoursLogged)]),
@@ -1001,8 +1249,15 @@ function TimesheetTab({ currentUserId, period, project }: { currentUserId?: stri
       </div>
 
       <div className="bg-white rounded-2xl border border-[#cccccc] shadow-sm overflow-hidden">
-        <div className="px-5 py-4 border-b border-gray-50">
+        <div className="px-5 py-4 border-b border-gray-50 flex items-center gap-2">
           <h3 className="text-sm font-semibold text-gray-800">Timesheet Summary — {periodLabel}</h3>
+          <button onClick={() => setShowCalcInfo(true)} title="How is this calculated?"
+            className="text-gray-400 hover:text-primary-600 transition-colors">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </button>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -1051,6 +1306,74 @@ function TimesheetTab({ currentUserId, period, project }: { currentUserId?: stri
             onPageChange={setPage} onPageSizeChange={setPageSize} />
         )}
       </div>
+
+      {showCalcInfo && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
+          onClick={() => setShowCalcInfo(false)}>
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg mx-4 p-6 max-h-[85vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-start justify-between mb-5">
+              <h2 className="text-base font-semibold text-gray-900">How Timesheet Report Works</h2>
+              <button onClick={() => setShowCalcInfo(false)} className="text-gray-400 hover:text-gray-600 transition-colors ml-4 shrink-0">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="space-y-5 text-sm text-gray-700">
+              <div>
+                <h3 className="font-semibold text-gray-800 mb-2">What This Report Shows</h3>
+                <p className="text-xs text-gray-500">
+                  This report aggregates timesheet entries submitted by each team member during the selected period. Each row shows one person's total hours logged across their assigned project.
+                </p>
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-800 mb-2">Summary Cards</h3>
+                <div className="space-y-2 text-xs">
+                  {[
+                    ['Total Hours', 'Sum of all hours logged by the entire team in the period'],
+                    ['Team Members', 'Number of people who logged at least one timesheet entry'],
+                    ['Avg Hours / Member', 'Total Hours ÷ Number of Team Members'],
+                  ].map(([col, desc]) => (
+                    <div key={col} className="flex gap-3">
+                      <span className="font-medium text-gray-700 w-36 shrink-0">{col}</span>
+                      <span className="text-gray-500">{desc}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-800 mb-3">Example — August 2026</h3>
+                <div className="rounded-xl border border-gray-200 overflow-hidden text-xs mb-3">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="bg-gray-50">
+                        <th className="px-4 py-2 text-left text-gray-500 font-medium">Member</th>
+                        <th className="px-4 py-2 text-right text-gray-500 font-medium">Hours Logged</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {[['Priya', '120h'], ['Raj', '160h'], ['Sam', '100h'], ['Nadia', '80h']].map(([name, hrs]) => (
+                        <tr key={name} className="even:bg-gray-50">
+                          <td className="px-4 py-2 text-gray-600">{name}</td>
+                          <td className="px-4 py-2 text-right font-semibold text-gray-800">{hrs}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <div className="bg-blue-50 rounded-xl px-4 py-3 text-xs space-y-1.5 text-gray-700">
+                  <div><span className="font-medium">Total Hours</span> = 120 + 160 + 100 + 80 = <span className="font-semibold text-blue-700">460h</span></div>
+                  <div><span className="font-medium">Team Members</span> = <span className="font-semibold text-blue-700">4</span></div>
+                  <div className="pt-1.5 border-t border-blue-200">
+                    <span className="font-medium">Avg Hours / Member</span> = 460 ÷ 4 = <span className="font-semibold text-blue-700">115h</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -1266,6 +1589,7 @@ function PlannedVsActualTab({ currentUserId, project }: { currentUserId?: string
   const today = new Date();
   const [year, setYear]             = useState(today.getFullYear());
   const [selectedMonths, setMonths] = useState<number[]>([today.getMonth() + 1]);
+  const [showCalcInfo, setShowCalcInfo] = useState(false);
 
   const sortedMonths = [...selectedMonths].sort((a, b) => a - b);
   const projectId    = project && project !== 'all' ? project : undefined;
@@ -1331,9 +1655,18 @@ function PlannedVsActualTab({ currentUserId, project }: { currentUserId?: string
       {/* ── Header + selectors ── */}
       <div className="bg-white rounded-2xl border border-[#cccccc] p-5 shadow-sm">
         <div className="flex flex-wrap items-start gap-4">
-          <div className="shrink-0">
-            <h3 className="text-sm font-semibold text-gray-800">Planned vs Actual</h3>
-            <p className="text-xs text-gray-400 mt-0.5">Estimation accuracy across your team</p>
+          <div className="shrink-0 flex items-start gap-2">
+            <div>
+              <h3 className="text-sm font-semibold text-gray-800">Planned vs Actual</h3>
+              <p className="text-xs text-gray-400 mt-0.5">Estimation accuracy across your team</p>
+            </div>
+            <button onClick={() => setShowCalcInfo(true)} title="How is this calculated?"
+              className="text-gray-400 hover:text-primary-600 transition-colors mt-0.5 shrink-0">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                  d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </button>
           </div>
           <div className="flex flex-wrap items-center gap-3 ml-auto">
             <select value={year} onChange={e => setYear(Number(e.target.value))}
@@ -1565,6 +1898,77 @@ function PlannedVsActualTab({ currentUserId, project }: { currentUserId?: string
             onPageChange={setPage} onPageSizeChange={setPageSize} />
         )}
       </div>
+
+      {showCalcInfo && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
+          onClick={() => setShowCalcInfo(false)}>
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg mx-4 p-6 max-h-[85vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-start justify-between mb-5">
+              <h2 className="text-base font-semibold text-gray-900">How Planned vs Actual Works</h2>
+              <button onClick={() => setShowCalcInfo(false)} className="text-gray-400 hover:text-gray-600 transition-colors ml-4 shrink-0">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="space-y-5 text-sm text-gray-700">
+              <div>
+                <h3 className="font-semibold text-gray-800 mb-2">Key Metrics</h3>
+                <div className="space-y-2 text-xs">
+                  {[
+                    ['Planned Hours', 'Sum of estimated hours on all tasks assigned to the person in the period'],
+                    ['Actual Hours', 'Sum of timesheet hours actually logged on those tasks'],
+                    ['Variance', 'Actual − Planned. Positive = over budget; negative = under estimate'],
+                    ['Efficiency %', 'Actual ÷ Planned × 100'],
+                  ].map(([col, desc]) => (
+                    <div key={col} className="flex gap-3">
+                      <span className="font-medium text-gray-700 w-32 shrink-0">{col}</span>
+                      <span className="text-gray-500">{desc}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-800 mb-2">Status Thresholds</h3>
+                <div className="flex flex-col gap-2 text-xs">
+                  <span className="flex items-center gap-2"><span className="px-2 py-0.5 rounded-full bg-red-100 text-red-700 font-medium">Over Budget</span>Efficiency &gt; 110% (spent significantly more than planned)</span>
+                  <span className="flex items-center gap-2"><span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-medium">On Track</span>Efficiency 80–110% (within acceptable range)</span>
+                  <span className="flex items-center gap-2"><span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 font-medium">Under</span>Efficiency &lt; 80% (significantly under-utilised)</span>
+                </div>
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-800 mb-3">Example — Sam, August 2026</h3>
+                <div className="rounded-xl border border-gray-200 overflow-hidden text-xs mb-3">
+                  <table className="w-full">
+                    <tbody className="divide-y divide-gray-100">
+                      {[['Planned Hours', '40h'], ['Actual Hours Logged', '48h'], ['Tasks', '5']].map(([label, val]) => (
+                        <tr key={label} className="even:bg-gray-50">
+                          <td className="px-4 py-2 text-gray-600">{label}</td>
+                          <td className="px-4 py-2 text-right font-semibold text-gray-800">{val}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <div className="bg-blue-50 rounded-xl px-4 py-3 text-xs space-y-1.5 text-gray-700">
+                  <div><span className="font-medium">Variance</span> = 48 − 40 = <span className="font-semibold text-red-600">+8h (over budget)</span></div>
+                  <div><span className="font-medium">Efficiency</span> = 48 ÷ 40 × 100 = <span className="font-semibold text-blue-700">120%</span></div>
+                  <div className="pt-1.5 border-t border-blue-200">
+                    Status = <span className="px-1.5 py-0.5 rounded-full bg-red-100 text-red-700 font-medium">Over Budget</span> (120% &gt; 110%)
+                  </div>
+                </div>
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-800 mb-2">Multi-Month View</h3>
+                <p className="text-xs text-gray-500">
+                  Select multiple months to see a consolidated view. Planned and actual hours are summed across all selected months, and efficiency is calculated on the totals. A trend line chart shows month-by-month evolution.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
