@@ -7,7 +7,7 @@ import { CreateDepartmentDto, SetDepartmentStatusDto, UpdateDepartmentDto } from
 
 @ApiTags('Departments')
 @ApiBearerAuth()
-@Roles(SystemRole.SUPER_USER, SystemRole.ADMIN)
+@Roles(SystemRole.SUPER_USER, SystemRole.ADMIN, SystemRole.BU_HEAD)
 @Controller('departments')
 export class DepartmentsController {
   constructor(private departmentsService: DepartmentsService) {}

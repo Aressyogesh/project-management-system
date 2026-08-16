@@ -417,8 +417,11 @@ function EmployeeScoreAccordion({
                       onChange={(e) => setScores((prev) => ({ ...prev, [m.id]: Number(e.target.value) }))}
                       className="text-sm border border-gray-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500"
                     >
-                      {Array.from({ length: m.maxPoints + 1 }, (_, i) => m.maxPoints - i).map((v) => (
-                        <option key={v} value={v}>{v} / {m.maxPoints}</option>
+                      {(m.scoringType === 'manual'
+                        ? [{ v: 5, l: '5 — Excellent' }, { v: 3, l: '3 — Adequate' }, { v: 0, l: '0 — Poor' }]
+                        : Array.from({ length: m.maxPoints + 1 }, (_, i) => m.maxPoints - i).map((v) => ({ v, l: `${v} / ${m.maxPoints}` }))
+                      ).map(({ v, l }) => (
+                        <option key={v} value={v}>{l}</option>
                       ))}
                     </select>
                   </div>

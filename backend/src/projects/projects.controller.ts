@@ -44,7 +44,7 @@ export class ProjectsController {
   }
 
   @Patch(':id/status')
-  @Roles(SystemRole.SUPER_USER, SystemRole.ADMIN)
+  @Roles(SystemRole.SUPER_USER, SystemRole.ADMIN, SystemRole.BU_HEAD)
   @HttpCode(200)
   @ApiOperation({ summary: 'Set project status (ACTIVE / ARCHIVE / ON_HOLD)' })
   setStatus(@Param('id') id: string, @Body() dto: SetProjectStatusDto, @Request() req: any) {

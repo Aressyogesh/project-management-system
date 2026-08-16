@@ -357,6 +357,7 @@ export function CapacityReportTab({ project }: { project?: string }) {
   const [year, setYear] = useState(today.getFullYear());
   const [selectedMonths, setSelectedMonths] = useState<number[]>([today.getMonth() + 1]);
   const [tooltip, setTooltip] = useState<TooltipState | null>(null);
+  const [showCalcInfo, setShowCalcInfo] = useState(false);
 
   const projectId = project && project !== 'all' ? project : undefined;
   const sortedMonths = [...selectedMonths].sort((a, b) => a - b);
@@ -433,9 +434,18 @@ export function CapacityReportTab({ project }: { project?: string }) {
 
         {/* Header + Filters */}
         <div className="flex flex-wrap items-start gap-4 mb-4">
-          <div className="shrink-0">
-            <h3 className="text-sm font-semibold text-gray-800">Monthly Capacity Report</h3>
-            <p className="text-xs text-gray-400 mt-0.5">Employee availability</p>
+          <div className="shrink-0 flex items-start gap-2">
+            <div>
+              <h3 className="text-sm font-semibold text-gray-800">Monthly Capacity Report</h3>
+              <p className="text-xs text-gray-400 mt-0.5">Employee availability</p>
+            </div>
+            <button onClick={() => setShowCalcInfo(true)} title="How is this calculated?"
+              className="text-gray-400 hover:text-indigo-600 transition-colors mt-0.5 shrink-0">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                  d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </button>
           </div>
 
           <div className="flex flex-wrap items-center gap-3 ml-auto">
@@ -818,6 +828,78 @@ export function CapacityReportTab({ project }: { project?: string }) {
           {tooltip.cell.holidayName && (
             <p className="text-orange-600">{tooltip.cell.holidayName}</p>
           )}
+        </div>
+      )}
+
+      {showCalcInfo && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
+          onClick={() => setShowCalcInfo(false)}>
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg mx-4 p-6 max-h-[85vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-start justify-between mb-5">
+              <h2 className="text-base font-semibold text-gray-900">How Capacity Report Works</h2>
+              <button onClick={() => setShowCalcInfo(false)} className="text-gray-400 hover:text-gray-600 transition-colors ml-4 shrink-0">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="space-y-5 text-sm text-gray-700">
+              <div>
+                <h3 className="font-semibold text-gray-800 mb-2">Cell Colour Legend</h3>
+                <div className="space-y-1.5 text-xs">
+                  {[
+                    ['bg-green-600',  'text-white',  'Fully Occupied',        'Work items ≥ 8.5h assigned for the day'],
+                    ['bg-amber-400',  'text-gray-800','Work Assigned / Partial','Some work assigned but total < 8.5h'],
+                    ['bg-red-200',    'text-gray-800','Available',              'No work items assigned on a working day'],
+                    ['bg-pink-300',   'text-gray-800','Planned Leave',          'Person has approved leave recorded'],
+                    ['bg-blue-400',   'text-white',  'Unplanned Leave',         'Absence not planned in advance'],
+                    ['bg-orange-200', 'text-gray-800','Public Holiday',          'Organisation-wide holiday'],
+                    ['bg-gray-100',   'text-gray-500','Weekly Off',              'Regular weekend / scheduled day off'],
+                  ].map(([bg, text, label, desc]) => (
+                    <div key={label} className="flex items-center gap-3">
+                      <span className={`w-6 h-6 rounded shrink-0 ${bg} ${text} flex items-center justify-center text-[9px] font-bold border border-gray-200`} />
+                      <span className="font-medium text-gray-700 w-44 shrink-0">{label}</span>
+                      <span className="text-gray-500">{desc}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-800 mb-2">Utilisation %</h3>
+                <div className="bg-gray-50 rounded-xl px-4 py-3 font-mono text-xs text-gray-700">
+                  Utilisation = Occupied Days ÷ Working Days × 100
+                </div>
+                <p className="text-xs text-gray-500 mt-2">
+                  Working Days = calendar days in the month, excluding weekends and public holidays. Utilisation colour: green ≥ 80%, amber ≥ 50%, red &lt; 50%.
+                </p>
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-800 mb-3">Example — Tom, August 2026</h3>
+                <div className="rounded-xl border border-gray-200 overflow-hidden text-xs mb-3">
+                  <table className="w-full">
+                    <tbody className="divide-y divide-gray-100">
+                      {[
+                        ['Working days in Aug', '22'],
+                        ['Fully Occupied days', '18'],
+                        ['Leave days (PL + UL)', '2'],
+                        ['Available days', '2'],
+                      ].map(([label, val]) => (
+                        <tr key={label} className="even:bg-gray-50">
+                          <td className="px-4 py-2 text-gray-600">{label}</td>
+                          <td className="px-4 py-2 text-right font-semibold text-gray-800">{val}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <div className="bg-blue-50 rounded-xl px-4 py-3 text-xs space-y-1.5 text-gray-700">
+                  <div><span className="font-medium">Utilisation</span> = 18 ÷ 22 × 100 = <span className="font-semibold text-blue-700">81.8% → 82%</span></div>
+                  <div className="text-gray-500">Green bar — good utilisation. Hover any day cell to see the exact hours assigned and work item details.</div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>

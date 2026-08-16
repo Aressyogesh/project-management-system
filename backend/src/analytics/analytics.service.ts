@@ -71,7 +71,7 @@ export class AnalyticsService {
 
   // ─── KPI ──────────────────────────────────────────────────────────────────────
 
-  async getKpi(period: string, currentUserId: string, isAdmin: boolean) {
+  async getKpi(period: string, currentUserId: string, isAdmin: boolean, managedBusinessUnitId?: string | null) {
     const { start, end } = periodToRange(period);
 
     const activeProjectIds = (await this.prisma.project.findMany({
@@ -80,11 +80,14 @@ export class AnalyticsService {
     })).map((p) => p.id);
 
     const adminSystemRoles = [SystemRole.SUPER_USER, SystemRole.ADMIN];
-    let userWhere: object = isAdmin
-      ? { isActive: true, systemRole: { notIn: adminSystemRoles } }
-      : { id: currentUserId, isActive: true };
+    let userWhere: object;
 
-    if (!isAdmin) {
+    if (isAdmin) {
+      userWhere = { isActive: true, systemRole: { notIn: adminSystemRoles } };
+    } else if (managedBusinessUnitId) {
+      userWhere = { isActive: true, systemRole: { notIn: adminSystemRoles }, department: { businessUnitId: managedBusinessUnitId } };
+    } else {
+      userWhere = { id: currentUserId, isActive: true };
       const pmMemberships = await this.prisma.projectMember.findMany({
         where: { userId: currentUserId, projectRole: { in: ['PROJECT_MANAGER', 'TEAM_LEAD'] } },
         select: { projectId: true },
@@ -511,12 +514,17 @@ export class AnalyticsService {
 
   // ─── Reports ─────────────────────────────────────────────────────────────────
 
-  async getProductivityReport(period: string, projectId?: string, requestingUserId?: string, isAdmin = true) {
-    const { start, end } = periodToRange(period);
+  async getProductivityReport(period: string, projectId?: string, requestingUserId?: string, isAdmin = true, managedBusinessUnitId?: string | null) {
+    const hasPeriod = !!period && period !== 'all';
+    const range = hasPeriod ? periodToRange(period) : null;
 
     let activeProjectIds: string[];
     let selfOnly = false;
-    if (isAdmin || !requestingUserId) {
+    if (managedBusinessUnitId) {
+      const buProjectIds = await this.getBuProjectIds(managedBusinessUnitId);
+      activeProjectIds = projectId ? buProjectIds.filter((id) => id === projectId) : buProjectIds;
+      if (activeProjectIds.length === 0) return [];
+    } else if (isAdmin || !requestingUserId) {
       activeProjectIds = projectId
         ? [projectId]
         : (await this.prisma.project.findMany({ where: { status: 'ACTIVE' }, select: { id: true } })).map((p) => p.id);
@@ -553,50 +561,47 @@ export class AnalyticsService {
 
     const results = await Promise.all(
       users.map(async (user) => {
-        const [storiesCompleted, timesheetSum, allItems, storiesAssigned] = await Promise.all([
+        const dateFilter = range ? { gte: range.start, lt: range.end } : undefined;
+
+        const [storiesAssigned, storiesCompleted, timesheetSum, allItems] = await Promise.all([
+          // Items created (assigned) during the period; all-time when no period
+          this.prisma.workItem.count({
+            where: {
+              assigneeId: user.id,
+              projectId: { in: activeProjectIds },
+              ...(dateFilter ? { createdAt: dateFilter } : {}),
+            },
+          }),
+          // Items completed during the period; all completed when no period
           this.prisma.workItem.count({
             where: {
               assigneeId: user.id,
               status: { in: [BoardStatus.QA_DONE, BoardStatus.CLOSED] },
-              completedAt: { gte: start, lt: end },
               projectId: { in: activeProjectIds },
+              ...(dateFilter ? { completedAt: dateFilter } : {}),
             },
           }),
           this.prisma.timesheetEntry.aggregate({
             where: {
               userId: user.id,
-              date: { gte: start, lt: end },
+              ...(dateFilter ? { date: dateFilter } : {}),
               workItem: { projectId: { in: activeProjectIds } },
             },
             _sum: { hours: true },
           }),
-          this.prisma.workItem.count({
-            where: {
-              assigneeId: user.id,
-              dueDate: { gte: start, lt: end },
-              projectId: { in: activeProjectIds },
-            },
-          }),
+          // Items due during the period (score denominator); all items when no period
           this.prisma.workItem.count({
             where: {
               assigneeId: user.id,
               projectId: { in: activeProjectIds },
+              ...(dateFilter ? { dueDate: dateFilter } : {}),
             },
           }),
         ]);
 
-        const onTimeItems = await this.prisma.workItem.count({
-          where: {
-            assigneeId: user.id,
-            status: { in: [BoardStatus.QA_DONE, BoardStatus.CLOSED] },
-            completedAt: { gte: start, lt: end },
-            projectId: { in: activeProjectIds },
-          },
-        });
-
         const hoursLogged = Math.round(Number(timesheetSum._sum?.hours ?? 0) * 10) / 10;
-        const onTimePct = allItems > 0 ? Math.round((onTimeItems / allItems) * 100) : 0;
-        const completedPct = allItems > 0 ? Math.min(Math.round((onTimeItems / allItems) * 100), 100) : 0;
+        const onTimePct = allItems > 0 ? Math.min(Math.round((storiesCompleted / allItems) * 100), 100) : 0;
+        const completedPct = onTimePct;
         const hoursUtilPct = Math.min(Math.round((hoursLogged / 176) * 100), 100);
         const score = Math.round(completedPct * 0.4 + hoursUtilPct * 0.3 + onTimePct * 0.3);
 
@@ -616,11 +621,16 @@ export class AnalyticsService {
     return results.sort((a, b) => b.score - a.score);
   }
 
-  async getProjectsReport(period: string, projectId?: string, requestingUserId?: string, isAdmin = true) {
+  async getProjectsReport(period: string, projectId?: string, requestingUserId?: string, isAdmin = true, managedBusinessUnitId?: string | null) {
     const { start, end } = periodToRange(period);
 
     let projectWhere: object;
-    if (isAdmin || !requestingUserId) {
+    if (managedBusinessUnitId) {
+      const buProjectIds = await this.getBuProjectIds(managedBusinessUnitId);
+      const scoped = projectId ? buProjectIds.filter((id) => id === projectId) : buProjectIds;
+      if (scoped.length === 0) return [];
+      projectWhere = { status: 'ACTIVE', id: { in: scoped } };
+    } else if (isAdmin || !requestingUserId) {
       projectWhere = { status: 'ACTIVE', ...(projectId ? { id: projectId } : {}) };
     } else {
       const managedIds = await this.getManagedProjectIds(requestingUserId);
@@ -767,12 +777,16 @@ export class AnalyticsService {
     };
   }
 
-  async getAllocationReport(period: string, projectId?: string, requestingUserId?: string, isAdmin = true) {
+  async getAllocationReport(period: string, projectId?: string, requestingUserId?: string, isAdmin = true, managedBusinessUnitId?: string | null) {
     const { start, end } = periodToRange(period);
 
     let activeProjectIds: string[];
     let selfOnly = false;
-    if (isAdmin || !requestingUserId) {
+    if (managedBusinessUnitId) {
+      const buProjectIds = await this.getBuProjectIds(managedBusinessUnitId);
+      activeProjectIds = projectId ? buProjectIds.filter((id) => id === projectId) : buProjectIds;
+      if (activeProjectIds.length === 0) return [];
+    } else if (isAdmin || !requestingUserId) {
       activeProjectIds = projectId
         ? [projectId]
         : (await this.prisma.project.findMany({ where: { status: 'ACTIVE' }, select: { id: true } })).map((p) => p.id);
@@ -851,6 +865,24 @@ export class AnalyticsService {
       .map((m) => ({ id: m.project.id, name: m.project.name }));
   }
 
+  private async getBuUserIds(managedBusinessUnitId: string): Promise<string[]> {
+    const users = await this.prisma.user.findMany({
+      where: { isActive: true, department: { businessUnitId: managedBusinessUnitId } },
+      select: { id: true },
+    });
+    return users.map((u) => u.id);
+  }
+
+  private async getBuProjectIds(managedBusinessUnitId: string): Promise<string[]> {
+    const buUserIds = await this.getBuUserIds(managedBusinessUnitId);
+    if (buUserIds.length === 0) return [];
+    const memberships = await this.prisma.projectMember.findMany({
+      where: { userId: { in: buUserIds } },
+      select: { projectId: true },
+    });
+    return [...new Set(memberships.map((m) => m.projectId))];
+  }
+
   async getManagedProjectIds(userId: string): Promise<string[]> {
     const memberships = await this.prisma.projectMember.findMany({
       where: {
@@ -870,12 +902,16 @@ export class AnalyticsService {
     return memberships.map((m) => m.projectId);
   }
 
-  async getTimesheetReport(period: string, projectId?: string, requestingUserId?: string, isAdmin = true) {
+  async getTimesheetReport(period: string, projectId?: string, requestingUserId?: string, isAdmin = true, managedBusinessUnitId?: string | null) {
     const { start, end } = periodToRange(period);
 
     let activeProjectIds: string[];
     let selfOnly = false;
-    if (!isAdmin && requestingUserId) {
+    if (managedBusinessUnitId) {
+      const buProjectIds = await this.getBuProjectIds(managedBusinessUnitId);
+      activeProjectIds = projectId ? buProjectIds.filter((id) => id === projectId) : buProjectIds;
+      if (activeProjectIds.length === 0) return [];
+    } else if (!isAdmin && requestingUserId) {
       const managedIds = await this.getManagedProjectIds(requestingUserId);
       if (managedIds.length > 0) {
         activeProjectIds = projectId ? managedIds.filter((id) => id === projectId) : managedIds;
@@ -931,12 +967,16 @@ export class AnalyticsService {
     });
   }
 
-  async getPlannedVsActualReport(period: string, projectId?: string, requestingUserId?: string, isAdmin = true) {
+  async getPlannedVsActualReport(period: string, projectId?: string, requestingUserId?: string, isAdmin = true, managedBusinessUnitId?: string | null) {
     const { start, end } = periodToRange(period);
 
     let scopedProjectIds: string[] | undefined;
     let selfOnly = false;
-    if (!isAdmin && requestingUserId) {
+    if (managedBusinessUnitId) {
+      const buProjectIds = await this.getBuProjectIds(managedBusinessUnitId);
+      scopedProjectIds = projectId ? buProjectIds.filter((id) => id === projectId) : buProjectIds;
+      if (scopedProjectIds.length === 0) return [];
+    } else if (!isAdmin && requestingUserId) {
       const managedIds = await this.getManagedProjectIds(requestingUserId);
       if (managedIds.length > 0) {
         scopedProjectIds = projectId ? managedIds.filter((id) => id === projectId) : managedIds;
@@ -1023,7 +1063,7 @@ export class AnalyticsService {
       .sort((a, b) => Math.abs(b.variancePct) - Math.abs(a.variancePct));
   }
 
-  async getCapacityReport(period: string, requestingUserId?: string, isAdmin = true, filterProjectId?: string) {
+  async getCapacityReport(period: string, requestingUserId?: string, isAdmin = true, filterProjectId?: string, managedBusinessUnitId?: string | null) {
     const { start, end } = periodToRange(period);
     const [year, month] = period.split('-').map(Number);
     const now = new Date();
@@ -1038,7 +1078,7 @@ export class AnalyticsService {
 
     let scopedProjectIds: string[] | undefined;
     if (filterProjectId) {
-      if (!isAdmin && requestingUserId) {
+      if (!isAdmin && !managedBusinessUnitId && requestingUserId) {
         const managedIds = await this.getManagedProjectIds(requestingUserId);
         if (!managedIds.includes(filterProjectId)) {
           return { period, year, month, daysInMonth, days: [], employees: [] };
@@ -1047,15 +1087,16 @@ export class AnalyticsService {
       } else {
         scopedProjectIds = [filterProjectId];
       }
-    } else if (!isAdmin && requestingUserId) {
+    } else if (!isAdmin && !managedBusinessUnitId && requestingUserId) {
       const managedIds = await this.getManagedProjectIds(requestingUserId);
       if (managedIds.length > 0) scopedProjectIds = managedIds;
     }
 
     const excludeSystemRoles = { notIn: [SystemRole.SUPER_USER, SystemRole.ADMIN] };
+    const buFilter = managedBusinessUnitId ? { department: { businessUnitId: managedBusinessUnitId } } : {};
     const userWhere = scopedProjectIds !== undefined
-      ? { isActive: true, systemRole: excludeSystemRoles, projectMembers: { some: { projectId: { in: scopedProjectIds } } } }
-      : { isActive: true, systemRole: excludeSystemRoles };
+      ? { isActive: true, systemRole: excludeSystemRoles, ...buFilter, projectMembers: { some: { projectId: { in: scopedProjectIds } } } }
+      : { isActive: true, systemRole: excludeSystemRoles, ...buFilter };
 
     const [portalConfig, holidays, users, leaveRequests, timesheetEntries, workItems] =
       await Promise.all([
