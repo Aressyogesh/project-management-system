@@ -2,7 +2,7 @@ import { Body, Controller, Delete, Get, Param, Post, Query, Request } from '@nes
 import { AnalyticsService } from './analytics.service';
 import { SystemRole } from '@prisma/client';
 
-type AuthUser = { id: string; systemRole: SystemRole };
+type AuthUser = { id: string; systemRole: SystemRole; managedBusinessUnitId?: string | null };
 
 @Controller('analytics')
 export class AnalyticsController {
@@ -19,7 +19,7 @@ export class AnalyticsController {
   @Post('kpi/notes')
   addKpiNote(
     @Body() body: { userId: string; metricId: string; period: string; content: string },
-    @Request() req: { user: { id: string; systemRole: SystemRole } },
+    @Request() req: { user: AuthUser },
   ) {
     return this.analyticsService.addKpiNote(req.user.id, body);
   }
@@ -27,9 +27,12 @@ export class AnalyticsController {
   @Delete('kpi/notes/:id')
   deleteKpiNote(
     @Param('id') id: string,
-    @Request() req: { user: { id: string; systemRole: SystemRole } },
+    @Request() req: { user: AuthUser },
   ) {
-    const isAdmin = req.user.systemRole === SystemRole.ADMIN || req.user.systemRole === SystemRole.SUPER_USER;
+    const isAdmin =
+      req.user.systemRole === SystemRole.ADMIN ||
+      req.user.systemRole === SystemRole.SUPER_USER ||
+      req.user.systemRole === SystemRole.BU_HEAD;
     return this.analyticsService.deleteKpiNote(id, req.user.id, isAdmin);
   }
 
@@ -37,13 +40,21 @@ export class AnalyticsController {
   getKpi(
     @Query('period') period = '2026-05',
     @Query('userId') userId: string | undefined,
-    @Request() req: { user: { id: string; systemRole: SystemRole } },
+    @Request() req: { user: AuthUser },
   ) {
     const isAdmin =
       req.user.systemRole === SystemRole.ADMIN ||
       req.user.systemRole === SystemRole.SUPER_USER;
-    const targetUserId = isAdmin ? (userId ?? undefined) : req.user.id;
-    return this.analyticsService.getKpi(period, targetUserId ?? req.user.id, isAdmin && !userId);
+    const managedBusinessUnitId =
+      req.user.systemRole === SystemRole.BU_HEAD ? req.user.managedBusinessUnitId : null;
+    const isPrivileged = isAdmin || !!managedBusinessUnitId;
+    const targetUserId = isPrivileged ? (userId ?? undefined) : req.user.id;
+    return this.analyticsService.getKpi(
+      period,
+      targetUserId ?? req.user.id,
+      isAdmin && !userId,
+      !userId ? managedBusinessUnitId : null,
+    );
   }
 
   @Get('reports/productivity')
@@ -55,7 +66,9 @@ export class AnalyticsController {
     const isAdmin =
       req.user.systemRole === SystemRole.ADMIN ||
       req.user.systemRole === SystemRole.SUPER_USER;
-    return this.analyticsService.getProductivityReport(period, projectId, req.user.id, isAdmin);
+    const managedBusinessUnitId =
+      req.user.systemRole === SystemRole.BU_HEAD ? req.user.managedBusinessUnitId : null;
+    return this.analyticsService.getProductivityReport(period, projectId, req.user.id, isAdmin, managedBusinessUnitId);
   }
 
   @Get('reports/projects')
@@ -67,7 +80,9 @@ export class AnalyticsController {
     const isAdmin =
       req.user.systemRole === SystemRole.ADMIN ||
       req.user.systemRole === SystemRole.SUPER_USER;
-    return this.analyticsService.getProjectsReport(period, projectId, req.user.id, isAdmin);
+    const managedBusinessUnitId =
+      req.user.systemRole === SystemRole.BU_HEAD ? req.user.managedBusinessUnitId : null;
+    return this.analyticsService.getProjectsReport(period, projectId, req.user.id, isAdmin, managedBusinessUnitId);
   }
 
   @Get('reports/bugs')
@@ -87,7 +102,9 @@ export class AnalyticsController {
     const isAdmin =
       req.user.systemRole === SystemRole.ADMIN ||
       req.user.systemRole === SystemRole.SUPER_USER;
-    return this.analyticsService.getAllocationReport(period, projectId, req.user.id, isAdmin);
+    const managedBusinessUnitId =
+      req.user.systemRole === SystemRole.BU_HEAD ? req.user.managedBusinessUnitId : null;
+    return this.analyticsService.getAllocationReport(period, projectId, req.user.id, isAdmin, managedBusinessUnitId);
   }
 
   @Get('my-projects')
@@ -99,7 +116,8 @@ export class AnalyticsController {
   async getMyProjectRole(@Request() req: { user: AuthUser }) {
     const isAdmin =
       req.user.systemRole === SystemRole.ADMIN ||
-      req.user.systemRole === SystemRole.SUPER_USER;
+      req.user.systemRole === SystemRole.SUPER_USER ||
+      req.user.systemRole === SystemRole.BU_HEAD;
     if (isAdmin) return { isManager: true };
     const ids = await this.analyticsService.getManagedProjectIds(req.user.id);
     return { isManager: ids.length > 0 };
@@ -114,7 +132,9 @@ export class AnalyticsController {
     const isAdmin =
       req.user.systemRole === SystemRole.ADMIN ||
       req.user.systemRole === SystemRole.SUPER_USER;
-    return this.analyticsService.getTimesheetReport(period, projectId, req.user.id, isAdmin);
+    const managedBusinessUnitId =
+      req.user.systemRole === SystemRole.BU_HEAD ? req.user.managedBusinessUnitId : null;
+    return this.analyticsService.getTimesheetReport(period, projectId, req.user.id, isAdmin, managedBusinessUnitId);
   }
 
   @Get('reports/capacity')
@@ -126,7 +146,9 @@ export class AnalyticsController {
     const isAdmin =
       req.user.systemRole === SystemRole.ADMIN ||
       req.user.systemRole === SystemRole.SUPER_USER;
-    return this.analyticsService.getCapacityReport(period, req.user.id, isAdmin, projectId || undefined);
+    const managedBusinessUnitId =
+      req.user.systemRole === SystemRole.BU_HEAD ? req.user.managedBusinessUnitId : null;
+    return this.analyticsService.getCapacityReport(period, req.user.id, isAdmin, projectId || undefined, managedBusinessUnitId);
   }
 
   @Get('reports/drill-down')
@@ -163,6 +185,8 @@ export class AnalyticsController {
     const isAdmin =
       req.user.systemRole === SystemRole.ADMIN ||
       req.user.systemRole === SystemRole.SUPER_USER;
-    return this.analyticsService.getPlannedVsActualReport(period, projectId, req.user.id, isAdmin);
+    const managedBusinessUnitId =
+      req.user.systemRole === SystemRole.BU_HEAD ? req.user.managedBusinessUnitId : null;
+    return this.analyticsService.getPlannedVsActualReport(period, projectId, req.user.id, isAdmin, managedBusinessUnitId);
   }
 }

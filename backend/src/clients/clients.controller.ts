@@ -8,7 +8,7 @@ import { CreateClientDto, SetClientStatusDto, UpdateClientDto } from './dto/clie
 
 @ApiTags('Clients')
 @ApiBearerAuth()
-@Roles(SystemRole.SUPER_USER, SystemRole.ADMIN)
+@Roles(SystemRole.SUPER_USER, SystemRole.ADMIN, SystemRole.BU_HEAD)
 @Controller('clients')
 export class ClientsController {
   constructor(private clientsService: ClientsService) {}

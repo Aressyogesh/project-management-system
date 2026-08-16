@@ -154,9 +154,9 @@ const navItems: NavItem[] = [
   { path: '/kpi',             label: 'KPI',             Icon: IconKpi },
   { path: '/reports',         label: 'Reports',         Icon: IconReports },
   { path: '/business-units',  label: 'Business Units',  Icon: IconBusinessUnit,   roles: ['SUPER_USER', 'ADMIN'] },
-  { path: '/departments',     label: 'Departments',     Icon: IconDepartments,    roles: ['SUPER_USER', 'ADMIN'] },
-  { path: '/clients',         label: 'Clients',         Icon: IconClients,        roles: ['SUPER_USER', 'ADMIN'] },
-  { path: '/org-structure',   label: 'Org Structure',   Icon: IconOrgStructure,   roles: ['SUPER_USER', 'ADMIN'] },
+  { path: '/departments',     label: 'Departments',     Icon: IconDepartments,    roles: ['SUPER_USER', 'ADMIN', 'BU_HEAD'] },
+  { path: '/clients',         label: 'Clients',         Icon: IconClients,        roles: ['SUPER_USER', 'ADMIN', 'BU_HEAD'] },
+  { path: '/org-structure',   label: 'Org Structure',   Icon: IconOrgStructure,   roles: ['SUPER_USER', 'ADMIN', 'BU_HEAD'] },
   { path: '/users',           label: 'Users',           Icon: IconUsers,         roles: ['SUPER_USER', 'ADMIN'] },
   { path: '/projects',        label: 'Projects',        Icon: IconProjects },
   { path: '/timesheet',       label: 'Timesheet',       Icon: IconTimesheet },
@@ -190,7 +190,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
 
   const baseNav = navItems.filter((item) => {
     // BU_HEAD cannot see admin-only sections
-    if (isBuHead && ['/business-units', '/departments', '/clients', '/org-structure', '/activity'].includes(item.path)) return false;
+    if (isBuHead && ['/business-units', '/activity'].includes(item.path)) return false;
     if (item.roles && !item.roles.includes(user?.systemRole as SystemRole) && !isBuHead) return false;
     if (item.path === '/kpi')        return canSee('KPI');
     if (item.path === '/reports')    return canSee('REPORTS');

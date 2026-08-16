@@ -196,7 +196,7 @@ export const KPI_METRICS: KpiMetricDefinition[] = [
     maxPoints: 5,
     scoringType: 'stepped',
     scoringDescription: 'Approved by PM = 5 · Rejected by PM = 3 · Not submitted / still pending = 0',
-    badge: 'SELF',
+    badge: 'AUTO',
     formula: 'Complete your assigned learning pathway in the Learn & Innovate module — your PM\'s decision on the submission determines the score',
     example: 'Assignment submitted → PM Approved → 5 pts\nAssignment submitted → PM Rejected (needs revision) → 3 pts\nAssignment not submitted at all → 0 pts\nAssignment submitted but still pending PM review → 0 pts (score updates once PM acts)\n\nTip: Submit early so your PM has time to review before month-end.',
   },

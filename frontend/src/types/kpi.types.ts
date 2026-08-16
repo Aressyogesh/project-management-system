@@ -1,5 +1,5 @@
 export type KpiGrade = 'A' | 'B' | 'C' | 'D';
-export type KpiBadge = 'AUTO' | 'MANUAL' | 'SELF';
+export type KpiBadge = 'AUTO' | 'MANUAL';
 
 export interface KpiMetricDefinition {
   id: string;

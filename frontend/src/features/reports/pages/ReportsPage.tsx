@@ -356,6 +356,7 @@ function TeamProductivityTab({ currentUserId, period, project }: { currentUserId
   });
 
   const [drillDown, setDrillDown] = useState<DrillDownState | null>(null);
+  const [showCalcInfo, setShowCalcInfo] = useState(false);
   const projectId = project && project !== 'all' ? project : undefined;
   const periodLabel = PERIOD_OPTIONS.find((p) => p.value === period)?.label ?? period;
   const chartData = data.slice(0, 10).map((r) => ({ name: r.name.split(' ')[0], tasks: r.tasksDone }));
@@ -390,8 +391,15 @@ function TeamProductivityTab({ currentUserId, period, project }: { currentUserId
       </div>
 
       <div className="bg-white rounded-2xl border border-[#cccccc] shadow-sm overflow-hidden">
-        <div className="px-5 py-4 border-b border-gray-50">
+        <div className="px-5 py-4 border-b border-gray-50 flex items-center gap-2">
           <h3 className="text-sm font-semibold text-gray-800">Team Productivity Details</h3>
+          <button onClick={() => setShowCalcInfo(true)} title="How is this calculated?"
+            className="text-gray-400 hover:text-primary-600 transition-colors">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </button>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -453,6 +461,105 @@ function TeamProductivityTab({ currentUserId, period, project }: { currentUserId
         )}
       </div>
       {drillDown && <DrillDownPanel state={drillDown} onClose={() => setDrillDown(null)} />}
+
+      {showCalcInfo && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
+          onClick={() => setShowCalcInfo(false)}>
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg mx-4 p-6 max-h-[85vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-start justify-between mb-5">
+              <h2 className="text-base font-semibold text-gray-900">How Productivity is Calculated</h2>
+              <button onClick={() => setShowCalcInfo(false)} className="text-gray-400 hover:text-gray-600 transition-colors ml-4 shrink-0">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="space-y-5 text-sm text-gray-700">
+              {/* Column definitions */}
+              <div>
+                <h3 className="font-semibold text-gray-800 mb-2">Column Definitions</h3>
+                <div className="space-y-2 text-xs">
+                  {[
+                    ['Work Item Assigned', 'Work items created in the selected month and assigned to this person'],
+                    ['Work Item Completed', 'Items moved to QA Done or Closed with completedAt in the selected month'],
+                    ['Hours Logged', 'Total timesheet hours logged during the selected month'],
+                  ].map(([col, desc]) => (
+                    <div key={col} className="flex gap-3">
+                      <span className="font-medium text-gray-700 w-44 shrink-0">{col}</span>
+                      <span className="text-gray-500">{desc}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* On-Time % */}
+              <div>
+                <h3 className="font-semibold text-gray-800 mb-2">On-Time %</h3>
+                <div className="bg-gray-50 rounded-xl px-4 py-3 font-mono text-xs text-gray-700">
+                  On-Time % = min(Completed ÷ Items Due This Month × 100, 100)
+                </div>
+                <p className="text-xs text-gray-500 mt-2">
+                  "Items due this month" = work items where <span className="font-mono bg-gray-100 px-1 rounded">dueDate</span> falls in the selected month. Capped at 100%.
+                </p>
+              </div>
+
+              {/* Score */}
+              <div>
+                <h3 className="font-semibold text-gray-800 mb-2">Score (0–100)</h3>
+                <div className="bg-gray-50 rounded-xl px-4 py-3 font-mono text-xs text-gray-700 space-y-1">
+                  <div>completedPct &nbsp;= min(Completed ÷ Items Due × 100, 100)</div>
+                  <div>hoursUtilPct &nbsp;= min(Hours ÷ 176 × 100, 100)</div>
+                  <div className="pt-1.5 border-t border-gray-200 font-semibold">
+                    Score = (completedPct × 0.4) + (hoursUtilPct × 0.3) + (onTimePct × 0.3)
+                  </div>
+                </div>
+                <p className="text-xs text-gray-500 mt-2">176 = standard monthly working hours. Score is capped at 100.</p>
+              </div>
+
+              {/* Example */}
+              <div>
+                <h3 className="font-semibold text-gray-800 mb-3">Example — Alex, August 2026</h3>
+                <div className="rounded-xl border border-gray-200 overflow-hidden text-xs mb-3">
+                  <table className="w-full">
+                    <tbody className="divide-y divide-gray-100">
+                      {[
+                        ['Items due in August (dueDate)', '10'],
+                        ['Items completed in August (completedAt)', '7'],
+                        ['Hours logged in August', '132h'],
+                      ].map(([label, val]) => (
+                        <tr key={label} className="even:bg-gray-50">
+                          <td className="px-4 py-2 text-gray-600">{label}</td>
+                          <td className="px-4 py-2 text-right font-semibold text-gray-800">{val}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <div className="bg-blue-50 rounded-xl px-4 py-3 text-xs space-y-1.5 text-gray-700">
+                  <div><span className="font-medium">On-Time %</span> = min(7 ÷ 10 × 100, 100) = <span className="font-semibold text-blue-700">70%</span></div>
+                  <div><span className="font-medium">completedPct</span> = 70</div>
+                  <div><span className="font-medium">hoursUtilPct</span> = min(132 ÷ 176 × 100, 100) = 75</div>
+                  <div className="pt-1.5 border-t border-blue-200">
+                    <span className="font-medium">Score</span> = (70 × 0.4) + (75 × 0.3) + (70 × 0.3) = 28 + 22.5 + 21 = <span className="font-semibold text-blue-700">71.5 → 72</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Score colours */}
+              <div>
+                <h3 className="font-semibold text-gray-800 mb-2">Score Colour</h3>
+                <div className="flex gap-4 text-xs">
+                  <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-green-500 shrink-0" />≥ 80 — Good</span>
+                  <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-amber-500 shrink-0" />≥ 60 — Fair</span>
+                  <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-red-500 shrink-0" />&lt; 60 — Needs attention</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
