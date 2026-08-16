@@ -515,7 +515,9 @@ function TeamProductivityTab({ currentUserId, period, project }: { currentUserId
                     Score = (completedPct × 0.4) + (hoursUtilPct × 0.3) + (onTimePct × 0.3)
                   </div>
                 </div>
-                <p className="text-xs text-gray-500 mt-2">176 = standard monthly working hours. Score is capped at 100.</p>
+                <p className="text-xs text-gray-500 mt-2">
+                  <span className="font-medium text-gray-600">176h</span> = 8h/day × 22 working days — the average number of weekdays in a month (weekends excluded, public holidays not yet deducted). Score is capped at 100.
+                </p>
               </div>
 
               {/* Example */}
@@ -1154,7 +1156,7 @@ function TaskAllocationTab({ currentUserId, period, project }: { currentUserId?:
                   {[
                     ['Tasks', 'Number of tasks assigned to this person in the period'],
                     ['Hours', 'Total hours logged on those tasks via timesheet entries'],
-                    ['Utilisation %', 'Hours Logged ÷ 176 × 100 (176 = standard monthly hours)'],
+                    ['Utilisation %', 'Hours Logged ÷ 176 × 100 (176h = 8h/day × 22 avg working days)'],
                   ].map(([col, desc]) => (
                     <div key={col} className="flex gap-3">
                       <span className="font-medium text-gray-700 w-28 shrink-0">{col}</span>
@@ -1176,7 +1178,7 @@ function TaskAllocationTab({ currentUserId, period, project }: { currentUserId?:
                 <div className="rounded-xl border border-gray-200 overflow-hidden text-xs mb-3">
                   <table className="w-full">
                     <tbody className="divide-y divide-gray-100">
-                      {[['Tasks assigned', '9'], ['Hours logged', '158h'], ['Standard monthly hours', '176h']].map(([label, val]) => (
+                      {[['Tasks assigned', '9'], ['Hours logged', '158h'], ['Capacity (8h × 22 days)', '176h']].map(([label, val]) => (
                         <tr key={label} className="even:bg-gray-50">
                           <td className="px-4 py-2 text-gray-600">{label}</td>
                           <td className="px-4 py-2 text-right font-semibold text-gray-800">{val}</td>
