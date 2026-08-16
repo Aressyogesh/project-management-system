@@ -407,7 +407,7 @@ function TeamProductivityTab({ currentUserId, period, project }: { currentUserId
               <tr className="bg-gray-50 text-xs text-gray-500 uppercase tracking-wide">
                 <th className="px-5 py-3 text-left">#</th>
                 <th className="px-5 py-3 text-left">Employee</th>
-                <th className="px-5 py-3 text-right">Work Item Assigned</th>
+                <th className="px-5 py-3 text-right">New Items (This Month)</th>
                 <th className="px-5 py-3 text-right">Work Item Completed</th>
                 <th className="px-5 py-3 text-right">Hours</th>
                 <th className="px-5 py-3 text-right">On-Time %</th>
@@ -438,7 +438,7 @@ function TeamProductivityTab({ currentUserId, period, project }: { currentUserId
                       </div>
                     </td>
                     <td className="px-5 py-3 text-right text-gray-600">
-                      <DrillCount value={r.storiesAssigned ?? 0} onClick={() => setDrillDown({ title: `All assigned — ${r.name} · ${periodLabel}`, period, projectId, userId: r.userId, noDateFilter: true })} />
+                      <DrillCount value={r.storiesAssigned ?? 0} onClick={() => setDrillDown({ title: `New items (created this month) — ${r.name} · ${periodLabel}`, period, projectId, userId: r.userId })} />
                     </td>
                     <td className="px-5 py-3 text-right font-semibold text-gray-700">
                       <DrillCount value={r.tasksDone} onClick={() => setDrillDown({ title: `Completed — ${r.name} · ${periodLabel}`, period, projectId, userId: r.userId, completedOnly: true })} />
@@ -482,7 +482,7 @@ function TeamProductivityTab({ currentUserId, period, project }: { currentUserId
                 <h3 className="font-semibold text-gray-800 mb-2">Column Definitions</h3>
                 <div className="space-y-2 text-xs">
                   {[
-                    ['Work Item Assigned', 'Work items created in the selected month and assigned to this person'],
+                    ['New Items (This Month)', 'Work items created and assigned to this person in the selected month — does not include backlog items from previous months'],
                     ['Work Item Completed', 'Items moved to QA Done or Closed with completedAt in the selected month'],
                     ['Hours Logged', 'Total timesheet hours logged during the selected month'],
                   ].map(([col, desc]) => (
