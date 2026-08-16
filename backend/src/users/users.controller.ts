@@ -43,7 +43,7 @@ const photoStorage = diskStorage({
 
 @ApiTags('Users')
 @ApiBearerAuth()
-@Roles(SystemRole.SUPER_USER, SystemRole.ADMIN)
+@Roles(SystemRole.SUPER_USER, SystemRole.ADMIN, SystemRole.BU_HEAD)
 @Controller('users')
 export class UsersController {
   constructor(private usersService: UsersService) {}

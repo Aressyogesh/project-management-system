@@ -78,6 +78,7 @@ export function BillingReportPage({ project }: { project?: string }) {
   const [year, setYear]       = useState(now.getFullYear());
   const [month, setMonth]     = useState(now.getMonth() + 1);
   const [userId, setUserId]   = useState('');
+  const [showCalcInfo, setShowCalcInfo] = useState(false);
 
   const projectId = project && project !== 'all' ? project : '';
 
@@ -177,7 +178,16 @@ export function BillingReportPage({ project }: { project?: string }) {
     <div className="flex flex-col gap-5 min-h-0">
       {/* Header */}
       <div className="bg-white rounded-2xl border border-[#cccccc] shadow-sm px-5 py-4">
-        <h1 className="text-base font-semibold text-gray-900 mb-3">Billing Report</h1>
+        <div className="flex items-center gap-2 mb-3">
+          <h1 className="text-base font-semibold text-gray-900">Billing Report</h1>
+          <button onClick={() => setShowCalcInfo(true)} title="How is this calculated?"
+            className="text-gray-400 hover:text-indigo-600 transition-colors">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </button>
+        </div>
 
         {/* Filters */}
         <div className="flex flex-wrap gap-3 items-center">
@@ -359,6 +369,76 @@ export function BillingReportPage({ project }: { project?: string }) {
           </div>
         )}
       </div>
+
+      {showCalcInfo && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
+          onClick={() => setShowCalcInfo(false)}>
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg mx-4 p-6 max-h-[85vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-start justify-between mb-5">
+              <h2 className="text-base font-semibold text-gray-900">How Billing Report Works</h2>
+              <button onClick={() => setShowCalcInfo(false)} className="text-gray-400 hover:text-gray-600 transition-colors ml-4 shrink-0">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="space-y-5 text-sm text-gray-700">
+              <div>
+                <h3 className="font-semibold text-gray-800 mb-2">Hour Categories</h3>
+                <div className="space-y-2 text-xs">
+                  {[
+                    ['Billable', 'Hours on work items marked BILLABLE, capped at the item\'s estimated hours per item'],
+                    ['Non-Billable', 'All remaining hours — includes overages on billable items, non-billable tasks, rework, and bug-fix'],
+                    ['Rework', 'Hours explicitly flagged as rework (subset of Non-Billable)'],
+                    ['Bug Fix', 'Hours explicitly flagged as bug-fix (subset of Non-Billable)'],
+                    ['Billable %', 'Billable ÷ Total Logged × 100'],
+                  ].map(([col, desc]) => (
+                    <div key={col} className="flex gap-3">
+                      <span className="font-medium text-gray-700 w-28 shrink-0">{col}</span>
+                      <span className="text-gray-500">{desc}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-800 mb-2">Billable Hours Cap</h3>
+                <p className="text-xs text-gray-500">
+                  If a task is estimated at 6h but the team logs 8h total, only 6h counts as billable. The extra 2h is treated as non-billable overage. This prevents over-billing on fixed-price work.
+                </p>
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-800 mb-3">Example — August 2026</h3>
+                <div className="rounded-xl border border-gray-200 overflow-hidden text-xs mb-3">
+                  <table className="w-full">
+                    <tbody className="divide-y divide-gray-100">
+                      {[
+                        ['Billable task (est. 6h, logged 8h)', '6h billable + 2h non-billable'],
+                        ['Non-billable task (logged 4h)', '4h non-billable'],
+                        ['Rework hours (logged 2h)', '2h non-billable (rework)'],
+                        ['Bug-fix hours (logged 1h)', '1h non-billable (bug fix)'],
+                      ].map(([label, val]) => (
+                        <tr key={label} className="even:bg-gray-50">
+                          <td className="px-4 py-2 text-gray-600">{label}</td>
+                          <td className="px-4 py-2 text-right font-semibold text-gray-800">{val}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <div className="bg-blue-50 rounded-xl px-4 py-3 text-xs space-y-1.5 text-gray-700">
+                  <div><span className="font-medium">Total Logged</span> = 8 + 4 + 2 + 1 = <span className="font-semibold text-blue-700">15h</span></div>
+                  <div><span className="font-medium">Billable</span> = <span className="font-semibold text-indigo-700">6h</span></div>
+                  <div><span className="font-medium">Non-Billable</span> = 2 + 4 + 2 + 1 = <span className="font-semibold text-gray-700">9h</span></div>
+                  <div className="pt-1.5 border-t border-blue-200">
+                    <span className="font-medium">Billable %</span> = 6 ÷ 15 × 100 = <span className="font-semibold text-blue-700">40%</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
