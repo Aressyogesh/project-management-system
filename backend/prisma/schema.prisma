@@ -639,7 +639,7 @@ model WorkItem {
   type              WorkItemType
   status            BoardStatus        @default(TODO)
   title             String             @db.VarChar(300)
-  description       String?            @db.VarChar(5000)
+  description       String?
   priority          TaskPriority       @default(MEDIUM)
   assigneeId        String?
   reporterId        String
@@ -651,8 +651,8 @@ model WorkItem {
   severity             BugSeverity?
   bugClassification    BugClassification?
   environment          String?            @db.VarChar(200)
-  stepsToRepro         String?            @db.VarChar(3000)
-  definitionOfDone     String?            @db.VarChar(3000)
+  stepsToRepro         String?
+  definitionOfDone     String?
   completedAt          DateTime?
   inReviewAt           DateTime?
   reopenCount          Int                @default(0)
