@@ -28,7 +28,7 @@ import {
 export class CreateWorkItemDto {
   @ApiProperty({ enum: WorkItemType }) @IsEnum(WorkItemType) type: WorkItemType;
   @ApiProperty() @IsString() @MaxLength(300) title: string;
-  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(5000) description?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() description?: string;
   @ApiPropertyOptional({ enum: TaskPriority }) @IsOptional() @IsEnum(TaskPriority) priority?: TaskPriority;
   @ApiPropertyOptional() @IsOptional() @IsUUID() parentId?: string;
   @ApiPropertyOptional() @IsOptional() @IsUUID() sprintId?: string;
@@ -41,8 +41,8 @@ export class CreateWorkItemDto {
   @ApiPropertyOptional({ enum: BugSeverity }) @IsOptional() @IsEnum(BugSeverity) severity?: BugSeverity;
   @ApiPropertyOptional({ enum: BugClassification }) @IsOptional() @IsEnum(BugClassification) bugClassification?: BugClassification;
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(200) environment?: string;
-  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(3000) stepsToRepro?: string;
-  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(3000) definitionOfDone?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() stepsToRepro?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() definitionOfDone?: string;
   @ApiPropertyOptional() @IsOptional() @IsDateString() startDate?: string;
   @ApiPropertyOptional() @IsOptional() @IsDateString() dueDate?: string;
   // Phase 9 Bug Management fields
