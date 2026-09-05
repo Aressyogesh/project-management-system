@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Security Review Report — F-039 Task Deadline &amp; Timesheet Reminders</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; margin: 0; padding: 0; background: #f3f4f6; color: #111827; }
+  .header { background: #7c3aed; color: #fff; padding: 28px 40px; }
+  .header h1 { margin: 0; font-size: 22px; }
+  .header p { margin: 6px 0 0; opacity: .8; font-size: 14px; }
+  .container { max-width: 900px; margin: 32px auto; padding: 0 24px 48px; }
+  .card { background: #fff; border-radius: 12px; border: 1px solid #e5e7eb; margin-bottom: 24px; overflow: hidden; }
+  .card-header { background: #f9fafb; padding: 14px 24px; border-bottom: 1px solid #e5e7eb; font-weight: 700; font-size: 15px; }
+  .card-body { padding: 20px 24px; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th { background: #f9fafb; padding: 10px 14px; text-align: left; font-weight: 600; border-bottom: 2px solid #e5e7eb; }
+  td { padding: 10px 14px; border-bottom: 1px solid #f3f4f6; vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  .pass { color: #16a34a; font-weight: 700; }
+  .na { color: #6b7280; font-weight: 600; }
+  .badge-green { display: inline-block; padding: 3px 10px; border-radius: 9999px; font-size: 12px; font-weight: 700; background: #dcfce7; color: #16a34a; }
+  .verdict { font-size: 18px; font-weight: 700; color: #16a34a; }
+  .meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 14px; }
+  .meta-item label { display: block; color: #6b7280; font-size: 12px; margin-bottom: 2px; }
+  .meta-item span { font-weight: 600; }
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>Security Review Report — F-039 Task Deadline &amp; Timesheet Reminders</h1>
+  <p>OWASP Top 10 + Infrastructure Security &nbsp;|&nbsp; Reviewer: Claude Code &nbsp;|&nbsp; Date: 2026-06-09</p>
+</div>
+<div class="container">
+
+  <div class="card">
+    <div class="card-header">Review Metadata</div>
+    <div class="card-body">
+      <div class="meta-grid">
+        <div class="meta-item"><label>Feature ID</label><span>F-039</span></div>
+        <div class="meta-item"><label>Scope</label><span>Backend cron service only (no HTTP endpoints)</span></div>
+        <div class="meta-item"><label>Reviewer</label><span>Claude Code (Automated)</span></div>
+        <div class="meta-item"><label>Review Date</label><span>2026-06-09</span></div>
+        <div class="meta-item"><label>OWASP Checks</label><span>11</span></div>
+        <div class="meta-item"><label>Overall Verdict</label><span class="verdict">APPROVED</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">OWASP Top 10 Security Checks</div>
+    <div class="card-body">
+      <table>
+        <thead><tr><th>ID</th><th>Check</th><th>Status</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>SEC-1</td>
+            <td>Broken Access Control</td>
+            <td class="na">N/A</td>
+            <td>No HTTP endpoints; cron jobs are internal server-side processes. No access control surface.</td>
+          </tr>
+          <tr>
+            <td>SEC-2</td>
+            <td>Cryptographic Failures</td>
+            <td class="pass">PASS</td>
+            <td>No sensitive data stored. Email addresses passed to SMTP — transport encryption handled by EmailService (SSL/TLS on port 465). No credentials in cron service.</td>
+          </tr>
+          <tr>
+            <td>SEC-3</td>
+            <td>Injection (SQL/NoSQL/Command)</td>
+            <td class="pass">PASS</td>
+            <td>All DB queries use Prisma parameterised API (findMany, aggregate). No raw SQL, no string interpolation into queries. Zero injection risk.</td>
+          </tr>
+          <tr>
+            <td>SEC-4</td>
+            <td>Insecure Design</td>
+            <td class="pass">PASS</td>
+            <td>Cron jobs query only their required data (assignee email, task title, project name, hours). Principle of least privilege respected in select/include clauses.</td>
+          </tr>
+          <tr>
+            <td>SEC-5</td>
+            <td>Security Misconfiguration</td>
+            <td class="pass">PASS</td>
+            <td>No new configuration surface introduced. Cron schedules are hardcoded constants — cannot be changed via env/API at runtime.</td>
+          </tr>
+          <tr>
+            <td>SEC-6</td>
+            <td>Vulnerable &amp; Outdated Components</td>
+            <td class="pass">PASS</td>
+            <td>@nestjs/schedule is an official NestJS package. No new third-party dependencies introduced by this feature.</td>
+          </tr>
+          <tr>
+            <td>SEC-7</td>
+            <td>Identification &amp; Authentication Failures</td>
+            <td class="na">N/A</td>
+            <td>Cron jobs run server-side; no authentication required. Email recipient addresses come from the internal user database — no user-supplied input.</td>
+          </tr>
+          <tr>
+            <td>SEC-8</td>
+            <td>Software &amp; Data Integrity Failures</td>
+            <td class="pass">PASS</td>
+            <td>Email body assembled from DB-sourced strings (task title, project name, user fullName). No deserialization of external data. No supply-chain risk from new deps.</td>
+          </tr>
+          <tr>
+            <td>SEC-9</td>
+            <td>Security Logging &amp; Monitoring Failures</td>
+            <td class="pass">PASS</td>
+            <td>Each cron run logs start/end. SMTP failures logged via logger.error with recipient email and error message. NestJS Logger integrates with PM2 log rotation.</td>
+          </tr>
+          <tr>
+            <td>SEC-10</td>
+            <td>Server-Side Request Forgery (SSRF)</td>
+            <td class="na">N/A</td>
+            <td>No outbound HTTP requests. SMTP sending is via EmailService which uses a fixed configured server — not influenced by any user input.</td>
+          </tr>
+          <tr>
+            <td>SEC-11</td>
+            <td>Email Content Injection / Header Injection</td>
+            <td class="pass">PASS</td>
+            <td>Email subject constructed from safe integer (task count) and static strings. Body content (task title, project name, user name) comes from the internal database. No user-supplied strings reach the email subject or headers at this layer.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">Additional Infrastructure Checks</div>
+    <div class="card-body">
+      <table>
+        <thead><tr><th>Check</th><th>Status</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>PII in logs</td>
+            <td class="pass">PASS</td>
+            <td>Only email address logged on SMTP failure (necessary for debugging). No passwords, tokens, or sensitive data logged.</td>
+          </tr>
+          <tr>
+            <td>Error message leakage</td>
+            <td class="pass">PASS</td>
+            <td>Errors caught and logged server-side only; never propagated to any HTTP response.</td>
+          </tr>
+          <tr>
+            <td>Denial of Service via cron flood</td>
+            <td class="pass">PASS</td>
+            <td>Named cron jobs prevent duplicate scheduling. @nestjs/schedule ensures each job runs once per interval even under load. No user-triggerable endpoint exists for these jobs.</td>
+          </tr>
+          <tr>
+            <td>SMTP credential security</td>
+            <td class="pass">PASS</td>
+            <td>SMTP credentials stored in env vars (GitHub Actions secrets → PM2 env). Not hardcoded in service or config files.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">Summary</div>
+    <div class="card-body">
+      <table>
+        <thead><tr><th>Category</th><th>Checks</th><th>Pass</th><th>N/A</th><th>Fail</th></tr></thead>
+        <tbody>
+          <tr><td>OWASP SEC-1 to SEC-11</td><td>11</td><td>7</td><td>4</td><td>0</td></tr>
+          <tr><td>Additional Infrastructure</td><td>4</td><td>4</td><td>0</td><td>0</td></tr>
+          <tr style="font-weight:700;"><td>Total</td><td>15</td><td>11</td><td>4</td><td>0</td></tr>
+        </tbody>
+      </table>
+      <p style="margin-top:16px;font-size:16px;" class="verdict">Verdict: APPROVED — No security vulnerabilities found. Feature has minimal attack surface (internal cron, no HTTP endpoints, Prisma ORM throughout).</p>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

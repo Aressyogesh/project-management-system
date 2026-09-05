@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<title>Test Summary Report — F-033 Project Role-Based Access Control</title>
+<style>
+  body{font-family:system-ui,sans-serif;margin:0;padding:24px;background:#f8fafc;color:#1e293b}
+  h1{font-size:1.4rem;font-weight:700;margin-bottom:4px}
+  .meta{color:#64748b;font-size:.85rem;margin-bottom:24px}
+  table{width:100%;border-collapse:collapse;background:#fff;border-radius:10px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.08);margin-bottom:24px}
+  th{background:#1e293b;color:#fff;padding:10px 14px;text-align:left;font-size:.82rem;text-transform:uppercase;letter-spacing:.04em}
+  td{padding:10px 14px;font-size:.88rem;border-bottom:1px solid #f1f5f9;vertical-align:top}
+  tr:last-child td{border-bottom:none}
+  .pass{background:#dcfce7;color:#166534;padding:2px 10px;border-radius:99px;font-size:.78rem;font-weight:600}
+  .fail{background:#fee2e2;color:#991b1b;padding:2px 10px;border-radius:99px;font-size:.78rem;font-weight:600}
+  .summary{display:flex;gap:16px;margin-bottom:20px;flex-wrap:wrap}
+  .chip{background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:12px 20px;font-size:.85rem;box-shadow:0 1px 3px rgba(0,0,0,.05)}
+  .chip b{display:block;font-size:1.4rem;font-weight:700;color:#0f172a}
+  h2{font-size:1rem;font-weight:600;margin:24px 0 12px}
+  .badge{display:inline-block;padding:1px 8px;border-radius:99px;font-size:.75rem;font-weight:600}
+  .badge-blue{background:#dbeafe;color:#1d4ed8}
+  .badge-purple{background:#ede9fe;color:#6d28d9}
+</style>
+</head>
+<body>
+<h1>Test Summary Report</h1>
+<div class="meta">F-033 — Project Role-Based Access Control &nbsp;|&nbsp; Date: 2026-06-03 &nbsp;|&nbsp; Branch: main</div>
+
+<div class="summary">
+  <div class="chip"><b>24</b> Total Cases</div>
+  <div class="chip"><b style="color:#166534">24</b> Passed</div>
+  <div class="chip"><b style="color:#991b1b">0</b> Failed</div>
+  <div class="chip"><b style="color:#1d4ed8">14</b> Unit</div>
+  <div class="chip"><b style="color:#6d28d9">10</b> E2E</div>
+</div>
+
+<h2>Unit Test Cases <span class="badge badge-blue">14</span></h2>
+<table>
+  <thead><tr><th>ID</th><th>Description</th><th>Layer</th><th>Result</th></tr></thead>
+  <tbody>
+    <tr><td>UTC-033-01</td><td>ProjectRoleGuard blocks non-member from creating work item</td><td>Guard</td><td><span class="pass">PASS</span></td></tr>
+    <tr><td>UTC-033-02</td><td>ProjectRoleGuard allows member with any role to create work item</td><td>Guard</td><td><span class="pass">PASS</span></td></tr>
+    <tr><td>UTC-033-03</td><td>DEVELOPER cannot delete work item (403)</td><td>Controller</td><td><span class="pass">PASS</span></td></tr>
+    <tr><td>UTC-033-04</td><td>TEAM_LEAD can delete work item</td><td>Controller</td><td><span class="pass">PASS</span></td></tr>
+    <tr><td>UTC-033-05</td><td>PROJECT_MANAGER can delete work item</td><td>Controller</td><td><span class="pass">PASS</span></td></tr>
+    <tr><td>UTC-033-06</td><td>DEVELOPER cannot delete sprint (403)</td><td>Controller</td><td><span class="pass">PASS</span></td></tr>
+    <tr><td>UTC-033-07</td><td>PROJECT_MANAGER can delete sprint</td><td>Controller</td><td><span class="pass">PASS</span></td></tr>
+    <tr><td>UTC-033-08</td><td>TEAM_LEAD can create sprint but cannot delete sprint</td><td>Controller</td><td><span class="pass">PASS</span></td></tr>
+    <tr><td>UTC-033-09</td><td>DEVELOPER cannot add project member (403)</td><td>Controller</td><td><span class="pass">PASS</span></td></tr>
+    <tr><td>UTC-033-10</td><td>PROJECT_MANAGER can add project member</td><td>Controller</td><td><span class="pass">PASS</span></td></tr>
+    <tr><td>UTC-033-11</td><td>DEVELOPER cannot edit board column labels (403)</td><td>Controller</td><td><span class="pass">PASS</span></td></tr>
+    <tr><td>UTC-033-12</td><td>TEAM_LEAD can edit board column labels</td><td>Controller</td><td><span class="pass">PASS</span></td></tr>
+    <tr><td>UTC-033-13</td><td>SUPER_USER bypasses all role checks on all endpoints</td><td>Guard</td><td><span class="pass">PASS</span></td></tr>
+    <tr><td>UTC-033-14</td><td>ADMIN bypasses all role checks on all endpoints</td><td>Guard</td><td><span class="pass">PASS</span></td></tr>
+  </tbody>
+</table>
+
+<h2>E2E Test Cases <span class="badge badge-purple">10</span></h2>
+<table>
+  <thead><tr><th>ID</th><th>Description</th><th>Role</th><th>Result</th></tr></thead>
+  <tbody>
+    <tr><td>TC-033-01</td><td>DEVELOPER can create and update work items on the board</td><td>DEVELOPER</td><td><span class="pass">PASS</span></td></tr>
+    <tr><td>TC-033-02</td><td>DEVELOPER cannot see Delete button in WorkItemModal</td><td>DEVELOPER</td><td><span class="pass">PASS</span></td></tr>
+    <tr><td>TC-033-03</td><td>TEAM_LEAD can delete a work item via WorkItemModal</td><td>TEAM_LEAD</td><td><span class="pass">PASS</span></td></tr>
+    <tr><td>TC-033-04</td><td>PROJECT_MANAGER can manage sprints (create, activate, delete)</td><td>PROJECT_MANAGER</td><td><span class="pass">PASS</span></td></tr>
+    <tr><td>TC-033-05</td><td>TEAM_LEAD can manage sprints (create, activate) but not delete</td><td>TEAM_LEAD</td><td><span class="pass">PASS</span></td></tr>
+    <tr><td>TC-033-06</td><td>QA cannot see "Manage Sprints" button on board toolbar</td><td>QA</td><td><span class="pass">PASS</span></td></tr>
+    <tr><td>TC-033-07</td><td>PROJECT_MANAGER can add/remove project members</td><td>PROJECT_MANAGER</td><td><span class="pass">PASS</span></td></tr>
+    <tr><td>TC-033-08</td><td>TEAM_LEAD cannot see member management controls</td><td>TEAM_LEAD</td><td><span class="pass">PASS</span></td></tr>
+    <tr><td>TC-033-09</td><td>TEAM_LEAD can edit board column labels</td><td>TEAM_LEAD</td><td><span class="pass">PASS</span></td></tr>
+    <tr><td>TC-033-10</td><td>DEVELOPER cannot see "Columns" button on board header</td><td>DEVELOPER</td><td><span class="pass">PASS</span></td></tr>
+  </tbody>
+</table>
+
+<h2>Coverage Summary</h2>
+<table>
+  <thead><tr><th>Layer</th><th>Total</th><th>Passed</th><th>Failed</th></tr></thead>
+  <tbody>
+    <tr><td>Unit (Backend)</td><td>14</td><td>14</td><td>0</td></tr>
+    <tr><td>Unit (Frontend)</td><td>0</td><td>0</td><td>0</td></tr>
+    <tr><td>E2E</td><td>10</td><td>10</td><td>0</td></tr>
+    <tr><td><strong>Total</strong></td><td><strong>24</strong></td><td><strong>24</strong></td><td><strong>0</strong></td></tr>
+  </tbody>
+</table>
+
+<p style="font-size:.82rem;color:#64748b;margin-top:8px">Migration: <strong>Not required</strong> — no schema changes. Pure guard/decorator additions on existing controllers.</p>
+</body>
+</html>

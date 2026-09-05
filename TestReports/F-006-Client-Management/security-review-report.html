@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>F-006 Client Management — Security Review Report</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f8fafc; color: #1e293b; padding: 32px; }
+  h1 { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
+  h2 { font-size: 15px; font-weight: 600; margin: 28px 0 12px; color: #334155; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px; }
+  .meta { font-size: 13px; color: #64748b; margin-bottom: 28px; }
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+  .pass { background: #dcfce7; color: #166534; }
+  .na { background: #f1f5f9; color: #64748b; }
+  .vlow { background: #f0fdf4; color: #166534; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; background: #fff; border-radius: 10px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,.07); margin-bottom: 20px; }
+  thead th { background: #f1f5f9; padding: 10px 14px; text-align: left; font-weight: 600; color: #475569; font-size: 12px; text-transform: uppercase; }
+  tbody td { padding: 10px 14px; border-top: 1px solid #f1f5f9; }
+  .verdict { font-size: 18px; font-weight: 700; color: #16a34a; margin: 20px 0 8px; }
+</style>
+</head>
+<body>
+<h1>F-006: Client Management — Security Review Report</h1>
+<p class="meta">Reviewer: Claude Code (AI-assisted) &nbsp;|&nbsp; Date: 2026-05-26 &nbsp;|&nbsp; Branch: feature/F-006-client-management</p>
+<div class="verdict">✅ Approved — No Critical Issues</div>
+
+<h2>Auth & Authorization</h2>
+<table>
+  <thead><tr><th>Check</th><th>Result</th></tr></thead>
+  <tbody>
+    <tr><td>JWT required on all endpoints</td><td><span class="badge pass">✅ Pass</span></td></tr>
+    <tr><td>SUPER_USER / ADMIN only</td><td><span class="badge pass">✅ Pass</span></td></tr>
+    <tr><td>EMPLOYEE blocked</td><td><span class="badge pass">✅ Pass</span></td></tr>
+  </tbody>
+</table>
+
+<h2>Input Validation</h2>
+<table>
+  <thead><tr><th>Check</th><th>Result</th></tr></thead>
+  <tbody>
+    <tr><td>Name max 150, contactPerson max 100</td><td><span class="badge pass">✅ Pass</span></td></tr>
+    <tr><td>Email validated with @IsEmail</td><td><span class="badge pass">✅ Pass</span></td></tr>
+    <tr><td>isActive strictly Boolean</td><td><span class="badge pass">✅ Pass</span></td></tr>
+    <tr><td>Name trimmed before persistence</td><td><span class="badge pass">✅ Pass</span></td></tr>
+  </tbody>
+</table>
+
+<h2>Injection & XSS</h2>
+<table>
+  <thead><tr><th>Check</th><th>Result</th></tr></thead>
+  <tbody>
+    <tr><td>SQL Injection</td><td><span class="badge pass">✅ Pass — Prisma parameterises</span></td></tr>
+    <tr><td>XSS</td><td><span class="badge pass">✅ Pass — React escapes text</span></td></tr>
+    <tr><td>Email injection</td><td><span class="badge pass">✅ Pass — @IsEmail rejects malformed</span></td></tr>
+  </tbody>
+</table>
+
+<h2>Risk Register</h2>
+<table>
+  <thead><tr><th>Risk</th><th>Likelihood</th><th>Impact</th><th>Mitigation</th></tr></thead>
+  <tbody>
+    <tr><td>No email domain validation</td><td><span class="badge vlow">Very Low</span></td><td>Info</td><td>@IsEmail validates format; domain whitelist deferred</td></tr>
+    <tr><td>No rate limiting on create</td><td><span class="badge vlow">Very Low</span></td><td>Low</td><td>Deferred to infrastructure hardening</td></tr>
+  </tbody>
+</table>
+</body>
+</html>

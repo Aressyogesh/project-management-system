@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Security Review — F-026 Dynamic Dashboard</title>
+  <style>
+    body { font-family: 'Segoe UI', sans-serif; margin: 0; background: #f8fafc; color: #1e293b; }
+    .header { background: linear-gradient(135deg, #1e293b 0%, #334155 100%); color: white; padding: 32px 40px; }
+    .header h1 { margin: 0 0 4px; font-size: 22px; }
+    .header p { margin: 0; opacity: 0.7; font-size: 13px; }
+    .container { max-width: 960px; margin: 0 auto; padding: 32px 40px; }
+    table { width: 100%; border-collapse: collapse; background: white; border-radius: 12px; overflow: hidden; border: 1px solid #e2e8f0; margin-bottom: 24px; }
+    th { background: #f1f5f9; padding: 12px 16px; text-align: left; font-size: 12px; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; }
+    td { padding: 12px 16px; border-top: 1px solid #f1f5f9; font-size: 13px; }
+    .badge { display: inline-flex; padding: 2px 10px; border-radius: 999px; font-size: 11px; font-weight: 600; }
+    .pass { background: #dcfce7; color: #16a34a; } .na { background: #f1f5f9; color: #64748b; }
+    h2 { font-size: 16px; margin: 32px 0 12px; color: #1e293b; }
+    .verdict { background: #dcfce7; border: 1px solid #bbf7d0; border-radius: 12px; padding: 20px; color: #16a34a; font-weight: 600; font-size: 15px; }
+  </style>
+</head>
+<body>
+<div class="header">
+  <h1>Security Review Report — F-026: Dynamic Dashboard & Project-wise Team Progress</h1>
+  <p>Reviewer: Yogesh Lolage | Date: 2026-06-01 | Standard: OWASP Top 10 + OWASP API Security Top 10</p>
+</div>
+<div class="container">
+
+  <div class="verdict">Verdict: ✅ Cleared</div>
+
+  <h2>OWASP Web Top 10</h2>
+  <table>
+    <thead><tr><th>Risk</th><th>Applicable</th><th>Status</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td>A01 — Broken Access Control</td><td>Yes</td><td><span class="badge pass">PASS</span></td><td>JwtAuthGuard global; /projects-progress returns 403 for EMPLOYEE role. RBAC enforced in controller before service call.</td></tr>
+      <tr><td>A02 — Cryptographic Failures</td><td>No</td><td><span class="badge na">N/A</span></td><td>No passwords or sensitive data handled in this feature.</td></tr>
+      <tr><td>A03 — Injection</td><td>Yes</td><td><span class="badge pass">PASS</span></td><td>Prisma ORM with parameterised queries; no raw SQL concatenation. Frontend uses React (auto-escapes). No dangerouslySetInnerHTML.</td></tr>
+      <tr><td>A04 — Insecure Design</td><td>No</td><td><span class="badge na">N/A</span></td><td>Read-only dashboard endpoints; no business workflows that can be abused.</td></tr>
+      <tr><td>A05 — Security Misconfiguration</td><td>Yes</td><td><span class="badge pass">PASS</span></td><td>CORS configured to trusted origins; debug mode off in production; no stack traces exposed.</td></tr>
+      <tr><td>A06 — Vulnerable Components</td><td>Yes</td><td><span class="badge pass">PASS</span></td><td>No new dependencies added. npm audit shows 0 critical/high CVEs for this feature.</td></tr>
+      <tr><td>A07 — Auth Failures</td><td>Yes</td><td><span class="badge pass">PASS</span></td><td>JWT access token required for both endpoints. Global JwtAuthGuard blocks unauthenticated access with 401.</td></tr>
+      <tr><td>A08 — Data Integrity</td><td>No</td><td><span class="badge na">N/A</span></td><td>No serialisation of untrusted data.</td></tr>
+      <tr><td>A09 — Logging</td><td>Yes</td><td><span class="badge pass">PASS</span></td><td>Auth events logged by global guards. 403 responses logged with context.</td></tr>
+      <tr><td>A10 — SSRF</td><td>No</td><td><span class="badge na">N/A</span></td><td>No user-supplied URLs processed.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>OWASP API Security Top 10</h2>
+  <table>
+    <thead><tr><th>Risk</th><th>Status</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td>API01 — Broken Object Level Auth</td><td><span class="badge pass">PASS</span></td><td>Dashboard stats scoped by userId from JWT. Projects progress is admin-only; no per-object ID in URL.</td></tr>
+      <tr><td>API02 — Broken Authentication</td><td><span class="badge pass">PASS</span></td><td>Both endpoints protected by JwtAuthGuard.</td></tr>
+      <tr><td>API03 — Broken Object Property Level Auth</td><td><span class="badge pass">PASS</span></td><td>Response DTOs expose only non-sensitive aggregates (counts, names, percentages).</td></tr>
+      <tr><td>API04 — Unrestricted Resource Consumption</td><td><span class="badge pass">PASS</span></td><td>Projects list is ACTIVE projects only (bounded). No unbounded result sets; activity data is exactly 12 points.</td></tr>
+      <tr><td>API05 — Broken Function Level Auth</td><td><span class="badge pass">PASS</span></td><td>/projects-progress returns 403 for EMPLOYEE. Tested in unit tests and E2E spec.</td></tr>
+      <tr><td>API06 — Unrestricted Business Flows</td><td><span class="badge pass">PASS</span></td><td>Read-only endpoints only; no write operations that could be abused.</td></tr>
+      <tr><td>API07 — SSRF</td><td><span class="badge na">N/A</span></td><td>No outbound HTTP calls.</td></tr>
+      <tr><td>API08 — Security Misconfiguration</td><td><span class="badge pass">PASS</span></td><td>Error responses return generic messages; no stack traces in production.</td></tr>
+      <tr><td>API09 — Improper Inventory</td><td><span class="badge pass">PASS</span></td><td>Both endpoints documented via @ApiOperation Swagger decorators.</td></tr>
+      <tr><td>API10 — Unsafe API Consumption</td><td><span class="badge na">N/A</span></td><td>No third-party API calls.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Open Risk Items</h2>
+  <p>None. All CRITICAL and HIGH findings resolved.</p>
+
+  <h2>Sign-off</h2>
+  <p>Reviewer: Yogesh Lolage | Date: 2026-06-01 | Verdict: <strong>Cleared — No open risks</strong></p>
+</div>
+</body>
+</html>

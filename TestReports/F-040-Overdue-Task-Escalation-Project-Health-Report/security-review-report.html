@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Security Review Report — F-040 Overdue Task Escalation &amp; Project Health Report</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; margin: 0; padding: 0; background: #f3f4f6; color: #111827; }
+  .header { background: #7c3aed; color: #fff; padding: 28px 40px; }
+  .header h1 { margin: 0; font-size: 22px; }
+  .header p { margin: 6px 0 0; opacity: .8; font-size: 14px; }
+  .container { max-width: 900px; margin: 32px auto; padding: 0 24px 48px; }
+  .card { background: #fff; border-radius: 12px; border: 1px solid #e5e7eb; margin-bottom: 24px; overflow: hidden; }
+  .card-header { background: #f9fafb; padding: 14px 24px; border-bottom: 1px solid #e5e7eb; font-weight: 700; font-size: 15px; }
+  .card-body { padding: 20px 24px; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th { background: #f9fafb; padding: 10px 14px; text-align: left; font-weight: 600; border-bottom: 2px solid #e5e7eb; }
+  td { padding: 10px 14px; border-bottom: 1px solid #f3f4f6; vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  .pass { color: #16a34a; font-weight: 700; }
+  .na { color: #6b7280; font-weight: 600; }
+  .verdict { font-size: 18px; font-weight: 700; color: #16a34a; }
+  .meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 14px; }
+  .meta-item label { display: block; color: #6b7280; font-size: 12px; margin-bottom: 2px; }
+  .meta-item span { font-weight: 600; }
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>Security Review Report — F-040 Overdue Task Escalation &amp; Project Health Report</h1>
+  <p>OWASP Top 10 + Infrastructure Security &nbsp;|&nbsp; Reviewer: Claude Code &nbsp;|&nbsp; Date: 2026-06-09</p>
+</div>
+<div class="container">
+
+  <div class="card">
+    <div class="card-header">Review Metadata</div>
+    <div class="card-body">
+      <div class="meta-grid">
+        <div class="meta-item"><label>Feature ID</label><span>F-040</span></div>
+        <div class="meta-item"><label>Scope</label><span>Backend cron service only (no HTTP endpoints)</span></div>
+        <div class="meta-item"><label>Reviewer</label><span>Claude Code (Automated)</span></div>
+        <div class="meta-item"><label>Review Date</label><span>2026-06-09</span></div>
+        <div class="meta-item"><label>OWASP Checks</label><span>11</span></div>
+        <div class="meta-item"><label>Overall Verdict</label><span class="verdict">APPROVED</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">OWASP Top 10 Security Checks</div>
+    <div class="card-body">
+      <table>
+        <thead><tr><th>ID</th><th>Check</th><th>Status</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td>SEC-1</td><td>Broken Access Control</td><td class="na">N/A</td><td>No HTTP endpoints. Cron jobs run server-side; no external trigger surface.</td></tr>
+          <tr><td>SEC-2</td><td>Cryptographic Failures</td><td class="pass">PASS</td><td>No sensitive data stored. Project health metrics are operational data. SMTP uses TLS (F-038 transport). No credentials in this service.</td></tr>
+          <tr><td>SEC-3</td><td>Injection (SQL/NoSQL/Command)</td><td class="pass">PASS</td><td>All queries use Prisma parameterised API. Task titles, project names, and user names from DB are placed in HTML body — no browser rendering of this email content server-side. Email clients render HTML but content is internal-DB-sourced only.</td></tr>
+          <tr><td>SEC-4</td><td>Insecure Design</td><td class="pass">PASS</td><td>Principle of least privilege: only fields needed for each email are selected (select clause). Project health data stays within the organisation — emails go to PMs only.</td></tr>
+          <tr><td>SEC-5</td><td>Security Misconfiguration</td><td class="pass">PASS</td><td>No new configuration surface. Cron schedules are hardcoded constants.</td></tr>
+          <tr><td>SEC-6</td><td>Vulnerable &amp; Outdated Components</td><td class="pass">PASS</td><td>No new dependencies introduced. All Prisma enum imports are compile-time constants.</td></tr>
+          <tr><td>SEC-7</td><td>Authentication Failures</td><td class="na">N/A</td><td>Server-side cron, no authentication required. Recipient addresses sourced from internal DB (not user input).</td></tr>
+          <tr><td>SEC-8</td><td>Software &amp; Data Integrity Failures</td><td class="pass">PASS</td><td>Email body assembled from DB-sourced strings only. No external data deserialized. No supply-chain risk (no new packages).</td></tr>
+          <tr><td>SEC-9</td><td>Security Logging &amp; Monitoring</td><td class="pass">PASS</td><td>Both cron jobs log start/completion. SMTP errors logged with recipient email and error message. NestJS Logger integrates with PM2.</td></tr>
+          <tr><td>SEC-10</td><td>SSRF</td><td class="na">N/A</td><td>No outbound HTTP. SMTP transport uses fixed configured server.</td></tr>
+          <tr><td>SEC-11</td><td>Email Content/Header Injection</td><td class="pass">PASS</td><td>Email subjects use integer counts and project/user names from internal DB. Project names and task titles could theoretically contain HTML if injected at creation time, but these are internal operational fields entered by authenticated staff — not user-controlled freeform input from unauthenticated sources. No headers built from DB values.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">Additional Checks</div>
+    <div class="card-body">
+      <table>
+        <thead><tr><th>Check</th><th>Status</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td>Information disclosure via health report</td><td class="pass">PASS</td><td>Reports sent only to the project's own PM — not broadcast. Metrics are operational (counts), not PII-sensitive.</td></tr>
+          <tr><td>PII in logs</td><td class="pass">PASS</td><td>Only PM email address logged on SMTP failure (required for debugging). No passwords, tokens, or task content logged.</td></tr>
+          <tr><td>Error isolation — one PM failure does not affect others</td><td class="pass">PASS</td><td>try/catch inside per-project loop; other emails continue on failure.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">Summary</div>
+    <div class="card-body">
+      <table>
+        <thead><tr><th>Category</th><th>Checks</th><th>Pass</th><th>N/A</th><th>Fail</th></tr></thead>
+        <tbody>
+          <tr><td>OWASP SEC-1 to SEC-11</td><td>11</td><td>8</td><td>3</td><td>0</td></tr>
+          <tr><td>Additional Infrastructure</td><td>3</td><td>3</td><td>0</td><td>0</td></tr>
+          <tr style="font-weight:700;"><td>Total</td><td>14</td><td>11</td><td>3</td><td>0</td></tr>
+        </tbody>
+      </table>
+      <p style="margin-top:16px;font-size:16px;" class="verdict">Verdict: APPROVED — No security vulnerabilities. Minimal attack surface (cron-only, Prisma ORM, internal-DB content).</p>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

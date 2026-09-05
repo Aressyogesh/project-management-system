@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Security Review — F-021 Phase 11 Complete Reports</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f8fafc; margin: 0; padding: 24px; color: #1e293b; }
+  .container { max-width: 960px; margin: 0 auto; }
+  h1 { font-size: 1.5rem; font-weight: 700; margin-bottom: 4px; }
+  .meta { color: #64748b; font-size: 0.875rem; margin-bottom: 24px; }
+  .summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+  .card { background: #fff; border-radius: 12px; padding: 20px; text-align: center; border: 1px solid #e2e8f0; }
+  .card .num { font-size: 2rem; font-weight: 800; }
+  .card .label { font-size: 0.75rem; color: #64748b; margin-top: 4px; }
+  .green { color: #10b981; } .red { color: #ef4444; } .blue { color: #3b82f6; }
+  table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 12px; overflow: hidden; border: 1px solid #e2e8f0; font-size: 0.875rem; }
+  thead { background: #f1f5f9; }
+  th { padding: 10px 16px; text-align: left; font-size: 0.75rem; font-weight: 600; color: #475569; text-transform: uppercase; letter-spacing: 0.05em; }
+  td { padding: 10px 16px; border-top: 1px solid #f1f5f9; vertical-align: top; }
+  .pass { display: inline-block; background: #d1fae5; color: #065f46; font-size: 0.7rem; font-weight: 700; padding: 2px 8px; border-radius: 999px; }
+  .na { display: inline-block; background: #f1f5f9; color: #475569; font-size: 0.7rem; font-weight: 700; padding: 2px 8px; border-radius: 999px; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>Security Review Report — F-021</h1>
+  <p class="meta">Feature: Phase 11 Complete — Task Allocation, Timesheet &amp; Export Reports &nbsp;|&nbsp; Date: 2026-05-28 &nbsp;|&nbsp; Framework: OWASP Top 10</p>
+
+  <div class="summary-grid">
+    <div class="card"><div class="num green">10</div><div class="label">Checks Passed</div></div>
+    <div class="card"><div class="num red">0</div><div class="label">Issues Found</div></div>
+    <div class="card"><div class="num" style="color:#94a3b8">1</div><div class="label">N/A</div></div>
+    <div class="card"><div class="num blue">100%</div><div class="label">Pass Rate</div></div>
+  </div>
+
+  <table>
+    <thead>
+      <tr><th>ID</th><th>OWASP Check</th><th>Finding</th><th>Result</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>SEC-1</td>
+        <td>A01 — Broken Access Control</td>
+        <td>RBAC enforced via isAdminView check on systemRole. EMPLOYEE cannot see other users' allocation or timesheet data. React Router auth guard still in place at route level.</td>
+        <td><span class="pass">PASS</span></td>
+      </tr>
+      <tr>
+        <td>SEC-2</td>
+        <td>A02 — Cryptographic Failures</td>
+        <td>No sensitive data in frontend. CSV contains only display-level performance data — no passwords, tokens, or PII beyond names already visible in the authenticated UI.</td>
+        <td><span class="pass">PASS</span></td>
+      </tr>
+      <tr>
+        <td>SEC-3</td>
+        <td>A03 — Injection</td>
+        <td>All data is hardcoded static arrays. CSV values are escaped with RFC 4180 double-quote doubling — no injection vector via user-controlled data.</td>
+        <td><span class="pass">PASS</span></td>
+      </tr>
+      <tr>
+        <td>SEC-4</td>
+        <td>A04 — Insecure Design</td>
+        <td>CSV export uses Blob API entirely in-browser — no file written to server, no path traversal possible. Object URL revoked immediately after click.</td>
+        <td><span class="pass">PASS</span></td>
+      </tr>
+      <tr>
+        <td>SEC-5</td>
+        <td>A05 — Security Misconfiguration</td>
+        <td>No new environment variables or server config introduced. Frontend-only feature.</td>
+        <td><span class="pass">PASS</span></td>
+      </tr>
+      <tr>
+        <td>SEC-6</td>
+        <td>A06 — Vulnerable Components</td>
+        <td>No new npm dependencies added. Recharts and existing libs unchanged.</td>
+        <td><span class="pass">PASS</span></td>
+      </tr>
+      <tr>
+        <td>SEC-7</td>
+        <td>A07 — Auth &amp; Session Failures</td>
+        <td>JwtAuthGuard still guards all API routes. ReportsPage reads from useAuthStore — unauthenticated users are redirected by the existing auth wrapper before reaching this component.</td>
+        <td><span class="pass">PASS</span></td>
+      </tr>
+      <tr>
+        <td>SEC-8</td>
+        <td>A08 — Software Integrity</td>
+        <td>No dynamic imports of untrusted code. All data is compile-time static.</td>
+        <td><span class="pass">PASS</span></td>
+      </tr>
+      <tr>
+        <td>SEC-9</td>
+        <td>A09 — Logging &amp; Monitoring</td>
+        <td>Frontend-only change; backend logging unchanged. No sensitive data logged to console.</td>
+        <td><span class="pass">PASS</span></td>
+      </tr>
+      <tr>
+        <td>SEC-10</td>
+        <td>A10 — SSRF</td>
+        <td>No outbound HTTP requests made by this feature. All data is local static arrays.</td>
+        <td><span class="pass">PASS</span></td>
+      </tr>
+      <tr>
+        <td>SEC-11</td>
+        <td>XSS — Rendered content</td>
+        <td>All dynamic values rendered via JSX (React escapes by default). No dangerouslySetInnerHTML used. CSV content escaped before Blob creation.</td>
+        <td><span class="pass">PASS</span></td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+</body>
+</html>

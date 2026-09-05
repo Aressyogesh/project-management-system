@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>F-022 Security Review Report</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f8fafc; color: #1e293b; padding: 32px; }
+  .container { max-width: 1100px; margin: 0 auto; }
+  h1 { font-size: 1.5rem; font-weight: 700; margin-bottom: 4px; }
+  .subtitle { color: #64748b; font-size: 0.875rem; margin-bottom: 32px; }
+  .badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; }
+  .pass { background: #dcfce7; color: #15803d; }
+  .warn { background: #fef3c7; color: #92400e; }
+  .na { background: #f1f5f9; color: #64748b; }
+  table { width: 100%; border-collapse: collapse; background: white; border-radius: 12px; overflow: hidden; border: 1px solid #e2e8f0; margin-bottom: 28px; }
+  th { background: #f1f5f9; text-align: left; padding: 10px 16px; font-size: 0.75rem; font-weight: 600; color: #475569; text-transform: uppercase; letter-spacing: 0.05em; }
+  td { padding: 10px 16px; font-size: 0.875rem; border-top: 1px solid #f1f5f9; vertical-align: top; }
+  .summary-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 28px; }
+  .card { background: white; border: 1px solid #e2e8f0; border-radius: 10px; padding: 16px; text-align: center; }
+  .card .num { font-size: 1.5rem; font-weight: 800; color: #15803d; }
+  .card .lbl { font-size: 0.7rem; color: #64748b; margin-top: 4px; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>F-022 — Security Review Report</h1>
+  <p class="subtitle">OWASP Top 10 Security Review · Reviewed 2026-05-28</p>
+
+  <div class="summary-cards">
+    <div class="card"><div class="num">11/11</div><div class="lbl">Checks Passed</div></div>
+    <div class="card"><div class="num">0</div><div class="lbl">Vulnerabilities Found</div></div>
+    <div class="card"><div class="num">✓</div><div class="lbl">Secure</div></div>
+  </div>
+
+  <table>
+    <thead><tr><th>#</th><th>OWASP Check</th><th>Finding</th><th>Status</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>SEC-1</td>
+        <td>Injection (SQL, Command)</td>
+        <td>All DB queries use Prisma parameterized queries. No raw SQL strings. No shell command execution. search filter uses Prisma <code>contains</code> with <code>mode: insensitive</code> — no string concatenation into queries.</td>
+        <td><span class="badge pass">PASS</span></td>
+      </tr>
+      <tr>
+        <td>SEC-2</td>
+        <td>Broken Authentication</td>
+        <td>All board endpoints protected by JwtAuthGuard globally. No anonymous access to work item data. Sprint management requires authenticated session. Token validation handled by existing auth module — no changes made.</td>
+        <td><span class="badge pass">PASS</span></td>
+      </tr>
+      <tr>
+        <td>SEC-3</td>
+        <td>Sensitive Data Exposure</td>
+        <td>Work item selects only necessary user fields (id, fullName, profilePhoto). Reporter/assignee data never includes email or password hash in board responses. TimesheetEntry user select limited to id/fullName.</td>
+        <td><span class="badge pass">PASS</span></td>
+      </tr>
+      <tr>
+        <td>SEC-4</td>
+        <td>Broken Access Control</td>
+        <td>RBAC enforced: only assignee/reporter/PM/admin can edit items. Only PM/Admin can delete items. Only PM/Admin can manage sprints. TimesheetEntry creation restricted to assignee/reporter. ForbiddenException thrown for unauthorized actions.</td>
+        <td><span class="badge pass">PASS</span></td>
+      </tr>
+      <tr>
+        <td>SEC-5</td>
+        <td>Security Misconfiguration</td>
+        <td>No debug endpoints exposed. No hardcoded credentials in new code. Position field uses integer (no float precision issues). Cascade deletes correctly configured to prevent orphan data.</td>
+        <td><span class="badge pass">PASS</span></td>
+      </tr>
+      <tr>
+        <td>SEC-6</td>
+        <td>XSS (Cross-Site Scripting)</td>
+        <td>All user content rendered via React JSX (auto-escaped). No dangerouslySetInnerHTML usage. Work item title/description rendered as text nodes. Comment content not rendered as HTML.</td>
+        <td><span class="badge pass">PASS</span></td>
+      </tr>
+      <tr>
+        <td>SEC-7</td>
+        <td>Insecure Deserialization</td>
+        <td>NestJS DTOs use class-validator for input validation. No custom deserialization logic. Prisma handles type coercion. WorkItem labels/components validated as string arrays.</td>
+        <td><span class="badge pass">PASS</span></td>
+      </tr>
+      <tr>
+        <td>SEC-8</td>
+        <td>CSRF</td>
+        <td>API uses JWT Bearer tokens in Authorization header (not cookies), making CSRF attacks non-applicable. State-mutating endpoints use appropriate HTTP verbs (POST, PATCH, DELETE).</td>
+        <td><span class="badge pass">PASS</span></td>
+      </tr>
+      <tr>
+        <td>SEC-9</td>
+        <td>Privilege Escalation</td>
+        <td>Project role checked against project membership table at request time — not cached in JWT. Server-side validation prevents client-side role spoofing. RBAC matrix enforced consistently across all endpoints.</td>
+        <td><span class="badge pass">PASS</span></td>
+      </tr>
+      <tr>
+        <td>SEC-10</td>
+        <td>Insecure Direct Object Reference (IDOR)</td>
+        <td>Work item projectId verified via ProjectRoleGuard before accessing. TimesheetEntry resolves workItem.projectId for membership check. Sprint resolved to projectId before write operations.</td>
+        <td><span class="badge pass">PASS</span></td>
+      </tr>
+      <tr>
+        <td>SEC-11</td>
+        <td>Component Vulnerabilities</td>
+        <td>@hello-pangea/dnd is maintained fork of react-beautiful-dnd with no known CVEs. No new direct dependencies with known vulnerabilities. All other dependencies unchanged from previous features.</td>
+        <td><span class="badge pass">PASS</span></td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+</body>
+</html>

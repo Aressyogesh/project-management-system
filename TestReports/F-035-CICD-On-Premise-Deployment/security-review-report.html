@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<title>Security Review Report — F-035 CI/CD On-Premise Deployment</title>
+<style>
+  body{font-family:system-ui,sans-serif;margin:0;padding:24px;background:#f8fafc;color:#1e293b}
+  h1{font-size:1.4rem;font-weight:700;margin-bottom:4px}
+  .meta{color:#64748b;font-size:.85rem;margin-bottom:24px}
+  table{width:100%;border-collapse:collapse;background:#fff;border-radius:10px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.08)}
+  th{background:#1e293b;color:#fff;padding:10px 14px;text-align:left;font-size:.82rem;text-transform:uppercase;letter-spacing:.04em}
+  td{padding:10px 14px;font-size:.88rem;border-bottom:1px solid #f1f5f9;vertical-align:top}
+  tr:last-child td{border-bottom:none}
+  .pass{background:#dcfce7;color:#166534;padding:2px 10px;border-radius:99px;font-size:.78rem;font-weight:600}
+  .na{background:#f1f5f9;color:#64748b;padding:2px 10px;border-radius:99px;font-size:.78rem;font-weight:600}
+  .summary{display:flex;gap:16px;margin-bottom:20px}
+  .chip{background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:12px 20px;font-size:.85rem;box-shadow:0 1px 3px rgba(0,0,0,.05)}
+  .chip b{display:block;font-size:1.4rem;font-weight:700;color:#0f172a}
+</style>
+</head>
+<body>
+<h1>Security Review Report</h1>
+<div class="meta">F-035 — CI/CD On-Premise Deployment &nbsp;|&nbsp; OWASP Top 10 &nbsp;|&nbsp; Date: 2026-06-03</div>
+
+<div class="summary">
+  <div class="chip"><b>11</b> Checks</div>
+  <div class="chip"><b style="color:#166534">7</b> Passed</div>
+  <div class="chip"><b style="color:#64748b">4</b> N/A</div>
+</div>
+
+<table>
+  <thead><tr><th>#</th><th>OWASP Category</th><th>Finding</th><th>Status</th></tr></thead>
+  <tbody>
+    <tr><td>SEC-1</td><td>Broken Access Control</td><td>Health endpoint decorated with <code>@Public()</code> — intentionally unauthenticated (liveness check only). Returns no sensitive data (status, timestamp, uptime). The deploy workflow itself is gated by GitHub runner token authentication; only registered runners can execute jobs.</td><td><span class="pass">PASS</span></td></tr>
+    <tr><td>SEC-2</td><td>Cryptographic Failures</td><td>No passwords, tokens, or secrets are stored in workflow files or SETUP.md. All sensitive values injected via GitHub encrypted secrets (<code>${{ secrets.* }}</code>). GitHub masks secret values in logs automatically.</td><td><span class="pass">PASS</span></td></tr>
+    <tr><td>SEC-3</td><td>Injection</td><td>Workflow does not construct shell commands from user-supplied input. All <code>run</code> steps use literal commands. No dynamic string interpolation of external values into shell execution paths.</td><td><span class="pass">PASS</span></td></tr>
+    <tr><td>SEC-4</td><td>Insecure Design</td><td>Deploy job only runs on push to <code>main</code> (protected branch). PRs trigger only the test gate. <code>workflow_dispatch</code> requires GitHub authentication to trigger. Runner is registered to a specific repository — not shared across organisations.</td><td><span class="pass">PASS</span></td></tr>
+    <tr><td>SEC-5</td><td>Security Misconfiguration</td><td>Runner registered as a Windows service running under a service account. PM2 process list saved to disk — restart-on-boot does not expose new attack surface beyond the app already running. PostgreSQL is local-only (port 5432 not exposed externally).</td><td><span class="pass">PASS</span></td></tr>
+    <tr><td>SEC-6</td><td>Vulnerable Components</td><td>Workflow uses <code>actions/checkout@v4</code> (pinned major version). No new npm packages added. Existing Prisma, NestJS, and Vite build toolchains used. No third-party action beyond checkout.</td><td><span class="pass">PASS</span></td></tr>
+    <tr><td>SEC-7</td><td>Auth Failures</td><td>N/A — CI/CD pipeline does not handle user authentication. Health endpoint returns no auth-sensitive data.</td><td><span class="na">N/A</span></td></tr>
+    <tr><td>SEC-8</td><td>Software Integrity</td><td>No new external scripts or CDN resources. All build artifacts (NestJS dist, Vite dist) built from source on the runner. <code>npm ci</code> used (reproducible installs from lockfile) instead of <code>npm install</code>.</td><td><span class="pass">PASS</span></td></tr>
+    <tr><td>SEC-9</td><td>Logging / Monitoring</td><td>PM2 captures stdout/stderr for both processes. Workflow logs are retained in GitHub Actions. Health check failure exits with code 1 — visible in the Actions run summary. No sensitive data (passwords, tokens) logged.</td><td><span class="pass">PASS</span></td></tr>
+    <tr><td>SEC-10</td><td>SSRF</td><td>N/A — no outbound HTTP from application code triggered by the pipeline. Health check is a loopback call to localhost:3000 only.</td><td><span class="na">N/A</span></td></tr>
+    <tr><td>SEC-11</td><td>XSS</td><td>N/A — CI/CD pipeline does not render HTML. No frontend template changes in this feature.</td><td><span class="na">N/A</span></td></tr>
+  </tbody>
+</table>
+</body>
+</html>
