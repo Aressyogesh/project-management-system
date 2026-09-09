@@ -158,6 +158,7 @@ enum BugClassification {
 enum BugFlag {
   INTERNAL
   EXTERNAL
+  UAT
 }
 
 enum BugReproducibility {

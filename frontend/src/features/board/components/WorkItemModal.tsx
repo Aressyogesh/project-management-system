@@ -2047,11 +2047,12 @@ export function WorkItemModal({ item, sprints, members, milestones, canDelete = 
                       >
                         <option value="">— select —</option>
                         <option value="INTERNAL">Development</option>
+                        <option value="UAT">UAT</option>
                         <option value="EXTERNAL">Production</option>
                       </select>
                     ) : (
                       <span className="text-xs text-gray-700">
-                        {bugFlagLocal === 'INTERNAL' ? 'Development' : bugFlagLocal === 'EXTERNAL' ? 'Production' : '—'}
+                        {bugFlagLocal === 'INTERNAL' ? 'Development' : bugFlagLocal === 'EXTERNAL' ? 'Production' : bugFlagLocal === 'UAT' ? 'UAT' : '—'}
                       </span>
                     )}
                   </SidebarRow>
@@ -2903,6 +2904,7 @@ export function CreateWorkItemModal({
                   >
                     <option value="">— select —</option>
                     <option value="INTERNAL">Development</option>
+                    <option value="UAT">UAT</option>
                     <option value="EXTERNAL">Production</option>
                   </select>
                   {bugEnvError && <p className="text-xs text-red-500 mt-1">Environment is required</p>}

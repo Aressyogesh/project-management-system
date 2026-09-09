@@ -115,7 +115,7 @@ export class AutomationService {
     const dueDateStr = item.dueDate
       ? item.dueDate.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
       : 'Not set';
-    const envFlagMap: Record<string, string> = { INTERNAL: 'Development', EXTERNAL: 'Production', STAGING: 'Staging' };
+    const envFlagMap: Record<string, string> = { INTERNAL: 'Development', EXTERNAL: 'Production', STAGING: 'Staging', UAT: 'UAT' };
     const environmentStr = item.environment || (item.bugFlag ? (envFlagMap[item.bugFlag] ?? item.bugFlag) : 'Not specified');
 
     this.getProjectWebhookUrl(item.projectId)
@@ -530,7 +530,7 @@ export class AutomationService {
     reporter?: { id: string; fullName: string } | null;
     createdAt: Date;
   }): void {
-    const envFlagMap: Record<string, string> = { INTERNAL: 'Development', EXTERNAL: 'Production', STAGING: 'Staging' };
+    const envFlagMap: Record<string, string> = { INTERNAL: 'Development', EXTERNAL: 'Production', STAGING: 'Staging', UAT: 'UAT' };
     const environmentStr = item.environment || (item.bugFlag ? (envFlagMap[item.bugFlag] ?? item.bugFlag) : 'Not specified');
 
     this.getProjectWebhookUrl(item.projectId)
