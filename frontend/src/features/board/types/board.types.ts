@@ -7,7 +7,7 @@ export type BugClassification =
   | 'NEW_BUG' | 'CODE_REVIEW' | 'UNIT_TESTING' | 'SUGGESTION'
   | 'PROJECT_MANAGEMENT' | 'EXISTING_APPLICATION';
 export type TaskPriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
-export type BugFlag = 'INTERNAL' | 'EXTERNAL';
+export type BugFlag = 'INTERNAL' | 'EXTERNAL' | 'UAT';
 export type BugReproducibility = 'ALWAYS' | 'SOMETIMES' | 'RARELY' | 'UNABLE' | 'NEVER_TRIED' | 'NOT_APPLICABLE';
 export type BugReminderType = 'NONE' | 'DAILY' | 'ONE_DAY' | 'TWO_DAYS' | 'THREE_DAYS';
 export type BugStatus = 'OPEN' | 'REOPEN' | 'TO_BE_TESTED' | 'IN_PROGRESS' | 'CLOSED' | 'ACKNOWLEDGED' | 'DEFERRED' | 'ON_HOLD';
