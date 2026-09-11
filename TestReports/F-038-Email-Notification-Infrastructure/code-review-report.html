@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Code Review Report — F-038 Email Notification Infrastructure</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; margin: 0; padding: 0; background: #f3f4f6; color: #111827; }
+  .header { background: #4f46e5; color: #fff; padding: 28px 40px; }
+  .header h1 { margin: 0; font-size: 22px; }
+  .header p { margin: 6px 0 0; opacity: .8; font-size: 14px; }
+  .container { max-width: 900px; margin: 32px auto; padding: 0 24px 48px; }
+  .card { background: #fff; border-radius: 12px; border: 1px solid #e5e7eb; margin-bottom: 24px; overflow: hidden; }
+  .card-header { background: #f9fafb; padding: 14px 24px; border-bottom: 1px solid #e5e7eb; font-weight: 700; font-size: 15px; }
+  .card-body { padding: 20px 24px; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th { background: #f9fafb; padding: 10px 14px; text-align: left; font-weight: 600; border-bottom: 2px solid #e5e7eb; }
+  td { padding: 10px 14px; border-bottom: 1px solid #f3f4f6; vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  .pass { color: #16a34a; font-weight: 700; }
+  .na { color: #6b7280; font-weight: 600; }
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 9999px; font-size: 12px; font-weight: 700; }
+  .badge-green { background: #dcfce7; color: #16a34a; }
+  .badge-gray { background: #f3f4f6; color: #6b7280; }
+  .verdict { font-size: 18px; font-weight: 700; color: #16a34a; }
+  .meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 14px; }
+  .meta-item label { display: block; color: #6b7280; font-size: 12px; margin-bottom: 2px; }
+  .meta-item span { font-weight: 600; }
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>Code Review Report</h1>
+  <p>F-038 — Email Notification Infrastructure | PMS Epic</p>
+</div>
+<div class="container">
+
+  <div class="card">
+    <div class="card-header">Review Information</div>
+    <div class="card-body">
+      <div class="meta-grid">
+        <div class="meta-item"><label>Feature ID</label><span>F-038</span></div>
+        <div class="meta-item"><label>Feature Name</label><span>Email Notification Infrastructure</span></div>
+        <div class="meta-item"><label>Reviewer</label><span>Claude Sonnet 4.6 (AI Code Reviewer)</span></div>
+        <div class="meta-item"><label>Review Date</label><span>2026-06-09</span></div>
+        <div class="meta-item"><label>Files Reviewed</label><span>email.service.ts, email.module.ts, email.service.spec.ts</span></div>
+        <div class="meta-item"><label>Overall Verdict</label><span class="verdict">✅ Approved</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">CR-1: Code Correctness &amp; Logic</div>
+    <div class="card-body">
+      <table>
+        <tr><th>Check</th><th>Status</th><th>Notes</th></tr>
+        <tr><td>Logic matches Acceptance Criteria (AC-1–AC-6)</td><td class="pass">PASS</td><td>sendEmail, wrapHtml, sendPasswordReset all implement their ACs correctly</td></tr>
+        <tr><td>All business rules (BR-1–BR-7) implemented</td><td class="pass">PASS</td><td>SMTP transport, global module, error logging + rethrow all present</td></tr>
+        <tr><td>No off-by-one errors or inverted logic</td><td class="pass">PASS</td><td>N/A for this feature</td></tr>
+        <tr><td>Edge cases handled (null, empty)</td><td class="pass">PASS</td><td>Fallback to SMTP_USER when SMTP_FROM_EMAIL undefined</td></tr>
+        <tr><td>No hardcoded values</td><td class="pass">PASS</td><td>All SMTP config read from ConfigService</td></tr>
+        <tr><td>No commented-out dead code</td><td class="pass">PASS</td><td>Clean — no dead code</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">CR-2: Naming &amp; Readability</div>
+    <div class="card-body">
+      <table>
+        <tr><th>Check</th><th>Status</th><th>Notes</th></tr>
+        <tr><td>Intention-revealing names</td><td class="pass">PASS</td><td>sendEmail, wrapHtml, sendPasswordReset are clear verb-noun pairs</td></tr>
+        <tr><td>Classes are nouns, methods are verbs</td><td class="pass">PASS</td><td>EmailService (noun), sendEmail / wrapHtml (verbs)</td></tr>
+        <tr><td>No single-letter variables</td><td class="pass">PASS</td><td>All parameters clearly named (to, subject, html, title, bodyHtml)</td></tr>
+        <tr><td>File names match contained class</td><td class="pass">PASS</td><td>email.service.ts contains EmailService</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">CR-3: SOLID Principles</div>
+    <div class="card-body">
+      <table>
+        <tr><th>Check</th><th>Status</th><th>Notes</th></tr>
+        <tr><td>Single Responsibility</td><td class="pass">PASS</td><td>EmailService handles only email concerns</td></tr>
+        <tr><td>Open/Closed</td><td class="pass">PASS</td><td>New email types added via sendEmail without modifying transport logic</td></tr>
+        <tr><td>Dependency Inversion</td><td class="pass">PASS</td><td>ConfigService injected, not instantiated directly</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">CR-4: Code Quality &amp; Maintainability</div>
+    <div class="card-body">
+      <table>
+        <tr><th>Check</th><th>Status</th><th>Notes</th></tr>
+        <tr><td>DRY — no duplicated logic</td><td class="pass">PASS</td><td>sendPasswordReset now delegates to sendEmail + wrapHtml, eliminating duplication from F-037</td></tr>
+        <tr><td>Functions do one thing</td><td class="pass">PASS</td><td>wrapHtml is pure (no I/O), sendEmail handles transport only</td></tr>
+        <tr><td>Error handling explicit</td><td class="pass">PASS</td><td>try/catch in sendEmail — logs error with context then rethrows</td></tr>
+        <tr><td>Logging meaningful</td><td class="pass">PASS</td><td>Success log includes to + subject; error log includes to + subject + message</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">CR-5: API &amp; Interface Design</div>
+    <div class="card-body">
+      <table>
+        <tr><th>Check</th><th>Status</th><th>Notes</th></tr>
+        <tr><td>No new HTTP endpoints (internal service only)</td><td class="na">N/A</td><td>F-038 is a service-layer feature with no REST endpoints</td></tr>
+        <tr><td>Public TypeScript interface matches Step 5 contract</td><td class="pass">PASS</td><td>sendEmail, wrapHtml, sendPasswordReset signatures match REQ doc</td></tr>
+        <tr><td>No sensitive data in logs</td><td class="pass">PASS</td><td>Email address logged but no message bodies, passwords, or tokens</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">CR-6: Test Quality</div>
+    <div class="card-body">
+      <table>
+        <tr><th>Check</th><th>Status</th><th>Notes</th></tr>
+        <tr><td>Tests follow AAA pattern</td><td class="pass">PASS</td><td>All 5 tests have clear Arrange/Act/Assert sections</td></tr>
+        <tr><td>Test names describe behaviour</td><td class="pass">PASS</td><td>UTC-F038-B-00X: MethodName_Scenario_ExpectedBehaviour convention followed</td></tr>
+        <tr><td>No logic inside test bodies</td><td class="pass">PASS</td><td>No if/loops in tests</td></tr>
+        <tr><td>Mocks used appropriately</td><td class="pass">PASS</td><td>nodemailer.createTransport mocked via jest.mock(); ConfigService mocked</td></tr>
+        <tr><td>Edge cases tested</td><td class="pass">PASS</td><td>SMTP reject scenario (UTC-F038-B-004) and config-driven from address (B-005) covered</td></tr>
+        <tr><td>All ACs covered</td><td class="pass">PASS</td><td>AC-1 → B-001, AC-2 → B-002, AC-3 → B-003, AC-5 → B-004, AC-6 → B-005</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">CR-7: Performance Awareness</div>
+    <div class="card-body">
+      <table>
+        <tr><th>Check</th><th>Status</th><th>Notes</th></tr>
+        <tr><td>No N+1 queries</td><td class="na">N/A</td><td>No database queries in this service</td></tr>
+        <tr><td>Async/await used correctly</td><td class="pass">PASS</td><td>sendMail awaited; wrapHtml is synchronous (correct — no I/O)</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">CR-8: Coding Standards &amp; Consistency</div>
+    <div class="card-body">
+      <table>
+        <tr><th>Check</th><th>Status</th><th>Notes</th></tr>
+        <tr><td>TypeScript strict typing</td><td class="pass">PASS</td><td>All method signatures explicitly typed; (err as Error) cast is correct</td></tr>
+        <tr><td>NestJS conventions followed</td><td class="pass">PASS</td><td>@Injectable, @Global, @Module decorators used correctly</td></tr>
+        <tr><td>No unused imports</td><td class="pass">PASS</td><td>All imports used</td></tr>
+        <tr><td>File structure follows project layout</td><td class="pass">PASS</td><td>email/ directory with service, module, __tests__ matches project pattern</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">Summary &amp; Verdict</div>
+    <div class="card-body">
+      <p><strong>Verdict: <span class="verdict">✅ Approved</span></strong></p>
+      <p>All CR-1 through CR-8 categories pass. The refactoring cleanly eliminates the duplication from F-037 by extracting <code>wrapHtml</code> and <code>sendEmail</code> as reusable primitives. The <code>@Global()</code> decorator on EmailModule is the correct approach for a cross-cutting infrastructure service. Error handling follows NestJS conventions (log + rethrow).</p>
+      <p><strong>Non-blocking observations:</strong></p>
+      <ul>
+        <li>The worker process leak warning in the test run is pre-existing and unrelated to F-038.</li>
+        <li>Future consideration: add a retry wrapper (e.g. 3 attempts with exponential backoff) in F-039 for cron-triggered emails where transient failures are more likely.</li>
+      </ul>
+      <p style="margin-top:24px;color:#6b7280;font-size:13px;">Reviewed by: Claude Sonnet 4.6 | 2026-06-09</p>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

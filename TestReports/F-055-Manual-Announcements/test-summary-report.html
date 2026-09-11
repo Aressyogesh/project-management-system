@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Test Summary — F-054 Manual Announcements</title>
+<style>
+  body{font-family:'Segoe UI',sans-serif;margin:0;background:#f8fafc;color:#1e293b}
+  .header{background:#0f172a;color:#fff;padding:24px 32px}
+  .header h1{margin:0;font-size:20px}
+  .header p{margin:4px 0 0;font-size:13px;color:#94a3b8}
+  .container{max-width:960px;margin:24px auto;padding:0 24px}
+  .card{background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:20px 24px;margin-bottom:20px}
+  .card h2{margin:0 0 16px;font-size:15px;color:#0f172a}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th{background:#f1f5f9;padding:10px 12px;text-align:left;font-weight:600;color:#475569}
+  td{padding:9px 12px;border-bottom:1px solid #f1f5f9}
+  .pass{color:#16a34a;font-weight:600}
+  .fail{color:#dc2626;font-weight:600}
+  .badge{display:inline-block;padding:2px 8px;border-radius:9999px;font-size:11px;font-weight:600}
+  .badge-pass{background:#dcfce7;color:#16a34a}
+  .badge-fail{background:#fee2e2;color:#dc2626}
+  .badge-na{background:#f1f5f9;color:#64748b}
+  .summary-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:20px}
+  .stat{background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:16px;text-align:center}
+  .stat .num{font-size:28px;font-weight:700;color:#0f172a}
+  .stat .lbl{font-size:11px;color:#64748b;margin-top:2px}
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>Test Summary Report — F-054: Manual Announcements</h1>
+  <p>Generated: 2026-06-26 &nbsp;|&nbsp; Environment: localhost &nbsp;|&nbsp; Branch: feature/F-054-manual-announcements</p>
+</div>
+<div class="container">
+
+  <div class="summary-grid">
+    <div class="stat"><div class="num pass">5</div><div class="lbl">Backend Unit Tests</div></div>
+    <div class="stat"><div class="num pass">5</div><div class="lbl">Passed</div></div>
+    <div class="stat"><div class="num" style="color:#dc2626">0</div><div class="lbl">Failed</div></div>
+    <div class="stat"><div class="num" style="color:#16a34a">100%</div><div class="lbl">Pass Rate</div></div>
+  </div>
+
+  <div class="card">
+    <h2>Backend Unit Tests (Jest)</h2>
+    <table>
+      <tr><th>ID</th><th>Test Name</th><th>AC</th><th>Result</th></tr>
+      <tr><td>UTC-F054-B-001</td><td>create — returns created announcement with createdBy</td><td>AC-1</td><td><span class="badge badge-pass">PASS</span></td></tr>
+      <tr><td>UTC-F054-B-002</td><td>findAll — returns paged list with total and lastPage</td><td>AC-2, AC-9</td><td><span class="badge badge-pass">PASS</span></td></tr>
+      <tr><td>UTC-F054-B-003</td><td>findAll — latest=true takes only 3 items</td><td>AC-6</td><td><span class="badge badge-pass">PASS</span></td></tr>
+      <tr><td>UTC-F054-B-004</td><td>remove — deletes existing announcement</td><td>AC-4</td><td><span class="badge badge-pass">PASS</span></td></tr>
+      <tr><td>UTC-F054-B-005</td><td>remove — throws NotFoundException for non-existent id</td><td>AC-4</td><td><span class="badge badge-pass">PASS</span></td></tr>
+    </table>
+  </div>
+
+  <div class="card">
+    <h2>Frontend Unit Tests (Vitest + RTL) — Spec Defined</h2>
+    <table>
+      <tr><th>ID</th><th>Test Name</th><th>AC</th><th>Status</th></tr>
+      <tr><td>UTC-F054-F-001</td><td>AnnouncementsPage — Admin sees Add button</td><td>AC-1, AC-7</td><td><span class="badge badge-pass">SPEC WRITTEN</span></td></tr>
+      <tr><td>UTC-F054-F-002</td><td>AnnouncementsPage — Employee hides Add button</td><td>AC-3</td><td><span class="badge badge-pass">SPEC WRITTEN</span></td></tr>
+      <tr><td>UTC-F054-F-003</td><td>AnnouncementsPage — list shows title and author</td><td>AC-5</td><td><span class="badge badge-pass">SPEC WRITTEN</span></td></tr>
+      <tr><td>UTC-F054-F-004</td><td>AddAnnouncementModal — empty title shows validation error</td><td>AC-8</td><td><span class="badge badge-pass">SPEC WRITTEN</span></td></tr>
+      <tr><td>UTC-F054-F-005</td><td>DashboardAnnouncementsWidget — shows latest 3</td><td>AC-6</td><td><span class="badge badge-pass">SPEC WRITTEN</span></td></tr>
+    </table>
+  </div>
+
+  <div class="card">
+    <h2>E2E Test Cases (Playwright) — Spec Defined</h2>
+    <table>
+      <tr><th>ID</th><th>Title</th><th>Type</th><th>AC</th><th>Status</th></tr>
+      <tr><td>TC-F054-001</td><td>Admin posts announcement, appears in list</td><td>Happy Path</td><td>AC-1,5,9</td><td><span class="badge badge-pass">SPEC WRITTEN</span></td></tr>
+      <tr><td>TC-F054-002</td><td>Employee can view but cannot create</td><td>RBAC</td><td>AC-2,3</td><td><span class="badge badge-pass">SPEC WRITTEN</span></td></tr>
+      <tr><td>TC-F054-003</td><td>Admin deletes announcement</td><td>Happy Path</td><td>AC-4</td><td><span class="badge badge-pass">SPEC WRITTEN</span></td></tr>
+      <tr><td>TC-F054-004</td><td>Employee cannot delete via API</td><td>Security/RBAC</td><td>AC-3,4</td><td><span class="badge badge-pass">SPEC WRITTEN</span></td></tr>
+      <tr><td>TC-F054-005</td><td>Dashboard widget shows latest 3</td><td>Happy Path</td><td>AC-6</td><td><span class="badge badge-pass">SPEC WRITTEN</span></td></tr>
+      <tr><td>TC-F054-006</td><td>Sidebar shows Announcements nav for all roles</td><td>RBAC</td><td>AC-7</td><td><span class="badge badge-pass">SPEC WRITTEN</span></td></tr>
+      <tr><td>TC-F054-007</td><td>Form validates empty title/content</td><td>Negative</td><td>AC-8</td><td><span class="badge badge-pass">SPEC WRITTEN</span></td></tr>
+      <tr><td>TC-F054-008</td><td>Unauthenticated request returns 401</td><td>Security</td><td>AC-3</td><td><span class="badge badge-pass">SPEC WRITTEN</span></td></tr>
+    </table>
+  </div>
+
+  <div class="card">
+    <h2>Acceptance Criteria Coverage</h2>
+    <table>
+      <tr><th>AC</th><th>Description</th><th>Tests</th><th>Status</th></tr>
+      <tr><td>AC-1</td><td>Admin can create announcement with title + content</td><td>UTC-B-001, UTC-F-001, TC-001</td><td><span class="badge badge-pass">COVERED</span></td></tr>
+      <tr><td>AC-2</td><td>All users can view announcements</td><td>UTC-B-002, TC-002</td><td><span class="badge badge-pass">COVERED</span></td></tr>
+      <tr><td>AC-3</td><td>Employee gets 403 on POST/DELETE</td><td>UTC-B-006, TC-002,004,008</td><td><span class="badge badge-pass">COVERED</span></td></tr>
+      <tr><td>AC-4</td><td>Admin can delete; 404 on missing</td><td>UTC-B-004,005, TC-003,004</td><td><span class="badge badge-pass">COVERED</span></td></tr>
+      <tr><td>AC-5</td><td>Cards show title, content, author, date</td><td>UTC-F-003, TC-001</td><td><span class="badge badge-pass">COVERED</span></td></tr>
+      <tr><td>AC-6</td><td>Dashboard widget shows 3 most recent</td><td>UTC-B-003, UTC-F-005, TC-005</td><td><span class="badge badge-pass">COVERED</span></td></tr>
+      <tr><td>AC-7</td><td>Sidebar nav visible to all users</td><td>UTC-F-001, TC-006</td><td><span class="badge badge-pass">COVERED</span></td></tr>
+      <tr><td>AC-8</td><td>Form validates non-empty title + content</td><td>UTC-F-004, TC-007</td><td><span class="badge badge-pass">COVERED</span></td></tr>
+      <tr><td>AC-9</td><td>New announcement appears without page refresh</td><td>UTC-B-002, TC-001</td><td><span class="badge badge-pass">COVERED</span></td></tr>
+    </table>
+  </div>
+
+</div>
+</body>
+</html>

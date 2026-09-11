@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<title>Code Review — F-031 Work Item Display ID</title>
+<style>
+  body{font-family:Segoe UI,Arial,sans-serif;margin:0;background:#f4f6fb;color:#222}
+  .header{background:linear-gradient(135deg,#0f766e,#0d9488);color:#fff;padding:32px 40px}
+  .header h1{margin:0 0 6px;font-size:1.6rem}
+  .header p{margin:0;opacity:.85;font-size:.9rem}
+  .container{max-width:960px;margin:32px auto;padding:0 24px}
+  .card{background:#fff;border-radius:12px;box-shadow:0 2px 12px rgba(0,0,0,.08);padding:28px;margin-bottom:24px}
+  .card h2{margin:0 0 18px;font-size:1.1rem;color:#0f766e;border-bottom:2px solid #ccfbf1;padding-bottom:8px}
+  table{width:100%;border-collapse:collapse}
+  th{background:#f0fdfa;text-align:left;padding:10px 14px;font-size:.8rem;color:#0f766e;border-bottom:2px solid #ccfbf1}
+  td{padding:10px 14px;font-size:.85rem;border-bottom:1px solid #f3f4f6}
+  tr:last-child td{border-bottom:none}
+  .pass{color:#16a34a;font-weight:700}
+  .fail{color:#dc2626;font-weight:700}
+  .badge{display:inline-block;padding:3px 10px;border-radius:99px;font-size:.75rem;font-weight:700}
+  .badge-pass{background:#dcfce7;color:#16a34a}
+  .badge-fail{background:#fee2e2;color:#dc2626}
+  .badge-na{background:#f3f4f6;color:#6b7280}
+  .verdict{font-size:1.2rem;font-weight:700;color:#16a34a;border:2px solid #dcfce7;border-radius:8px;padding:12px 24px;display:inline-block;background:#f0fdf4}
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>Code Review Report — F-031: Work Item Display ID</h1>
+  <p>Reviewer: Claude Code &nbsp;|&nbsp; Date: 2026-06-03 &nbsp;|&nbsp; Branch: feature/F-031-work-item-display-id</p>
+</div>
+<div class="container">
+
+  <div class="card">
+    <h2>CR-1: Code Correctness &amp; Logic</h2>
+    <table>
+      <thead><tr><th>Check</th><th>Status</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td>Logic matches all Acceptance Criteria</td><td><span class="badge badge-pass">PASS</span></td><td>Prefix derivation, counter increment, displayId format all match BR-1 to BR-9</td></tr>
+        <tr><td>All business rules implemented correctly</td><td><span class="badge badge-pass">PASS</span></td><td>Atomic transaction ensures BR-6 (no duplicates). BR-7 (immutability) enforced by DTO whitelist</td></tr>
+        <tr><td>Edge cases handled (null, empty, whitespace)</td><td><span class="badge badge-pass">PASS</span></td><td>generateWorkItemPrefix filters empty words from whitespace-padded input</td></tr>
+        <tr><td>No hardcoded values in wrong places</td><td><span class="badge badge-pass">PASS</span></td><td>Starting counter default (10000) is in the Prisma schema default</td></tr>
+        <tr><td>No commented-out dead code</td><td><span class="badge badge-pass">PASS</span></td><td>Clean implementation</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <h2>CR-2: Naming &amp; Readability</h2>
+    <table>
+      <thead><tr><th>Check</th><th>Status</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td>Intention-revealing names</td><td><span class="badge badge-pass">PASS</span></td><td>generateWorkItemPrefix, displayId, workItemCounter all clearly named</td></tr>
+        <tr><td>Functions are verbs, classes are nouns</td><td><span class="badge badge-pass">PASS</span></td><td>generateWorkItemPrefix follows verb naming</td></tr>
+        <tr><td>No single-letter variables except loop counters</td><td><span class="badge badge-pass">PASS</span></td><td>Variables named: prefix, counter, displayId, words</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <h2>CR-3: SOLID Principles</h2>
+    <table>
+      <thead><tr><th>Principle</th><th>Status</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td>Single Responsibility</td><td><span class="badge badge-pass">PASS</span></td><td>Prefix generation extracted to work-items.utils.ts</td></tr>
+        <tr><td>Open/Closed</td><td><span class="badge badge-pass">PASS</span></td><td>Prefix rules in a pure function — extendable without modifying service</td></tr>
+        <tr><td>Dependency Inversion</td><td><span class="badge badge-pass">PASS</span></td><td>Service depends on PrismaService abstraction</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <h2>CR-4: Code Quality &amp; Maintainability</h2>
+    <table>
+      <thead><tr><th>Check</th><th>Status</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td>DRY — no duplicated logic</td><td><span class="badge badge-pass">PASS</span></td><td>Single utility function used in service</td></tr>
+        <tr><td>Function length reasonable (&lt;30 lines)</td><td><span class="badge badge-pass">PASS</span></td><td>generateWorkItemPrefix: 11 lines; create transaction block: ~22 lines</td></tr>
+        <tr><td>No magic numbers</td><td><span class="badge badge-pass">PASS</span></td><td>Counter default (10000) is the schema's @default, not a magic number in code</td></tr>
+        <tr><td>Error handling explicit</td><td><span class="badge badge-pass">PASS</span></td><td>Transaction rollback on any DB error; NestJS exception propagation</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <h2>CR-5: API &amp; Interface Design</h2>
+    <table>
+      <thead><tr><th>Check</th><th>Status</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td>REST conventions followed</td><td><span class="badge badge-pass">PASS</span></td><td>No new endpoints — displayId added to existing responses only</td></tr>
+        <tr><td>Response shapes match API contract</td><td><span class="badge badge-pass">PASS</span></td><td>displayId added to WorkItem response; no breaking changes</td></tr>
+        <tr><td>No sensitive data exposed</td><td><span class="badge badge-pass">PASS</span></td><td>displayId is a non-sensitive opaque string</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <h2>CR-6: Test Quality Review</h2>
+    <table>
+      <thead><tr><th>Check</th><th>Status</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td>Tests follow Arrange/Act/Assert</td><td><span class="badge badge-pass">PASS</span></td><td>All 9 tests follow AAA clearly</td></tr>
+        <tr><td>Test names describe behaviour</td><td><span class="badge badge-pass">PASS</span></td><td>e.g. "generatePrefix — 2-word name returns first 2 of W1 + first of W2"</td></tr>
+        <tr><td>Edge cases tested</td><td><span class="badge badge-pass">PASS</span></td><td>Extra whitespace, 4-word names tested</td></tr>
+        <tr><td>Tests are independent</td><td><span class="badge badge-pass">PASS</span></td><td>Pure function tests; no shared state</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <h2>CR-7: Performance Awareness</h2>
+    <table>
+      <thead><tr><th>Check</th><th>Status</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td>No N+1 queries</td><td><span class="badge badge-pass">PASS</span></td><td>Counter increment and item create in a single transaction (2 DB calls)</td></tr>
+        <tr><td>Index on displayId</td><td><span class="badge badge-pass">PASS</span></td><td>@unique on displayId implies a DB index</td></tr>
+        <tr><td>Atomic operation prevents race conditions</td><td><span class="badge badge-pass">PASS</span></td><td>prisma.$transaction with SELECT FOR UPDATE semantics via prisma.project.update</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <h2>CR-8: Coding Standards &amp; Consistency</h2>
+    <table>
+      <thead><tr><th>Check</th><th>Status</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td>TypeScript style consistent with codebase</td><td><span class="badge badge-pass">PASS</span></td><td>Same patterns as existing WorkItemsService</td></tr>
+        <tr><td>No unused imports</td><td><span class="badge badge-pass">PASS</span></td><td>generateWorkItemPrefix import is used</td></tr>
+        <tr><td>File structure follows project layout</td><td><span class="badge badge-pass">PASS</span></td><td>work-items.utils.ts alongside work-items.service.ts</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <h2>Verdict</h2>
+    <p class="verdict">&#10003; Approved — No blocking issues</p>
+    <p style="margin-top:14px;font-size:.9rem;color:#555">All 8 code review categories pass. Implementation is clean, correct, and consistent with the existing codebase patterns. No blocking or non-blocking issues found.</p>
+    <p style="font-size:.85rem;color:#888">Signed off: Claude Code &nbsp;|&nbsp; 2026-06-03</p>
+  </div>
+
+</div>
+</body>
+</html>

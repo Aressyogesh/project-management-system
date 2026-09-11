@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Security Review — F-020 Team Reports Dashboard</title>
+<style>
+  body { font-family: system-ui, sans-serif; max-width: 900px; margin: 40px auto; padding: 0 24px; color: #1f2937; }
+  h1 { font-size: 1.5rem; font-weight: 700; margin-bottom: 4px; }
+  .meta { color: #6b7280; font-size: .875rem; margin-bottom: 32px; }
+  table { width: 100%; border-collapse: collapse; margin-bottom: 32px; font-size: .875rem; }
+  th { background: #f9fafb; padding: 10px 14px; text-align: left; border-bottom: 1px solid #e5e7eb; font-weight: 600; color: #374151; }
+  td { padding: 10px 14px; border-bottom: 1px solid #f3f4f6; vertical-align: top; }
+  .pass { background:#d1fae5; color:#065f46; padding:2px 8px; border-radius:9999px; font-size:.75rem; font-weight:600; }
+  .na   { background:#f3f4f6; color:#6b7280; padding:2px 8px; border-radius:9999px; font-size:.75rem; font-weight:600; }
+  .verdict { display:inline-block; background:#d1fae5; color:#065f46; padding:6px 16px; border-radius:9999px; font-weight:700; margin-top:8px; }
+</style>
+</head>
+<body>
+<h1>Security Review Report — F-020: Team Reports Dashboard</h1>
+<div class="meta">Date: 2026-05-28 &nbsp;|&nbsp; Framework: OWASP Top 10 &nbsp;|&nbsp; Branch: feature/F-020-reports-dashboard</div>
+
+<table>
+  <thead>
+    <tr><th>ID</th><th>OWASP Risk</th><th>Assessment</th><th>Status</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>SEC-1</td>
+      <td>A01 Broken Access Control</td>
+      <td>Route is wrapped in ProtectedRoute — unauthenticated users are redirected to /login. RBAC enforced in component: EMPLOYEE sees only personal data; full team data requires ADMIN/SUPER_USER.</td>
+      <td><span class="pass">PASS</span></td>
+    </tr>
+    <tr>
+      <td>SEC-2</td>
+      <td>A02 Cryptographic Failures</td>
+      <td>No sensitive data stored client-side. All data is static and non-sensitive (names, scores, task counts). No PII exposed beyond what authenticated users already see in other pages.</td>
+      <td><span class="pass">PASS</span></td>
+    </tr>
+    <tr>
+      <td>SEC-3</td>
+      <td>A03 Injection (XSS)</td>
+      <td>No dangerouslySetInnerHTML. All user-visible strings rendered via React JSX (auto-escaped). Static data contains no untrusted input. No eval or innerHTML usage.</td>
+      <td><span class="pass">PASS</span></td>
+    </tr>
+    <tr>
+      <td>SEC-4</td>
+      <td>A04 Insecure Design</td>
+      <td>Export buttons are intentional UI placeholders (no file generation, no server calls). Period selector only changes display state; no backend query. No design-level security gaps.</td>
+      <td><span class="pass">PASS</span></td>
+    </tr>
+    <tr>
+      <td>SEC-5</td>
+      <td>A05 Security Misconfiguration</td>
+      <td>No new environment variables, no new config files. Feature is entirely frontend static data. Existing Vite/React build pipeline unchanged.</td>
+      <td><span class="pass">PASS</span></td>
+    </tr>
+    <tr>
+      <td>SEC-6</td>
+      <td>A06 Vulnerable Components</td>
+      <td>No new npm packages added. Recharts already in use by KPI feature. No supply chain changes.</td>
+      <td><span class="pass">PASS</span></td>
+    </tr>
+    <tr>
+      <td>SEC-7</td>
+      <td>A07 Auth Failures</td>
+      <td>Authentication enforced at route level via existing JwtAuthGuard / ProtectedRoute pattern. Auth store (useAuthStore) read-only in this feature.</td>
+      <td><span class="pass">PASS</span></td>
+    </tr>
+    <tr>
+      <td>SEC-8</td>
+      <td>A08 Software Integrity Failures</td>
+      <td>No dynamic imports of untrusted modules. Announcements data is hardcoded static strings — no user-supplied or external data rendered.</td>
+      <td><span class="pass">PASS</span></td>
+    </tr>
+    <tr>
+      <td>SEC-9</td>
+      <td>A09 Logging Failures</td>
+      <td>No sensitive data logged to console. No debug console.log calls left in production code.</td>
+      <td><span class="pass">PASS</span></td>
+    </tr>
+    <tr>
+      <td>SEC-10</td>
+      <td>A10 SSRF</td>
+      <td>No external HTTP requests made by this feature. All data is in-memory static arrays. N/A for frontend-only feature.</td>
+      <td><span class="na">N/A</span></td>
+    </tr>
+    <tr>
+      <td>SEC-11</td>
+      <td>Data Exposure — role leakage</td>
+      <td>Verified that EMPLOYEE role branch renders MyPerformanceSummary only — no full 14-user table rendered in DOM. isAdminView gate is evaluated at render time using live authStore value.</td>
+      <td><span class="pass">PASS</span></td>
+    </tr>
+  </tbody>
+</table>
+
+<div>
+  <strong>Overall Verdict:</strong>
+  <span class="verdict">APPROVED — 10 PASS, 1 N/A, 0 FAIL</span>
+</div>
+</body>
+</html>

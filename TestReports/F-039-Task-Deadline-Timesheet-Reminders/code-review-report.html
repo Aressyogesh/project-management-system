@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Code Review Report — F-039 Task Deadline &amp; Timesheet Reminders</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; margin: 0; padding: 0; background: #f3f4f6; color: #111827; }
+  .header { background: #4f46e5; color: #fff; padding: 28px 40px; }
+  .header h1 { margin: 0; font-size: 22px; }
+  .header p { margin: 6px 0 0; opacity: .8; font-size: 14px; }
+  .container { max-width: 900px; margin: 32px auto; padding: 0 24px 48px; }
+  .card { background: #fff; border-radius: 12px; border: 1px solid #e5e7eb; margin-bottom: 24px; overflow: hidden; }
+  .card-header { background: #f9fafb; padding: 14px 24px; border-bottom: 1px solid #e5e7eb; font-weight: 700; font-size: 15px; }
+  .card-body { padding: 20px 24px; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th { background: #f9fafb; padding: 10px 14px; text-align: left; font-weight: 600; border-bottom: 2px solid #e5e7eb; }
+  td { padding: 10px 14px; border-bottom: 1px solid #f3f4f6; vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  .pass { color: #16a34a; font-weight: 700; }
+  .na { color: #6b7280; font-weight: 600; }
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 9999px; font-size: 12px; font-weight: 700; }
+  .badge-green { background: #dcfce7; color: #16a34a; }
+  .badge-gray { background: #f3f4f6; color: #6b7280; }
+  .verdict { font-size: 18px; font-weight: 700; color: #16a34a; }
+  .meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 14px; }
+  .meta-item label { display: block; color: #6b7280; font-size: 12px; margin-bottom: 2px; }
+  .meta-item span { font-weight: 600; }
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>Code Review Report — F-039 Task Deadline &amp; Timesheet Reminders</h1>
+  <p>Feature Branch: feature/F-038-email-notification-infrastructure &nbsp;|&nbsp; Reviewer: Claude Code &nbsp;|&nbsp; Date: 2026-06-09</p>
+</div>
+<div class="container">
+
+  <div class="card">
+    <div class="card-header">Review Metadata</div>
+    <div class="card-body">
+      <div class="meta-grid">
+        <div class="meta-item"><label>Feature ID</label><span>F-039</span></div>
+        <div class="meta-item"><label>Feature Name</label><span>Task Deadline &amp; Timesheet Reminders</span></div>
+        <div class="meta-item"><label>Reviewer</label><span>Claude Code (Automated)</span></div>
+        <div class="meta-item"><label>Review Date</label><span>2026-06-09</span></div>
+        <div class="meta-item"><label>Files Reviewed</label><span>2</span></div>
+        <div class="meta-item"><label>Overall Verdict</label><span class="verdict">APPROVED</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">Files Reviewed</div>
+    <div class="card-body">
+      <table>
+        <thead><tr><th>File</th><th>Type</th><th>Lines</th></tr></thead>
+        <tbody>
+          <tr><td>backend/src/notifications/notifications-cron.service.ts</td><td>Service</td><td>158</td></tr>
+          <tr><td>backend/src/notifications/__tests__/notifications-cron.service.spec.ts</td><td>Unit Tests</td><td>115</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">CR-1: Code Correctness</div>
+    <div class="card-body">
+      <table>
+        <thead><tr><th>Check</th><th>Status</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td>Logic matches requirements (deadline = tomorrow, timesheet = 0 hours)</td><td class="pass">PASS</td><td>dueDate query uses tomorrowDate string parsed to Date; aggregate check skips users with &gt;0 hours</td></tr>
+          <tr><td>Cron expressions correct (09:00 daily, 16:00 Friday)</td><td class="pass">PASS</td><td>'0 9 * * *' and '0 16 * * 5' are correct; named for observability</td></tr>
+          <tr><td>BoardStatus filter uses correct completed statuses</td><td class="pass">PASS</td><td>QA_DONE excluded; all other statuses trigger reminder as per AC</td></tr>
+          <tr><td>Grouping tasks by assignee before sending email</td><td class="pass">PASS</td><td>Map&lt;userId, tasks[]&gt; ensures one email per user regardless of task count</td></tr>
+          <tr><td>Week range calculation for timesheet (Mon–Fri)</td><td class="pass">PASS</td><td>ISO week logic using (dayOfWeek + 6) % 7 correctly handles Sunday boundary</td></tr>
+          <tr><td>Null safety on assignee.email</td><td class="pass">PASS</td><td>Guard clause `if (!task.assignee?.email) continue` prevents null dereference</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">CR-2: Code Structure &amp; Maintainability</div>
+    <div class="card-body">
+      <table>
+        <thead><tr><th>Check</th><th>Status</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td>Single responsibility — one service, two clearly named methods</td><td class="pass">PASS</td><td>NotificationsCronService only handles cron scheduling; email construction inline but appropriate at this scale</td></tr>
+          <tr><td>DI used correctly (PrismaService, EmailService injected)</td><td class="pass">PASS</td><td>Constructor injection; EmailService provided via @Global() module — no circular deps</td></tr>
+          <tr><td>No magic strings or unexplained constants</td><td class="pass">PASS</td><td>BoardStatus enum used; tomorrowDate derived, weekLabel derived from ISO dates</td></tr>
+          <tr><td>HTML email template readable and maintainable</td><td class="pass">PASS</td><td>Inline styles acceptable for email compatibility; wrapHtml delegates branding to EmailService</td></tr>
+          <tr><td>Error handling per-email (catch inside loop)</td><td class="pass">PASS</td><td>SMTP failure on one recipient does not abort the loop; logger.error records the failure</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">CR-3: Type Safety</div>
+    <div class="card-body">
+      <table>
+        <thead><tr><th>Check</th><th>Status</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td>Prisma return types used correctly</td><td class="pass">PASS</td><td>typeof tasks inference used for grouped Map; assignee typed with select shape</td></tr>
+          <tr><td>Decimal conversion for hours</td><td class="pass">PASS</td><td>Number(agg._sum.hours ?? 0) safely handles Prisma Decimal and null</td></tr>
+          <tr><td>Promise&lt;void&gt; return types on cron handlers</td><td class="pass">PASS</td><td>Both handleDeadlineReminders and handleTimesheetReminders typed correctly</td></tr>
+          <tr><td>Error cast in catch blocks</td><td class="pass">PASS</td><td>(err as Error).message — consistent with project convention</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">CR-4: Test Coverage</div>
+    <div class="card-body">
+      <table>
+        <thead><tr><th>Test ID</th><th>Scenario</th><th>Status</th></tr></thead>
+        <tbody>
+          <tr><td>UTC-F039-B-001</td><td>Tasks due tomorrow — grouped emails per assignee</td><td class="pass">PASS</td></tr>
+          <tr><td>UTC-F039-B-002</td><td>No tasks due — no emails sent</td><td class="pass">PASS</td></tr>
+          <tr><td>UTC-F039-B-003</td><td>SMTP failure (deadline) — logs error, does not throw</td><td class="pass">PASS</td></tr>
+          <tr><td>UTC-F039-B-004</td><td>Zero-hour employees — reminder email sent</td><td class="pass">PASS</td></tr>
+          <tr><td>UTC-F039-B-005</td><td>All employees logged hours — no emails</td><td class="pass">PASS</td></tr>
+          <tr><td>UTC-F039-B-006</td><td>SMTP failure (timesheet) — logs error, does not throw</td><td class="pass">PASS</td></tr>
+        </tbody>
+      </table>
+      <p style="margin-top:12px;font-size:13px;color:#374151;">6/6 tests passing. Coverage: happy path, empty set, and SMTP fault tolerance for both cron jobs.</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">CR-5: Performance</div>
+    <div class="card-body">
+      <table>
+        <thead><tr><th>Check</th><th>Status</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td>Deadline reminder: single DB query, then send</td><td class="pass">PASS</td><td>One findMany with include — N+1 avoided</td></tr>
+          <tr><td>Timesheet reminder: one findMany + one aggregate per user</td><td class="pass">PASS</td><td>Acceptable for daily/weekly batch — not a hot path; could be optimized with groupBy if user count grows large</td></tr>
+          <tr><td>Emails sent sequentially (await inside loop)</td><td class="pass">PASS</td><td>Acceptable for low volume; Promise.allSettled could parallelize if needed later</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">CR-6: NestJS Conventions</div>
+    <div class="card-body">
+      <table>
+        <thead><tr><th>Check</th><th>Status</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td>@Injectable() decorator present</td><td class="pass">PASS</td><td>Correct</td></tr>
+          <tr><td>@Cron() decorators from @nestjs/schedule with named jobs</td><td class="pass">PASS</td><td>name: 'deadline-reminders' and 'timesheet-reminders' for PM2/logger observability</td></tr>
+          <tr><td>Service registered in notifications.module.ts providers</td><td class="pass">PASS</td><td>NotificationsCronService added to providers array</td></tr>
+          <tr><td>ScheduleModule.forRoot() present in AppModule</td><td class="pass">PASS</td><td>Required for @Cron() to function; confirmed in app.module.ts</td></tr>
+          <tr><td>Logger using NestJS Logger class</td><td class="pass">PASS</td><td>private readonly logger = new Logger(NotificationsCronService.name)</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">CR-7: Documentation &amp; Naming</div>
+    <div class="card-body">
+      <table>
+        <thead><tr><th>Check</th><th>Status</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td>Method names descriptive (handleDeadlineReminders, handleTimesheetReminders)</td><td class="pass">PASS</td><td>Clear and self-documenting</td></tr>
+          <tr><td>Variable names clear (grouped, tomorrowDate, weekLabel, rows)</td><td class="pass">PASS</td><td>No abbreviations or ambiguous names</td></tr>
+          <tr><td>No unnecessary comments (as per project style)</td><td class="pass">PASS</td><td>Code is self-documenting; no comment clutter</td></tr>
+          <tr><td>Requirements doc created</td><td class="pass">PASS</td><td>REQ-F-039-Task-Deadline-Timesheet-Reminders.md present</td></tr>
+          <tr><td>UTC and TC docs created</td><td class="pass">PASS</td><td>Both UTC-F-039 and TC-F-039 present</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">CR-8: Integration Points</div>
+    <div class="card-body">
+      <table>
+        <thead><tr><th>Check</th><th>Status</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td>EmailService.sendEmail() and wrapHtml() used correctly</td><td class="pass">PASS</td><td>Delegates branding wrapper to F-038 infrastructure as intended</td></tr>
+          <tr><td>PrismaService queries use correct model names (workItem, user, timesheetEntry)</td><td class="pass">PASS</td><td>Matches Prisma schema</td></tr>
+          <tr><td>No direct nodemailer usage (respects abstraction layer)</td><td class="pass">PASS</td><td>All email sending via EmailService — correct layering</td></tr>
+          <tr><td>Module boundary respected (no cross-module direct imports)</td><td class="pass">PASS</td><td>EmailService injected via @Global() — no explicit module import needed</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">Summary</div>
+    <div class="card-body">
+      <table>
+        <thead><tr><th>Category</th><th>Checks</th><th>Passed</th><th>Failed</th></tr></thead>
+        <tbody>
+          <tr><td>CR-1 Correctness</td><td>6</td><td>6</td><td>0</td></tr>
+          <tr><td>CR-2 Structure</td><td>5</td><td>5</td><td>0</td></tr>
+          <tr><td>CR-3 Type Safety</td><td>4</td><td>4</td><td>0</td></tr>
+          <tr><td>CR-4 Test Coverage</td><td>6</td><td>6</td><td>0</td></tr>
+          <tr><td>CR-5 Performance</td><td>3</td><td>3</td><td>0</td></tr>
+          <tr><td>CR-6 NestJS Conventions</td><td>5</td><td>5</td><td>0</td></tr>
+          <tr><td>CR-7 Documentation</td><td>5</td><td>5</td><td>0</td></tr>
+          <tr><td>CR-8 Integration</td><td>4</td><td>4</td><td>0</td></tr>
+          <tr style="font-weight:700;"><td>Total</td><td>38</td><td>38</td><td>0</td></tr>
+        </tbody>
+      </table>
+      <p style="margin-top:16px;font-size:16px;" class="verdict">Verdict: APPROVED — No issues found. Ready for security review.</p>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

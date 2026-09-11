@@ -1,0 +1,1 @@
+ALTER TABLE "users" ADD COLUMN "employeeId" VARCHAR(50);

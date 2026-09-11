@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Code Review — F-003: Holiday Calendar Configuration</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f5f6fa;color:#1a1a2e;font-size:14px}
+.page{max-width:1100px;margin:0 auto;padding:32px 24px}
+header{background:linear-gradient(135deg,#1b4332 0%,#2d6a4f 100%);color:#fff;border-radius:12px;padding:28px 32px;margin-bottom:28px}
+header h1{font-size:22px;font-weight:700;margin-bottom:6px}
+header .sub{font-size:13px;opacity:.8;margin-top:4px}
+.meta{display:flex;flex-wrap:wrap;gap:18px;margin-top:14px;font-size:13px;opacity:.85}
+.badge{display:inline-block;padding:2px 10px;border-radius:99px;font-size:12px;font-weight:600}
+.pass{background:#d1fae5;color:#065f46}.fail{background:#fee2e2;color:#991b1b}
+.na{background:#e5e7eb;color:#374151}.note{background:#fef3c7;color:#92400e}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:16px;margin-bottom:28px}
+.card{background:#fff;border-radius:10px;padding:20px 22px;box-shadow:0 1px 4px rgba(0,0,0,.07);border-left:4px solid #2d6a4f}
+.card .lbl{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#6b7280;margin-bottom:6px}
+.card .val{font-size:28px;font-weight:700;color:#1b4332}
+.card .sub2{font-size:12px;color:#9ca3af;margin-top:2px}
+.card.green{border-left-color:#059669}.card.green .val{color:#065f46}
+section{background:#fff;border-radius:10px;box-shadow:0 1px 4px rgba(0,0,0,.07);margin-bottom:24px;overflow:hidden}
+section h2{font-size:14px;font-weight:700;padding:16px 22px;background:#f0fdf4;border-bottom:1px solid #d1fae5;color:#1b4332;display:flex;align-items:center;gap:10px}
+table{width:100%;border-collapse:collapse}
+thead th{background:#f9fafb;padding:10px 16px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#6b7280;font-weight:600;border-bottom:1px solid #e5e7eb}
+tbody td{padding:10px 16px;border-bottom:1px solid #f3f4f6;vertical-align:top}
+tbody tr:last-child td{border-bottom:none}
+tbody tr:hover{background:#fafafa}
+.cat{font-weight:600;color:#1b4332}
+.verdict{background:#f0fdf4;border:2px solid #6ee7b7;border-radius:10px;padding:20px 24px;margin-bottom:24px}
+.verdict h3{font-size:16px;color:#065f46;margin-bottom:6px}
+.verdict p{color:#374151}
+.chips{display:flex;flex-wrap:wrap;gap:8px;padding:16px 22px}
+.chip{background:#f3f4f6;border-radius:6px;padding:4px 10px;font-size:12px;font-family:monospace;color:#374151}
+ul.obs{list-style:none;padding:16px 22px}
+ul.obs li{margin-bottom:10px;padding-left:14px;border-left:3px solid #6ee7b7;color:#4b5563;line-height:1.5}
+footer{text-align:center;font-size:12px;color:#9ca3af;margin-top:32px;padding-top:16px;border-top:1px solid #e5e7eb}
+</style>
+</head>
+<body>
+<div class="page">
+
+<header>
+  <h1>Code Review Report &mdash; F-003: Holiday Calendar Configuration</h1>
+  <div class="sub">Project Management System &bull; Phase 2 — Settings</div>
+  <div class="meta">
+    <span>&#128197; 2026-05-25</span>
+    <span>&#128100; Reviewer: Claude Code</span>
+    <span>&#127959; Branch: feature/F-001-user-login</span>
+    <span>&#9989; Verdict: Approved</span>
+  </div>
+</header>
+
+<div class="cards">
+  <div class="card"><div class="lbl">Criteria Checked</div><div class="val">33</div><div class="sub2">Across 7 categories</div></div>
+  <div class="card green"><div class="lbl">PASS</div><div class="val">30</div></div>
+  <div class="card"><div class="lbl">N/A</div><div class="val">2</div></div>
+  <div class="card"><div class="lbl">NOTE</div><div class="val" style="color:#92400e">1</div><div class="sub2">Non-blocking</div></div>
+  <div class="card red"><div class="lbl">FAIL</div><div class="val" style="color:#dc2626">0</div></div>
+  <div class="card green"><div class="lbl">Verdict</div><div class="val" style="font-size:15px;padding-top:6px">Approved</div></div>
+</div>
+
+<section>
+  <h2>&#128196; Files Reviewed</h2>
+  <div class="chips">
+    <span class="chip">backend/src/settings/settings.service.ts</span>
+    <span class="chip">backend/src/settings/settings.controller.ts</span>
+    <span class="chip">backend/src/settings/__tests__/settings.service.spec.ts</span>
+    <span class="chip">frontend/src/features/settings/components/HolidaySection.tsx</span>
+    <span class="chip">frontend/src/features/settings/pages/PortalConfigPage.tsx</span>
+    <span class="chip">frontend/src/features/settings/__tests__/HolidaySection.test.tsx</span>
+  </div>
+</section>
+
+<section>
+  <h2>&#9989; Checklist Results</h2>
+  <table>
+    <thead><tr><th>Ref</th><th>Category</th><th>Criterion</th><th>Status</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td>1.1</td><td class="cat">Naming</td><td>Functions named as verb-noun</td><td><span class="badge pass">PASS</span></td><td>getHolidays, createHoliday, deleteHoliday</td></tr>
+      <tr><td>1.2</td><td class="cat">Naming</td><td>Meaningful variable/constant names</td><td><span class="badge pass">PASS</span></td><td>visibleHolidays, seenDates, YEAR_OPTIONS, CURRENT_YEAR</td></tr>
+      <tr><td>1.3</td><td class="cat">Naming</td><td>No magic numbers</td><td><span class="badge pass">PASS</span></td><td>YEAR_OPTIONS constant; CURRENT_YEAR named</td></tr>
+      <tr><td>1.4</td><td class="cat">Naming</td><td>Single-responsibility components</td><td><span class="badge pass">PASS</span></td><td>HolidaySection owns the full holidays sub-panel</td></tr>
+      <tr><td>1.5</td><td class="cat">Naming</td><td>Files grouped by feature</td><td><span class="badge pass">PASS</span></td><td>components/HolidaySection.tsx under settings feature</td></tr>
+      <tr><td>2.1</td><td class="cat">SOLID / DRY</td><td>No duplicated logic</td><td><span class="badge pass">PASS</span></td><td>getRecurringDateForYear is a pure function, reused in projection loop</td></tr>
+      <tr><td>2.2</td><td class="cat">SOLID / DRY</td><td>Single Responsibility</td><td><span class="badge pass">PASS</span></td><td>Projection, list, add form, delete modal all in one focused component</td></tr>
+      <tr><td>2.3</td><td class="cat">SOLID / DRY</td><td>Open/Closed</td><td><span class="badge pass">PASS</span></td><td>Year range change = YEAR_OPTIONS constant update only</td></tr>
+      <tr><td>2.4</td><td class="cat">SOLID / DRY</td><td>No premature abstractions</td><td><span class="badge pass">PASS</span></td><td></td></tr>
+      <tr><td>2.5</td><td class="cat">SOLID / DRY</td><td>Functions short (&lt;30 lines)</td><td><span class="badge pass">PASS</span></td><td>handleAdd &lt;8 lines; service methods &lt;10 lines</td></tr>
+      <tr><td>2.6</td><td class="cat">SOLID / DRY</td><td>No dead code</td><td><span class="badge pass">PASS</span></td><td></td></tr>
+      <tr><td>3.1</td><td class="cat">Type Safety</td><td>tsc --noEmit clean</td><td><span class="badge pass">PASS</span></td><td>Zero type errors</td></tr>
+      <tr><td>3.2</td><td class="cat">Type Safety</td><td>No untyped any in new code</td><td><span class="badge note">NOTE</span></td><td>(holiday as any).projected cast — required to attach ad-hoc flag to intersection type; acceptable pattern</td></tr>
+      <tr><td>3.3</td><td class="cat">Type Safety</td><td>DTOs declared and used consistently</td><td><span class="badge pass">PASS</span></td><td>CreateHolidayDto in service; imported to controller</td></tr>
+      <tr><td>3.4</td><td class="cat">Type Safety</td><td>Library return types used</td><td><span class="badge pass">PASS</span></td><td>Prisma inferred types</td></tr>
+      <tr><td>3.5</td><td class="cat">Type Safety</td><td>Enums for finite sets</td><td><span class="badge na">N/A</span></td><td>No new enums needed for holidays</td></tr>
+      <tr><td>4.1</td><td class="cat">Error Handling</td><td>Correct HTTP status codes</td><td><span class="badge pass">PASS</span></td><td>409 Conflict (duplicate date), 404 Not Found; DELETE returns 204</td></tr>
+      <tr><td>4.2</td><td class="cat">Error Handling</td><td>No stack traces in responses</td><td><span class="badge pass">PASS</span></td><td>GlobalExceptionFilter active</td></tr>
+      <tr><td>4.3</td><td class="cat">Error Handling</td><td>Frontend error state shown</td><td><span class="badge pass">PASS</span></td><td>formError message displayed below add form via onError</td></tr>
+      <tr><td>4.4</td><td class="cat">Error Handling</td><td>Loading state handled</td><td><span class="badge pass">PASS</span></td><td>Pulse skeleton during fetch</td></tr>
+      <tr><td>4.5</td><td class="cat">Error Handling</td><td>Mutation onError handlers</td><td><span class="badge pass">PASS</span></td><td>onError sets formError for create; delete failure handled silently (modal closes)</td></tr>
+      <tr><td>5.1</td><td class="cat">API Design</td><td>RESTful routes</td><td><span class="badge pass">PASS</span></td><td>GET/POST /holidays, DELETE /holidays/:id</td></tr>
+      <tr><td>5.2</td><td class="cat">API Design</td><td>Correct HTTP verbs</td><td><span class="badge pass">PASS</span></td><td>DELETE returns 204 No Content</td></tr>
+      <tr><td>5.3</td><td class="cat">API Design</td><td>@Roles on mutating endpoints</td><td><span class="badge pass">PASS</span></td><td>SUPER_USER + ADMIN on POST / DELETE</td></tr>
+      <tr><td>5.4</td><td class="cat">API Design</td><td>Swagger decorators present</td><td><span class="badge pass">PASS</span></td><td>@ApiOperation + @ApiQuery for optional year param</td></tr>
+      <tr><td>5.5</td><td class="cat">API Design</td><td>Query params validated/parsed</td><td><span class="badge pass">PASS</span></td><td>year ? parseInt(year, 10) : undefined</td></tr>
+      <tr><td>6.1</td><td class="cat">Testing</td><td>Happy path covered</td><td><span class="badge pass">PASS</span></td><td>createHoliday valid input, deleteHoliday valid id</td></tr>
+      <tr><td>6.2</td><td class="cat">Testing</td><td>Edge cases covered</td><td><span class="badge pass">PASS</span></td><td>Duplicate date → 409, bad ID → 404, default isRecurring</td></tr>
+      <tr><td>6.3</td><td class="cat">Testing</td><td>Tests isolated</td><td><span class="badge pass">PASS</span></td><td>Prisma mocked; settingsApi mocked via vi.mock</td></tr>
+      <tr><td>6.4</td><td class="cat">Testing</td><td>Naming convention</td><td><span class="badge pass">PASS</span></td><td>Unit_Condition_ExpectedOutcome</td></tr>
+      <tr><td>6.5</td><td class="cat">Testing</td><td>All tests pass</td><td><span class="badge pass">PASS</span></td><td>16 / 16 green</td></tr>
+      <tr><td>7.1</td><td class="cat">Style</td><td>Consistent indentation (2-space)</td><td><span class="badge pass">PASS</span></td><td></td></tr>
+      <tr><td>7.2</td><td class="cat">Style</td><td>No unused imports</td><td><span class="badge pass">PASS</span></td><td></td></tr>
+      <tr><td>7.3</td><td class="cat">Style</td><td>No console.log in production code</td><td><span class="badge pass">PASS</span></td><td></td></tr>
+    </tbody>
+  </table>
+</section>
+
+<div class="verdict">
+  <h3>&#9989; Verdict: Approved — Ready to Merge</h3>
+  <p>30 criteria PASS &bull; 2 N/A &bull; 1 NOTE (non-blocking) &bull; 0 FAIL &bull; No blocking issues found.</p>
+</div>
+
+<section>
+  <h2>&#128204; Non-Blocking Observations</h2>
+  <ul class="obs">
+    <li>getHolidays() fetches all holidays without year filter — projection done client-side. Acceptable at current scale; revisit if holiday table grows large (move projection to API).</li>
+    <li>new Date(dateStr) uses local timezone — consistent with en-IN locale formatting in formatDate. Revisit if multi-timezone support is added in a future phase.</li>
+  </ul>
+</section>
+
+<footer>F-003 Holiday Calendar Configuration &bull; Code Review Report &bull; Reviewer: Claude Code &bull; 2026-05-25 &bull; Project Management System</footer>
+</div>
+</body>
+</html>

@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<title>Code Review Report — F-034 User Activity Audit Log</title>
+<style>
+  body{font-family:system-ui,sans-serif;margin:0;padding:24px;background:#f8fafc;color:#1e293b}
+  h1{font-size:1.4rem;font-weight:700;margin-bottom:4px}
+  .meta{color:#64748b;font-size:.85rem;margin-bottom:24px}
+  table{width:100%;border-collapse:collapse;background:#fff;border-radius:10px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.08)}
+  th{background:#1e293b;color:#fff;padding:10px 14px;text-align:left;font-size:.82rem;text-transform:uppercase;letter-spacing:.04em}
+  td{padding:10px 14px;font-size:.88rem;border-bottom:1px solid #f1f5f9;vertical-align:top}
+  tr:last-child td{border-bottom:none}
+  .pass{background:#dcfce7;color:#166534;padding:2px 10px;border-radius:99px;font-size:.78rem;font-weight:600}
+  .summary{display:flex;gap:16px;margin-bottom:20px}
+  .chip{background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:12px 20px;font-size:.85rem;box-shadow:0 1px 3px rgba(0,0,0,.05)}
+  .chip b{display:block;font-size:1.4rem;font-weight:700;color:#0f172a}
+</style>
+</head>
+<body>
+<h1>Code Review Report</h1>
+<div class="meta">F-034 — User Activity Audit Log &nbsp;|&nbsp; Reviewer: Claude Sonnet 4.6 &nbsp;|&nbsp; Date: 2026-06-03</div>
+
+<div class="summary">
+  <div class="chip"><b>8</b> Checks</div>
+  <div class="chip"><b style="color:#166534">8</b> Passed</div>
+  <div class="chip"><b style="color:#b45309">0</b> Warnings</div>
+</div>
+
+<table>
+  <thead><tr><th>#</th><th>Check</th><th>Finding</th><th>Status</th></tr></thead>
+  <tbody>
+    <tr><td>CR-1</td><td>API Contract Alignment</td><td>GET /audit-logs matches REQ-F-034 contract: paginated response with data/total/page/limit/totalPages. All query params (userId, action, entity, projectId, startDate, endDate, page, limit) handled. EMPLOYEE userId is forced to req.user.id server-side.</td><td><span class="pass">PASS</span></td></tr>
+    <tr><td>CR-2</td><td>Fire-and-Forget Logging</td><td>AuditLogsService.log() uses setImmediate() — DB write never blocks the main request path. Errors are caught and logged via NestJS Logger without propagating to the caller.</td><td><span class="pass">PASS</span></td></tr>
+    <tr><td>CR-3</td><td>RBAC Enforcement</td><td>EMPLOYEE callers have userId forced to req.user.id regardless of query param — no information leakage. SUPER_USER/ADMIN can query any userId. Logic is server-side only; frontend hides UI but backend is the authoritative gate.</td><td><span class="pass">PASS</span></td></tr>
+    <tr><td>CR-4</td><td>Pagination Implementation</td><td>skip = (page-1)*limit; limit capped at 100. Both total count and data use same where clause (no count/data mismatch). totalPages = Math.ceil(total/limit).</td><td><span class="pass">PASS</span></td></tr>
+    <tr><td>CR-5</td><td>Global Module Pattern</td><td>AuditLogsModule is @Global() — AuditLogsService injectable in all other modules without explicit import. Follows same pattern as PrismaModule. All dependent services (auth, work-items, sprints, project-members, users) correctly inject it.</td><td><span class="pass">PASS</span></td></tr>
+    <tr><td>CR-6</td><td>Date Range Filtering</td><td>endDate includes full day: endDate + 'T23:59:59.999Z'. startDate uses gte. No timezone ambiguity introduced.</td><td><span class="pass">PASS</span></td></tr>
+    <tr><td>CR-7</td><td>Frontend RBAC Gating</td><td>ActivityLogPage sidebar entry gated to SUPER_USER/ADMIN via Sidebar navItems roles array (same pattern as Departments, Users). Route is accessible by URL but page makes API call which returns only own data for EMPLOYEE.</td><td><span class="pass">PASS</span></td></tr>
+    <tr><td>CR-8</td><td>Test Coverage</td><td>193 backend unit tests pass. Three pre-existing specs updated to inject AuditLogsService mock (auth, users, work-items) — no test regressions. Frontend TypeScript compiles clean.</td><td><span class="pass">PASS</span></td></tr>
+  </tbody>
+</table>
+</body>
+</html>

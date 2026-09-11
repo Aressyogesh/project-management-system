@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Backend Unit Test Report — F-012 Task Attachments &amp; Comments</title>
+<style>
+  body{font-family:system-ui,sans-serif;margin:0;background:#f8fafc;color:#1e293b}
+  .header{background:#1e3a5f;color:#fff;padding:24px 32px}
+  .header h1{margin:0 0 4px;font-size:1.4rem}.header p{margin:0;opacity:.75;font-size:.875rem}
+  .summary{display:flex;gap:16px;padding:20px 32px;flex-wrap:wrap}
+  .chip{padding:8px 18px;border-radius:999px;font-size:.85rem;font-weight:600}
+  .pass{background:#dcfce7;color:#15803d}.info{background:#e0f2fe;color:#0369a1}
+  table{width:calc(100% - 64px);margin:0 32px 32px;border-collapse:collapse;background:#fff;border-radius:10px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.08)}
+  th{background:#f1f5f9;text-align:left;padding:10px 14px;font-size:.78rem;color:#64748b;text-transform:uppercase;letter-spacing:.05em}
+  td{padding:11px 14px;font-size:.85rem;border-top:1px solid #f1f5f9;vertical-align:top}
+  .badge{display:inline-block;padding:2px 10px;border-radius:999px;font-size:.75rem;font-weight:600}
+  .badge-pass{background:#dcfce7;color:#15803d}
+  .section{margin:0 32px 8px;font-size:.8rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.06em;padding-top:8px}
+  code{background:#f1f5f9;padding:1px 5px;border-radius:4px;font-size:.8rem}
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>Backend Unit Test Report — F-012: Task Attachments &amp; Comments</h1>
+  <p>TaskAttachmentsService &amp; TaskCommentsService • Generated 2026-05-26</p>
+</div>
+<div class="summary">
+  <span class="chip pass">12 Passed</span>
+  <span class="chip" style="background:#fee2e2;color:#b91c1c">0 Failed</span>
+  <span class="chip info">Suites: TaskAttachmentsService, TaskCommentsService</span>
+</div>
+
+<p class="section">TaskAttachmentsService</p>
+<table>
+  <thead><tr><th>Test ID</th><th>Description</th><th>Method</th><th>Result</th><th>Notes</th></tr></thead>
+  <tbody>
+    <tr><td><code>UTC-F-012-B-001</code></td><td>UploadAttachment_ValidFile_ReturnsAttachment</td><td><code>create()</code></td><td><span class="badge badge-pass">PASS</span></td><td>Returns attachment with correct originalName; DB create called once</td></tr>
+    <tr><td><code>UTC-F-012-B-002</code></td><td>UploadAttachment_TaskNotFound_ThrowsNotFound</td><td><code>create()</code></td><td><span class="badge badge-pass">PASS</span></td><td>NotFoundException; DB create never called</td></tr>
+    <tr><td><code>UTC-F-012-B-003</code></td><td>ListAttachments_ValidTask_ReturnsList</td><td><code>findAll()</code></td><td><span class="badge badge-pass">PASS</span></td><td>Returns array with correct originalName</td></tr>
+    <tr><td><code>UTC-F-012-B-004</code></td><td>DownloadAttachment_ValidId_ReturnsAttachment</td><td><code>findOne()</code></td><td><span class="badge badge-pass">PASS</span></td><td>Returns attachment with filename for controller to stream</td></tr>
+    <tr><td><code>UTC-F-012-B-005</code></td><td>DownloadAttachment_NotFound_ThrowsNotFound</td><td><code>findOne()</code></td><td><span class="badge badge-pass">PASS</span></td><td>NotFoundException for unknown id</td></tr>
+    <tr><td><code>UTC-F-012-B-006</code></td><td>DeleteAttachment_ValidId_RemovesRecord</td><td><code>remove()</code></td><td><span class="badge badge-pass">PASS</span></td><td>Prisma delete called; fs.unlink called via mocked fs/promises</td></tr>
+  </tbody>
+</table>
+
+<p class="section">TaskCommentsService</p>
+<table>
+  <thead><tr><th>Test ID</th><th>Description</th><th>Method</th><th>Result</th><th>Notes</th></tr></thead>
+  <tbody>
+    <tr><td><code>UTC-F-012-B-007</code></td><td>CreateComment_ValidData_ReturnsComment</td><td><code>create()</code></td><td><span class="badge badge-pass">PASS</span></td><td>Returns comment with content and author; DB create called once</td></tr>
+    <tr><td><code>UTC-F-012-B-008</code></td><td>CreateComment_TaskNotFound_ThrowsNotFound</td><td><code>create()</code></td><td><span class="badge badge-pass">PASS</span></td><td>NotFoundException; DB create never called</td></tr>
+    <tr><td><code>UTC-F-012-B-009</code></td><td>ListComments_ValidTask_ReturnsList</td><td><code>findAll()</code></td><td><span class="badge badge-pass">PASS</span></td><td>Returns array ordered by createdAt asc</td></tr>
+    <tr><td><code>UTC-F-012-B-010</code></td><td>DeleteComment_Author_DeletesComment</td><td><code>remove()</code></td><td><span class="badge badge-pass">PASS</span></td><td>Prisma delete called when requestingUserId === authorId</td></tr>
+    <tr><td><code>UTC-F-012-B-011</code></td><td>DeleteComment_Admin_DeletesComment</td><td><code>remove()</code></td><td><span class="badge badge-pass">PASS</span></td><td>Prisma delete called for ADMIN role regardless of authorId</td></tr>
+    <tr><td><code>UTC-F-012-B-012</code></td><td>DeleteComment_UnauthorizedUser_ThrowsForbidden</td><td><code>remove()</code></td><td><span class="badge badge-pass">PASS</span></td><td>ForbiddenException; delete never called</td></tr>
+  </tbody>
+</table>
+</body>
+</html>

@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Security Review Report — F-054 Per-Project Teams Webhook</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; margin: 0; padding: 24px; background: #f9fafb; color: #111827; }
+  h1 { font-size: 1.25rem; font-weight: 700; margin-bottom: 4px; }
+  .meta { font-size: 0.8rem; color: #6b7280; margin-bottom: 24px; }
+  table { width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.07); }
+  th { background: #7f1d1d; color: white; text-align: left; padding: 10px 14px; font-size: 0.78rem; font-weight: 600; }
+  td { padding: 10px 14px; font-size: 0.82rem; border-bottom: 1px solid #f1f5f9; vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  .pass { color: #16a34a; font-weight: 600; }
+  .na { color: #9ca3af; }
+  .summary { display: flex; gap: 16px; margin-top: 20px; }
+  .chip { padding: 6px 14px; border-radius: 20px; font-size: 0.78rem; font-weight: 600; }
+  .chip-green { background: #dcfce7; color: #15803d; }
+</style>
+</head>
+<body>
+<h1>Security Review Report — F-054 Per-Project Teams Webhook Configuration</h1>
+<p class="meta">Reviewer: Claude Sonnet 4.6 &nbsp;|&nbsp; Date: 2026-07-15 &nbsp;|&nbsp; OWASP Top 10 check</p>
+
+<table>
+  <thead>
+    <tr><th>SEC#</th><th>OWASP Category</th><th>Check</th><th>Status</th><th>Notes</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>SEC-1</td>
+      <td>A01 Broken Access Control</td>
+      <td>Only PM / Admin / Super can save/clear webhook URL</td>
+      <td class="pass">PASS</td>
+      <td>Service checks SystemRole first; then projectMember role. ForbiddenException thrown for DEVELOPER, QA, etc. No @Roles on controller — auth enforced in service.</td>
+    </tr>
+    <tr>
+      <td>SEC-2</td>
+      <td>A02 Cryptographic Failures</td>
+      <td>Webhook URL stored as plaintext — acceptable</td>
+      <td class="pass">PASS</td>
+      <td>Teams webhook URLs are not secrets (they are HMAC-signed by Microsoft). Storage as VARCHAR(2000) is standard practice.</td>
+    </tr>
+    <tr>
+      <td>SEC-3</td>
+      <td>A03 Injection</td>
+      <td>No SQL injection — Prisma parameterised queries only</td>
+      <td class="pass">PASS</td>
+      <td>teamsWebhookUrl is passed as a Prisma parameter, never interpolated into raw SQL.</td>
+    </tr>
+    <tr>
+      <td>SEC-4</td>
+      <td>A03 Injection (SSRF)</td>
+      <td>Backend does NOT call teamsWebhookUrl — only stores it</td>
+      <td class="pass">PASS</td>
+      <td>Backend sends the URL to ActivePieces, not to Teams directly. AP makes the outbound call. SSRF risk is in AP, not PMS backend.</td>
+    </tr>
+    <tr>
+      <td>SEC-5</td>
+      <td>A04 Insecure Design</td>
+      <td>URL validated as HTTPS-only</td>
+      <td class="pass">PASS</td>
+      <td>@IsUrl({ require_protocol: true, protocols: ['https'] }) rejects HTTP URLs. Prevents accidental plaintext webhook endpoints.</td>
+    </tr>
+    <tr>
+      <td>SEC-6</td>
+      <td>A05 Security Misconfiguration</td>
+      <td>teamsWebhookUrl not logged</td>
+      <td class="pass">PASS</td>
+      <td>AutomationService only logs error messages, not the URL value. ProjectsService does not log the webhook URL.</td>
+    </tr>
+    <tr>
+      <td>SEC-7</td>
+      <td>A07 Auth Failures</td>
+      <td>JwtAuthGuard covers all endpoints globally</td>
+      <td class="pass">PASS</td>
+      <td>New PATCH :id/teams-webhook is automatically protected by the global JwtAuthGuard. No @Public decorator added.</td>
+    </tr>
+    <tr>
+      <td>SEC-8</td>
+      <td>A08 Software Integrity</td>
+      <td>No new external dependencies added</td>
+      <td class="pass">PASS</td>
+      <td>Uses existing class-validator (IsUrl), Prisma, NestJS. No new npm packages.</td>
+    </tr>
+    <tr>
+      <td>SEC-9</td>
+      <td>A09 Logging</td>
+      <td>Errors logged but URL value not exposed</td>
+      <td class="pass">PASS</td>
+      <td>All automation .catch() blocks log err.message only, not the full URL or body.</td>
+    </tr>
+    <tr>
+      <td>SEC-10</td>
+      <td>A10 SSRF (frontend)</td>
+      <td>Frontend input field does not make direct outbound requests</td>
+      <td class="pass">PASS</td>
+      <td>Frontend PATCH call goes to PMS backend only. The webhook URL is never called from the browser.</td>
+    </tr>
+    <tr>
+      <td>SEC-11</td>
+      <td>XSS</td>
+      <td>Webhook URL rendered in input value only (not innerHTML)</td>
+      <td class="pass">PASS</td>
+      <td>teamsWebhookUrl displayed via React controlled input value prop. No dangerouslySetInnerHTML usage for this field.</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="summary">
+  <span class="chip chip-green">11 / 11 PASS — No security issues found</span>
+</div>
+</body>
+</html>

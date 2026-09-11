@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Test Summary Report — F-041 New User Welcome Email &amp; Monthly KPI Digest</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; margin: 0; padding: 0; background: #f3f4f6; color: #111827; }
+  .header { background: #059669; color: #fff; padding: 28px 40px; }
+  .header h1 { margin: 0; font-size: 22px; }
+  .header p { margin: 6px 0 0; opacity: .8; font-size: 14px; }
+  .container { max-width: 900px; margin: 32px auto; padding: 0 24px 48px; }
+  .card { background: #fff; border-radius: 12px; border: 1px solid #e5e7eb; margin-bottom: 24px; overflow: hidden; }
+  .card-header { background: #f9fafb; padding: 14px 24px; border-bottom: 1px solid #e5e7eb; font-weight: 700; font-size: 15px; }
+  .card-body { padding: 20px 24px; }
+  .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+  .stat-box { background: #f9fafb; border-radius: 10px; padding: 16px; text-align: center; border: 1px solid #e5e7eb; }
+  .stat-box .value { font-size: 32px; font-weight: 800; color: #111827; }
+  .stat-box .label { font-size: 12px; color: #6b7280; margin-top: 4px; }
+  .stat-box.green .value { color: #16a34a; }
+  .stat-box.red .value { color: #dc2626; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th { background: #f9fafb; padding: 10px 14px; text-align: left; font-weight: 600; border-bottom: 2px solid #e5e7eb; }
+  td { padding: 10px 14px; border-bottom: 1px solid #f3f4f6; vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  .pass { color: #16a34a; font-weight: 700; }
+  .verdict { font-size: 18px; font-weight: 700; color: #16a34a; }
+  .badge-green { display: inline-block; padding: 3px 10px; border-radius: 9999px; font-size: 12px; font-weight: 700; background: #dcfce7; color: #16a34a; }
+  .badge-blue { display: inline-block; padding: 3px 10px; border-radius: 9999px; font-size: 12px; font-weight: 700; background: #dbeafe; color: #1d4ed8; }
+  .badge-purple { display: inline-block; padding: 3px 10px; border-radius: 9999px; font-size: 12px; font-weight: 700; background: #ede9fe; color: #7c3aed; }
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>Test Summary Report — F-041 New User Welcome Email &amp; Monthly KPI Digest</h1>
+  <p>Framework: Jest &nbsp;|&nbsp; Run Date: 2026-06-09 &nbsp;|&nbsp; Branch: feature/F-038-email-notification-infrastructure</p>
+</div>
+<div class="container">
+
+  <div class="card">
+    <div class="card-header">Test Results Overview</div>
+    <div class="card-body">
+      <div class="stats-grid">
+        <div class="stat-box"><div class="value">7</div><div class="label">Total Tests</div></div>
+        <div class="stat-box green"><div class="value">7</div><div class="label">Passed</div></div>
+        <div class="stat-box red"><div class="value">0</div><div class="label">Failed</div></div>
+        <div class="stat-box"><div class="value">100%</div><div class="label">Pass Rate</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">Unit Tests — Backend</div>
+    <div class="card-body">
+      <table>
+        <thead><tr><th>Test ID</th><th>Title</th><th>File</th><th>Type</th><th>Result</th></tr></thead>
+        <tbody>
+          <tr><td>UTC-F041-B-001</td><td>CreateUser_NewUser_SendsWelcomeEmail</td><td>users.service.spec</td><td><span class="badge-green">Happy Path</span></td><td class="pass">PASS</td></tr>
+          <tr><td>UTC-F041-B-002</td><td>CreateUser_SmtpFails_UserCreatedAndErrorLogged</td><td>users.service.spec</td><td><span class="badge-purple">Negative</span></td><td class="pass">PASS</td></tr>
+          <tr><td>UTC-F041-B-003</td><td>HandleMonthlyKpiDigest_UsersWithKpiRecords_SendsDigestEmail</td><td>notifications-cron.spec</td><td><span class="badge-green">Happy Path</span></td><td class="pass">PASS</td></tr>
+          <tr><td>UTC-F041-B-004</td><td>HandleMonthlyKpiDigest_UserHasNoKpiRecords_SkipsEmail</td><td>notifications-cron.spec</td><td><span class="badge-blue">Edge Case</span></td><td class="pass">PASS</td></tr>
+          <tr><td>UTC-F041-B-005</td><td>HandleMonthlyKpiDigest_SmtpFails_LogsErrorAndDoesNotThrow</td><td>notifications-cron.spec</td><td><span class="badge-purple">Negative</span></td><td class="pass">PASS</td></tr>
+          <tr><td>UTC-F041-B-006</td><td>HandleMonthlyLeaveReport_ApprovedLeaveExists_SendsReportToAdmins</td><td>notifications-cron.spec</td><td><span class="badge-green">Happy Path</span></td><td class="pass">PASS</td></tr>
+          <tr><td>UTC-F041-B-007</td><td>HandleMonthlyLeaveReport_SmtpFails_LogsErrorAndDoesNotThrow</td><td>notifications-cron.spec</td><td><span class="badge-purple">Negative</span></td><td class="pass">PASS</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">Acceptance Criteria Coverage</div>
+    <div class="card-body">
+      <table>
+        <thead><tr><th>AC</th><th>Description</th><th>Covered By</th><th>Status</th></tr></thead>
+        <tbody>
+          <tr><td>AC-1</td><td>Welcome email sent after createUser()</td><td>UTC-B-001</td><td class="pass">PASS</td></tr>
+          <tr><td>AC-2</td><td>Welcome email subject contains "welcome"</td><td>UTC-B-001</td><td class="pass">PASS</td></tr>
+          <tr><td>AC-3</td><td>Body contains name, role, login URL</td><td>UTC-B-001 + implementation</td><td class="pass">PASS</td></tr>
+          <tr><td>AC-4</td><td>SMTP failure does not abort user creation</td><td>UTC-B-002</td><td class="pass">PASS</td></tr>
+          <tr><td>AC-5</td><td>KPI cron fires 1st of month at 08:00</td><td>@Cron('0 8 1 * *')</td><td class="pass">PASS</td></tr>
+          <tr><td>AC-6</td><td>Employee with KPI records receives digest</td><td>UTC-B-003</td><td class="pass">PASS</td></tr>
+          <tr><td>AC-7</td><td>No KPI records → employee skipped</td><td>UTC-B-004</td><td class="pass">PASS</td></tr>
+          <tr><td>AC-8</td><td>Leave cron fires 1st of month at 08:05</td><td>@Cron('5 8 1 * *')</td><td class="pass">PASS</td></tr>
+          <tr><td>AC-9</td><td>SUPER_USER/ADMIN receives leave report</td><td>UTC-B-006</td><td class="pass">PASS</td></tr>
+          <tr><td>AC-10</td><td>Report shows employee names and days</td><td>UTC-B-006 + implementation</td><td class="pass">PASS</td></tr>
+          <tr><td>AC-11</td><td>SMTP failures logged; server stays up</td><td>UTC-B-005, UTC-B-007</td><td class="pass">PASS</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">Full Suite</div>
+    <div class="card-body">
+      <table>
+        <thead><tr><th>Layer</th><th>Total</th><th>Passed</th><th>Failed</th></tr></thead>
+        <tbody>
+          <tr><td>Unit — Backend (F-041 new tests)</td><td>7</td><td>7</td><td>0</td></tr>
+          <tr><td>Unit — Backend (Full suite)</td><td>218</td><td>218</td><td>0</td></tr>
+          <tr style="font-weight:700;"><td>Total</td><td>218</td><td>218</td><td>0</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">Migration Status</div>
+    <div class="card-body">
+      <p style="margin:0;font-size:14px;color:#374151;"><strong>Not Required</strong> — Uses existing <code>users</code>, <code>kpi_records</code>, and <code>leave_requests</code> tables.</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">Final Verdict</div>
+    <div class="card-body">
+      <p style="margin:0;" class="verdict">PASSED — 7/7 unit tests pass, all 11 ACs covered. Ready for F-042.</p>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Security Review — F-003: Holiday Calendar Configuration</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f5f6fa;color:#1a1a2e;font-size:14px}
+.page{max-width:1100px;margin:0 auto;padding:32px 24px}
+header{background:linear-gradient(135deg,#450a0a 0%,#7f1d1d 100%);color:#fff;border-radius:12px;padding:28px 32px;margin-bottom:28px}
+header h1{font-size:22px;font-weight:700;margin-bottom:6px}
+header .sub{font-size:13px;opacity:.8;margin-top:4px}
+.meta{display:flex;flex-wrap:wrap;gap:18px;margin-top:14px;font-size:13px;opacity:.85}
+.badge{display:inline-block;padding:2px 10px;border-radius:99px;font-size:12px;font-weight:600}
+.pass{background:#d1fae5;color:#065f46}.fail{background:#fee2e2;color:#991b1b}
+.na{background:#e5e7eb;color:#374151}.note{background:#fef3c7;color:#92400e}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:16px;margin-bottom:28px}
+.card{background:#fff;border-radius:10px;padding:20px 22px;box-shadow:0 1px 4px rgba(0,0,0,.07);border-left:4px solid #7f1d1d}
+.card .lbl{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#6b7280;margin-bottom:6px}
+.card .val{font-size:28px;font-weight:700;color:#450a0a}
+.card .sub2{font-size:12px;color:#9ca3af;margin-top:2px}
+.card.green{border-left-color:#059669}.card.green .val{color:#065f46}
+.card.amber{border-left-color:#d97706}.card.amber .val{color:#92400e}
+section{background:#fff;border-radius:10px;box-shadow:0 1px 4px rgba(0,0,0,.07);margin-bottom:24px;overflow:hidden}
+section h2{font-size:14px;font-weight:700;padding:16px 22px;background:#fff7f7;border-bottom:1px solid #fecaca;color:#7f1d1d;display:flex;align-items:center;gap:10px}
+table{width:100%;border-collapse:collapse}
+thead th{background:#f9fafb;padding:10px 16px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#6b7280;font-weight:600;border-bottom:1px solid #e5e7eb}
+tbody td{padding:10px 16px;border-bottom:1px solid #f3f4f6;vertical-align:top}
+tbody tr:last-child td{border-bottom:none}
+tbody tr:hover{background:#fafafa}
+.verdict{background:#fefce8;border:2px solid #fde047;border-radius:10px;padding:20px 24px;margin-bottom:24px}
+.verdict h3{font-size:16px;color:#713f12;margin-bottom:6px}
+.verdict p{color:#374151}
+ul.risk{list-style:none;padding:16px 22px}
+ul.risk li{margin-bottom:10px;padding-left:14px;border-left:3px solid #fde047;color:#4b5563;line-height:1.5}
+footer{text-align:center;font-size:12px;color:#9ca3af;margin-top:32px;padding-top:16px;border-top:1px solid #e5e7eb}
+</style>
+</head>
+<body>
+<div class="page">
+
+<header>
+  <h1>OWASP Security Review Report &mdash; F-003: Holiday Calendar Configuration</h1>
+  <div class="sub">Project Management System &bull; Phase 2 — Settings</div>
+  <div class="meta">
+    <span>&#128197; 2026-05-25</span>
+    <span>&#128100; Reviewer: Claude Code</span>
+    <span>&#127959; Branch: feature/F-001-user-login</span>
+    <span>&#9989; Verdict: Cleared with mitigations</span>
+  </div>
+</header>
+
+<div class="cards">
+  <div class="card green"><div class="lbl">Web Top 10</div><div class="val">PASS</div><div class="sub2">No critical findings</div></div>
+  <div class="card green"><div class="lbl">API Top 10</div><div class="val">PASS</div><div class="sub2">No critical findings</div></div>
+  <div class="card green"><div class="lbl">Feature Checks</div><div class="val">9/10</div><div class="sub2">1 deferred (low risk)</div></div>
+  <div class="card"><div class="lbl">Critical CVEs</div><div class="val" style="color:#059669">0</div></div>
+  <div class="card amber"><div class="lbl">Open Risks</div><div class="val">3</div><div class="sub2">All low / deferred</div></div>
+</div>
+
+<section>
+  <h2>&#128737; Part A — OWASP Web Top 10</h2>
+  <table>
+    <thead><tr><th>Ref</th><th>Risk</th><th>Applicable</th><th>Status</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td>A01</td><td>Broken Access Control</td><td>Yes</td><td><span class="badge pass">PASS</span></td><td>@Roles(SUPER_USER, ADMIN) on POST/DELETE; GET read-only for all authenticated users</td></tr>
+      <tr><td>A02</td><td>Cryptographic Failures</td><td>No</td><td><span class="badge na">N/A</span></td><td>Holiday data is non-confidential</td></tr>
+      <tr><td>A03</td><td>Injection</td><td>Yes</td><td><span class="badge pass">PASS</span></td><td>Prisma ORM; date string → new Date() → Prisma; no injection vector</td></tr>
+      <tr><td>A04</td><td>Insecure Design</td><td>No</td><td><span class="badge na">N/A</span></td><td>Standard CRUD; no elevated threat</td></tr>
+      <tr><td>A05</td><td>Security Misconfiguration</td><td>No</td><td><span class="badge na">N/A</span></td><td>No new config surfaces</td></tr>
+      <tr><td>A06</td><td>Vulnerable &amp; Outdated Components</td><td>Yes</td><td><span class="badge note">NOTE</span></td><td>No new dependencies added for this feature</td></tr>
+      <tr><td>A07</td><td>Identification &amp; Authentication Failures</td><td>Yes</td><td><span class="badge pass">PASS</span></td><td>Global JwtAuthGuard; tokens expire per config</td></tr>
+      <tr><td>A08</td><td>Software &amp; Data Integrity Failures</td><td>No</td><td><span class="badge na">N/A</span></td><td></td></tr>
+      <tr><td>A09</td><td>Security Logging &amp; Monitoring Failures</td><td>Yes</td><td><span class="badge note">NOTE</span></td><td>No audit log for holiday creation/deletion — deferred to Phase 11</td></tr>
+      <tr><td>A10</td><td>SSRF</td><td>No</td><td><span class="badge na">N/A</span></td><td>No outbound HTTP calls</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section>
+  <h2>&#128737; Part B — OWASP API Security Top 10</h2>
+  <table>
+    <thead><tr><th>Ref</th><th>Risk</th><th>Applicable</th><th>Status</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td>API1</td><td>Broken Object Level Authorization</td><td>No</td><td><span class="badge na">N/A</span></td><td>Holidays are global org records</td></tr>
+      <tr><td>API2</td><td>Broken Authentication</td><td>Yes</td><td><span class="badge pass">PASS</span></td><td>JWT validated; tokens expire per config</td></tr>
+      <tr><td>API3</td><td>Broken Object Property Level Auth</td><td>Yes</td><td><span class="badge pass">PASS</span></td><td>CreateHolidayDto exposes only name, date, isRecurring; id/createdAt not writable</td></tr>
+      <tr><td>API4</td><td>Unrestricted Resource Consumption</td><td>Yes</td><td><span class="badge note">NOTE</span></td><td>No pagination on GET holidays; by design (small dataset). Revisit if bulk import added.</td></tr>
+      <tr><td>API5</td><td>Broken Function Level Authorization</td><td>Yes</td><td><span class="badge pass">PASS</span></td><td>Only SUPER_USER / ADMIN can create or delete holidays</td></tr>
+      <tr><td>API6</td><td>Unrestricted Access to Sensitive Flows</td><td>No</td><td><span class="badge na">N/A</span></td><td></td></tr>
+      <tr><td>API7</td><td>Server Side Request Forgery</td><td>No</td><td><span class="badge na">N/A</span></td><td></td></tr>
+      <tr><td>API8</td><td>Security Misconfiguration</td><td>Yes</td><td><span class="badge pass">PASS</span></td><td>CORS and GlobalExceptionFilter in place</td></tr>
+      <tr><td>API9</td><td>Improper Inventory Management</td><td>Yes</td><td><span class="badge pass">PASS</span></td><td>All endpoints documented in Swagger at /api</td></tr>
+      <tr><td>API10</td><td>Unsafe Consumption of APIs</td><td>No</td><td><span class="badge na">N/A</span></td><td></td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section>
+  <h2>&#128737; Part C — Feature-Specific Checks</h2>
+  <table>
+    <thead><tr><th>#</th><th>Check</th><th>Status</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td>C1</td><td>Input validated with class-validator on DTOs</td><td><span class="badge note">NOTE</span></td><td>Plain interface used; same deferred decorator issue as F-002. Risk accepted — endpoint is role-guarded.</td></tr>
+      <tr><td>C2</td><td>No raw SQL — Prisma used exclusively</td><td><span class="badge pass">PASS</span></td><td>date string converted to new Date() before Prisma write</td></tr>
+      <tr><td>C3</td><td>Sensitive fields excluded from response</td><td><span class="badge pass">PASS</span></td><td>No sensitive fields in Holiday model</td></tr>
+      <tr><td>C4</td><td>@Roles on all mutating endpoints</td><td><span class="badge pass">PASS</span></td><td>POST and DELETE both guarded</td></tr>
+      <tr><td>C5</td><td>JWT guard active globally</td><td><span class="badge pass">PASS</span></td><td></td></tr>
+      <tr><td>C6</td><td>No secrets hardcoded in source files</td><td><span class="badge pass">PASS</span></td><td></td></tr>
+      <tr><td>C7</td><td>File uploads validated</td><td><span class="badge na">N/A</span></td><td>No uploads in this feature</td></tr>
+      <tr><td>C8</td><td>Error responses hide internal details</td><td><span class="badge pass">PASS</span></td><td>GlobalExceptionFilter active</td></tr>
+      <tr><td>C9</td><td>Frontend stores only JWT in localStorage</td><td><span class="badge pass">PASS</span></td><td>Holiday data in React Query memory cache only</td></tr>
+      <tr><td>C10</td><td>CORS restricted to known origins</td><td><span class="badge pass">PASS</span></td><td>localhost:5173 only in development</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section>
+  <h2>&#128202; Part D — Dependency Audit</h2>
+  <table>
+    <thead><tr><th>Scope</th><th>Critical</th><th>High</th><th>Moderate</th><th>Low</th><th>Action</th></tr></thead>
+    <tbody>
+      <tr><td>backend</td><td>0</td><td>0</td><td>—</td><td>—</td><td>No new deps added</td></tr>
+      <tr><td>frontend</td><td>0</td><td>0</td><td>—</td><td>—</td><td>No new deps added</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<div class="verdict">
+  <h3>&#9888; Verdict: Cleared with Mitigations</h3>
+  <p>No critical or high security issues. Three low-risk items accepted with planned remediation below.</p>
+</div>
+
+<section>
+  <h2>&#128204; Open Risk Register</h2>
+  <ul class="risk">
+    <li><strong>C1 — class-validator decorators missing on HolidayDto</strong>: Risk accepted; endpoint role-guarded. Address in Phase 3 DTO refactor alongside F-002.</li>
+    <li><strong>API4 — No rate limiting / pagination on GET holidays</strong>: By design (small dataset). Revisit if bulk holiday import is introduced.</li>
+    <li><strong>A09 — No holiday change audit log</strong>: Deferred to Phase 11 centralised logging.</li>
+  </ul>
+</section>
+
+<footer>F-003 Holiday Calendar Configuration &bull; OWASP Security Review &bull; Reviewer: Claude Code &bull; 2026-05-25 &bull; Project Management System</footer>
+</div>
+</body>
+</html>

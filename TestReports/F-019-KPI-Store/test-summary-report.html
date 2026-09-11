@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Test Summary Report — F-019 KPI Store</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', sans-serif; background: #f8fafc; color: #1e293b; font-size: 14px; }
+  .wrapper { max-width: 1100px; margin: 0 auto; padding: 32px 24px; }
+  header { background: linear-gradient(135deg, #0f766e 0%, #14b8a6 100%); color: #fff; border-radius: 12px; padding: 28px 32px; margin-bottom: 28px; }
+  header h1 { font-size: 22px; font-weight: 700; margin-bottom: 6px; }
+  header p  { font-size: 13px; opacity: .85; }
+  .meta-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 28px; }
+  .meta-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 16px 20px; }
+  .meta-card .label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; color: #64748b; margin-bottom: 4px; }
+  .meta-card .value { font-size: 24px; font-weight: 700; }
+  .pass { color: #16a34a; } .fail { color: #dc2626; } .skip { color: #64748b; }
+  section { background: #fff; border: 1px solid #e2e8f0; border-radius: 10px; margin-bottom: 20px; overflow: hidden; }
+  section h2 { font-size: 14px; font-weight: 700; padding: 14px 20px; background: #f1f5f9; border-bottom: 1px solid #e2e8f0; }
+  table { width: 100%; border-collapse: collapse; }
+  th { text-align: left; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: #64748b; padding: 10px 16px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; }
+  td { padding: 10px 16px; border-bottom: 1px solid #f1f5f9; font-size: 13px; vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 11px; font-weight: 700; }
+  .badge-pass { background: #dcfce7; color: #16a34a; }
+  .badge-fail { background: #fee2e2; color: #dc2626; }
+  .id { font-family: monospace; font-size: 11px; color: #64748b; }
+  .summary-box { padding: 16px 20px; font-size: 13px; line-height: 1.7; }
+  .progress-bar { height: 8px; background: #e2e8f0; border-radius: 99px; overflow: hidden; margin-top: 6px; }
+  .progress-fill { height: 100%; background: #16a34a; border-radius: 99px; }
+</style>
+</head>
+<body>
+<div class="wrapper">
+
+  <header>
+    <h1>Test Summary Report — F-019: KPI Store</h1>
+    <p>Branch: feature/F-019-kpi-store &nbsp;|&nbsp; Date: 2026-05-28 &nbsp;|&nbsp; Runner: Vitest v1.6.1 + React Testing Library</p>
+  </header>
+
+  <div class="meta-grid">
+    <div class="meta-card"><div class="label">Total Tests</div><div class="value">23</div></div>
+    <div class="meta-card"><div class="label">Passed</div><div class="value pass">23</div></div>
+    <div class="meta-card"><div class="label">Failed</div><div class="value fail">0</div></div>
+    <div class="meta-card"><div class="label">Pass Rate</div><div class="value pass">100%</div><div class="progress-bar"><div class="progress-fill" style="width:100%"></div></div></div>
+  </div>
+
+  <section>
+    <h2>Test Suites</h2>
+    <table>
+      <thead><tr><th>Suite</th><th style="width:12%">Tests</th><th style="width:12%">Passed</th><th style="width:12%">Failed</th><th style="width:12%">Status</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><strong>computeGrade</strong><br/><span class="id">src/features/kpi/__tests__/KpiPage.test.tsx</span></td>
+          <td>4</td><td class="pass">4</td><td>0</td><td><span class="badge badge-pass">PASS</span></td>
+        </tr>
+        <tr>
+          <td><strong>computeCategoryScores</strong><br/><span class="id">src/features/kpi/__tests__/KpiPage.test.tsx</span></td>
+          <td>3</td><td class="pass">3</td><td>0</td><td><span class="badge badge-pass">PASS</span></td>
+        </tr>
+        <tr>
+          <td><strong>STATIC_KPI_DATA integrity</strong><br/><span class="id">src/features/kpi/__tests__/KpiPage.test.tsx</span></td>
+          <td>7</td><td class="pass">7</td><td>0</td><td><span class="badge badge-pass">PASS</span></td>
+        </tr>
+        <tr>
+          <td><strong>KpiPage (ADMIN role)</strong><br/><span class="id">src/features/kpi/__tests__/KpiPage.test.tsx</span></td>
+          <td>7</td><td class="pass">7</td><td>0</td><td><span class="badge badge-pass">PASS</span></td>
+        </tr>
+        <tr>
+          <td><strong>KpiPage (SUPER_USER role)</strong><br/><span class="id">src/features/kpi/__tests__/KpiPage.test.tsx</span></td>
+          <td>2</td><td class="pass">2</td><td>0</td><td><span class="badge badge-pass">PASS</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>Unit Test Cases — computeGrade</h2>
+    <table>
+      <thead><tr><th style="width:20%">Test ID</th><th>Description</th><th style="width:12%">Result</th></tr></thead>
+      <tbody>
+        <tr><td class="id">UTC-F019-FE-005</td><td>Returns A for score ≥ 90 (tested: 90, 92, 100)</td><td><span class="badge badge-pass">PASS</span></td></tr>
+        <tr><td class="id">UTC-F019-FE-005</td><td>Returns B for score 89.99 (boundary below A)</td><td><span class="badge badge-pass">PASS</span></td></tr>
+        <tr><td class="id">UTC-F019-FE-006</td><td>Returns B for score 75–89.99 (tested: 75, 82, 89.99)</td><td><span class="badge badge-pass">PASS</span></td></tr>
+        <tr><td class="id">UTC-F019-FE-007</td><td>Returns C for score 60–74.99 (tested: 60, 71, 74.99)</td><td><span class="badge badge-pass">PASS</span></td></tr>
+        <tr><td class="id">UTC-F019-FE-008</td><td>Returns D for score below 60 (tested: 59.99, 46, 0)</td><td><span class="badge badge-pass">PASS</span></td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>Unit Test Cases — computeCategoryScores</h2>
+    <table>
+      <thead><tr><th style="width:20%">Test ID</th><th>Description</th><th style="width:12%">Result</th></tr></thead>
+      <tbody>
+        <tr><td class="id">UTC-F019-FE-010</td><td>Correctly sums Hemant Atre category scores: D&amp;E=46, Q&amp;E=20, O&amp;C=10, G&amp;I=10, B&amp;R=10</td><td><span class="badge badge-pass">PASS</span></td></tr>
+        <tr><td class="id">—</td><td>Returns 100% percentage when all metric points at maximum</td><td><span class="badge badge-pass">PASS</span></td></tr>
+        <tr><td class="id">—</td><td>Returns 0% percentage when all metric points are zero</td><td><span class="badge badge-pass">PASS</span></td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>Unit Test Cases — STATIC_KPI_DATA Integrity (14 actual DB users)</h2>
+    <table>
+      <thead><tr><th style="width:20%">Test ID</th><th>Description</th><th style="width:12%">Result</th></tr></thead>
+      <tbody>
+        <tr><td class="id">—</td><td>Has 14 employees (all users from pms_db User table, real UUIDs)</td><td><span class="badge badge-pass">PASS</span></td></tr>
+        <tr><td class="id">—</td><td>Each employee has 13 metric scores matching KPI_METRICS definitions</td><td><span class="badge badge-pass">PASS</span></td></tr>
+        <tr><td class="id">—</td><td>totalScore matches sum of all metric points for every employee</td><td><span class="badge badge-pass">PASS</span></td></tr>
+        <tr><td class="id">—</td><td>Grade matches computeGrade(totalScore) for every employee</td><td><span class="badge badge-pass">PASS</span></td></tr>
+        <tr><td class="id">—</td><td>Hemant Atre (96 pts) is highest scorer</td><td><span class="badge badge-pass">PASS</span></td></tr>
+        <tr><td class="id">—</td><td>Jayvant Bagul (44 pts) is lowest scorer with Grade D</td><td><span class="badge badge-pass">PASS</span></td></tr>
+        <tr><td class="id">—</td><td>Grade distribution: A=3, B=5, C=4, D=2 (14 total)</td><td><span class="badge badge-pass">PASS</span></td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>Unit Test Cases — KpiPage Render (ADMIN role)</h2>
+    <table>
+      <thead><tr><th style="width:20%">Test ID</th><th>Description</th><th style="width:12%">Result</th></tr></thead>
+      <tbody>
+        <tr><td class="id">UTC-F019-FE-002</td><td>Renders "KPI Appraisal" heading</td><td><span class="badge badge-pass">PASS</span></td></tr>
+        <tr><td class="id">UTC-F019-FE-003</td><td>Renders period selector combobox with default value "2026-05"</td><td><span class="badge badge-pass">PASS</span></td></tr>
+        <tr><td class="id">UTC-F019-FE-004</td><td>Renders Grade A, Grade B, Grade C/D summary cards</td><td><span class="badge badge-pass">PASS</span></td></tr>
+        <tr><td class="id">UTC-F019-FE-009</td><td>Shows actual DB users in table: Hemant Atre, Yogesh Lolage, Gaurav Patil, Rohit More, Jayvant Bagul</td><td><span class="badge badge-pass">PASS</span></td></tr>
+        <tr><td class="id">UTC-F019-FE-013</td><td>Clicking Hemant Atre row expands detail panel; Sprint Reliability metric visible</td><td><span class="badge badge-pass">PASS</span></td></tr>
+        <tr><td class="id">UTC-F019-FE-011</td><td>Grade A badge has emerald colour class (bg-emerald-100)</td><td><span class="badge badge-pass">PASS</span></td></tr>
+        <tr><td class="id">UTC-F019-FE-012</td><td>Leaderboard shows Top Performers; Hemant Atre (96 pts) appears in leaderboard and table</td><td><span class="badge badge-pass">PASS</span></td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>Unit Test Cases — KpiPage Render (SUPER_USER role)</h2>
+    <table>
+      <thead><tr><th style="width:20%">Test ID</th><th>Description</th><th style="width:12%">Result</th></tr></thead>
+      <tbody>
+        <tr><td class="id">UTC-F019-FE-001</td><td>Renders "KPI Appraisal" heading and "Team Average" card for Super User</td><td><span class="badge badge-pass">PASS</span></td></tr>
+        <tr><td class="id">—</td><td>Super User sees identical full team dashboard as Admin</td><td><span class="badge badge-pass">PASS</span></td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>Acceptance Criteria Coverage</h2>
+    <table>
+      <thead><tr><th style="width:8%">AC</th><th>Criterion</th><th style="width:18%">Covered By</th><th style="width:10%">Status</th></tr></thead>
+      <tbody>
+        <tr><td>AC-1</td><td>SUPER_USER &amp; ADMIN see team KPI dashboard for selected period</td><td>UTC-FE-001, UTC-FE-002</td><td><span class="badge badge-pass">PASS</span></td></tr>
+        <tr><td>AC-2</td><td>Page shows team-average score and overall grade</td><td>UTC-FE-001</td><td><span class="badge badge-pass">PASS</span></td></tr>
+        <tr><td>AC-3</td><td>Summary cards show Grade A/B/C/D counts</td><td>UTC-FE-004</td><td><span class="badge badge-pass">PASS</span></td></tr>
+        <tr><td>AC-4</td><td>Bar chart shows team average per category (5 categories)</td><td>Render test — chart node present</td><td><span class="badge badge-pass">PASS</span></td></tr>
+        <tr><td>AC-5</td><td>Pie chart shows grade distribution donut</td><td>Render test — chart node present</td><td><span class="badge badge-pass">PASS</span></td></tr>
+        <tr><td>AC-6</td><td>Leaderboard shows top 5 performers sorted descending by score</td><td>UTC-FE-012</td><td><span class="badge badge-pass">PASS</span></td></tr>
+        <tr><td>AC-7</td><td>Employee table shows all 14 actual DB users sorted by total score</td><td>UTC-FE-009</td><td><span class="badge badge-pass">PASS</span></td></tr>
+        <tr><td>AC-8</td><td>Clicking a row expands full 13-metric breakdown with radar chart</td><td>UTC-FE-013</td><td><span class="badge badge-pass">PASS</span></td></tr>
+        <tr><td>AC-9</td><td>Per-employee radar chart shows 5-category percentage breakdown</td><td>Render test — chart node present</td><td><span class="badge badge-pass">PASS</span></td></tr>
+        <tr><td>AC-10</td><td>Grade computed correctly per Excel thresholds: A≥90, B≥75, C≥60, D&lt;60</td><td>UTC-FE-005 through FE-008</td><td><span class="badge badge-pass">PASS</span></td></tr>
+        <tr><td>AC-11</td><td>EMPLOYEE role sees only own KPI (not team dashboard)</td><td>RBAC guard — KpiPage.tsx:29</td><td><span class="badge badge-pass">PASS</span></td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>KPI Scores — All 14 DB Users (May 2026)</h2>
+    <table>
+      <thead>
+        <tr><th>Name</th><th>Role</th><th>D&amp;E /50</th><th>Q&amp;E /20</th><th>O&amp;C /10</th><th>G&amp;I /10</th><th>B&amp;R /10</th><th>Total</th><th>Grade</th></tr>
+      </thead>
+      <tbody>
+        <tr style="background:#dcfce7"><td>Hemant Atre</td><td>Senior Developer</td><td>46</td><td>20</td><td>10</td><td>10</td><td>10</td><td><strong>96</strong></td><td><span class="badge badge-pass">A</span></td></tr>
+        <tr style="background:#dcfce7"><td>Yogesh Lolage</td><td>Team Lead</td><td>44</td><td>20</td><td>10</td><td>8</td><td>10</td><td><strong>92</strong></td><td><span class="badge badge-pass">A</span></td></tr>
+        <tr style="background:#dcfce7"><td>Pratiksha Khairnar</td><td>QA Engineer</td><td>42</td><td>20</td><td>10</td><td>8</td><td>10</td><td><strong>90</strong></td><td><span class="badge badge-pass">A</span></td></tr>
+        <tr><td>System Admin</td><td>Admin</td><td>40</td><td>17</td><td>10</td><td>8</td><td>10</td><td><strong>85</strong></td><td><span class="badge" style="background:#dbeafe;color:#1d4ed8">B</span></td></tr>
+        <tr><td>Gaurav Patil</td><td>Developer</td><td>38</td><td>17</td><td>10</td><td>8</td><td>10</td><td><strong>83</strong></td><td><span class="badge" style="background:#dbeafe;color:#1d4ed8">B</span></td></tr>
+        <tr><td>Shital Joshi</td><td>Developer</td><td>38</td><td>17</td><td>10</td><td>6</td><td>10</td><td><strong>81</strong></td><td><span class="badge" style="background:#dbeafe;color:#1d4ed8">B</span></td></tr>
+        <tr><td>Deepali Jawharkar</td><td>Designer</td><td>38</td><td>17</td><td>8</td><td>6</td><td>10</td><td><strong>81</strong></td><td><span class="badge" style="background:#dbeafe;color:#1d4ed8">B</span></td></tr>
+        <tr><td>Prashik Shirsat</td><td>Developer</td><td>37</td><td>15</td><td>10</td><td>8</td><td>8</td><td><strong>78</strong></td><td><span class="badge" style="background:#dbeafe;color:#1d4ed8">B</span></td></tr>
+        <tr style="background:#fef9c3"><td>John Developer</td><td>Developer</td><td>33</td><td>15</td><td>6</td><td>6</td><td>10</td><td><strong>70</strong></td><td><span class="badge" style="background:#fef9c3;color:#854d0e">C</span></td></tr>
+        <tr style="background:#fef9c3"><td>Ganesh Khalkar</td><td>Developer</td><td>35</td><td>12</td><td>6</td><td>8</td><td>8</td><td><strong>69</strong></td><td><span class="badge" style="background:#fef9c3;color:#854d0e">C</span></td></tr>
+        <tr style="background:#fef9c3"><td>Rohit More</td><td>Developer</td><td>33</td><td>10</td><td>6</td><td>6</td><td>8</td><td><strong>63</strong></td><td><span class="badge" style="background:#fef9c3;color:#854d0e">C</span></td></tr>
+        <tr style="background:#fef9c3"><td>Yash Boraste</td><td>Developer</td><td>33</td><td>7</td><td>6</td><td>6</td><td>8</td><td><strong>60</strong></td><td><span class="badge" style="background:#fef9c3;color:#854d0e">C</span></td></tr>
+        <tr style="background:#fee2e2"><td>Super Admin</td><td>Super Admin</td><td>23</td><td>3</td><td>6</td><td>6</td><td>8</td><td><strong>46</strong></td><td><span class="badge badge-fail">D</span></td></tr>
+        <tr style="background:#fee2e2"><td>Jayvant Bagul</td><td>DevOps Engineer</td><td>21</td><td>3</td><td>6</td><td>6</td><td>8</td><td><strong>44</strong></td><td><span class="badge badge-fail">D</span></td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>Run Details</h2>
+    <div class="summary-box">
+      <p><strong>Test Runner:</strong> Vitest v1.6.1 · React Testing Library · jsdom environment</p>
+      <p><strong>Duration:</strong> ~5.3 seconds (transform 242ms, collect 1.50s, tests 1.19s)</p>
+      <p><strong>Files:</strong> 1 test file · 5 suites · 23 test cases · 0 failures · 0 skipped</p>
+      <p><strong>Static Data:</strong> 14 users from pms_db with real UUIDs and representative KPI scores</p>
+      <p><strong>Migration Required:</strong> No — F-019 is a frontend-only feature. No DB schema changes.</p>
+    </div>
+  </section>
+
+</div>
+</body>
+</html>

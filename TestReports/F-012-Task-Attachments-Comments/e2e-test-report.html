@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>E2E Test Report — F-012 Task Attachments &amp; Comments</title>
+<style>
+  body{font-family:system-ui,sans-serif;margin:0;background:#f8fafc;color:#1e293b}
+  .header{background:#1e3a5f;color:#fff;padding:24px 32px}
+  .header h1{margin:0 0 4px;font-size:1.4rem}.header p{margin:0;opacity:.75;font-size:.875rem}
+  .summary{display:flex;gap:16px;padding:20px 32px;flex-wrap:wrap}
+  .chip{padding:8px 18px;border-radius:999px;font-size:.85rem;font-weight:600}
+  .pass{background:#dcfce7;color:#15803d}.info{background:#e0f2fe;color:#0369a1}
+  table{width:calc(100% - 64px);margin:0 32px 32px;border-collapse:collapse;background:#fff;border-radius:10px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.08)}
+  th{background:#f1f5f9;text-align:left;padding:10px 14px;font-size:.78rem;color:#64748b;text-transform:uppercase;letter-spacing:.05em}
+  td{padding:11px 14px;font-size:.85rem;border-top:1px solid #f1f5f9;vertical-align:top}
+  .badge{display:inline-block;padding:2px 10px;border-radius:999px;font-size:.75rem;font-weight:600}
+  .badge-pass{background:#dcfce7;color:#15803d}
+  code{background:#f1f5f9;padding:1px 5px;border-radius:4px;font-size:.8rem}
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>E2E Test Report — F-012: Task Attachments &amp; Comments</h1>
+  <p>Full-stack scenarios • Generated 2026-05-26</p>
+</div>
+<div class="summary">
+  <span class="chip pass">10 Passed</span>
+  <span class="chip" style="background:#fee2e2;color:#b91c1c">0 Failed</span>
+  <span class="chip info">Env: Local (backend + frontend)</span>
+</div>
+<table>
+  <thead><tr><th>Test ID</th><th>Scenario</th><th>Role</th><th>Result</th><th>Notes</th></tr></thead>
+  <tbody>
+    <tr><td><code>TC-F-012-001</code></td><td>Upload attachment to task — valid PDF</td><td>ADMIN</td><td><span class="badge badge-pass">PASS</span></td><td>POST returns 201; record created; file present in uploads/attachments/</td></tr>
+    <tr><td><code>TC-F-012-002</code></td><td>Upload rejected for unsupported file type</td><td>ADMIN</td><td><span class="badge badge-pass">PASS</span></td><td>POST with .exe returns 400; no file written to disk</td></tr>
+    <tr><td><code>TC-F-012-003</code></td><td>Upload rejected for file exceeding 10 MB</td><td>ADMIN</td><td><span class="badge badge-pass">PASS</span></td><td>POST with 11 MB file returns 400/413</td></tr>
+    <tr><td><code>TC-F-012-004</code></td><td>List attachments for task</td><td>Any</td><td><span class="badge badge-pass">PASS</span></td><td>GET returns array with originalName, size, uploadedBy.fullName</td></tr>
+    <tr><td><code>TC-F-012-005</code></td><td>Download attachment — file streams correctly</td><td>Any</td><td><span class="badge badge-pass">PASS</span></td><td>GET returns 200; Content-Disposition header present with original filename</td></tr>
+    <tr><td><code>TC-F-012-006</code></td><td>Delete attachment removes DB record and file</td><td>ADMIN</td><td><span class="badge badge-pass">PASS</span></td><td>DELETE returns 204; record gone from DB; file removed from disk</td></tr>
+    <tr><td><code>TC-F-012-007</code></td><td>Add comment to task — authorId from JWT</td><td>EMPLOYEE</td><td><span class="badge badge-pass">PASS</span></td><td>POST returns 201; authorId matches JWT user id, not body</td></tr>
+    <tr><td><code>TC-F-012-008</code></td><td>List comments ordered oldest-first</td><td>Any</td><td><span class="badge badge-pass">PASS</span></td><td>GET returns array; createdAt values ascending</td></tr>
+    <tr><td><code>TC-F-012-009</code></td><td>Author deletes own comment</td><td>EMPLOYEE</td><td><span class="badge badge-pass">PASS</span></td><td>DELETE returns 204; comment removed from DB</td></tr>
+    <tr><td><code>TC-F-012-010</code></td><td>EMPLOYEE cannot delete another user's comment</td><td>EMPLOYEE</td><td><span class="badge badge-pass">PASS</span></td><td>DELETE returns 403 Forbidden; comment preserved in DB</td></tr>
+  </tbody>
+</table>
+</body>
+</html>

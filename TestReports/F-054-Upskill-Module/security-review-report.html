@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Security Review Report — F-054 Upskill Module</title>
+<style>
+  body { font-family: 'Segoe UI', sans-serif; background: #0f172a; color: #e2e8f0; margin: 0; padding: 24px; }
+  h1 { color: #f8fafc; font-size: 1.6rem; border-bottom: 2px solid #334155; padding-bottom: 12px; }
+  h2 { color: #94a3b8; font-size: 1.1rem; margin-top: 32px; }
+  .meta { background: #1e293b; border-radius: 8px; padding: 16px; margin-bottom: 24px; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+  .meta div { font-size: 0.85rem; color: #94a3b8; }
+  .meta strong { display: block; color: #e2e8f0; font-size: 1rem; }
+  .summary { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 28px; }
+  .card { background: #1e293b; border-radius: 8px; padding: 16px; text-align: center; }
+  .card .num { font-size: 2rem; font-weight: 700; }
+  .card .lbl { font-size: 0.8rem; color: #94a3b8; margin-top: 4px; }
+  .high .num { color: #f87171; }
+  .medium .num { color: #fbbf24; }
+  .low .num { color: #34d399; }
+  .fixed .num { color: #60a5fa; }
+  .finding { background: #1e293b; border-radius: 8px; padding: 20px; margin-bottom: 16px; border-left: 4px solid #334155; }
+  .finding.high { border-left-color: #f87171; }
+  .finding.medium { border-left-color: #fbbf24; }
+  .finding.fixed { border-left-color: #60a5fa; }
+  .finding h3 { margin: 0 0 8px; font-size: 1rem; display: flex; align-items: center; gap: 10px; }
+  .badge { font-size: 0.7rem; padding: 2px 8px; border-radius: 999px; font-weight: 600; letter-spacing: 0.05em; }
+  .badge-high { background: #7f1d1d; color: #fca5a5; }
+  .badge-medium { background: #78350f; color: #fde68a; }
+  .badge-fixed { background: #1e3a5f; color: #93c5fd; }
+  .badge-open { background: #1c1917; color: #d6d3d1; }
+  .field { margin-top: 10px; }
+  .field label { font-size: 0.75rem; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 3px; }
+  .field p { margin: 0; font-size: 0.9rem; color: #cbd5e1; }
+  code { background: #0f172a; padding: 2px 6px; border-radius: 4px; font-family: 'Fira Code', monospace; font-size: 0.82rem; color: #a5f3fc; }
+  .footer { margin-top: 40px; color: #475569; font-size: 0.8rem; border-top: 1px solid #1e293b; padding-top: 12px; }
+</style>
+</head>
+<body>
+<h1>Security Review Report — F-054 Upskill Module</h1>
+
+<div class="meta">
+  <div><strong>F-054</strong>Feature ID</div>
+  <div><strong>2026-06-24</strong>Review Date</div>
+  <div><strong>OWASP Top 10 + File Upload</strong>Scope</div>
+  <div><strong>SEC-1 through SEC-11</strong>Controls Checked</div>
+  <div><strong>3 Fixed / 0 Open</strong>Status</div>
+  <div><strong>feature/F-054-upskill-module</strong>Branch</div>
+</div>
+
+<div class="summary">
+  <div class="card high"><div class="num">3</div><div class="lbl">HIGH Found</div></div>
+  <div class="card medium"><div class="num">2</div><div class="lbl">MEDIUM Found</div></div>
+  <div class="card fixed"><div class="num">3</div><div class="lbl">HIGH Fixed</div></div>
+  <div class="card low"><div class="num">0</div><div class="lbl">Open</div></div>
+</div>
+
+<h2>Findings</h2>
+
+<!-- SEC-01 -->
+<div class="finding high fixed">
+  <h3>
+    SEC-01 — Unauthenticated Static Serving of Evidence Files
+    <span class="badge badge-high">HIGH</span>
+    <span class="badge badge-fixed">FIXED</span>
+  </h3>
+  <div class="field"><label>File</label><p><code>backend/src/main.ts:23</code></p></div>
+  <div class="field"><label>Category</label><p>Authorization Bypass / Data Exposure</p></div>
+  <div class="field"><label>Confidence</label><p>10 / 10</p></div>
+  <div class="field">
+    <label>Description</label>
+    <p>
+      <code>express.static</code> was mounted at <code>/uploads</code> before any NestJS guard could intercept the request,
+      meaning every file under <code>uploads/upskill/</code> (HR-sensitive certificates, DOCX files) was publicly
+      downloadable by anyone knowing the UUID-based filename. Filenames are exposed in <code>findAll</code> / <code>findOne</code>
+      API responses, making discovery trivial for authenticated users.
+    </p>
+  </div>
+  <div class="field">
+    <label>Exploit Scenario</label>
+    <p>
+      Authenticated user calls <code>GET /api/v1/upskill/assignments</code>, reads <code>evidenceFilePath</code> from
+      the JSON response, then fetches <code>GET /uploads/upskill/&lt;uuid&gt;.pdf</code> with no JWT — bypassing the
+      <code>GET /upskill/assignments/:id/evidence</code> auth guard entirely.
+    </p>
+  </div>
+  <div class="field">
+    <label>Fix Applied</label>
+    <p>
+      Added Express middleware before the static handler that intercepts <code>/uploads/upskill</code> and returns HTTP 403.
+      Evidence files are exclusively served through the authenticated <code>GET /upskill/assignments/:id/evidence</code> endpoint.
+    </p>
+  </div>
+</div>
+
+<!-- SEC-02 -->
+<div class="finding high fixed">
+  <h3>
+    SEC-02 — File Extension Spoofing via Client-Controlled <code>originalname</code>
+    <span class="badge badge-high">HIGH</span>
+    <span class="badge badge-fixed">FIXED</span>
+  </h3>
+  <div class="field"><label>File</label><p><code>backend/src/upskill/upskill.controller.ts:118</code></p></div>
+  <div class="field"><label>Category</label><p>Insecure File Upload / Stored XSS Vector</p></div>
+  <div class="field"><label>Confidence</label><p>9 / 10</p></div>
+  <div class="field">
+    <label>Description</label>
+    <p>
+      The Multer <code>fileFilter</code> checked <code>file.mimetype</code> (client-controlled HTTP header) to validate
+      file type, but used <code>extname(file.originalname)</code> (also client-controlled) to derive the stored filename
+      extension. An attacker could submit a file with <code>Content-Type: image/jpeg</code> and
+      <code>filename: "shell.html"</code> to store an HTML/XSS payload on the server with a
+      <code>.html</code> extension. Combined with SEC-01, this file would be publicly accessible.
+    </p>
+  </div>
+  <div class="field">
+    <label>Fix Applied</label>
+    <p>
+      Replaced the <code>extname(originalname)</code> call with a server-side MIME-to-extension map
+      (<code>EVIDENCE_MIME_TYPES: Record&lt;string, string&gt;</code>). The stored extension is now always
+      one of <code>.pdf</code>, <code>.docx</code>, <code>.png</code>, or <code>.jpg</code> regardless of
+      what the client sends in <code>originalname</code>.
+    </p>
+  </div>
+</div>
+
+<!-- SEC-03 -->
+<div class="finding high fixed">
+  <h3>
+    SEC-03 — Manager IDOR: Any PM Can Approve / Reject Any Assignment Org-Wide
+    <span class="badge badge-high">HIGH</span>
+    <span class="badge badge-fixed">FIXED</span>
+  </h3>
+  <div class="field"><label>File</label><p><code>backend/src/upskill/upskill.service.ts:197–222</code></p></div>
+  <div class="field"><label>Category</label><p>Insecure Direct Object Reference (IDOR) / Privilege Escalation</p></div>
+  <div class="field"><label>Confidence</label><p>9 / 10</p></div>
+  <div class="field">
+    <label>Description</label>
+    <p>
+      The <code>approveAssignment</code> and <code>rejectAssignment</code> service methods performed no check that the
+      calling manager has organisational authority over the assignment. The only gate was the controller-level
+      <code>isManager()</code> check, which returns <code>true</code> for any PROJECT_MANAGER on <em>any</em> project.
+      A PM from Project A could approve assignments created for employees in Project B, fraudulently granting KPI
+      score boosts (<code>10/10</code> Growth &amp; Innovation) to employees outside their remit.
+    </p>
+  </div>
+  <div class="field">
+    <label>Exploit Scenario</label>
+    <p>
+      PM on Project A guesses or enumerates a SUBMITTED assignment ID (UUIDs are hard to guess but can be obtained from
+      <code>findAll</code> if PM knows the assignee ID). Sends
+      <code>PATCH /api/v1/upskill/assignments/&lt;victim-id&gt;/approve</code>.
+      Service approves with no scope check, bumping KPI for an unrelated employee.
+    </p>
+  </div>
+  <div class="field">
+    <label>Fix Applied</label>
+    <p>
+      Added creator-scope check to both <code>approveAssignment</code> and <code>rejectAssignment</code>:
+      non-privileged callers (<code>systemRole !== ADMIN | SUPER_USER</code>) are required to be the
+      <code>createdById</code> of the assignment. Admins and SuperAdmins can approve/reject org-wide.
+      Two new unit tests (SEC-01, SEC-02) verify the ForbiddenException path.
+    </p>
+  </div>
+</div>
+
+<!-- SEC-04 -->
+<div class="finding medium">
+  <h3>
+    SEC-04 — <code>evidenceFilePath</code> Exposed in List/Detail API Responses
+    <span class="badge badge-medium">MEDIUM</span>
+    <span class="badge badge-open">ACCEPTED — MITIGATED BY SEC-01 FIX</span>
+  </h3>
+  <div class="field"><label>File</label><p><code>backend/src/upskill/upskill.service.ts:84–119, 122–141</code></p></div>
+  <div class="field"><label>Category</label><p>Data Exposure / Information Leakage</p></div>
+  <div class="field"><label>Confidence</label><p>8 / 10</p></div>
+  <div class="field">
+    <label>Description</label>
+    <p>
+      The internal server filesystem path (<code>uploads/upskill/&lt;uuid&gt;.pdf</code>) is returned in
+      <code>findAll</code> and <code>findOne</code> Prisma responses. With SEC-01 fixed (direct static access
+      blocked), knowing the path no longer yields the file without a JWT. The field is retained in responses
+      to support the frontend <code>UpskillCard</code> submission state indicator; removing it would require
+      a schema projection change. Accepted as residual low risk post-SEC-01 fix — the path cannot be used to
+      bypass auth.
+    </p>
+  </div>
+</div>
+
+<!-- SEC-05 -->
+<div class="finding medium">
+  <h3>
+    SEC-05 — <code>isCreator</code> Permanently Grants Evidence Download Without State Check
+    <span class="badge badge-medium">MEDIUM</span>
+    <span class="badge badge-open">ACCEPTED — LOW RESIDUAL RISK</span>
+  </h3>
+  <div class="field"><label>File</label><p><code>backend/src/upskill/upskill.service.ts:225–236</code></p></div>
+  <div class="field"><label>Category</label><p>Authorization — Overly Broad Grant</p></div>
+  <div class="field"><label>Confidence</label><p>8 / 10</p></div>
+  <div class="field">
+    <label>Description</label>
+    <p>
+      The <code>getEvidence</code> method grants access via <code>isCreator</code> (assignment creator) permanently,
+      with no check on assignment state or whether the creator still manages the employee. Accepted because:
+      (1) the scope is bounded — only the specific PM who created the assignment gains access, not all PMs;
+      (2) the manager reviewing evidence to make approve/reject decisions is the intended use case;
+      (3) SEC-01 fix ensures only JWT-authenticated callers can reach the endpoint at all.
+    </p>
+  </div>
+</div>
+
+<h2>OWASP Controls Checked</h2>
+<table style="width:100%;border-collapse:collapse;font-size:0.85rem;margin-top:8px;">
+  <thead>
+    <tr style="background:#1e293b;color:#94a3b8;">
+      <th style="padding:8px;text-align:left;">Control</th>
+      <th style="padding:8px;text-align:left;">Description</th>
+      <th style="padding:8px;text-align:left;">Status</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr style="border-bottom:1px solid #334155;"><td style="padding:8px;">A01 — Broken Access Control</td><td style="padding:8px;">IDOR on approve/reject, static file bypass</td><td style="padding:8px;color:#34d399;">Fixed (SEC-01, SEC-03)</td></tr>
+    <tr style="border-bottom:1px solid #334155;"><td style="padding:8px;">A02 — Cryptographic Failures</td><td style="padding:8px;">Sensitive data exposure via public file serving</td><td style="padding:8px;color:#34d399;">Fixed (SEC-01)</td></tr>
+    <tr style="border-bottom:1px solid #334155;"><td style="padding:8px;">A03 — Injection</td><td style="padding:8px;">SQL injection (Prisma ORM parameterized queries)</td><td style="padding:8px;color:#34d399;">Not Applicable</td></tr>
+    <tr style="border-bottom:1px solid #334155;"><td style="padding:8px;">A04 — Insecure Design</td><td style="padding:8px;">Manager scope not enforced in approval flow</td><td style="padding:8px;color:#34d399;">Fixed (SEC-03)</td></tr>
+    <tr style="border-bottom:1px solid #334155;"><td style="padding:8px;">A05 — Security Misconfiguration</td><td style="padding:8px;">Express static serving sensitive directory</td><td style="padding:8px;color:#34d399;">Fixed (SEC-01)</td></tr>
+    <tr style="border-bottom:1px solid #334155;"><td style="padding:8px;">A07 — ID &amp; Auth Failures</td><td style="padding:8px;">JWT guard on all upskill endpoints</td><td style="padding:8px;color:#34d399;">Pass</td></tr>
+    <tr style="border-bottom:1px solid #334155;"><td style="padding:8px;">A08 — Software Integrity</td><td style="padding:8px;">File extension spoofing via originalname</td><td style="padding:8px;color:#34d399;">Fixed (SEC-02)</td></tr>
+    <tr style="border-bottom:1px solid #334155;"><td style="padding:8px;">A10 — SSRF</td><td style="padding:8px;">No outbound HTTP calls in upskill module</td><td style="padding:8px;color:#34d399;">Not Applicable</td></tr>
+  </tbody>
+</table>
+
+<div class="footer">Generated: 2026-06-24 | Reviewer: Claude Code Security Review | Feature: F-054 Upskill Module</div>
+</body>
+</html>
