@@ -2274,6 +2274,19 @@ export function CreateWorkItemModal({
   const [milestoneLinkId, setMilestoneLinkId] = useState('');
   const [affectedMilestoneId, setAffectedMilestoneId] = useState('');
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
+  const [labels, setLabels] = useState<string[]>([]);
+  const [labelInput, setLabelInput] = useState('');
+
+  function addPendingLabel() {
+    const value = labelInput.trim();
+    if (!value || labels.includes(value)) { setLabelInput(''); return; }
+    setLabels((prev) => [...prev, value]);
+    setLabelInput('');
+  }
+
+  function removePendingLabel(label: string) {
+    setLabels((prev) => prev.filter((l) => l !== label));
+  }
 
   useEffect(() => {
     if (!showTypeMenu) return;
@@ -2338,6 +2351,8 @@ export function CreateWorkItemModal({
     setReminderType('NONE');
     setAffectedMilestoneId('');
     setPendingFiles([]);
+    setLabels([]);
+    setLabelInput('');
     setAssigneeId(type === 'BUG' ? (pmMember?.id ?? '') : '');
     setAssigneeError(false);
     setParentError(false);
@@ -2451,6 +2466,7 @@ export function CreateWorkItemModal({
       reminderType: reminderType || undefined,
       releaseMilestoneId: milestoneLinkId || undefined,
       affectedMilestoneId: affectedMilestoneId || undefined,
+      labels: labels.length > 0 ? labels : undefined,
     } as Partial<WorkItem>);
   }
 
@@ -2713,6 +2729,31 @@ export function CreateWorkItemModal({
                 />
               </label>
               <p className="text-[10px] text-gray-400">PDF, DOCX, XLSX, PNG, JPG, TXT, MP4 · max 10 MB each</p>
+            </div>
+          </div>
+
+          {/* Labels */}
+          <div>
+            <label className={labelCls}>Labels</label>
+            <div className="space-y-1.5">
+              {labels.length > 0 && (
+                <div className="flex flex-wrap gap-1">
+                  {labels.map((l) => (
+                    <span key={l} className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 text-blue-700 text-[11px] rounded-full border border-blue-200">
+                      {l}
+                      <button type="button" onClick={() => removePendingLabel(l)} className="hover:text-red-500 leading-none">×</button>
+                    </span>
+                  ))}
+                </div>
+              )}
+              <input
+                type="text"
+                value={labelInput}
+                onChange={(e) => setLabelInput(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addPendingLabel(); } }}
+                placeholder="Type a label and press Enter…"
+                className={inputCls}
+              />
             </div>
           </div>
 

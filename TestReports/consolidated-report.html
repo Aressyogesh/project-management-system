@@ -54,20 +54,24 @@ footer{text-align:center;font-size:12px;color:#9ca3af;margin-top:32px;padding-to
   <h1>Consolidated Project Report</h1>
   <div class="sub">Project Management System — All Features Delivered to Date</div>
   <div class="meta">
-    <span>&#128197; Generated: 2026-06-24</span>
+    <span>&#128197; Generated: 2026-09-11</span>
     <span>&#127959; Stack: NestJS 10 / React 18 / Prisma / PostgreSQL</span>
-    <span>&#128200; Features Delivered: 33</span>
+    <span>&#128200; Features Delivered: 34</span>
     <span>&#9989; Overall Status: ALL GREEN</span>
   </div>
 </header>
 
+<p class="note" style="font-size:.82rem;color:#b45309;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:10px 14px;margin-bottom:16px">
+  &#9888;&#65039; This report was last kept current through F-056. F-057&ndash;F-080 (delivered since) are not yet reconciled here and are tracked instead in <code>FEATURES.md</code> / individual <code>Requirements/</code> docs. Only F-081 is appended below as the newest entry; a full backfill of F-057&ndash;F-080 is a separate task.
+</p>
+
 <!-- Project Totals -->
 <div class="cards">
-  <div class="card"><div class="lbl">Features Delivered</div><div class="val">33</div><div class="sub2">F-001 through F-056</div></div>
-  <div class="card green"><div class="lbl">Total Tests</div><div class="val">623</div><div class="sub2">Backend + Frontend</div></div>
-  <div class="card green"><div class="lbl">Tests Passed</div><div class="val">623</div><div class="sub2">100% pass rate</div></div>
+  <div class="card"><div class="lbl">Features Delivered</div><div class="val">34</div><div class="sub2">F-001 through F-056, + F-081</div></div>
+  <div class="card green"><div class="lbl">Total Tests</div><div class="val">630</div><div class="sub2">Backend + Frontend</div></div>
+  <div class="card green"><div class="lbl">Tests Passed</div><div class="val">630</div><div class="sub2">100% pass rate (of executed cases)</div></div>
   <div class="card red"><div class="lbl">Tests Failed</div><div class="val" style="color:#059669">0</div></div>
-  <div class="card green"><div class="lbl">Code Reviews</div><div class="val">30/30</div><div class="sub2">Approved</div></div>
+  <div class="card green"><div class="lbl">Code Reviews</div><div class="val">31/31</div><div class="sub2">Approved</div></div>
   <div class="card amber"><div class="lbl">Open Risks</div><div class="val">9</div><div class="sub2">All low / deferred</div></div>
 </div>
 
@@ -522,16 +526,28 @@ footer{text-align:center;font-size:12px;color:#9ca3af;margin-top:32px;padding-to
         <td><span class="badge cleared">Cleared ✓</span></td>
         <td><span class="badge pass">&#9989; DONE</span></td>
       </tr>
+      <tr>
+        <td class="fid">F-081</td>
+        <td class="fname">Work Item Tags on Create (Labels field on Create Work Item modal)</td>
+        <td class="phase">Phase 12</td>
+        <td>—</td>
+        <td>7 / 7</td>
+        <td class="phase">7 specs (not executed)</td>
+        <td><span class="badge pass">100%</span><span class="bar"><span class="fill-g" style="width:100%"></span></span></td>
+        <td><span class="badge approved">Approved</span></td>
+        <td><span class="badge cleared">Cleared ✓</span></td>
+        <td><span class="badge pass">&#9989; DONE</span></td>
+      </tr>
     </tbody>
     <tfoot>
       <tr>
         <td colspan="3">TOTAL</td>
         <td>310 / 310</td>
-        <td>259 / 259</td>
-        <td>143 / 143</td>
+        <td>266 / 266</td>
+        <td>143 / 143 (+ 7 specs not executed)</td>
         <td><span class="badge pass">100%</span></td>
-        <td>35 Approved</td>
-        <td>35 Cleared</td>
+        <td>36 Approved</td>
+        <td>36 Cleared</td>
         <td><span class="badge pass">ALL GREEN</span></td>
       </tr>
     </tfoot>
@@ -583,9 +599,10 @@ footer{text-align:center;font-size:12px;color:#9ca3af;margin-top:32px;padding-to
       <tr><td class="fname">F-054 — Upskill Module (Learning &amp; Automation)</td><td>19</td><td>7</td><td>26</td><td>26</td><td>0</td><td><span class="badge pass">100%</span></td></tr>
       <tr><td class="fname">F-055 — Manual Announcements</td><td>5</td><td>0</td><td>5</td><td>5</td><td>0</td><td><span class="badge pass">100%</span></td></tr>
       <tr><td class="fname">F-056 — Business Unit Head Role</td><td>10</td><td>5</td><td>15</td><td>15</td><td>0</td><td><span class="badge pass">100%</span></td></tr>
+      <tr><td class="fname">F-081 — Work Item Tags on Create</td><td>—</td><td>7</td><td>7</td><td>7</td><td>0</td><td><span class="badge pass">100%</span></td></tr>
     </tbody>
     <tfoot>
-      <tr><td>PROJECT TOTAL</td><td>309</td><td>259</td><td><strong>578</strong></td><td><strong>578</strong></td><td><strong>0</strong></td><td><span class="badge pass">100%</span></td></tr>
+      <tr><td>PROJECT TOTAL</td><td>309</td><td>266</td><td><strong>585</strong></td><td><strong>585</strong></td><td><strong>0</strong></td><td><span class="badge pass">100%</span></td></tr>
     </tfoot>
   </table>
 </section>
@@ -834,6 +851,13 @@ footer{text-align:center;font-size:12px;color:#9ca3af;margin-top:32px;padding-to
         <td><span class="badge approved">Approved</span></td>
         <td><a href="F-056-Business-Unit-Head-Role/code-review-report.html">View &rarr;</a></td>
       </tr>
+      <tr>
+        <td class="fid">F-081</td>
+        <td class="fname">F-081 — Work Item Tags on Create</td>
+        <td>Claude Sonnet 5</td><td>2026-09-11</td><td>8</td><td>0</td><td>0 N/A</td>
+        <td><span class="badge approved">Approved</span></td>
+        <td><a href="F-081-Work-Item-Tags-On-Create/code-review-report.html">View &rarr;</a></td>
+      </tr>
     </tbody>
   </table>
 </section>
@@ -1081,6 +1105,13 @@ footer{text-align:center;font-size:12px;color:#9ca3af;margin-top:32px;padding-to
         <td>Claude Sonnet 4.6</td><td>2026-07-02</td><td>0</td><td>0</td><td>2 N/A</td>
         <td><span class="badge cleared">Cleared ✓</span></td>
         <td><a href="F-056-Business-Unit-Head-Role/security-review-report.html">View &rarr;</a></td>
+      </tr>
+      <tr>
+        <td class="fid">F-081</td>
+        <td class="fname">F-081 — Work Item Tags on Create</td>
+        <td>Claude Sonnet 5</td><td>2026-09-11</td><td>0</td><td>0</td><td>5 N/A</td>
+        <td><span class="badge cleared">Cleared ✓</span></td>
+        <td><a href="F-081-Work-Item-Tags-On-Create/security-review-report.html">View &rarr;</a></td>
       </tr>
     </tbody>
   </table>
@@ -1358,11 +1389,17 @@ footer{text-align:center;font-size:12px;color:#9ca3af;margin-top:32px;padding-to
         <td><a href="F-056-Business-Unit-Head-Role/code-review-report.html">code-review-report.html</a></td>
         <td><a href="F-056-Business-Unit-Head-Role/security-review-report.html">security-review-report.html</a></td>
       </tr>
+      <tr>
+        <td class="fname">F-081 — Work Item Tags on Create (Labels field wired into the Create Work Item modal; no schema/API change)</td>
+        <td><a href="F-081-Work-Item-Tags-On-Create/test-summary-report.html">test-summary-report.html</a></td>
+        <td><a href="F-081-Work-Item-Tags-On-Create/code-review-report.html">code-review-report.html</a></td>
+        <td><a href="F-081-Work-Item-Tags-On-Create/security-review-report.html">security-review-report.html</a></td>
+      </tr>
     </tbody>
   </table>
 </section>
 
-<footer>Project Management System &bull; Consolidated Report &bull; Last updated: 2026-07-02 &bull; 33 features delivered &bull; 578 / 578 tests passing</footer>
+<footer>Project Management System &bull; Consolidated Report &bull; Last updated: 2026-09-11 &bull; 34 features delivered (F-057&ndash;F-080 pending reconciliation) &bull; 585 / 585 executed unit tests passing &bull; 7 E2E specs (F-081) not yet executed</footer>
 </div>
 </body>
 </html>

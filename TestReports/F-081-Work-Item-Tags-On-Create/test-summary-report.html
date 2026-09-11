@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<title>Test Summary Report — F-081 Work Item Tags on Create</title>
+<style>
+  body{font-family:system-ui,sans-serif;margin:0;padding:24px;background:#f8fafc;color:#1e293b}
+  h1{font-size:1.4rem;font-weight:700;margin-bottom:4px}
+  .meta{color:#64748b;font-size:.85rem;margin-bottom:24px}
+  table{width:100%;border-collapse:collapse;background:#fff;border-radius:10px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.08);margin-bottom:24px}
+  th{background:#1e293b;color:#fff;padding:10px 14px;text-align:left;font-size:.82rem;text-transform:uppercase;letter-spacing:.04em}
+  td{padding:10px 14px;font-size:.88rem;border-bottom:1px solid #f1f5f9;vertical-align:top}
+  tr:last-child td{border-bottom:none}
+  .pass{background:#dcfce7;color:#166534;padding:2px 10px;border-radius:99px;font-size:.78rem;font-weight:600}
+  .pending{background:#fef3c7;color:#92400e;padding:2px 10px;border-radius:99px;font-size:.78rem;font-weight:600}
+  .summary{display:flex;gap:16px;margin-bottom:20px;flex-wrap:wrap}
+  .chip{background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:12px 20px;font-size:.85rem;box-shadow:0 1px 3px rgba(0,0,0,.05)}
+  .chip b{display:block;font-size:1.4rem;font-weight:700;color:#0f172a}
+  h2{font-size:1rem;font-weight:600;margin:24px 0 12px}
+  .badge{display:inline-block;padding:1px 8px;border-radius:99px;font-size:.75rem;font-weight:600}
+  .badge-blue{background:#dbeafe;color:#1d4ed8}
+  .badge-purple{background:#ede9fe;color:#6d28d9}
+  .note{font-size:.82rem;color:#64748b;margin-top:8px}
+</style>
+</head>
+<body>
+<h1>Test Summary Report</h1>
+<div class="meta">F-081 — Work Item Tags on Create &nbsp;|&nbsp; Date: 2026-09-11 &nbsp;|&nbsp; Branch: feature/F-081-work-item-tags-on-create</div>
+
+<div class="summary">
+  <div class="chip"><b>14</b> Total Cases</div>
+  <div class="chip"><b style="color:#166534">7</b> Passed</div>
+  <div class="chip"><b style="color:#991b1b">0</b> Failed</div>
+  <div class="chip"><b style="color:#92400e">7</b> Not Yet Executed</div>
+  <div class="chip"><b style="color:#1d4ed8">7</b> Unit</div>
+  <div class="chip"><b style="color:#6d28d9">7</b> E2E</div>
+</div>
+
+<h2>Unit Test Cases <span class="badge badge-blue">7</span></h2>
+<table>
+  <thead><tr><th>ID</th><th>Description</th><th>Layer</th><th>AC</th><th>Result</th></tr></thead>
+  <tbody>
+    <tr><td>UTC-F081-F-001</td><td>Typing text + Enter adds a chip and clears the input</td><td>Frontend</td><td>AC-2</td><td><span class="pass">PASS</span></td></tr>
+    <tr><td>UTC-F081-F-002</td><td>Whitespace-only input is a no-op</td><td>Frontend</td><td>AC-6</td><td><span class="pass">PASS</span></td></tr>
+    <tr><td>UTC-F081-F-003</td><td>Duplicate label text does not add a second chip</td><td>Frontend</td><td>AC-7</td><td><span class="pass">PASS</span></td></tr>
+    <tr><td>UTC-F081-F-004</td><td>Clicking &times; removes only that chip</td><td>Frontend</td><td>AC-3</td><td><span class="pass">PASS</span></td></tr>
+    <tr><td>UTC-F081-F-005</td><td>Submit includes the labels array in the create payload</td><td>Frontend</td><td>AC-5, AC-6</td><td><span class="pass">PASS</span></td></tr>
+    <tr><td>UTC-F081-F-006</td><td>Submit with no labels omits the field (no regression)</td><td>Frontend</td><td>AC-4</td><td><span class="pass">PASS</span></td></tr>
+    <tr><td>UTC-F081-F-007</td><td>"Save &amp; Add New" resets the labels field</td><td>Frontend</td><td>AC-8</td><td><span class="pass">PASS</span></td></tr>
+  </tbody>
+</table>
+
+<h2>E2E Test Cases <span class="badge badge-purple">7</span></h2>
+<table>
+  <thead><tr><th>ID</th><th>Description</th><th>AC</th><th>Result</th></tr></thead>
+  <tbody>
+    <tr><td>TC-F081-001</td><td>Create a Task with tags — persist and visible on reopen</td><td>AC-1, AC-2, AC-5</td><td><span class="pending">NOT EXECUTED</span></td></tr>
+    <tr><td>TC-F081-002</td><td>Create a work item with no tags — unchanged behaviour</td><td>AC-4</td><td><span class="pending">NOT EXECUTED</span></td></tr>
+    <tr><td>TC-F081-003</td><td>Remove a pending tag before submitting</td><td>AC-3</td><td><span class="pending">NOT EXECUTED</span></td></tr>
+    <tr><td>TC-F081-004</td><td>Whitespace-only tag input is rejected client-side</td><td>AC-6</td><td><span class="pending">NOT EXECUTED</span></td></tr>
+    <tr><td>TC-F081-005</td><td>Duplicate tag input is rejected client-side</td><td>AC-7</td><td><span class="pending">NOT EXECUTED</span></td></tr>
+    <tr><td>TC-F081-006</td><td>"Save &amp; Add New" resets tags for the next item</td><td>AC-8</td><td><span class="pending">NOT EXECUTED</span></td></tr>
+    <tr><td>TC-F081-007</td><td>Labels field grants no extra access (RBAC)</td><td>AC-9</td><td><span class="pending">NOT EXECUTED</span></td></tr>
+  </tbody>
+</table>
+
+<h2>Coverage Summary</h2>
+<table>
+  <thead><tr><th>Layer</th><th>Total</th><th>Passed</th><th>Failed</th><th>Not Executed</th></tr></thead>
+  <tbody>
+    <tr><td>Unit (Frontend)</td><td>7</td><td>7</td><td>0</td><td>0</td></tr>
+    <tr><td>Unit (Backend)</td><td>0</td><td>0</td><td>0</td><td>0</td></tr>
+    <tr><td>E2E</td><td>7</td><td>0</td><td>0</td><td>7</td></tr>
+    <tr><td><strong>Total</strong></td><td><strong>14</strong></td><td><strong>7</strong></td><td><strong>0</strong></td><td><strong>7</strong></td></tr>
+  </tbody>
+</table>
+
+<p class="note">
+  <strong>Unit tests:</strong> 7/7 new tests pass (Vitest + React Testing Library, <code>CreateWorkItemModal.test.tsx</code>). Full frontend suite re-run after the change: 108/153 passing (up from the pre-existing baseline of 101/146) — the 45 failing tests across 18 files are pre-existing, unrelated to this feature (missing <code>jest</code>/<code>localStorage</code> shims in unrelated suites), confirmed unchanged before and after this change. <code>tsc --noEmit</code> is clean.<br/>
+  <strong>E2E tests:</strong> This repository has no Playwright (or other browser-automation) infrastructure configured (<code>playwright.config.*</code> not found anywhere in the repo), so the 7 E2E cases above are written as specifications only and have <em>not</em> been executed by an automated browser in this session. Recommend a manual pass through TC-F081-001 through 007 against the QA environment before merging, or standing up Playwright as a separate infrastructure task.<br/>
+  <strong>Backend:</strong> No backend files were changed for this feature — <code>WorkItem.labels</code>, <code>CreateWorkItemDto</code>, and <code>WorkItemsService.create()</code> already supported the field, so no new backend unit tests were required.<br/>
+  <strong>Migration:</strong> Not required — no schema change.
+</p>
+</body>
+</html>
