@@ -225,7 +225,7 @@ export function TaskDetailModal({ task, onClose, canEdit, currentUserId }: Props
                       </div>
                       <div className="flex items-center gap-3 shrink-0">
                         <button
-                          onClick={() => taskAttachmentsApi.download(att.id, att.originalName)}
+                          onClick={() => taskAttachmentsApi.download(att.id, att.originalName, att.mimeType)}
                           className="text-xs text-primary-600 hover:underline"
                         >
                           Download
