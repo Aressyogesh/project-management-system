@@ -15,18 +15,24 @@ export const taskAttachmentsApi = {
       .then((r) => r.data);
   },
 
-  download: async (attachmentId: string, originalName: string) => {
+  download: async (attachmentId: string, originalName: string, mimeType: string) => {
     const res = await apiClient.get(`/attachments/${attachmentId}/download`, {
       responseType: 'blob',
     });
     const url = URL.createObjectURL(res.data as Blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = originalName;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    const viewableTypes = ['application/pdf', 'image/png', 'image/jpeg'];
+    if (viewableTypes.includes(mimeType)) {
+      window.open(url, '_blank');
+      setTimeout(() => URL.revokeObjectURL(url), 30000);
+    } else {
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = originalName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
   },
 
   remove: (attachmentId: string) => apiClient.delete(`/attachments/${attachmentId}`),

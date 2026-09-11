@@ -71,8 +71,25 @@ export const boardApi = {
   deleteAttachment: (attachmentId: string): Promise<void> =>
     apiClient.delete(`/work-items/attachments/${attachmentId}`).then(() => undefined),
 
-  attachmentDownloadUrl: (attachmentId: string): string =>
-    `${(apiClient.defaults.baseURL ?? '').replace(/\/$/, '')}/work-items/attachments/${attachmentId}/download`,
+  downloadAttachment: async (attachmentId: string, originalName: string, mimeType: string): Promise<void> => {
+    const res = await apiClient.get(`/work-items/attachments/${attachmentId}/download`, {
+      responseType: 'blob',
+    });
+    const url = URL.createObjectURL(res.data as Blob);
+    const viewableTypes = ['application/pdf', 'image/png', 'image/jpeg'];
+    if (viewableTypes.includes(mimeType)) {
+      window.open(url, '_blank');
+      setTimeout(() => URL.revokeObjectURL(url), 30000);
+    } else {
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = originalName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+  },
 
   downloadImportTemplate: async (projectId: string): Promise<void> => {
     const res = await apiClient.get(`/projects/${projectId}/work-items/import/template`, { responseType: 'blob' });
