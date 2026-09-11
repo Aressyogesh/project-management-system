@@ -1,6 +1,7 @@
 ﻿import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { isAxiosError } from 'axios';
 import { boardApi } from '../api/boardApi';
 import { UserAvatar } from '../../../components/shared/UserAvatar';
 import { futureDateStr, pastDateStr, todayStr } from '../../../utils/dateUtils';
@@ -65,6 +66,30 @@ function fmtDate(iso: string) {
   const d = new Date(iso.length === 10 ? iso + 'T00:00:00' : iso);
   if (isNaN(d.getTime())) return '—';
   return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
+// Turns a failed API call into a user-facing message. Backend validation errors
+// (class-validator, via the global ValidationPipe) arrive as `message: string[]`;
+// everything else falls back to a generic message rather than failing silently.
+export function extractApiErrorMessage(err: unknown, fallback: string): string {
+  if (isAxiosError<{ message?: string | string[] }>(err)) {
+    const msg = err.response?.data?.message;
+    if (Array.isArray(msg) && msg.length > 0) return msg.join(', ');
+    if (typeof msg === 'string' && msg) return msg;
+  }
+  return fallback;
+}
+
+const LOG_TIME_MIN_HOURS = 0.25;
+const LOG_TIME_MAX_HOURS = 24;
+
+export function validateLogTimeHours(hours: string): string {
+  const n = Number(hours);
+  if (!hours || isNaN(n)) return 'Enter a valid number of hours';
+  if (n < LOG_TIME_MIN_HOURS || n > LOG_TIME_MAX_HOURS) {
+    return `Hours must be between ${LOG_TIME_MIN_HOURS} and ${LOG_TIME_MAX_HOURS}`;
+  }
+  return '';
 }
 
 function Avatar({ name, photo, size = 'sm' }: { name: string; photo?: string | null; size?: 'sm' | 'xs' }) {
@@ -433,10 +458,12 @@ export function WorkItemModal({ item, sprints, members, milestones, canDelete = 
   const [logDate, setLogDate] = useState(new Date().toISOString().slice(0, 10));
   const [logHours, setLogHours] = useState('');
   const [logDesc, setLogDesc] = useState('');
+  const [logTimeError, setLogTimeError] = useState('');
   const [newLabel, setNewLabel] = useState('');
   const [addingLabel, setAddingLabel] = useState(false);
   const [expandedLogItems, setExpandedLogItems] = useState<Set<string>>(new Set());
   const [childLogForms, setChildLogForms] = useState<Record<string, { date: string; hours: string; desc: string }>>({});
+  const [childLogErrors, setChildLogErrors] = useState<Record<string, string>>({});
   const [confirmDelete, setConfirmDelete] = useState(false);
   // Bug detail local state (batch-saved via Save button)
   const [bugSeverityLocal, setBugSeverityLocal] = useState<BugSeverity | ''>((item?.severity as BugSeverity) ?? '');
@@ -603,6 +630,10 @@ export function WorkItemModal({ item, sprints, members, milestones, canDelete = 
       qc.invalidateQueries({ queryKey: ['workItem-activities', vars.childId] });
       setExpandedLogItems((prev) => { const s = new Set(prev); s.delete(vars.childId); return s; });
       setChildLogForms((prev) => { const n = { ...prev }; delete n[vars.childId]; return n; });
+      setChildLogErrors((prev) => { const n = { ...prev }; delete n[vars.childId]; return n; });
+    },
+    onError: (err, vars) => {
+      setChildLogErrors((prev) => ({ ...prev, [vars.childId]: extractApiErrorMessage(err, 'Failed to log time. Please try again.') }));
     },
   });
 
@@ -614,6 +645,10 @@ export function WorkItemModal({ item, sprints, members, milestones, canDelete = 
       );
       qc.invalidateQueries({ queryKey: ['workItem', item!.id] });
       qc.invalidateQueries({ queryKey: ['workItem-activities', item!.id] });
+      setLogTimeError('');
+    },
+    onError: (err) => {
+      setLogTimeError(extractApiErrorMessage(err, 'Failed to log time. Please try again.'));
     },
   });
 
@@ -1042,7 +1077,10 @@ export function WorkItemModal({ item, sprints, members, milestones, canDelete = 
                                       min={0.25} max={24} step={0.25}
                                       value={logForm.hours}
                                       placeholder="e.g. 2.5"
-                                      onChange={(e) => setChildLogForms((prev) => ({ ...prev, [child.id]: { ...logForm, hours: e.target.value } }))}
+                                      onChange={(e) => {
+                                        setChildLogForms((prev) => ({ ...prev, [child.id]: { ...logForm, hours: e.target.value } }));
+                                        setChildLogErrors((prev) => { const n = { ...prev }; delete n[child.id]; return n; });
+                                      }}
                                       className="input-sm w-full text-xs"
                                     />
                                   </div>
@@ -1063,6 +1101,8 @@ export function WorkItemModal({ item, sprints, members, milestones, canDelete = 
                                   <button
                                     onClick={() => {
                                       if (!logForm.date || !logForm.hours) return;
+                                      const hoursError = validateLogTimeHours(logForm.hours);
+                                      if (hoursError) { setChildLogErrors((prev) => ({ ...prev, [child.id]: hoursError })); return; }
                                       logChildTimeMut.mutate({
                                         childId: child.id,
                                         data: { date: logForm.date, hours: Number(logForm.hours), description: logForm.desc || undefined },
@@ -1074,12 +1114,16 @@ export function WorkItemModal({ item, sprints, members, milestones, canDelete = 
                                     {logChildTimeMut.isPending ? 'Logging…' : 'Log Time'}
                                   </button>
                                   <button
-                                    onClick={() => setExpandedLogItems((prev) => { const s = new Set(prev); s.delete(child.id); return s; })}
+                                    onClick={() => {
+                                      setExpandedLogItems((prev) => { const s = new Set(prev); s.delete(child.id); return s; });
+                                      setChildLogErrors((prev) => { const n = { ...prev }; delete n[child.id]; return n; });
+                                    }}
                                     className="btn-secondary text-xs px-3 py-1.5"
                                   >
                                     Cancel
                                   </button>
                                 </div>
+                                {childLogErrors[child.id] && <p className="text-xs text-red-500">{childLogErrors[child.id]}</p>}
                               </div>
                             )}
                           </div>
@@ -1295,7 +1339,7 @@ export function WorkItemModal({ item, sprints, members, milestones, canDelete = 
                     </div>
                     <div className="grid grid-cols-2 gap-2">
                       <input type="date" value={logDate} min={pastDateStr(1)} max={todayStr()} onChange={(e) => setLogDate(e.target.value)} className="input-sm" />
-                      <input type="number" min={0.25} max={24} step={0.25} placeholder="Hours" value={logHours} onChange={(e) => setLogHours(e.target.value)} className="input-sm" />
+                      <input type="number" min={0.25} max={24} step={0.25} placeholder="Hours" value={logHours} onChange={(e) => { setLogHours(e.target.value); setLogTimeError(''); }} className="input-sm" />
                     </div>
                     <div>
                       <textarea
@@ -1311,6 +1355,8 @@ export function WorkItemModal({ item, sprints, members, milestones, canDelete = 
                     <button
                       onClick={() => {
                         if (!logDate || !logHours || !logDesc.trim()) return;
+                        const hoursError = validateLogTimeHours(logHours);
+                        if (hoursError) { setLogTimeError(hoursError); return; }
                         logTimeMut.mutate(
                           { date: logDate, hours: Number(logHours), description: logDesc.trim() },
                           { onSuccess: () => { setLogHours(''); setLogDesc(''); } },
@@ -1321,6 +1367,7 @@ export function WorkItemModal({ item, sprints, members, milestones, canDelete = 
                     >
                       {logTimeMut.isPending ? 'Logging…' : 'Log Time'}
                     </button>
+                    {logTimeError && <p className="text-xs text-red-500">{logTimeError}</p>}
                     {isPlaceholderData && (
                       <p className="text-[11px] text-gray-400 animate-pulse">Loading entries…</p>
                     )}
