@@ -686,12 +686,28 @@ export class AnalyticsService {
     });
   }
 
-  async getBugsReport(period: string, projectId?: string) {
+  async getBugsReport(period: string, projectId?: string, requestingUserId?: string, isAdmin = true, managedBusinessUnitId?: string | null) {
     const { start, end } = periodToRange(period);
 
-    const activeProjectIds = projectId
-      ? [projectId]
-      : (await this.prisma.project.findMany({ where: { status: 'ACTIVE' }, select: { id: true } })).map((p) => p.id);
+    let activeProjectIds: string[];
+    if (managedBusinessUnitId) {
+      const buProjectIds = await this.getBuProjectIds(managedBusinessUnitId);
+      activeProjectIds = projectId ? buProjectIds.filter((id) => id === projectId) : buProjectIds;
+      if (activeProjectIds.length === 0) return { severity: [], classification: [] };
+    } else if (isAdmin || !requestingUserId) {
+      activeProjectIds = projectId
+        ? [projectId]
+        : (await this.prisma.project.findMany({ where: { status: 'ACTIVE' }, select: { id: true } })).map((p) => p.id);
+    } else {
+      const managedIds = await this.getManagedProjectIds(requestingUserId);
+      if (managedIds.length > 0) {
+        activeProjectIds = projectId ? managedIds.filter((id) => id === projectId) : managedIds;
+      } else {
+        const memberIds = await this.getMemberProjectIds(requestingUserId);
+        activeProjectIds = projectId ? memberIds.filter((id) => id === projectId) : memberIds;
+      }
+      if (activeProjectIds.length === 0) return { severity: [], classification: [] };
+    }
 
     const bugs = await this.prisma.workItem.findMany({
       where: {
@@ -1464,12 +1480,25 @@ export class AnalyticsService {
     statusFilter?: 'done';
     completedOnly?: boolean;
     noDateFilter?: boolean;
+    requestingUserId?: string;
+    isAdmin?: boolean;
+    managedBusinessUnitId?: string | null;
   }) {
     const { start, end } = periodToRange(params.period);
 
-    const projectIds = params.projectId
-      ? [params.projectId]
-      : (await this.prisma.project.findMany({ where: { status: 'ACTIVE' }, select: { id: true } })).map((p) => p.id);
+    let projectIds: string[];
+    if (params.projectId) {
+      projectIds = [params.projectId];
+    } else if (params.managedBusinessUnitId) {
+      projectIds = await this.getBuProjectIds(params.managedBusinessUnitId);
+    } else if (params.isAdmin || !params.requestingUserId) {
+      projectIds = (await this.prisma.project.findMany({ where: { status: 'ACTIVE' }, select: { id: true } })).map((p) => p.id);
+    } else {
+      const managedIds = await this.getManagedProjectIds(params.requestingUserId);
+      projectIds = managedIds.length > 0
+        ? managedIds
+        : await this.getMemberProjectIds(params.requestingUserId);
+    }
 
     const dateFilter = params.noDateFilter
       ? {}
