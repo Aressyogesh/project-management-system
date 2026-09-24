@@ -117,6 +117,7 @@ export class WorkItemsService implements OnModuleInit {
           OR: [
             { title: { contains: filters.search, mode: 'insensitive' as const } },
             { displayId: { contains: filters.search, mode: 'insensitive' as const } },
+            { labels: { has: filters.search } },
           ],
         }),
       },
