@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Code Review Report — F-041 New User Welcome Email &amp; Monthly KPI Digest</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; margin: 0; padding: 0; background: #f3f4f6; color: #111827; }
+  .header { background: #4f46e5; color: #fff; padding: 28px 40px; }
+  .header h1 { margin: 0; font-size: 22px; }
+  .header p { margin: 6px 0 0; opacity: .8; font-size: 14px; }
+  .container { max-width: 900px; margin: 32px auto; padding: 0 24px 48px; }
+  .card { background: #fff; border-radius: 12px; border: 1px solid #e5e7eb; margin-bottom: 24px; overflow: hidden; }
+  .card-header { background: #f9fafb; padding: 14px 24px; border-bottom: 1px solid #e5e7eb; font-weight: 700; font-size: 15px; }
+  .card-body { padding: 20px 24px; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th { background: #f9fafb; padding: 10px 14px; text-align: left; font-weight: 600; border-bottom: 2px solid #e5e7eb; }
+  td { padding: 10px 14px; border-bottom: 1px solid #f3f4f6; vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  .pass { color: #16a34a; font-weight: 700; }
+  .na { color: #6b7280; font-weight: 600; }
+  .verdict { font-size: 18px; font-weight: 700; color: #16a34a; }
+  .meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 14px; }
+  .meta-item label { display: block; color: #6b7280; font-size: 12px; margin-bottom: 2px; }
+  .meta-item span { font-weight: 600; }
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>Code Review Report — F-041 New User Welcome Email &amp; Monthly KPI Digest</h1>
+  <p>Feature Branch: feature/F-038-email-notification-infrastructure &nbsp;|&nbsp; Reviewer: Claude Code &nbsp;|&nbsp; Date: 2026-06-09</p>
+</div>
+<div class="container">
+
+  <div class="card">
+    <div class="card-header">Review Metadata</div>
+    <div class="card-body">
+      <div class="meta-grid">
+        <div class="meta-item"><label>Feature ID</label><span>F-041</span></div>
+        <div class="meta-item"><label>Files Changed</label><span>4 (users.service, notifications-cron, 2 spec files)</span></div>
+        <div class="meta-item"><label>Reviewer</label><span>Claude Code (Automated)</span></div>
+        <div class="meta-item"><label>Overall Verdict</label><span class="verdict">APPROVED</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">CR-1: Code Correctness</div>
+    <div class="card-body">
+      <table>
+        <thead><tr><th>Check</th><th>Status</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td>Welcome email sent after user.create() succeeds (not before)</td><td class="pass">PASS</td><td>Correct ordering — user is persisted before email attempt; failure won't roll back creation</td></tr>
+          <tr><td>SMTP failure in createUser does not throw to caller</td><td class="pass">PASS</td><td>try/catch wraps sendEmail; returns user regardless</td></tr>
+          <tr><td>KPI period derived as YYYY-MM of previous month</td><td class="pass">PASS</td><td>new Date(year, month-1, 1) correctly wraps January → December prev year</td></tr>
+          <tr><td>KPI users with 0 records skipped via `if (records.length === 0) continue`</td><td class="pass">PASS</td><td>Per AC-7</td></tr>
+          <tr><td>Leave report: prevMonthStart/End correctly bounds the month</td><td class="pass">PASS</td><td>new Date(year, month-1, 1) to new Date(year, month, 0, 23, 59, 59, 999) — correct last-day-of-month computation</td></tr>
+          <tr><td>Leave groupBy userId with _sum.totalDays</td><td class="pass">PASS</td><td>Prisma groupBy syntax correct</td></tr>
+          <tr><td>Admin filter uses SystemRole enum, not string literals</td><td class="pass">PASS</td><td>{ in: [SystemRole.SUPER_USER, SystemRole.ADMIN] } — type-safe</td></tr>
+          <tr><td>Name lookup only when userIds.length &gt; 0</td><td class="pass">PASS</td><td>Avoids unnecessary DB query when no leave taken</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">CR-2 to CR-8: Structure, Types, Tests, NestJS, Integration</div>
+    <div class="card-body">
+      <table>
+        <thead><tr><th>Check</th><th>Status</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td>EmailService injected in UsersService via constructor DI</td><td class="pass">PASS</td><td>Correct; @Global() module provides it without explicit import in UsersModule</td></tr>
+          <tr><td>ConfigService injected to read APP_FRONTEND_URL</td><td class="pass">PASS</td><td>Follows same pattern as auth.service.ts</td></tr>
+          <tr><td>Logger added to UsersService (not previously present)</td><td class="pass">PASS</td><td>Required for welcome email error logging</td></tr>
+          <tr><td>users.service.spec.ts: EmailService and ConfigService mocked</td><td class="pass">PASS</td><td>Both mocks added; existing 7 tests continue to pass</td></tr>
+          <tr><td>users.service.profile.spec.ts: constructor updated for new params</td><td class="pass">PASS</td><td>makeSvc() passes 4 args; all profile tests pass</td></tr>
+          <tr><td>notifications-cron.spec: kpiRecord.findMany and leaveRequest.groupBy mocked</td><td class="pass">PASS</td><td>mockPrisma extended; all 18 cron tests pass</td></tr>
+          <tr><td>Cron expressions correct ('0 8 1 * *' and '5 8 1 * *')</td><td class="pass">PASS</td><td>08:00 and 08:05 on 1st of month; staggered to avoid load spike</td></tr>
+          <tr><td>7/7 new unit tests passing; 218/218 full suite green</td><td class="pass">PASS</td><td>No regressions</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">Summary</div>
+    <div class="card-body">
+      <table>
+        <thead><tr><th>Category</th><th>Checks</th><th>Passed</th><th>Failed</th></tr></thead>
+        <tbody>
+          <tr><td>CR-1 Correctness</td><td>8</td><td>8</td><td>0</td></tr>
+          <tr><td>CR-2 to CR-8</td><td>8</td><td>8</td><td>0</td></tr>
+          <tr style="font-weight:700;"><td>Total</td><td>16</td><td>16</td><td>0</td></tr>
+        </tbody>
+      </table>
+      <p style="margin-top:16px;font-size:16px;" class="verdict">Verdict: APPROVED</p>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<title>Security Review — F-036 AI Assistant (Chat + Voice)</title>
+<style>
+  body{font-family:Inter,sans-serif;margin:0;background:#f8fafc;color:#1e293b}
+  .header{background:linear-gradient(135deg,#6d28d9,#7c3aed);color:#fff;padding:32px 40px}
+  .header h1{margin:0 0 4px;font-size:22px}
+  .header p{margin:0;opacity:.8;font-size:13px}
+  .container{max-width:960px;margin:32px auto;padding:0 24px}
+  .card{background:#fff;border:1px solid #e2e8f0;border-radius:12px;margin-bottom:20px;overflow:hidden}
+  .card-header{padding:14px 20px;border-bottom:1px solid #f1f5f9;display:flex;align-items:center;gap:10px}
+  .card-header h3{margin:0;font-size:14px;font-weight:600}
+  .badge{padding:2px 10px;border-radius:20px;font-size:11px;font-weight:700}
+  .pass{background:#dcfce7;color:#166534}
+  .na{background:#f1f5f9;color:#64748b}
+  table{width:100%;border-collapse:collapse}
+  th{background:#f8fafc;padding:10px 16px;text-align:left;font-size:12px;color:#64748b;font-weight:600;border-bottom:1px solid #e2e8f0}
+  td{padding:10px 16px;font-size:13px;border-bottom:1px solid #f1f5f9;vertical-align:top}
+  tr:last-child td{border-bottom:none}
+  .status-pass{color:#16a34a;font-weight:600}
+  .status-na{color:#94a3b8;font-weight:600}
+  .summary{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px}
+  .stat{background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:16px;text-align:center}
+  .stat-num{font-size:28px;font-weight:700;color:#6d28d9}
+  .stat-lbl{font-size:12px;color:#64748b;margin-top:4px}
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>Security Review Report — F-036</h1>
+  <p>AI Assistant (Chat + Voice) &nbsp;|&nbsp; OWASP Top 10 &nbsp;|&nbsp; Reviewed: 2026-06-08</p>
+</div>
+<div class="container">
+  <div class="summary">
+    <div class="stat"><div class="stat-num">11</div><div class="stat-lbl">Checks Run</div></div>
+    <div class="stat"><div class="stat-num">9</div><div class="stat-lbl">Passed</div></div>
+    <div class="stat"><div class="stat-num">2</div><div class="stat-lbl">N/A</div></div>
+    <div class="stat"><div class="stat-num">0</div><div class="stat-lbl">Failures</div></div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><h3>SEC-1 — Broken Access Control</h3><span class="badge pass">PASS</span></div>
+    <table>
+      <tr><th>Check</th><th>Finding</th><th>Status</th></tr>
+      <tr><td>JWT guard on /ai/chat</td><td>Global <code>JwtAuthGuard</code> enforced. Unauthenticated requests receive 401.</td><td class="status-pass">✓ Pass</td></tr>
+      <tr><td>RBAC data scoping</td><td>EMPLOYEE queries filtered to own <code>assigneeId/userId</code>. ADMIN/SUPER_USER see all. No role escalation path.</td><td class="status-pass">✓ Pass</td></tr>
+      <tr><td>No Public() decorator</td><td><code>/ai/chat</code> has no <code>@Public()</code> override.</td><td class="status-pass">✓ Pass</td></tr>
+    </table>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><h3>SEC-2 — Cryptographic Failures</h3><span class="badge pass">PASS</span></div>
+    <table>
+      <tr><th>Check</th><th>Finding</th><th>Status</th></tr>
+      <tr><td>API key storage</td><td><code>GROQ_API_KEY</code> stored in environment variable / GitHub secret, never hardcoded or logged.</td><td class="status-pass">✓ Pass</td></tr>
+      <tr><td>HTTPS to Groq</td><td>All requests go to <code>https://api.groq.com</code> — TLS enforced by the URL.</td><td class="status-pass">✓ Pass</td></tr>
+    </table>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><h3>SEC-3 — Injection</h3><span class="badge pass">PASS</span></div>
+    <table>
+      <tr><th>Check</th><th>Finding</th><th>Status</th></tr>
+      <tr><td>Prompt injection</td><td>User message is placed in the <code>user</code> role of the messages array, separated from the system prompt. The system prompt is server-controlled and cannot be overwritten by user input.</td><td class="status-pass">✓ Pass</td></tr>
+      <tr><td>SQL injection</td><td>All DB queries use Prisma parameterised queries. No raw SQL.</td><td class="status-pass">✓ Pass</td></tr>
+      <tr><td>No eval / dynamic code</td><td>No <code>eval</code>, <code>Function()</code>, or dynamic execution of user-provided strings.</td><td class="status-pass">✓ Pass</td></tr>
+    </table>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><h3>SEC-4 — Insecure Design</h3><span class="badge pass">PASS</span></div>
+    <table>
+      <tr><th>Check</th><th>Finding</th><th>Status</th></tr>
+      <tr><td>Stateless backend</td><td>No conversation state stored server-side. History sent by client on each request — no server-side session to hijack.</td><td class="status-pass">✓ Pass</td></tr>
+      <tr><td>Context data minimisation</td><td>Only fields needed for display are selected (no password hashes, tokens, or PII beyond name).</td><td class="status-pass">✓ Pass</td></tr>
+    </table>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><h3>SEC-5 — Security Misconfiguration</h3><span class="badge pass">PASS</span></div>
+    <table>
+      <tr><th>Check</th><th>Finding</th><th>Status</th></tr>
+      <tr><td>GROQ_API_KEY not in .env committed</td><td><code>.env</code> contains placeholder only. Real key only in GitHub secret and server environment.</td><td class="status-pass">✓ Pass</td></tr>
+      <tr><td>Error message exposure</td><td>Groq errors logged server-side only. Client receives generic "AI service unavailable" message.</td><td class="status-pass">✓ Pass</td></tr>
+    </table>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><h3>SEC-6 — Vulnerable Components</h3><span class="badge pass">PASS</span></div>
+    <table>
+      <tr><th>Check</th><th>Finding</th><th>Status</th></tr>
+      <tr><td>No new npm dependencies</td><td>Groq is called via native <code>fetch</code> (Node 26 built-in). Zero new packages introduced.</td><td class="status-pass">✓ Pass</td></tr>
+    </table>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><h3>SEC-7 — Authentication Failures</h3><span class="badge pass">PASS</span></div>
+    <table>
+      <tr><th>Check</th><th>Finding</th><th>Status</th></tr>
+      <tr><td>Token validation</td><td>JWT verified by existing <code>JwtStrategy</code> before <code>AiController</code> is reached.</td><td class="status-pass">✓ Pass</td></tr>
+      <tr><td>User identity in service</td><td>User object sourced from validated JWT payload, not from request body.</td><td class="status-pass">✓ Pass</td></tr>
+    </table>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><h3>SEC-8 — Software Integrity Failures</h3><span class="badge na">N/A</span></div>
+    <table>
+      <tr><th>Check</th><th>Finding</th><th>Status</th></tr>
+      <tr><td>Supply chain</td><td>No new dependencies added. Not applicable.</td><td class="status-na">— N/A</td></tr>
+    </table>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><h3>SEC-9 — Logging &amp; Monitoring Failures</h3><span class="badge pass">PASS</span></div>
+    <table>
+      <tr><th>Check</th><th>Finding</th><th>Status</th></tr>
+      <tr><td>Error logging</td><td>Groq errors logged via NestJS <code>Logger</code> at ERROR level with context.</td><td class="status-pass">✓ Pass</td></tr>
+      <tr><td>No sensitive data in logs</td><td>User messages and API key are not logged.</td><td class="status-pass">✓ Pass</td></tr>
+    </table>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><h3>SEC-10 — SSRF</h3><span class="badge pass">PASS</span></div>
+    <table>
+      <tr><th>Check</th><th>Finding</th><th>Status</th></tr>
+      <tr><td>Outbound URL</td><td>Groq API URL is hardcoded as a constant. User input cannot influence the target URL.</td><td class="status-pass">✓ Pass</td></tr>
+    </table>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><h3>SEC-11 — XSS</h3><span class="badge na">N/A</span></div>
+    <table>
+      <tr><th>Check</th><th>Finding</th><th>Status</th></tr>
+      <tr><td>AI response rendering</td><td>AI replies rendered as plain text in React (<code>whitespace-pre-wrap</code> CSS). React escapes all content by default. No <code>dangerouslySetInnerHTML</code> used.</td><td class="status-pass">✓ Pass</td></tr>
+    </table>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><h3>Overall Verdict</h3><span class="badge pass">APPROVED</span></div>
+    <table>
+      <tr><td style="font-size:15px;font-weight:700;color:#16a34a;">APPROVED — 9 Pass, 2 N/A, 0 Failures. No vulnerabilities found.</td></tr>
+    </table>
+  </div>
+</div>
+</body>
+</html>

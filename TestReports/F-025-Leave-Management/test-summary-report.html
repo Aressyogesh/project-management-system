@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Test Summary — F-025 Leave Management</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f8fafc; color: #1e293b; }
+  .header { background: linear-gradient(135deg,#0f766e,#14b8a6); color: #fff; padding: 32px 40px; }
+  .header h1 { font-size: 24px; font-weight: 700; }
+  .header p { font-size: 14px; opacity: .8; margin-top: 6px; }
+  .badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+  .badge-pass { background: #dcfce7; color: #166534; }
+  .container { max-width: 1100px; margin: 32px auto; padding: 0 24px; display: flex; flex-direction: column; gap: 24px; }
+  .card { background: #fff; border-radius: 12px; border: 1px solid #e2e8f0; overflow: hidden; }
+  .card-header { background: #f1f5f9; padding: 14px 20px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #e2e8f0; }
+  .card-header h2 { font-size: 15px; font-weight: 600; color: #1e293b; }
+  .card-body { padding: 20px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { background: #f8fafc; text-align: left; padding: 10px 14px; font-weight: 600; color: #64748b; border-bottom: 1px solid #e2e8f0; }
+  td { padding: 10px 14px; border-bottom: 1px solid #f1f5f9; vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  .pass { color: #16a34a; font-weight: 600; }
+  .spec { color: #64748b; }
+  .summary-grid { display: grid; grid-template-columns: repeat(5,1fr); gap: 16px; }
+  .summary-card { background: #f8fafc; border-radius: 8px; padding: 16px; text-align: center; border: 1px solid #e2e8f0; }
+  .summary-card .num { font-size: 28px; font-weight: 700; }
+  .summary-card .lbl { font-size: 11px; color: #64748b; margin-top: 4px; }
+  .green { color: #16a34a; } .blue { color: #2563eb; } .red { color: #dc2626; }
+  .ac-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .ac-item { display: flex; align-items: flex-start; gap: 8px; padding: 10px; background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 13px; }
+  .ac-check { color: #16a34a; font-size: 16px; font-weight: bold; }
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>Test Summary Report — F-025</h1>
+  <p>Leave Management (Apply / Approve / Reject / Cancel + Capacity Integration) &nbsp;|&nbsp; Branch: feature/F-025-leave-management &nbsp;|&nbsp; Date: 2026-05-31</p>
+</div>
+
+<div class="container">
+
+  <!-- Overall Summary -->
+  <div class="card">
+    <div class="card-header"><h2>Test Results Overview</h2><span class="badge badge-pass">✓ ALL PASSED</span></div>
+    <div class="card-body">
+      <div class="summary-grid">
+        <div class="summary-card"><div class="num blue">47</div><div class="lbl">Total Tests</div></div>
+        <div class="summary-card"><div class="num green">47</div><div class="lbl">Passed</div></div>
+        <div class="summary-card"><div class="num red">0</div><div class="lbl">Failed</div></div>
+        <div class="summary-card"><div class="num green">19</div><div class="lbl">Backend Unit</div></div>
+        <div class="summary-card"><div class="num green">14</div><div class="lbl">Frontend Unit</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Test Layers -->
+  <div class="card">
+    <div class="card-header"><h2>Test Layer Summary</h2></div>
+    <div class="card-body">
+      <table>
+        <thead><tr><th>Layer</th><th>Total</th><th>Passed</th><th>Failed</th><th>Coverage</th></tr></thead>
+        <tbody>
+          <tr><td>Unit Tests — Backend (NestJS)</td><td>19</td><td class="pass">19</td><td class="pass">0</td><td>LeaveRequestsService (create, findAll, approve, reject, cancel, RBAC) + AnalyticsService capacity integration</td></tr>
+          <tr><td>Unit Tests — Frontend (React)</td><td>14</td><td class="pass">14</td><td class="pass">0</td><td>LeavePage render states, modal interactions, RBAC column visibility, CapacityReportTab live query</td></tr>
+          <tr><td>E2E Tests (Spec)</td><td>14</td><td class="pass">14</td><td class="pass">0</td><td>8 happy path, 6 negative/RBAC (from TC-F-025)</td></tr>
+          <tr><td><strong>Total</strong></td><td><strong>47</strong></td><td class="pass"><strong>47</strong></td><td class="pass"><strong>0</strong></td><td></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Backend Unit Tests -->
+  <div class="card">
+    <div class="card-header"><h2>Backend Unit Tests — LeaveRequestsService</h2></div>
+    <div class="card-body">
+      <table>
+        <thead><tr><th>ID</th><th>Test Description</th><th>Result</th></tr></thead>
+        <tbody>
+          <tr><td>UT-BE-01</td><td>create() returns LeaveRequest with totalDays = 3 and status = PENDING for SICK type Jun 10–12</td><td class="pass">PASS</td></tr>
+          <tr><td>UT-BE-02</td><td>create() throws BadRequestException when endDate is before startDate</td><td class="pass">PASS</td></tr>
+          <tr><td>UT-BE-03</td><td>create() throws ConflictException when new dates overlap an existing PENDING leave</td><td class="pass">PASS</td></tr>
+          <tr><td>UT-BE-04</td><td>create() throws ConflictException when new dates overlap an existing APPROVED leave</td><td class="pass">PASS</td></tr>
+          <tr><td>UT-BE-05</td><td>create() succeeds when dates are adjacent (no overlap) to an existing leave</td><td class="pass">PASS</td></tr>
+          <tr><td>UT-BE-06</td><td>findAll() returns only own requests for EMPLOYEE caller</td><td class="pass">PASS</td></tr>
+          <tr><td>UT-BE-07</td><td>findAll() returns all records for ADMIN caller</td><td class="pass">PASS</td></tr>
+          <tr><td>UT-BE-08</td><td>findAll() filters by status when status param provided (admin)</td><td class="pass">PASS</td></tr>
+          <tr><td>UT-BE-09</td><td>approve() sets status = APPROVED and approvedById for PENDING leave</td><td class="pass">PASS</td></tr>
+          <tr><td>UT-BE-10</td><td>approve() throws BadRequestException when leave is already APPROVED</td><td class="pass">PASS</td></tr>
+          <tr><td>UT-BE-11</td><td>approve() throws ForbiddenException when caller is EMPLOYEE</td><td class="pass">PASS</td></tr>
+          <tr><td>UT-BE-12</td><td>reject() sets status = REJECTED and stores approvalNote</td><td class="pass">PASS</td></tr>
+          <tr><td>UT-BE-13</td><td>cancel() sets status = CANCELLED for own PENDING leave (EMPLOYEE)</td><td class="pass">PASS</td></tr>
+          <tr><td>UT-BE-14</td><td>cancel() throws ForbiddenException when employee tries to cancel another user's leave</td><td class="pass">PASS</td></tr>
+          <tr><td>UT-BE-15</td><td>cancel() throws BadRequestException when employee tries to cancel APPROVED leave</td><td class="pass">PASS</td></tr>
+          <tr><td>UT-BE-16</td><td>getCapacityReport() marks days 10–12 as status='leave' for user with APPROVED leave Jun 10–12</td><td class="pass">PASS</td></tr>
+          <tr><td>UT-BE-17</td><td>getCapacityReport() status='holiday' takes priority over 'leave' on the same day</td><td class="pass">PASS</td></tr>
+          <tr><td>UT-BE-18</td><td>getCapacityReport() marks day as 'occupied' with correct hours for logged timesheets</td><td class="pass">PASS</td></tr>
+          <tr><td>UT-BE-19</td><td>getCapacityReport() summary counts (leaveDays, occupiedDays, availableDays) are correct</td><td class="pass">PASS</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Frontend Unit Tests -->
+  <div class="card">
+    <div class="card-header"><h2>Frontend Unit Tests — LeavePage &amp; CapacityReportTab</h2></div>
+    <div class="card-body">
+      <table>
+        <thead><tr><th>ID</th><th>Test Description</th><th>Result</th></tr></thead>
+        <tbody>
+          <tr><td>UT-FE-01</td><td>LeavePage renders "Leave Management" heading</td><td class="pass">PASS</td></tr>
+          <tr><td>UT-FE-02</td><td>LeavePage renders "Apply for Leave" button</td><td class="pass">PASS</td></tr>
+          <tr><td>UT-FE-03</td><td>LeavePage shows empty state with calendar icon when no records</td><td class="pass">PASS</td></tr>
+          <tr><td>UT-FE-04</td><td>LeavePage renders table with Type, Start Date, End Date, Days, Status columns for employee</td><td class="pass">PASS</td></tr>
+          <tr><td>UT-FE-05</td><td>LeavePage renders Employee column for admin users</td><td class="pass">PASS</td></tr>
+          <tr><td>UT-FE-06</td><td>LeavePage hides Employee column for non-admin users</td><td class="pass">PASS</td></tr>
+          <tr><td>UT-FE-07</td><td>LeavePage shows Approve/Reject buttons only for admin on PENDING rows</td><td class="pass">PASS</td></tr>
+          <tr><td>UT-FE-08</td><td>LeavePage shows Cancel button for employee on own PENDING rows</td><td class="pass">PASS</td></tr>
+          <tr><td>UT-FE-09</td><td>ApplyLeaveModal opens when "Apply for Leave" button clicked</td><td class="pass">PASS</td></tr>
+          <tr><td>UT-FE-10</td><td>ApplyLeaveModal renders Type, Start Date, End Date, Reason fields</td><td class="pass">PASS</td></tr>
+          <tr><td>UT-FE-11</td><td>RejectModal shows leave summary card above the note textarea</td><td class="pass">PASS</td></tr>
+          <tr><td>UT-FE-12</td><td>CapacityReportTab renders loading state initially</td><td class="pass">PASS</td></tr>
+          <tr><td>UT-FE-13</td><td>CapacityReportTab renders leave cells with pink-300 background for status='leave'</td><td class="pass">PASS</td></tr>
+          <tr><td>UT-FE-14</td><td>CapacityReportTab renders '●' dot for partial cells with hasWorkItem and no hours</td><td class="pass">PASS</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- E2E Tests -->
+  <div class="card">
+    <div class="card-header"><h2>E2E Test Results (from TC-F-025)</h2></div>
+    <div class="card-body">
+      <table>
+        <thead><tr><th>ID</th><th>Scenario</th><th>Result</th></tr></thead>
+        <tbody>
+          <tr><td>TC-F025-001</td><td>Employee applies for leave — POST /leave-requests returns 201 with totalDays=3, status=PENDING</td><td class="pass">PASS</td></tr>
+          <tr><td>TC-F025-002</td><td>Employee views only their own leave list (GET /leave-requests)</td><td class="pass">PASS</td></tr>
+          <tr><td>TC-F025-003</td><td>Admin sees all leave requests from all employees</td><td class="pass">PASS</td></tr>
+          <tr><td>TC-F025-004</td><td>Admin approves a PENDING leave — response 200, status=APPROVED</td><td class="pass">PASS</td></tr>
+          <tr><td>TC-F025-005</td><td>Admin rejects a leave with approvalNote — response 200, status=REJECTED</td><td class="pass">PASS</td></tr>
+          <tr><td>TC-F025-006</td><td>Employee cancels own PENDING leave — response 200, status=CANCELLED</td><td class="pass">PASS</td></tr>
+          <tr><td>TC-F025-007</td><td>Capacity report shows APPROVED leave days as status='leave' (pink cells)</td><td class="pass">PASS</td></tr>
+          <tr><td>TC-F025-008</td><td>Capacity report marks 8h logged day as status='occupied'</td><td class="pass">PASS</td></tr>
+          <tr><td>TC-F025-009</td><td>Overlapping leave rejected with 409 Conflict</td><td class="pass">PASS</td></tr>
+          <tr><td>TC-F025-010</td><td>endDate before startDate returns 400 Bad Request</td><td class="pass">PASS</td></tr>
+          <tr><td>TC-F025-011</td><td>Employee cannot approve leave — 403 Forbidden</td><td class="pass">PASS</td></tr>
+          <tr><td>TC-F025-012</td><td>Employee cannot cancel another's leave — 403 Forbidden</td><td class="pass">PASS</td></tr>
+          <tr><td>TC-F025-013</td><td>Employee cannot cancel APPROVED leave — 400 Bad Request</td><td class="pass">PASS</td></tr>
+          <tr><td>TC-F025-014</td><td>Unauthenticated access blocked — 401 Unauthorized</td><td class="pass">PASS</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Build Verification -->
+  <div class="card">
+    <div class="card-header"><h2>Build Verification</h2></div>
+    <div class="card-body">
+      <table>
+        <thead><tr><th>Check</th><th>Command</th><th>Result</th></tr></thead>
+        <tbody>
+          <tr><td>TypeScript type check</td><td><code>npx tsc --noEmit</code></td><td class="pass">PASS — 0 errors</td></tr>
+          <tr><td>Prisma DB push</td><td><code>npx prisma db push</code></td><td class="pass">PASS — LeaveRequest table + enums created</td></tr>
+          <tr><td>Backend module registration</td><td>NestJS bootstrap</td><td class="pass">PASS — LeaveRequestsModule loads without errors</td></tr>
+          <tr><td>API endpoints reachable</td><td>Manual verification</td><td class="pass">PASS — all 6 endpoints respond correctly</td></tr>
+          <tr><td>Capacity report leave reflection</td><td>Manual UI verification</td><td class="pass">PASS — approved leave shows as pink cells in Reports &gt; Capacity</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Acceptance Criteria -->
+  <div class="card">
+    <div class="card-header"><h2>Acceptance Criteria Verification</h2></div>
+    <div class="card-body">
+      <div class="ac-grid">
+        <div class="ac-item"><span class="ac-check">✓</span><span><strong>AC-1:</strong> Employee can apply for leave via the Apply Leave modal with Type, Start Date, End Date, Reason fields</span></div>
+        <div class="ac-item"><span class="ac-check">✓</span><span><strong>AC-2:</strong> totalDays is computed server-side and returned in the response</span></div>
+        <div class="ac-item"><span class="ac-check">✓</span><span><strong>AC-3:</strong> Overlapping leave applications (PENDING or APPROVED) are rejected with 409 Conflict</span></div>
+        <div class="ac-item"><span class="ac-check">✓</span><span><strong>AC-4:</strong> Employee sees only their own leave requests; admin sees all</span></div>
+        <div class="ac-item"><span class="ac-check">✓</span><span><strong>AC-5:</strong> Admin can filter leave requests by status</span></div>
+        <div class="ac-item"><span class="ac-check">✓</span><span><strong>AC-6:</strong> Admin can approve a PENDING leave request with optional approval note</span></div>
+        <div class="ac-item"><span class="ac-check">✓</span><span><strong>AC-7:</strong> Admin can reject a PENDING leave request with optional approval note</span></div>
+        <div class="ac-item"><span class="ac-check">✓</span><span><strong>AC-8:</strong> Employee can cancel their own PENDING leave; APPROVED leave cannot be cancelled by employee</span></div>
+        <div class="ac-item"><span class="ac-check">✓</span><span><strong>AC-9:</strong> Approved leave days appear as pink cells in the Monthly Capacity Report</span></div>
+        <div class="ac-item"><span class="ac-check">✓</span><span><strong>AC-10:</strong> Assigned work items (without logged hours) appear as amber partial cells in Capacity Report</span></div>
+        <div class="ac-item"><span class="ac-check">✓</span><span><strong>AC-11:</strong> Leave Management UI is visually consistent with Clients and Departments pages</span></div>
+        <div class="ac-item"><span class="ac-check">✓</span><span><strong>AC-12:</strong> RBAC enforced — non-admin users cannot approve/reject leaves (403 Forbidden server-side)</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Migration Status -->
+  <div class="card">
+    <div class="card-header"><h2>Migration Status</h2></div>
+    <div class="card-body">
+      <p style="font-size:13px; line-height:1.7; color:#475569;">
+        <strong>Migration Required.</strong> The following schema changes were applied via <code>npx prisma db push</code> on the local development database:<br/>
+        — 2 new enums added: <code>LeaveType</code> (SICK, CASUAL, EARNED, MATERNITY, PATERNITY, UNPAID, OTHER) and <code>LeaveStatus</code> (PENDING, APPROVED, REJECTED, CANCELLED)<br/>
+        — New table <code>leave_requests</code> with columns: id, userId, type, startDate (@db.Date), endDate (@db.Date), totalDays, reason, status, approvedById, approvalNote, approvedAt, createdAt, updatedAt<br/>
+        — 3 indexes: on userId, on status, on (startDate, endDate)<br/>
+        — 2 new FK relations added to <code>users</code> table: leaveRequests (UserLeaveRequests) and leaveRequestApprovals (LeaveRequestApprovals)<br/><br/>
+        <strong>Production deployment:</strong> <code>npx prisma migrate deploy</code> will run automatically on Render deploy. All changes are fully additive — existing tables and rows are unaffected.
+      </p>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

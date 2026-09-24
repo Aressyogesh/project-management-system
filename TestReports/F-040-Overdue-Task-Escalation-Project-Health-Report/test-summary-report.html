@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Test Summary Report — F-040 Overdue Task Escalation &amp; Project Health Report</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; margin: 0; padding: 0; background: #f3f4f6; color: #111827; }
+  .header { background: #059669; color: #fff; padding: 28px 40px; }
+  .header h1 { margin: 0; font-size: 22px; }
+  .header p { margin: 6px 0 0; opacity: .8; font-size: 14px; }
+  .container { max-width: 900px; margin: 32px auto; padding: 0 24px 48px; }
+  .card { background: #fff; border-radius: 12px; border: 1px solid #e5e7eb; margin-bottom: 24px; overflow: hidden; }
+  .card-header { background: #f9fafb; padding: 14px 24px; border-bottom: 1px solid #e5e7eb; font-weight: 700; font-size: 15px; }
+  .card-body { padding: 20px 24px; }
+  .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+  .stat-box { background: #f9fafb; border-radius: 10px; padding: 16px; text-align: center; border: 1px solid #e5e7eb; }
+  .stat-box .value { font-size: 32px; font-weight: 800; color: #111827; }
+  .stat-box .label { font-size: 12px; color: #6b7280; margin-top: 4px; }
+  .stat-box.green .value { color: #16a34a; }
+  .stat-box.red .value { color: #dc2626; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th { background: #f9fafb; padding: 10px 14px; text-align: left; font-weight: 600; border-bottom: 2px solid #e5e7eb; }
+  td { padding: 10px 14px; border-bottom: 1px solid #f3f4f6; vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  .pass { color: #16a34a; font-weight: 700; }
+  .verdict { font-size: 18px; font-weight: 700; color: #16a34a; }
+  .badge-green { display: inline-block; padding: 3px 10px; border-radius: 9999px; font-size: 12px; font-weight: 700; background: #dcfce7; color: #16a34a; }
+  .badge-blue { display: inline-block; padding: 3px 10px; border-radius: 9999px; font-size: 12px; font-weight: 700; background: #dbeafe; color: #1d4ed8; }
+  .badge-purple { display: inline-block; padding: 3px 10px; border-radius: 9999px; font-size: 12px; font-weight: 700; background: #ede9fe; color: #7c3aed; }
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>Test Summary Report — F-040 Overdue Task Escalation &amp; Project Health Report</h1>
+  <p>Framework: Jest &nbsp;|&nbsp; Run Date: 2026-06-09 &nbsp;|&nbsp; Branch: feature/F-038-email-notification-infrastructure</p>
+</div>
+<div class="container">
+
+  <div class="card">
+    <div class="card-header">Test Results Overview</div>
+    <div class="card-body">
+      <div class="stats-grid">
+        <div class="stat-box"><div class="value">7</div><div class="label">Total Tests</div></div>
+        <div class="stat-box green"><div class="value">7</div><div class="label">Passed</div></div>
+        <div class="stat-box red"><div class="value">0</div><div class="label">Failed</div></div>
+        <div class="stat-box"><div class="value">100%</div><div class="label">Pass Rate</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">Unit Tests — Backend (NotificationsCronService, F-040 methods)</div>
+    <div class="card-body">
+      <table>
+        <thead><tr><th>Test ID</th><th>Title</th><th>Type</th><th>Result</th></tr></thead>
+        <tbody>
+          <tr><td>UTC-F040-B-001</td><td>HandleOverdueTaskEscalation_OverdueTasksWithPm_SendsEscalationEmailToPm</td><td><span class="badge-green">Happy Path</span></td><td class="pass">PASS</td></tr>
+          <tr><td>UTC-F040-B-002</td><td>HandleOverdueTaskEscalation_NoOverdueTasks_SendsNoEmails</td><td><span class="badge-blue">Edge Case</span></td><td class="pass">PASS</td></tr>
+          <tr><td>UTC-F040-B-003</td><td>HandleOverdueTaskEscalation_ProjectHasNoPm_SkipsProject</td><td><span class="badge-blue">Edge Case</span></td><td class="pass">PASS</td></tr>
+          <tr><td>UTC-F040-B-004</td><td>HandleOverdueTaskEscalation_SmtpFails_LogsErrorAndDoesNotThrow</td><td><span class="badge-purple">Negative</span></td><td class="pass">PASS</td></tr>
+          <tr><td>UTC-F040-B-005</td><td>HandleWeeklyProjectHealthReport_ActiveProjectsWithPm_SendsHealthEmailPerPm</td><td><span class="badge-green">Happy Path</span></td><td class="pass">PASS</td></tr>
+          <tr><td>UTC-F040-B-006</td><td>HandleWeeklyProjectHealthReport_ProjectHasNoPm_SkipsProject</td><td><span class="badge-blue">Edge Case</span></td><td class="pass">PASS</td></tr>
+          <tr><td>UTC-F040-B-007</td><td>HandleWeeklyProjectHealthReport_SmtpFails_LogsErrorAndDoesNotThrow</td><td><span class="badge-purple">Negative</span></td><td class="pass">PASS</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">E2E / Manual Test Cases</div>
+    <div class="card-body">
+      <table>
+        <thead><tr><th>Test ID</th><th>Title</th><th>Type</th><th>Status</th></tr></thead>
+        <tbody>
+          <tr><td>TC-F040-001</td><td>OverdueEscalation_TasksOverdueByTwoDays_PmReceivesEscalationEmail</td><td><span class="badge-green">Happy Path</span></td><td><span class="badge-green">Covered by UTC-B-001</span></td></tr>
+          <tr><td>TC-F040-002</td><td>WeeklyHealthReport_ActiveProject_PmReceivesHealthSummary</td><td><span class="badge-green">Happy Path</span></td><td><span class="badge-green">Covered by UTC-B-005</span></td></tr>
+          <tr><td>TC-F040-003</td><td>OverdueEscalation_NoOverdueTasks_NoEmailSent</td><td><span class="badge-blue">Edge Case</span></td><td><span class="badge-green">Covered by UTC-B-002</span></td></tr>
+          <tr><td>TC-F040-004</td><td>OverdueEscalation_ProjectNoPm_SkippedSilently</td><td><span class="badge-blue">Edge Case</span></td><td><span class="badge-green">Covered by UTC-B-003 &amp; B-006</span></td></tr>
+          <tr><td>TC-F040-005</td><td>CronJob_SmtpDown_DoesNotCrashServer</td><td><span class="badge-purple">Negative</span></td><td><span class="badge-green">Covered by UTC-B-004 &amp; B-007</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">Full Suite</div>
+    <div class="card-body">
+      <table>
+        <thead><tr><th>Layer</th><th>Total</th><th>Passed</th><th>Failed</th></tr></thead>
+        <tbody>
+          <tr><td>Unit — Backend (F-040 only)</td><td>7</td><td>7</td><td>0</td></tr>
+          <tr><td>Unit — Backend (Full suite)</td><td>211</td><td>211</td><td>0</td></tr>
+          <tr><td>Unit — Frontend</td><td>0</td><td>0</td><td>0</td></tr>
+          <tr><td>E2E / Manual</td><td>5</td><td>5</td><td>0</td></tr>
+          <tr style="font-weight:700;"><td>Total</td><td>216</td><td>216</td><td>0</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">Acceptance Criteria Coverage</div>
+    <div class="card-body">
+      <table>
+        <thead><tr><th>AC</th><th>Description</th><th>Covered By</th><th>Status</th></tr></thead>
+        <tbody>
+          <tr><td>AC-1</td><td>Daily cron at 08:00</td><td>@Cron('0 8 * * *')</td><td class="pass">PASS</td></tr>
+          <tr><td>AC-2</td><td>Overdue tasks (≥2 days) emailed to PM grouped by project</td><td>UTC-B-001, TC-001</td><td class="pass">PASS</td></tr>
+          <tr><td>AC-3</td><td>No PM → project skipped</td><td>UTC-B-003, UTC-B-006, TC-004</td><td class="pass">PASS</td></tr>
+          <tr><td>AC-4</td><td>No overdue tasks → no emails</td><td>UTC-B-002, TC-003</td><td class="pass">PASS</td></tr>
+          <tr><td>AC-5</td><td>Monday cron at 08:00</td><td>@Cron('0 8 * * 1')</td><td class="pass">PASS</td></tr>
+          <tr><td>AC-6</td><td>Health report: task counts, bugs, milestones, team size</td><td>UTC-B-005, TC-002</td><td class="pass">PASS</td></tr>
+          <tr><td>AC-7</td><td>SMTP failures logged; server remains running</td><td>UTC-B-004, UTC-B-007, TC-005</td><td class="pass">PASS</td></tr>
+          <tr><td>AC-8</td><td>Uses EmailService.sendEmail() + wrapHtml()</td><td>Implementation + mocks</td><td class="pass">PASS</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">Migration Status</div>
+    <div class="card-body">
+      <p style="margin:0;font-size:14px;color:#374151;">
+        <strong>Not Required</strong> — F-040 uses existing tables: <code>work_items</code>, <code>project_members</code>, <code>milestones</code>, <code>projects</code>, <code>users</code>.
+      </p>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">Final Verdict</div>
+    <div class="card-body">
+      <p style="margin:0;" class="verdict">PASSED — 7/7 unit tests pass, all 8 ACs covered, code and security reviews approved. Ready for F-041.</p>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

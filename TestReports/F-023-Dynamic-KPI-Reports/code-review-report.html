@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Code Review — F-023 Dynamic KPI &amp; Reports</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Segoe UI',Arial,sans-serif;background:#f8fafc;color:#1e293b;padding:32px}
+  .card{background:#fff;border-radius:12px;border:1px solid #e2e8f0;padding:24px;margin-bottom:24px;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+  h1{font-size:22px;font-weight:700;color:#0f172a;margin-bottom:4px}
+  .sub{font-size:13px;color:#64748b;margin-bottom:24px}
+  h2{font-size:15px;font-weight:600;color:#1e293b;margin-bottom:16px;padding-bottom:8px;border-bottom:1px solid #e2e8f0}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th{background:#f1f5f9;padding:10px 14px;text-align:left;font-weight:600;color:#475569;border-bottom:2px solid #e2e8f0}
+  td{padding:9px 14px;border-bottom:1px solid #f1f5f9;vertical-align:top}
+  tr:hover td{background:#f8fafc}
+  .badge{display:inline-block;padding:2px 10px;border-radius:99px;font-size:11px;font-weight:600}
+  .pass{background:#dcfce7;color:#16a34a}
+  .warn{background:#fef9c3;color:#854d0e}
+  .overall{background:#dbeafe;color:#1d4ed8;font-size:13px;padding:12px 16px;border-radius:8px;margin-bottom:20px}
+</style>
+</head>
+<body>
+
+<h1>Code Review Report — F-023</h1>
+<p class="sub">Feature: Dynamic KPI &amp; Reports (+Monthly Capacity Tab) &nbsp;|&nbsp; Date: 2026-05-29 &nbsp;|&nbsp; Reviewer: Claude Sonnet 4.6</p>
+
+<div class="overall">Overall verdict: <strong>APPROVED</strong> — No blocking issues found. All 8 review criteria passed.</div>
+
+<div class="card">
+  <h2>CR-1 — Code Structure &amp; Organization</h2>
+  <table>
+    <thead><tr><th>Checkpoint</th><th>File</th><th>Finding</th><th>Result</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>Single Responsibility — each service has one concern</td>
+        <td>analytics.service.ts, kpi-records.service.ts, self-logs.service.ts</td>
+        <td>AnalyticsService handles KPI computation and reports. KpiRecordsService handles manual score upsert/read. SelfLogsService handles leave/learning/innovation logs. Clean separation.</td>
+        <td><span class="badge pass">PASS</span></td>
+      </tr>
+      <tr>
+        <td>Helper functions extracted for KPI formulas</td>
+        <td>analytics.service.ts:7–105</td>
+        <td>All 10 compute* helpers are pure functions at module scope — easy to test independently.</td>
+        <td><span class="badge pass">PASS</span></td>
+      </tr>
+      <tr>
+        <td>Frontend tab components self-contained</td>
+        <td>ReportsPage.tsx</td>
+        <td>Each tab component owns its data fetch and CSV export. Parent passes only period/project props. Clean composition.</td>
+        <td><span class="badge pass">PASS</span></td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="card">
+  <h2>CR-2 — TypeScript / Type Safety</h2>
+  <table>
+    <thead><tr><th>Checkpoint</th><th>File</th><th>Finding</th><th>Result</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>All API response types declared</td>
+        <td>analyticsApi.ts</td>
+        <td>LiveEmployeeKpiRecord, ProductivityRecord, ProjectRecord, BugsReport, AllocationRecord, TimesheetRecord, CapacityReport all exported and used.</td>
+        <td><span class="badge pass">PASS</span></td>
+      </tr>
+      <tr>
+        <td>No implicit any in service logic</td>
+        <td>analytics.service.ts</td>
+        <td>BoardStatus and BugSeverity Prisma enums used correctly. No raw any casts in KPI computation.</td>
+        <td><span class="badge pass">PASS</span></td>
+      </tr>
+      <tr>
+        <td>Grade type narrowing in ReportsPage KPI tab</td>
+        <td>ReportsPage.tsx:KpiAppraisalTab</td>
+        <td>Grade is cast as 'A'|'B'|'C'|'D' with explicit ternary. Minor: the GRADE_CONFIG lookup uses this cast. Acceptable for display-only tab.</td>
+        <td><span class="badge pass">PASS</span></td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="card">
+  <h2>CR-3 — Performance &amp; Efficiency</h2>
+  <table>
+    <thead><tr><th>Checkpoint</th><th>File</th><th>Finding</th><th>Result</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>Parallel data fetching in KPI computation</td>
+        <td>analytics.service.ts:149–224</td>
+        <td>All 8 DB queries per user run via Promise.all — no sequential N+1 bottleneck.</td>
+        <td><span class="badge pass">PASS</span></td>
+      </tr>
+      <tr>
+        <td>Capacity report uses lookup Maps</td>
+        <td>analytics.service.ts:638–652</td>
+        <td>leaveMap and hoursMap built once; cell computation is O(1) per cell. Scales to 30+ employees × 31 days.</td>
+        <td><span class="badge pass">PASS</span></td>
+      </tr>
+      <tr>
+        <td>React Query caching per tab</td>
+        <td>ReportsPage.tsx</td>
+        <td>Each tab uses a distinct query key ['report-productivity', period, project] etc. Switching tabs reuses cached responses within session.</td>
+        <td><span class="badge pass">PASS</span></td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="card">
+  <h2>CR-4 — Error Handling</h2>
+  <table>
+    <thead><tr><th>Checkpoint</th><th>File</th><th>Finding</th><th>Result</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>Empty-state handling in all tabs</td>
+        <td>ReportsPage.tsx — all tabs</td>
+        <td>Every table renders "No data" row when data array is empty. Bug tab shows "No bugs this period" message.</td>
+        <td><span class="badge pass">PASS</span></td>
+      </tr>
+      <tr>
+        <td>SelfLogsService conflict detection</td>
+        <td>self-logs.service.ts</td>
+        <td>P2002 (unique constraint) caught and re-thrown as ConflictException for leave log duplicates.</td>
+        <td><span class="badge pass">PASS</span></td>
+      </tr>
+      <tr>
+        <td>SelfLogsService ownership check</td>
+        <td>self-logs.service.ts</td>
+        <td>Delete endpoints verify userId matches the log owner. ADMIN can delete any log. ForbiddenException thrown for unauthorized attempts.</td>
+        <td><span class="badge pass">PASS</span></td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="card">
+  <h2>CR-5 — Auth &amp; Role Guard</h2>
+  <table>
+    <thead><tr><th>Checkpoint</th><th>File</th><th>Finding</th><th>Result</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>KPI endpoint filters by role</td>
+        <td>analytics.controller.ts:getKpi</td>
+        <td>Non-admin users receive only their own KPI record. Admin receives all active users.</td>
+        <td><span class="badge pass">PASS</span></td>
+      </tr>
+      <tr>
+        <td>KpiRecords POST restricted to ADMIN/PM</td>
+        <td>kpi-records.controller.ts</td>
+        <td>@Roles(SystemRole.ADMIN, SystemRole.SUPER_USER) decorator applied to POST endpoint.</td>
+        <td><span class="badge pass">PASS</span></td>
+      </tr>
+      <tr>
+        <td>Frontend ADMIN check for score entry panel</td>
+        <td>KpiPage.tsx:KpiScoreEntryPanel</td>
+        <td>Panel only visible when isAdminOrSuper is true. Employee cannot see or access this panel.</td>
+        <td><span class="badge pass">PASS</span></td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="card">
+  <h2>CR-6 — Test Coverage</h2>
+  <table>
+    <thead><tr><th>Layer</th><th>Coverage</th><th>Result</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>Backend KPI formula logic</td>
+        <td>13 unit tests covering all 10 compute* helpers including edge cases (0 items, 100% delivery, CRITICAL bugs).</td>
+        <td><span class="badge pass">PASS</span></td>
+      </tr>
+      <tr>
+        <td>KpiRecordsService</td>
+        <td>2 tests covering upsert and findAll with correct Prisma args.</td>
+        <td><span class="badge pass">PASS</span></td>
+      </tr>
+      <tr>
+        <td>SelfLogsService</td>
+        <td>8 tests covering create/delete for all 3 log types + ownership + conflict handling.</td>
+        <td><span class="badge pass">PASS</span></td>
+      </tr>
+      <tr>
+        <td>Frontend ReportsPage</td>
+        <td>38 tests including 7 new F-023 tests (7-tab check, Capacity tab, live data rendering).</td>
+        <td><span class="badge pass">PASS</span></td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="card">
+  <h2>CR-7 — Code Cleanliness</h2>
+  <table>
+    <thead><tr><th>Checkpoint</th><th>Finding</th><th>Result</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>No debug logs or console.log in production code</td>
+        <td>No console.log/debug statements in analytics, kpi-records, self-logs, or frontend components.</td>
+        <td><span class="badge pass">PASS</span></td>
+      </tr>
+      <tr>
+        <td>Static data removed from reports</td>
+        <td>ReportsPage.tsx no longer imports STATIC_PRODUCTIVITY_DATA, STATIC_PROJECT_DATA, etc. as data sources. Static arrays only used in test mocks.</td>
+        <td><span class="badge pass">PASS</span></td>
+      </tr>
+      <tr>
+        <td>No unused imports</td>
+        <td>Reviewed all new files. ProductivityRecord, AllocationRecord, TimesheetRecord imports in ReportsPage are all used.</td>
+        <td><span class="badge pass">PASS</span></td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="card">
+  <h2>CR-8 — Migration &amp; DB</h2>
+  <table>
+    <thead><tr><th>Checkpoint</th><th>Finding</th><th>Result</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>No new Prisma schema changes required</td>
+        <td>All models (KpiRecord, LeaveLog, LearningLog, InnovationLog) were created in F-022. F-023 reads/writes only existing models.</td>
+        <td><span class="badge pass">PASS</span></td>
+      </tr>
+      <tr>
+        <td>Prisma queries use correct field names</td>
+        <td>analytics.service.ts uses correct field names (assigneeId, sprintId, completedAt, etc.) matching the F-022 schema.</td>
+        <td><span class="badge pass">PASS</span></td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+</body>
+</html>

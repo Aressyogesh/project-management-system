@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><title>Code Review — F-017 Task Allocation CRUD</title>
+<style>
+  body{font-family:Arial,sans-serif;margin:32px;color:#1a1a1a}
+  h1{color:#1d4ed8}h2{color:#374151;border-bottom:1px solid #e5e7eb;padding-bottom:6px}
+  table{border-collapse:collapse;width:100%;margin-bottom:24px}
+  th,td{border:1px solid #d1d5db;padding:8px 12px;text-align:left}
+  th{background:#f3f4f6;font-weight:600}
+  .pass{color:#16a34a;font-weight:600}.na{color:#6b7280}
+  .badge-pass{background:#dcfce7;color:#15803d;padding:2px 8px;border-radius:4px;font-size:13px}
+  .badge-na{background:#f3f4f6;color:#6b7280;padding:2px 8px;border-radius:4px;font-size:13px}
+  .verdict{background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:16px;margin-bottom:24px}
+</style>
+</head>
+<body>
+<h1>Code Review Report — F-017: Task Allocation CRUD + 8h Daily Cap Validation</h1>
+<p><strong>Reviewer:</strong> Claude Sonnet 4.6 &nbsp;|&nbsp; <strong>Date:</strong> 2026-05-27</p>
+
+<div class="verdict"><strong>Verdict: <span class="pass">APPROVED</span></strong> — No blocking issues found.</div>
+
+<h2>Review Checklist</h2>
+<table>
+  <tr><th>Category</th><th>Item</th><th>Status</th></tr>
+  <tr><td>CR-1 Correctness</td><td>POST /projects/:id/task-allocations creates allocation and returns 201</td><td><span class="badge-pass">PASS</span></td></tr>
+  <tr><td>CR-1 Correctness</td><td>assertCap() aggregates hours for same userId+date before creating; throws 422 if sum exceeds DAILY_CAP (8h)</td><td><span class="badge-pass">PASS</span></td></tr>
+  <tr><td>CR-1 Correctness</td><td>assertCap() on update excludes self (by id) so partial hours update does not double-count</td><td><span class="badge-pass">PASS</span></td></tr>
+  <tr><td>CR-1 Correctness</td><td>Prisma P2002 unique constraint on (taskId, userId, date) caught and re-thrown as 409 ConflictException</td><td><span class="badge-pass">PASS</span></td></tr>
+  <tr><td>CR-1 Correctness</td><td>DELETE returns 204 No Content; throws 404 if record does not exist</td><td><span class="badge-pass">PASS</span></td></tr>
+  <tr><td>CR-1 Correctness</td><td>GET /task-allocations/check returns allocatedHours and remainingHours = max(0, 8 − allocated)</td><td><span class="badge-pass">PASS</span></td></tr>
+  <tr><td>CR-2 Auth / Guard</td><td>Write endpoints (POST, PATCH, DELETE) use @UseGuards(JwtAuthGuard, ProjectRoleGuard) with @ProjectRoles(PROJECT_MANAGER, TEAM_LEAD)</td><td><span class="badge-pass">PASS</span></td></tr>
+  <tr><td>CR-2 Auth / Guard</td><td>POST source is 'param' (projectId from route param); PATCH/DELETE source is 'allocation' (resolved through taskAllocation → task → projectId)</td><td><span class="badge-pass">PASS</span></td></tr>
+  <tr><td>CR-2 Auth / Guard</td><td>ProjectRoleGuard extended with 'allocation' source: looks up allocation → task → projectId via Prisma select</td><td><span class="badge-pass">PASS</span></td></tr>
+  <tr><td>CR-3 DTOs</td><td>CreateTaskAllocationDto: @IsUUID on taskId/userId; @IsDateString on date; @IsNumber @Min(0.5) @Max(8) on allocatedHours</td><td><span class="badge-pass">PASS</span></td></tr>
+  <tr><td>CR-3 DTOs</td><td>UpdateTaskAllocationDto: allocatedHours optional with same @Min/@Max constraints</td><td><span class="badge-pass">PASS</span></td></tr>
+  <tr><td>CR-4 Naming</td><td>DAILY_CAP constant (not magic number 8); assertCap() method name is intention-revealing</td><td><span class="badge-pass">PASS</span></td></tr>
+  <tr><td>CR-5 Module</td><td>TaskAllocationsModule created; controller and service registered; module imported into AppModule</td><td><span class="badge-pass">PASS</span></td></tr>
+  <tr><td>CR-6 Frontend</td><td>AllocationFormModal renders Task/User/Date/Hours fields; daily cap hint shown; API error shown inline</td><td><span class="badge-pass">PASS</span></td></tr>
+  <tr><td>CR-6 Frontend</td><td>canManageAllocations derived from canEdit OR project role PM/TL; used to gate Log Hours / Edit / Delete actions</td><td><span class="badge-pass">PASS</span></td></tr>
+  <tr><td>CR-6 Frontend</td><td>AllocationCalendarPage: buildCalendarWeeks() produces correct (Date|null)[][] grid; byDate grouping correct</td><td><span class="badge-pass">PASS</span></td></tr>
+  <tr><td>CR-6 Frontend</td><td>Color coding (green &lt;6h, yellow 6–7.5h, red 8h) applied consistently to calendar cells and progress bars</td><td><span class="badge-pass">PASS</span></td></tr>
+  <tr><td>CR-7 Quality</td><td>Service uses prisma.taskAllocation.aggregate for cap check — single DB round-trip; no N+1</td><td><span class="badge-pass">PASS</span></td></tr>
+  <tr><td>CR-8 Standards</td><td>TypeScript strict; no implicit any; all API types defined in taskAllocation.types.ts</td><td><span class="badge-pass">PASS</span></td></tr>
+  <tr><td>CR-9 Tests</td><td>13/13 unit tests pass; AAA pattern followed; all ACs covered</td><td><span class="badge-pass">PASS</span></td></tr>
+  <tr><td>CR-10 Migration</td><td>No schema migration required — TaskAllocation model already in schema from F-017 branch base</td><td><span class="badge-pass">PASS</span></td></tr>
+</table>
+</body>
+</html>

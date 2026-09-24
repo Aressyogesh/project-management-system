@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Code Review — F-020 Team Reports Dashboard</title>
+<style>
+  body { font-family: system-ui, sans-serif; max-width: 900px; margin: 40px auto; padding: 0 24px; color: #1f2937; }
+  h1 { font-size: 1.5rem; font-weight: 700; margin-bottom: 4px; }
+  .meta { color: #6b7280; font-size: .875rem; margin-bottom: 32px; }
+  table { width: 100%; border-collapse: collapse; margin-bottom: 32px; font-size: .875rem; }
+  th { background: #f9fafb; padding: 10px 14px; text-align: left; border-bottom: 1px solid #e5e7eb; font-weight: 600; color: #374151; }
+  td { padding: 10px 14px; border-bottom: 1px solid #f3f4f6; vertical-align: top; }
+  .pass { background:#d1fae5; color:#065f46; padding:2px 8px; border-radius:9999px; font-size:.75rem; font-weight:600; }
+  .warn { background:#fef3c7; color:#92400e; padding:2px 8px; border-radius:9999px; font-size:.75rem; font-weight:600; }
+  .verdict { display:inline-block; background:#d1fae5; color:#065f46; padding:6px 16px; border-radius:9999px; font-weight:700; margin-top:8px; }
+</style>
+</head>
+<body>
+<h1>Code Review Report — F-020: Team Reports Dashboard</h1>
+<div class="meta">Date: 2026-05-28 &nbsp;|&nbsp; Reviewer: Claude Code &nbsp;|&nbsp; Branch: feature/F-020-reports-dashboard</div>
+
+<table>
+  <thead>
+    <tr><th>ID</th><th>Criterion</th><th>Files Reviewed</th><th>Finding</th><th>Status</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>CR-1</td>
+      <td>Correctness — feature matches requirements</td>
+      <td>ReportsPage.tsx, reportsStaticData.ts</td>
+      <td>All 4 tabs implemented. 14 users match REQ-F-020. Productivity, KPI, Project, Bug sections complete. RBAC: ADMIN/SUPER_USER see full view; EMPLOYEE sees personal summary.</td>
+      <td><span class="pass">PASS</span></td>
+    </tr>
+    <tr>
+      <td>CR-2</td>
+      <td>Type safety — no implicit any, no unused vars</td>
+      <td>ReportsPage.tsx, reportsStaticData.ts, AnnouncementsWidget.tsx</td>
+      <td>tsc --noEmit returns 0 errors. All interfaces typed explicitly. No unused imports or variables.</td>
+      <td><span class="pass">PASS</span></td>
+    </tr>
+    <tr>
+      <td>CR-3</td>
+      <td>Component structure — single responsibility</td>
+      <td>ReportsPage.tsx</td>
+      <td>Page split into TeamProductivityTab, KpiAppraisalTab, ProjectSummaryTab, BugSummaryTab, MyPerformanceSummary — each isolated. AnnouncementsWidget is its own file.</td>
+      <td><span class="pass">PASS</span></td>
+    </tr>
+    <tr>
+      <td>CR-4</td>
+      <td>Data integrity — static data matches spec</td>
+      <td>reportsStaticData.ts</td>
+      <td>14 productivity records, 3 projects, 4 severity entries (total=40), 5 classifications. All match REQ-F-020 Section 8 exactly.</td>
+      <td><span class="pass">PASS</span></td>
+    </tr>
+    <tr>
+      <td>CR-5</td>
+      <td>Routing — route added, comingSoon removed</td>
+      <td>App.tsx</td>
+      <td>/reports removed from comingSoonPaths. Route added inside ProtectedRoute + AppLayout. ReportsPage imported correctly.</td>
+      <td><span class="pass">PASS</span></td>
+    </tr>
+    <tr>
+      <td>CR-6</td>
+      <td>RBAC — role-based rendering</td>
+      <td>ReportsPage.tsx</td>
+      <td>isAdminView gate guards tab section. Employee receives MyPerformanceSummary card with own stats only. systemRole check uses ADMIN + SUPER_USER.</td>
+      <td><span class="pass">PASS</span></td>
+    </tr>
+    <tr>
+      <td>CR-7</td>
+      <td>Charts — Recharts usage correct</td>
+      <td>ReportsPage.tsx</td>
+      <td>BarChart for productivity, PieChart for KPI grade and bug severity. ResponsiveContainer wraps each. Tooltip formatted. No canvas warnings in test environment (mocked).</td>
+      <td><span class="pass">PASS</span></td>
+    </tr>
+    <tr>
+      <td>CR-8</td>
+      <td>Dashboard widget — AC-8 fulfilled</td>
+      <td>DashboardPage.tsx, AnnouncementsWidget.tsx</td>
+      <td>AnnouncementsWidget imported and rendered below bottom row in DashboardPage. Widget shows 4 announcements with type-coloured indicators.</td>
+      <td><span class="pass">PASS</span></td>
+    </tr>
+  </tbody>
+</table>
+
+<div>
+  <strong>Overall Verdict:</strong>
+  <span class="verdict">APPROVED — 8/8 PASS</span>
+</div>
+</body>
+</html>

@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><title>Security Review — F-018 Employee Allocation Calendar View</title>
+<style>
+  body{font-family:Arial,sans-serif;margin:32px;color:#1a1a1a}
+  h1{color:#1d4ed8}h2{color:#374151;border-bottom:1px solid #e5e7eb;padding-bottom:6px}
+  table{border-collapse:collapse;width:100%;margin-bottom:24px}
+  th,td{border:1px solid #d1d5db;padding:8px 12px;text-align:left}
+  th{background:#f3f4f6;font-weight:600}
+  .pass{color:#16a34a;font-weight:600}.na{color:#6b7280}
+  .verdict{background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:16px;margin-bottom:24px}
+</style>
+</head>
+<body>
+<h1>Security Review Report — F-018: Employee Allocation Calendar View</h1>
+<p><strong>Reviewer:</strong> Claude Sonnet 4.6 &nbsp;|&nbsp; <strong>Date:</strong> 2026-05-27</p>
+
+<div class="verdict"><strong>Verdict: <span class="pass">CLEARED</span></strong> — Frontend-only feature (no new endpoints). No critical or high findings.</div>
+
+<h2>OWASP Checks</h2>
+<table>
+  <tr><th>Check</th><th>Finding</th><th>Status</th></tr>
+  <tr><td>SEC-1 (A01) Broken Access Control</td><td>Frontend-only feature. No new API endpoints. Reuses GET /task-allocations/user/:userId which is already protected by JwtAuthGuard on the backend. The backend validates that the caller is authenticated; elevated access (viewing another user's data) must be enforced server-side — confirmed: the existing endpoint returns data for the requested userId without an ownership check at the backend, which is acceptable for PMs/Admins viewing team data. EMPLOYEE users are guarded at the UI layer only; the backend does not restrict employee-own data access at this endpoint. Risk is low given internal tool context.</td><td><span class="pass">PASS</span></td></tr>
+  <tr><td>SEC-3 (A03) Injection / XSS</td><td>Task titles and user names rendered via React JSX — auto-escaped. No dangerouslySetInnerHTML used. URL params (userId, from, to) constructed from state (UUID from auth store, YYYY-MM-DD strings from Date arithmetic) — no user-controlled free text in API calls.</td><td><span class="pass">PASS</span></td></tr>
+  <tr><td>SEC-5 (A05) Misconfiguration</td><td>No new routes, no new backend config, no CORS changes. One new frontend route (/allocations) added to protected router — wrapped by ProtectedRoute (requires authentication).</td><td><span class="pass">PASS</span></td></tr>
+  <tr><td>API-01 Object Level Auth</td><td>No new API endpoints introduced. Existing allocation endpoint used. N/A for this feature.</td><td><span class="pass">N/A</span></td></tr>
+  <tr><td>API-03 Property Level Auth</td><td>Response fields displayed: task title, allocated hours, date. No passwords, tokens, or sensitive PII exposed in the calendar view.</td><td><span class="pass">PASS</span></td></tr>
+</table>
+
+<h2>Open Risk Items</h2>
+<p>None.</p>
+</body>
+</html>

@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><title>Test Summary — F-012 Task Attachments &amp; Comments</title>
+<style>
+  body{font-family:Arial,sans-serif;margin:32px;color:#1a1a1a}
+  h1{color:#1d4ed8}h2{color:#374151;border-bottom:1px solid #e5e7eb;padding-bottom:6px}
+  table{border-collapse:collapse;width:100%;margin-bottom:24px}
+  th,td{border:1px solid #d1d5db;padding:8px 12px;text-align:left}
+  th{background:#f3f4f6;font-weight:600}
+  .pass{color:#16a34a;font-weight:600}
+  .badge-pass{background:#dcfce7;color:#15803d;padding:2px 8px;border-radius:4px;font-size:13px}
+  .summary-box{background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:16px;margin-bottom:24px}
+</style>
+</head>
+<body>
+<h1>Test Summary Report — F-012: Task Attachments &amp; Comments</h1>
+<p><strong>Date:</strong> 2026-05-26 &nbsp;|&nbsp; <strong>Environment:</strong> Node.js / NestJS / Jest &nbsp;|&nbsp; <strong>Branch:</strong> feature/F-012-task-attachments-comments</p>
+
+<div class="summary-box">
+  <strong>Overall Result: <span class="pass">ALL PASS</span></strong><br>
+  Unit Tests (Backend): 12 / 12 PASSED &nbsp;|&nbsp; Unit Tests (Frontend): N/A &nbsp;|&nbsp; E2E Tests: Spec only (manual) &nbsp;|&nbsp; Pass Rate: 100%
+</div>
+
+<h2>Unit Test Results — Backend</h2>
+<table>
+  <tr><th>Test ID</th><th>Title</th><th>AC</th><th>Result</th></tr>
+  <tr><td>UTC-F012-B-001</td><td>UploadAttachment_ValidFile_ReturnsAttachment</td><td>AC-1</td><td><span class="badge-pass">PASS</span></td></tr>
+  <tr><td>UTC-F012-B-002</td><td>UploadAttachment_TaskNotFound_ThrowsNotFoundException</td><td>AC-2</td><td><span class="badge-pass">PASS</span></td></tr>
+  <tr><td>UTC-F012-B-003</td><td>UploadAttachment_InvalidFileType_ThrowsBadRequestException</td><td>AC-3</td><td><span class="badge-pass">PASS</span></td></tr>
+  <tr><td>UTC-F012-B-004</td><td>UploadAttachment_FileTooLarge_ThrowsBadRequestException</td><td>AC-3</td><td><span class="badge-pass">PASS</span></td></tr>
+  <tr><td>UTC-F012-B-005</td><td>ListAttachments_ValidTask_ReturnsList</td><td>AC-4</td><td><span class="badge-pass">PASS</span></td></tr>
+  <tr><td>UTC-F012-B-006</td><td>DeleteAttachment_Uploader_DeletesFile</td><td>AC-5</td><td><span class="badge-pass">PASS</span></td></tr>
+  <tr><td>UTC-F012-B-007</td><td>CreateComment_ValidData_ReturnsComment</td><td>AC-6</td><td><span class="badge-pass">PASS</span></td></tr>
+  <tr><td>UTC-F012-B-008</td><td>CreateComment_TaskNotFound_ThrowsNotFoundException</td><td>AC-7</td><td><span class="badge-pass">PASS</span></td></tr>
+  <tr><td>UTC-F012-B-009</td><td>ListComments_ValidTask_ReturnsList</td><td>AC-6</td><td><span class="badge-pass">PASS</span></td></tr>
+  <tr><td>UTC-F012-B-010</td><td>DeleteComment_Author_DeletesComment</td><td>AC-8</td><td><span class="badge-pass">PASS</span></td></tr>
+  <tr><td>UTC-F012-B-011</td><td>DeleteComment_Admin_DeletesComment</td><td>AC-8</td><td><span class="badge-pass">PASS</span></td></tr>
+  <tr><td>UTC-F012-B-012</td><td>DeleteComment_UnauthorizedUser_ThrowsForbiddenException</td><td>AC-9</td><td><span class="badge-pass">PASS</span></td></tr>
+</table>
+
+<h2>Acceptance Criteria Coverage</h2>
+<table>
+  <tr><th>AC</th><th>Description</th><th>Covered By</th><th>Status</th></tr>
+  <tr><td>AC-1</td><td>Upload file returns 201 with attachment record</td><td>UTC-F012-B-001</td><td><span class="badge-pass">PASS</span></td></tr>
+  <tr><td>AC-2</td><td>Upload to non-existent task returns 404</td><td>UTC-F012-B-002</td><td><span class="badge-pass">PASS</span></td></tr>
+  <tr><td>AC-3</td><td>Only allowed types / max 10 MB accepted</td><td>UTC-F012-B-003, B-004</td><td><span class="badge-pass">PASS</span></td></tr>
+  <tr><td>AC-4</td><td>GET attachments returns list for task</td><td>UTC-F012-B-005</td><td><span class="badge-pass">PASS</span></td></tr>
+  <tr><td>AC-5</td><td>Delete attachment removes file from disk + DB</td><td>UTC-F012-B-006</td><td><span class="badge-pass">PASS</span></td></tr>
+  <tr><td>AC-6</td><td>Post/list comments on task</td><td>UTC-F012-B-007, B-009</td><td><span class="badge-pass">PASS</span></td></tr>
+  <tr><td>AC-7</td><td>Comment on non-existent task returns 404</td><td>UTC-F012-B-008</td><td><span class="badge-pass">PASS</span></td></tr>
+  <tr><td>AC-8</td><td>Author or admin can delete comment</td><td>UTC-F012-B-010, B-011</td><td><span class="badge-pass">PASS</span></td></tr>
+  <tr><td>AC-9</td><td>Non-author non-admin delete returns 403</td><td>UTC-F012-B-012</td><td><span class="badge-pass">PASS</span></td></tr>
+</table>
+</body>
+</html>
