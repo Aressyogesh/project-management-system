@@ -29,6 +29,7 @@ const STATUS_ORDER: BoardStatus[] = [
   BoardStatus.READY_FOR_QA,
   BoardStatus.IN_QA,
   BoardStatus.QA_DONE,
+  BoardStatus.ACKNOWLEDGED,
   BoardStatus.CLOSED,
 ];
 

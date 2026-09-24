@@ -57,6 +57,7 @@ const STATUS_STYLES: Record<string, string> = {
   READY_FOR_QA: 'bg-yellow-100 text-yellow-700',
   IN_QA:        'bg-violet-100 text-violet-700',
   QA_DONE:      'bg-teal-100 text-teal-700',
+  ACKNOWLEDGED: 'bg-orange-100 text-orange-700',
   CLOSED:       'bg-emerald-100 text-emerald-700',
 };
 
@@ -64,7 +65,7 @@ type SortKey = 'id' | 'title' | 'assignee' | 'type' | 'bugClassification' | 'sta
 type SortDir = 'asc' | 'desc';
 
 const PRIORITY_RANK: Record<string, number> = { LOW: 1, MEDIUM: 2, HIGH: 3, CRITICAL: 4 };
-const STATUS_RANK: Record<string, number> = { TODO: 1, IN_PROGRESS: 2, BLOCKED: 3, IN_REVIEW: 4, READY_FOR_QA: 5, IN_QA: 6, QA_DONE: 7, CLOSED: 8 };
+const STATUS_RANK: Record<string, number> = { TODO: 1, IN_PROGRESS: 2, BLOCKED: 3, IN_REVIEW: 4, READY_FOR_QA: 5, IN_QA: 6, QA_DONE: 7, ACKNOWLEDGED: 8, CLOSED: 9 };
 const TYPE_RANK: Record<string, number>    = { EPIC: 1, USER_STORY: 2, TASK: 3, SUB_TASK: 4, BUG: 5 };
 
 function SortIcon({ active, dir }: { active: boolean; dir: SortDir }) {
@@ -103,6 +104,7 @@ const STATUS_LABELS: Record<string, string> = {
   READY_FOR_QA: 'Ready for QA',
   IN_QA:        'In QA',
   QA_DONE:      'QA Done',
+  ACKNOWLEDGED: 'Acknowledged',
   CLOSED:       'Closed',
 };
 
