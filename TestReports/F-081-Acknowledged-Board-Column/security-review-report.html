@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Security Review Report — F-081 Acknowledged Board Column</title>
+<style>
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: #f8fafc; color: #1e293b; margin: 0; padding: 24px; }
+  h1 { font-size: 1.5rem; color: #0f172a; margin-bottom: 4px; }
+  .subtitle { color: #64748b; font-size: 0.9rem; margin-bottom: 24px; }
+  .card { background: #fff; border-radius: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); padding: 20px; margin-bottom: 20px; }
+  .card h2 { font-size: 1rem; font-weight: 600; color: #0f172a; margin: 0 0 16px 0; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+  th { background: #1e3a5f; color: #fff; padding: 10px 12px; text-align: left; }
+  td { padding: 9px 12px; border-bottom: 1px solid #f1f5f9; vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  .pass { color: #16a34a; font-weight: 600; }
+  .na   { color: #94a3b8; font-weight: 600; }
+  .badge-cleared { display: inline-block; background: #dcfce7; color: #16a34a; padding: 4px 16px; border-radius: 999px; font-weight: 700; font-size: 0.85rem; }
+  .verdict-box { background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 16px; margin-top: 16px; }
+</style>
+</head>
+<body>
+
+<h1>Security Review Report — F-081: Acknowledged Board Column</h1>
+<div class="subtitle">Reviewer: Claude Code (AI) &nbsp;|&nbsp; Date: 2026-09-24 &nbsp;|&nbsp; Standard: OWASP Top 10 + OWASP API Security Top 10</div>
+
+<div class="card">
+  <h2>Feature Scope for Security Review</h2>
+  <p style="font-size:0.85rem;color:#475569;">This feature adds a single enum value (<code>ACKNOWLEDGED</code>) to the existing <code>BoardStatus</code> PostgreSQL enum and propagates it to frontend constants. No new endpoints, no new data models, no new access control paths, and no new input validation paths are introduced. The attack surface delta is effectively zero.</p>
+</div>
+
+<div class="card">
+  <h2>OWASP Web Top 10</h2>
+  <table>
+    <thead><tr><th>Risk</th><th>Applicable</th><th>Status</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td>A01 — Broken Access Control</td><td>Yes</td><td class="pass">PASS</td><td>ACKNOWLEDGED uses the same PATCH /work-items/:id endpoint protected by JwtAuthGuard + ProjectRoleGuard. No new privilege escalation path. Status transition is available to all authenticated project members — same as all other statuses.</td></tr>
+      <tr><td>A02 — Cryptographic Failures</td><td>No</td><td class="na">N/A</td><td>No new data storage, encryption, or token handling.</td></tr>
+      <tr><td>A03 — Injection</td><td>Yes</td><td class="pass">PASS</td><td>Status value is validated via Prisma @IsEnum(BoardStatus) — no raw SQL string concatenation. PostgreSQL ALTER TYPE ADD VALUE uses parameterised DDL. No injection surface.</td></tr>
+      <tr><td>A04 — Insecure Design</td><td>No</td><td class="na">N/A</td><td>No new business flow. ACKNOWLEDGED is a pass-through status with no special workflow logic.</td></tr>
+      <tr><td>A05 — Security Misconfiguration</td><td>No</td><td class="na">N/A</td><td>No new configuration, headers, or CORS changes.</td></tr>
+      <tr><td>A06 — Vulnerable &amp; Outdated Components</td><td>No</td><td class="na">N/A</td><td>No new dependencies added.</td></tr>
+      <tr><td>A07 — Identification &amp; Authentication Failures</td><td>No</td><td class="na">N/A</td><td>No changes to auth flow.</td></tr>
+      <tr><td>A08 — Software &amp; Data Integrity Failures</td><td>No</td><td class="na">N/A</td><td>Migration file is tracked in version control. No unsigned artefacts.</td></tr>
+      <tr><td>A09 — Security Logging &amp; Monitoring</td><td>Yes</td><td class="pass">PASS</td><td>Status transitions to ACKNOWLEDGED are audit-logged via the existing label_added / activity log mechanism in work-items.service.ts. No new logging needed.</td></tr>
+      <tr><td>A10 — SSRF</td><td>No</td><td class="na">N/A</td><td>No outbound HTTP calls.</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="card">
+  <h2>OWASP API Security Top 10</h2>
+  <table>
+    <thead><tr><th>Risk</th><th>Applicable</th><th>Status</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td>API01 — Broken Object Level Auth</td><td>Yes</td><td class="pass">PASS</td><td>Existing PATCH /work-items/:id validates the caller is a member of the project owning the item. ACKNOWLEDGED adds no new object access path.</td></tr>
+      <tr><td>API02 — Broken Authentication</td><td>No</td><td class="na">N/A</td><td>No new endpoints. Existing JWT guard unchanged.</td></tr>
+      <tr><td>API03 — Broken Object Property Level Auth</td><td>No</td><td class="na">N/A</td><td>No new response fields. ACKNOWLEDGED is just another value of the existing status field.</td></tr>
+      <tr><td>API04 — Unrestricted Resource Consumption</td><td>No</td><td class="na">N/A</td><td>No new queries or resource-intensive operations.</td></tr>
+      <tr><td>API05 — Broken Function Level Auth</td><td>No</td><td class="na">N/A</td><td>No new functions or elevated-privilege operations.</td></tr>
+      <tr><td>API06 — Unrestricted Access to Sensitive Business Flows</td><td>No</td><td class="na">N/A</td><td>ACKNOWLEDGED is a non-terminal status with no special business logic. Cannot be abused to bypass KPI calculations (confirmed: not in TERMINAL_STATUSES).</td></tr>
+      <tr><td>API07 — Server Side Request Forgery</td><td>No</td><td class="na">N/A</td><td>No outbound calls.</td></tr>
+      <tr><td>API08 — Security Misconfiguration</td><td>No</td><td class="na">N/A</td><td>No debug info, no new error responses.</td></tr>
+      <tr><td>API09 — Improper Inventory Management</td><td>No</td><td class="na">N/A</td><td>No shadow or undocumented endpoints.</td></tr>
+      <tr><td>API10 — Unsafe Consumption of APIs</td><td>No</td><td class="na">N/A</td><td>No third-party API consumption.</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="card">
+  <h2>Dependency Audit</h2>
+  <table>
+    <tr><td><strong>New dependencies added</strong></td><td>None</td></tr>
+    <tr><td><strong>npm audit result</strong></td><td>No new vulnerabilities introduced (no package.json changes)</td></tr>
+  </table>
+</div>
+
+<div class="card">
+  <h2>SAST Findings</h2>
+  <table>
+    <tr><td><strong>Static analysis scope</strong></td><td>4 modified files reviewed manually</td></tr>
+    <tr><td><strong>Critical findings</strong></td><td>0</td></tr>
+    <tr><td><strong>High findings</strong></td><td>0</td></tr>
+    <tr><td><strong>Medium findings</strong></td><td>0</td></tr>
+    <tr><td><strong>Low findings</strong></td><td>0</td></tr>
+  </table>
+</div>
+
+<div class="card">
+  <h2>Open Risk Items</h2>
+  <p style="color:#16a34a;font-weight:600;">None — no open risk items.</p>
+</div>
+
+<div class="verdict-box">
+  <strong>Verdict:</strong> <span class="badge-cleared">Cleared</span>
+  <p style="margin:8px 0 0;font-size:0.85rem;color:#166534;">All applicable OWASP checks pass. Attack surface delta is zero — additive enum extension only. No new endpoints, no new auth paths, no new data flows. Feature is safe to ship.</p>
+  <p style="margin:4px 0 0;font-size:0.8rem;color:#64748b;">Reviewer: Claude Code &nbsp;|&nbsp; Date: 2026-09-24</p>
+</div>
+
+</body>
+</html>
