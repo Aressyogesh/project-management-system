@@ -125,7 +125,7 @@ export function exportListToExcel(items: (WorkItem & { _columnLabel: string })[]
     border: { bottom: { style: 'thin', color: { rgb: '2D5F8A' } } },
   };
 
-  const HEADERS = ['#', 'ID', 'Title', 'Assignee', 'Type', 'Status', 'Priority', 'Start Date', 'Due Date', 'Age (days)', 'Est. Hrs', 'Logged Hrs'];
+  const HEADERS = ['#', 'ID', 'Title', 'Assignee', 'Type', 'Status', 'Priority', 'Start Date', 'Due Date', 'Age (days)', 'Est. Hrs', 'Logged Hrs', 'Labels'];
   const TERMINAL = new Set(['QA_DONE', 'CLOSED']);
 
   const wb = XLSX.utils.book_new();
@@ -163,6 +163,7 @@ export function exportListToExcel(items: (WorkItem & { _columnLabel: string })[]
       { v: TERMINAL.has(item.status) ? '' : String(ageDays),          t: 's', extra: { alignment: { horizontal: 'center' } } },
       { v: item.estimatedHours != null ? `${item.estimatedHours}h` : '', t: 's', extra: { alignment: { horizontal: 'center' } } },
       { v: logged > 0 ? `${logged}h` : '',                             t: 's', extra: { alignment: { horizontal: 'center' } } },
+      { v: ((item.labels ?? []) as string[]).join(', '),               t: 's' },
     ];
 
     cells.forEach(({ v, t, extra }, i) => {
@@ -173,7 +174,7 @@ export function exportListToExcel(items: (WorkItem & { _columnLabel: string })[]
   ws['!cols'] = [
     { wch: 5 }, { wch: 12 }, { wch: 40 }, { wch: 22 },
     { wch: 12 }, { wch: 16 }, { wch: 10 },
-    { wch: 14 }, { wch: 14 }, { wch: 11 }, { wch: 10 }, { wch: 12 },
+    { wch: 14 }, { wch: 14 }, { wch: 11 }, { wch: 10 }, { wch: 12 }, { wch: 25 },
   ];
   ws['!rows'] = [{ hpt: 26 }];
   ws['!ref'] = XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: items.length, c: HEADERS.length - 1 } });
