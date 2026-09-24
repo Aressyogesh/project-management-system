@@ -57,6 +57,7 @@ const STATUS_STYLES: Record<string, string> = {
   READY_FOR_QA: 'bg-yellow-100 text-yellow-700',
   IN_QA:        'bg-violet-100 text-violet-700',
   QA_DONE:      'bg-teal-100 text-teal-700',
+  ACKNOWLEDGED: 'bg-orange-100 text-orange-700',
   CLOSED:       'bg-emerald-100 text-emerald-700',
 };
 
@@ -64,7 +65,7 @@ type SortKey = 'id' | 'title' | 'assignee' | 'type' | 'bugClassification' | 'sta
 type SortDir = 'asc' | 'desc';
 
 const PRIORITY_RANK: Record<string, number> = { LOW: 1, MEDIUM: 2, HIGH: 3, CRITICAL: 4 };
-const STATUS_RANK: Record<string, number> = { TODO: 1, IN_PROGRESS: 2, BLOCKED: 3, IN_REVIEW: 4, READY_FOR_QA: 5, IN_QA: 6, QA_DONE: 7, CLOSED: 8 };
+const STATUS_RANK: Record<string, number> = { TODO: 1, IN_PROGRESS: 2, BLOCKED: 3, IN_REVIEW: 4, READY_FOR_QA: 5, IN_QA: 6, QA_DONE: 7, ACKNOWLEDGED: 8, CLOSED: 9 };
 const TYPE_RANK: Record<string, number>    = { EPIC: 1, USER_STORY: 2, TASK: 3, SUB_TASK: 4, BUG: 5 };
 
 function SortIcon({ active, dir }: { active: boolean; dir: SortDir }) {
@@ -103,6 +104,7 @@ const STATUS_LABELS: Record<string, string> = {
   READY_FOR_QA: 'Ready for QA',
   IN_QA:        'In QA',
   QA_DONE:      'QA Done',
+  ACKNOWLEDGED: 'Acknowledged',
   CLOSED:       'Closed',
 };
 
@@ -123,7 +125,7 @@ export function exportListToExcel(items: (WorkItem & { _columnLabel: string })[]
     border: { bottom: { style: 'thin', color: { rgb: '2D5F8A' } } },
   };
 
-  const HEADERS = ['#', 'ID', 'Title', 'Assignee', 'Type', 'Status', 'Priority', 'Start Date', 'Due Date', 'Age (days)', 'Est. Hrs', 'Logged Hrs'];
+  const HEADERS = ['#', 'ID', 'Title', 'Assignee', 'Type', 'Status', 'Priority', 'Start Date', 'Due Date', 'Age (days)', 'Est. Hrs', 'Logged Hrs', 'Labels'];
   const TERMINAL = new Set(['QA_DONE', 'CLOSED']);
 
   const wb = XLSX.utils.book_new();
@@ -161,6 +163,7 @@ export function exportListToExcel(items: (WorkItem & { _columnLabel: string })[]
       { v: TERMINAL.has(item.status) ? '' : String(ageDays),          t: 's', extra: { alignment: { horizontal: 'center' } } },
       { v: item.estimatedHours != null ? `${item.estimatedHours}h` : '', t: 's', extra: { alignment: { horizontal: 'center' } } },
       { v: logged > 0 ? `${logged}h` : '',                             t: 's', extra: { alignment: { horizontal: 'center' } } },
+      { v: ((item.labels ?? []) as string[]).join(', '),               t: 's' },
     ];
 
     cells.forEach(({ v, t, extra }, i) => {
@@ -171,7 +174,7 @@ export function exportListToExcel(items: (WorkItem & { _columnLabel: string })[]
   ws['!cols'] = [
     { wch: 5 }, { wch: 12 }, { wch: 40 }, { wch: 22 },
     { wch: 12 }, { wch: 16 }, { wch: 10 },
-    { wch: 14 }, { wch: 14 }, { wch: 11 }, { wch: 10 }, { wch: 12 },
+    { wch: 14 }, { wch: 14 }, { wch: 11 }, { wch: 10 }, { wch: 12 }, { wch: 25 },
   ];
   ws['!rows'] = [{ hpt: 26 }];
   ws['!ref'] = XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: items.length, c: HEADERS.length - 1 } });

@@ -1797,32 +1797,30 @@ export function WorkItemModal({ item, sprints, members, milestones, canDelete = 
                     {(detail.labels ?? []).map((l) => (
                       <span key={l} className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 text-blue-700 text-[11px] rounded-full border border-blue-200">
                         {l}
-                        {canEditSidebar && <button onClick={() => removeLabel(l)} className="hover:text-red-500 leading-none">×</button>}
+                        <button onClick={() => removeLabel(l)} className="hover:text-red-500 leading-none">×</button>
                       </span>
                     ))}
-                    {(detail.labels ?? []).length === 0 && !canEditSidebar && (
+                    {(detail.labels ?? []).length === 0 && (
                       <span className="text-xs text-gray-400 italic">—</span>
                     )}
                   </div>
-                  {canEditSidebar && (
-                    addingLabel ? (
-                      <div className="flex gap-1">
-                        <input
-                          autoFocus
-                          type="text"
-                          value={newLabel}
-                          onChange={(e) => setNewLabel(e.target.value)}
-                          onKeyDown={(e) => { if (e.key === 'Enter') addLabel(); if (e.key === 'Escape') setAddingLabel(false); }}
-                          placeholder="label…"
-                          className="input-sm flex-1 text-xs"
-                        />
-                        <button onClick={addLabel} className="text-xs text-primary-600 font-medium">Add</button>
-                      </div>
-                    ) : (
-                      <button onClick={() => setAddingLabel(true)} className="text-[11px] text-primary-600 hover:text-primary-700 font-medium">
-                        + Add label
-                      </button>
-                    )
+                  {addingLabel ? (
+                    <div className="flex gap-1">
+                      <input
+                        autoFocus
+                        type="text"
+                        value={newLabel}
+                        onChange={(e) => setNewLabel(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === 'Enter') addLabel(); if (e.key === 'Escape') setAddingLabel(false); }}
+                        placeholder="label…"
+                        className="input-sm flex-1 text-xs"
+                      />
+                      <button onClick={addLabel} className="text-xs text-primary-600 font-medium">Add</button>
+                    </div>
+                  ) : (
+                    <button onClick={() => setAddingLabel(true)} className="text-[11px] text-primary-600 hover:text-primary-700 font-medium">
+                      + Add label
+                    </button>
                   )}
                 </div>
               </SidebarRow>
@@ -2274,6 +2272,8 @@ export function CreateWorkItemModal({
   const [milestoneLinkId, setMilestoneLinkId] = useState('');
   const [affectedMilestoneId, setAffectedMilestoneId] = useState('');
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
+  const [createLabels, setCreateLabels] = useState<string[]>([]);
+  const [labelInput, setLabelInput] = useState('');
 
   useEffect(() => {
     if (!showTypeMenu) return;
@@ -2338,6 +2338,8 @@ export function CreateWorkItemModal({
     setReminderType('NONE');
     setAffectedMilestoneId('');
     setPendingFiles([]);
+    setCreateLabels([]);
+    setLabelInput('');
     setAssigneeId(type === 'BUG' ? (pmMember?.id ?? '') : '');
     setAssigneeError(false);
     setParentError(false);
@@ -2451,6 +2453,7 @@ export function CreateWorkItemModal({
       reminderType: reminderType || undefined,
       releaseMilestoneId: milestoneLinkId || undefined,
       affectedMilestoneId: affectedMilestoneId || undefined,
+      labels: createLabels.length > 0 ? createLabels : undefined,
     } as Partial<WorkItem>);
   }
 
@@ -2843,6 +2846,53 @@ export function CreateWorkItemModal({
                   {billingStatusError && <p className="text-xs text-red-500 mt-1">Billing is required</p>}
                 </>
               )}
+            </div>
+          </div>
+
+          {/* Labels */}
+          <div>
+            <label className={labelCls}>Labels</label>
+            <div className="space-y-1.5">
+              <div className="flex flex-wrap gap-1">
+                {createLabels.map((l) => (
+                  <span key={l} className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 text-blue-700 text-[11px] rounded-full border border-blue-200">
+                    {l}
+                    <button type="button" onClick={() => setCreateLabels((prev) => prev.filter((x) => x !== l))} className="hover:text-red-500 leading-none">×</button>
+                  </span>
+                ))}
+              </div>
+              <div className="flex gap-1">
+                <input
+                  type="text"
+                  value={labelInput}
+                  onChange={(e) => setLabelInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      const trimmed = labelInput.trim();
+                      if (trimmed && !createLabels.includes(trimmed)) {
+                        setCreateLabels((prev) => [...prev, trimmed]);
+                      }
+                      setLabelInput('');
+                    }
+                  }}
+                  placeholder="Type a label and press Enter…"
+                  className={`${inputCls} flex-1`}
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    const trimmed = labelInput.trim();
+                    if (trimmed && !createLabels.includes(trimmed)) {
+                      setCreateLabels((prev) => [...prev, trimmed]);
+                    }
+                    setLabelInput('');
+                  }}
+                  className="px-3 py-2 text-xs font-medium text-primary-600 border border-gray-200 rounded-lg hover:bg-primary-50 transition"
+                >
+                  Add
+                </button>
+              </div>
             </div>
           </div>
 

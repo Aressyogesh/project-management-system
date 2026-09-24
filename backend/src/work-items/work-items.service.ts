@@ -29,6 +29,7 @@ const STATUS_ORDER: BoardStatus[] = [
   BoardStatus.READY_FOR_QA,
   BoardStatus.IN_QA,
   BoardStatus.QA_DONE,
+  BoardStatus.ACKNOWLEDGED,
   BoardStatus.CLOSED,
 ];
 
@@ -116,6 +117,7 @@ export class WorkItemsService implements OnModuleInit {
           OR: [
             { title: { contains: filters.search, mode: 'insensitive' as const } },
             { displayId: { contains: filters.search, mode: 'insensitive' as const } },
+            { labels: { has: filters.search } },
           ],
         }),
       },
