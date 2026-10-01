@@ -33,7 +33,7 @@ const STATUS_ORDER: BoardStatus[] = [
   BoardStatus.CLOSED,
 ];
 
-const TERMINAL_STATUSES = new Set<BoardStatus>([BoardStatus.QA_DONE, BoardStatus.CLOSED]);
+const TERMINAL_STATUSES = new Set<BoardStatus>([BoardStatus.QA_DONE, BoardStatus.ACKNOWLEDGED, BoardStatus.CLOSED]);
 
 const VALID_PARENT_TYPES: Partial<Record<WorkItemType, WorkItemType[]>> = {
   [WorkItemType.USER_STORY]: [WorkItemType.EPIC],
