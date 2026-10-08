@@ -2356,6 +2356,10 @@ export function CreateWorkItemModal({
       for (const file of pendingFiles) {
         try { await boardApi.uploadAttachment(created.id, file); } catch { /* non-fatal */ }
       }
+      qc.setQueriesData<WorkItem[]>(
+        { queryKey: ['board', projectId] },
+        (old) => (old ? [...old, created] : old),
+      );
       qc.invalidateQueries({ queryKey: ['board', projectId] });
       const effectiveParent = selectedParentId || parentId;
       if (effectiveParent) {

@@ -153,6 +153,7 @@ export interface WorkItem {
   affectedMilestone?: WorkItemMilestone | null;
   // computed
   _count?: { children: number; comments: number; timesheetEntries: number };
+  _loggedHours?: number;
   activities?: WorkItemActivity[];
 }
 

@@ -148,6 +148,29 @@ export class WorkItemsService implements OnModuleInit {
       }
     }
 
+    // SUM of child timesheet hours, grouped by parent story
+    const storyLoggedMap = new Map<string, number>();
+    if (storyIds.length > 0) {
+      const storyChildren = await this.prisma.workItem.findMany({
+        where: { parentId: { in: storyIds } },
+        select: { id: true, parentId: true },
+      });
+      const childToStory = new Map(
+        storyChildren.filter((c) => c.parentId).map((c) => [c.id, c.parentId as string]),
+      );
+      if (childToStory.size > 0) {
+        const rows = await this.prisma.timesheetEntry.groupBy({
+          by: ['workItemId'],
+          where: { workItemId: { in: [...childToStory.keys()] } },
+          _sum: { hours: true },
+        });
+        for (const r of rows) {
+          const storyId = childToStory.get(r.workItemId);
+          if (storyId) storyLoggedMap.set(storyId, (storyLoggedMap.get(storyId) ?? 0) + Number(r._sum.hours ?? 0));
+        }
+      }
+    }
+
     // SUM of grandchild TASK estimatedHours, grouped by epic
     const epicHoursMap = new Map<string, number>();
     if (epicIds.length > 0) {
@@ -172,7 +195,8 @@ export class WorkItemsService implements OnModuleInit {
     return items.map((item) => {
       if (item.type === WorkItemType.USER_STORY) {
         const hours = storyHoursMap.get(item.id) ?? 0;
-        return { ...item, estimatedHours: hours > 0 ? hours : null };
+        const logged = storyLoggedMap.get(item.id) ?? 0;
+        return { ...item, estimatedHours: hours > 0 ? hours : null, _loggedHours: logged };
       }
       if (item.type === WorkItemType.EPIC) {
         const hours = epicHoursMap.get(item.id) ?? 0;

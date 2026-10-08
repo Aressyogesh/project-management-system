@@ -88,9 +88,15 @@ export class AnalyticsController {
   @Get('reports/bugs')
   getBugs(
     @Query('period') period = '2026-05',
+    @Request() req: { user: AuthUser },
     @Query('projectId') projectId?: string,
   ) {
-    return this.analyticsService.getBugsReport(period, projectId);
+    const isAdmin =
+      req.user.systemRole === SystemRole.ADMIN ||
+      req.user.systemRole === SystemRole.SUPER_USER;
+    const managedBusinessUnitId =
+      req.user.systemRole === SystemRole.BU_HEAD ? req.user.managedBusinessUnitId : null;
+    return this.analyticsService.getBugsReport(period, projectId, req.user.id, isAdmin, managedBusinessUnitId);
   }
 
   @Get('reports/allocation')
@@ -154,6 +160,7 @@ export class AnalyticsController {
   @Get('reports/drill-down')
   getDrillDown(
     @Query('period') period: string,
+    @Request() req: { user: AuthUser },
     @Query('projectId') projectId?: string,
     @Query('userId') userId?: string,
     @Query('workItemType') workItemType?: string,
@@ -163,6 +170,11 @@ export class AnalyticsController {
     @Query('completedOnly') completedOnly?: string,
     @Query('noDateFilter') noDateFilter?: string,
   ) {
+    const isAdmin =
+      req.user.systemRole === SystemRole.ADMIN ||
+      req.user.systemRole === SystemRole.SUPER_USER;
+    const managedBusinessUnitId =
+      req.user.systemRole === SystemRole.BU_HEAD ? req.user.managedBusinessUnitId : null;
     return this.analyticsService.getDrillDown({
       period,
       projectId,
@@ -173,6 +185,9 @@ export class AnalyticsController {
       statusFilter: statusFilter === 'done' ? 'done' : undefined,
       completedOnly: completedOnly === 'true',
       noDateFilter: noDateFilter === 'true',
+      requestingUserId: req.user.id,
+      isAdmin,
+      managedBusinessUnitId,
     });
   }
 

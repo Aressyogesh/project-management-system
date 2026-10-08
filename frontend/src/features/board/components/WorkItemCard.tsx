@@ -37,6 +37,7 @@ function getInitials(name: string) {
 }
 
 function getTotalLoggedHours(item: WorkItem): number {
+  if (item._loggedHours !== undefined) return item._loggedHours;
   if (!item.timesheetEntries) return 0;
   return item.timesheetEntries.reduce((sum, e) => sum + Number(e.hours), 0);
 }
@@ -240,12 +241,10 @@ export function WorkItemCard({ item, index, members = [], onClick, onAssigneeCha
                 {item.estimatedHours != null && (
                   <span>Est. {Number(item.estimatedHours)}h</span>
                 )}
-                {item.estimatedHours != null && loggedHours > 0 && (
+                {item.estimatedHours != null && (
                   <span className="text-gray-300">·</span>
                 )}
-                {loggedHours > 0 && (
-                  <span>{loggedHours}h logged</span>
-                )}
+                <span>{loggedHours}h logged</span>
               </div>
             )}
 
