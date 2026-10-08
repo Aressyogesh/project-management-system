@@ -29,10 +29,11 @@ const STATUS_ORDER: BoardStatus[] = [
   BoardStatus.READY_FOR_QA,
   BoardStatus.IN_QA,
   BoardStatus.QA_DONE,
+  BoardStatus.ACKNOWLEDGED,
   BoardStatus.CLOSED,
 ];
 
-const TERMINAL_STATUSES = new Set<BoardStatus>([BoardStatus.QA_DONE, BoardStatus.CLOSED]);
+const TERMINAL_STATUSES = new Set<BoardStatus>([BoardStatus.QA_DONE, BoardStatus.ACKNOWLEDGED, BoardStatus.CLOSED]);
 
 const VALID_PARENT_TYPES: Partial<Record<WorkItemType, WorkItemType[]>> = {
   [WorkItemType.USER_STORY]: [WorkItemType.EPIC],
@@ -116,6 +117,7 @@ export class WorkItemsService implements OnModuleInit {
           OR: [
             { title: { contains: filters.search, mode: 'insensitive' as const } },
             { displayId: { contains: filters.search, mode: 'insensitive' as const } },
+            { labels: { has: filters.search } },
           ],
         }),
       },

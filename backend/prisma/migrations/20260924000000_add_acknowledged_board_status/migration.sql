@@ -1,0 +1,2 @@
+-- AlterEnum
+ALTER TYPE "BoardStatus" ADD VALUE 'ACKNOWLEDGED' AFTER 'QA_DONE';

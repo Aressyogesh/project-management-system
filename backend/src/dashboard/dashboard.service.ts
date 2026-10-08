@@ -161,7 +161,7 @@ export class DashboardService {
 
       // Current user's own assigned open work items (used for myTasks response field)
       this.prisma.workItem.findMany({
-        where: { assigneeId: userId, project: { status: ProjectStatus.ACTIVE }, status: { notIn: [BoardStatus.QA_DONE, BoardStatus.CLOSED] } },
+        where: { assigneeId: userId, project: { status: ProjectStatus.ACTIVE }, status: { notIn: [BoardStatus.QA_DONE, BoardStatus.ACKNOWLEDGED, BoardStatus.CLOSED] } },
         select: {
           id: true, title: true, priority: true, status: true, dueDate: true,
           assignee: { select: { fullName: true } },
@@ -174,8 +174,8 @@ export class DashboardService {
       // Total work items across scope (WorkItem model only — source of truth for board tasks)
       this.prisma.workItem.count({ where: workItemWhere }),
 
-      // Completed work items (QA_DONE) across scope
-      this.prisma.workItem.count({ where: { ...workItemWhere, status: BoardStatus.QA_DONE } }),
+      // Completed work items (QA_DONE / ACKNOWLEDGED / CLOSED) across scope
+      this.prisma.workItem.count({ where: { ...workItemWhere, status: { in: [BoardStatus.QA_DONE, BoardStatus.ACKNOWLEDGED, BoardStatus.CLOSED] } } }),
 
       // Tasks progress breakdown (WorkItem statuses)
       this.prisma.workItem.count({ where: { ...workItemWhere, status: BoardStatus.TODO } }),
@@ -266,22 +266,22 @@ export class DashboardService {
       this.prisma.projectMember.count({ where: { projectId } }),
       this.prisma.workItem.count({ where: { projectId } }),
       this.prisma.workItem.count({
-        where: { projectId, status: { in: [BoardStatus.QA_DONE, BoardStatus.CLOSED] }, completedAt: { gte: startDate, lt: endDate } },
+        where: { projectId, status: { in: [BoardStatus.QA_DONE, BoardStatus.ACKNOWLEDGED, BoardStatus.CLOSED] }, completedAt: { gte: startDate, lt: endDate } },
       }),
       this.prisma.workItem.count({
-        where: { projectId, type: WorkItemType.BUG, status: { notIn: [BoardStatus.QA_DONE, BoardStatus.CLOSED] } },
+        where: { projectId, type: WorkItemType.BUG, status: { notIn: [BoardStatus.QA_DONE, BoardStatus.ACKNOWLEDGED, BoardStatus.CLOSED] } },
       }),
       this.prisma.workItem.count({ where: { projectId, status: BoardStatus.TODO } }),
       this.prisma.workItem.count({ where: { projectId, status: { in: [BoardStatus.IN_PROGRESS, BoardStatus.BLOCKED] } } }),
       this.prisma.workItem.count({ where: { projectId, status: { in: [BoardStatus.IN_REVIEW, BoardStatus.READY_FOR_QA, BoardStatus.IN_QA] } } }),
-      this.prisma.workItem.count({ where: { projectId, status: { in: [BoardStatus.QA_DONE, BoardStatus.CLOSED] } } }),
+      this.prisma.workItem.count({ where: { projectId, status: { in: [BoardStatus.QA_DONE, BoardStatus.ACKNOWLEDGED, BoardStatus.CLOSED] } } }),
       this.prisma.workItem.findFirst({
-        where: { projectId, assigneeId: userId, dueDate: { gte: today, lt: tomorrow }, status: { notIn: [BoardStatus.QA_DONE, BoardStatus.CLOSED] } },
+        where: { projectId, assigneeId: userId, dueDate: { gte: today, lt: tomorrow }, status: { notIn: [BoardStatus.QA_DONE, BoardStatus.ACKNOWLEDGED, BoardStatus.CLOSED] } },
         select: { title: true, status: true },
         orderBy: { dueDate: 'asc' },
       }),
       this.prisma.workItem.findMany({
-        where: { projectId, assigneeId: { not: null }, status: { notIn: [BoardStatus.QA_DONE, BoardStatus.CLOSED] } },
+        where: { projectId, assigneeId: { not: null }, status: { notIn: [BoardStatus.QA_DONE, BoardStatus.ACKNOWLEDGED, BoardStatus.CLOSED] } },
         select: {
           id: true, title: true, priority: true, status: true, dueDate: true,
           project: { select: { name: true } },
@@ -375,9 +375,10 @@ export class DashboardService {
     return projects.map((project) => {
       const pm = project.members.find((m) => m.projectRole === ProjectRole.PROJECT_MANAGER);
       const totalTasks = project.workItems.length;
-      const completedTasks = project.workItems.filter((wi) => wi.status === BoardStatus.QA_DONE || wi.status === BoardStatus.CLOSED).length;
+      const DONE_STATUSES = new Set<BoardStatus>([BoardStatus.QA_DONE, BoardStatus.ACKNOWLEDGED, BoardStatus.CLOSED]);
+      const completedTasks = project.workItems.filter((wi) => DONE_STATUSES.has(wi.status as BoardStatus)).length;
       const openBugs = project.workItems.filter(
-        (wi) => wi.type === WorkItemType.BUG && wi.status !== BoardStatus.QA_DONE && wi.status !== BoardStatus.CLOSED,
+        (wi) => wi.type === WorkItemType.BUG && !DONE_STATUSES.has(wi.status as BoardStatus),
       ).length;
       const progress = totalTasks === 0 ? 0 : Math.round((completedTasks / totalTasks) * 100);
 
@@ -636,7 +637,7 @@ export class DashboardService {
       this.prisma.workItem.count({ where: { ...base, status: BoardStatus.TODO } }),
       this.prisma.workItem.count({ where: { ...base, status: { in: [BoardStatus.IN_PROGRESS, BoardStatus.BLOCKED] } } }),
       this.prisma.workItem.count({ where: { ...base, status: { in: [BoardStatus.IN_REVIEW, BoardStatus.READY_FOR_QA, BoardStatus.IN_QA] } } }),
-      this.prisma.workItem.count({ where: { ...base, status: { in: [BoardStatus.QA_DONE, BoardStatus.CLOSED] } } }),
+      this.prisma.workItem.count({ where: { ...base, status: { in: [BoardStatus.QA_DONE, BoardStatus.ACKNOWLEDGED, BoardStatus.CLOSED] } } }),
     ]);
 
     return { notStarted, inProgress, onReview, completed };
@@ -745,7 +746,7 @@ export class DashboardService {
         where: { id: { in: activeProjectIds } },
         select: {
           id: true, name: true,
-          _count: { select: { workItems: { where: { type: WorkItemType.BUG, status: { not: BoardStatus.QA_DONE } } } } },
+          _count: { select: { workItems: { where: { type: WorkItemType.BUG, status: { notIn: [BoardStatus.QA_DONE, BoardStatus.ACKNOWLEDGED, BoardStatus.CLOSED] } } } } },
         },
         take: activeProjectIds.length,
       }),

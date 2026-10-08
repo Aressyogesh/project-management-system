@@ -121,6 +121,7 @@ enum BoardStatus {
   READY_FOR_QA
   IN_QA
   QA_DONE
+  ACKNOWLEDGED
   CLOSED
   QA
 }

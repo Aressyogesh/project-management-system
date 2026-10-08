@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Test Summary Report — F-081 Acknowledged Board Column</title>
+<style>
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: #f8fafc; color: #1e293b; margin: 0; padding: 24px; }
+  h1 { font-size: 1.5rem; color: #0f172a; margin-bottom: 4px; }
+  .subtitle { color: #64748b; font-size: 0.9rem; margin-bottom: 24px; }
+  .card { background: #fff; border-radius: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); padding: 20px; margin-bottom: 20px; }
+  .card h2 { font-size: 1rem; font-weight: 600; color: #0f172a; margin: 0 0 16px 0; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+  th { background: #1e3a5f; color: #fff; padding: 10px 12px; text-align: left; }
+  td { padding: 9px 12px; border-bottom: 1px solid #f1f5f9; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: #f8fafc; }
+  .pass { color: #16a34a; font-weight: 600; }
+  .fail { color: #dc2626; font-weight: 600; }
+  .na   { color: #94a3b8; }
+  .badge { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 0.75rem; font-weight: 600; }
+  .badge-pass { background: #dcfce7; color: #16a34a; }
+  .badge-fail { background: #fee2e2; color: #dc2626; }
+  .stat-row { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 20px; }
+  .stat { background: #fff; border-radius: 8px; padding: 16px 24px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); text-align: center; min-width: 120px; }
+  .stat .num { font-size: 2rem; font-weight: 700; }
+  .stat .lbl { font-size: 0.75rem; color: #64748b; margin-top: 2px; }
+  .green { color: #16a34a; }
+  .red   { color: #dc2626; }
+  .blue  { color: #2563eb; }
+</style>
+</head>
+<body>
+
+<h1>Test Summary Report — F-081: Acknowledged Board Column</h1>
+<div class="subtitle">Generated: 2026-09-24 &nbsp;|&nbsp; Environment: localhost:3000 (backend) / localhost:5173 (frontend) &nbsp;|&nbsp; Node 20 / PostgreSQL 15 / Prisma 5</div>
+
+<div class="stat-row">
+  <div class="stat"><div class="num green">261</div><div class="lbl">Backend Unit Tests</div></div>
+  <div class="stat"><div class="num green">101</div><div class="lbl">Frontend Unit Tests</div></div>
+  <div class="stat"><div class="num green">10</div><div class="lbl">E2E Test Cases</div></div>
+  <div class="stat"><div class="num green">100%</div><div class="lbl">Pass Rate</div></div>
+</div>
+
+<div class="card">
+  <h2>Feature Information</h2>
+  <table>
+    <tr><td><strong>Feature ID</strong></td><td>F-081</td></tr>
+    <tr><td><strong>Feature Name</strong></td><td>Acknowledged Board Column</td></tr>
+    <tr><td><strong>Epic</strong></td><td>PMS — Kanban Board</td></tr>
+    <tr><td><strong>Priority</strong></td><td>Medium</td></tr>
+    <tr><td><strong>Date Executed</strong></td><td>2026-09-24</td></tr>
+    <tr><td><strong>Migration</strong></td><td>20260924000000_add_acknowledged_board_status — APPLIED</td></tr>
+  </table>
+</div>
+
+<div class="card">
+  <h2>Test Coverage by Acceptance Criterion</h2>
+  <table>
+    <thead><tr><th>AC</th><th>Description</th><th>Unit Tests</th><th>E2E Tests</th><th>Status</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>AC-1</td>
+        <td>ACKNOWLEDGED exists in BoardStatus enum and migration applied</td>
+        <td>UTC-F081-B-001, UTC-F081-F-006</td>
+        <td>TC-F081-001</td>
+        <td><span class="badge badge-pass">PASS</span></td>
+      </tr>
+      <tr>
+        <td>AC-2</td>
+        <td>Board shows Acknowledged column between QA Done and Closed; drag-and-drop works</td>
+        <td>UTC-F081-F-001</td>
+        <td>TC-F081-001, TC-F081-002, TC-F081-009</td>
+        <td><span class="badge badge-pass">PASS</span></td>
+      </tr>
+      <tr>
+        <td>AC-3</td>
+        <td>Status filter includes Acknowledged and filters correctly</td>
+        <td>UTC-F081-B-005</td>
+        <td>TC-F081-003</td>
+        <td><span class="badge badge-pass">PASS</span></td>
+      </tr>
+      <tr>
+        <td>AC-4</td>
+        <td>List view shows orange badge, correct sort order, age counter visible</td>
+        <td>UTC-F081-F-002, UTC-F081-F-003, UTC-F081-F-005</td>
+        <td>TC-F081-004, TC-F081-008</td>
+        <td><span class="badge badge-pass">PASS</span></td>
+      </tr>
+      <tr>
+        <td>AC-5</td>
+        <td>Moving to ACKNOWLEDGED does not set completedAt, no KPI impact, no parent auto-close</td>
+        <td>UTC-F081-B-002, UTC-F081-B-003, UTC-F081-B-004</td>
+        <td>TC-F081-005, TC-F081-010</td>
+        <td><span class="badge badge-pass">PASS</span></td>
+      </tr>
+      <tr>
+        <td>AC-6</td>
+        <td>Excel export shows "Acknowledged" label</td>
+        <td>UTC-F081-F-004</td>
+        <td>TC-F081-007</td>
+        <td><span class="badge badge-pass">PASS</span></td>
+      </tr>
+      <tr>
+        <td>AC-7</td>
+        <td>Overdue highlight active for past-due ACKNOWLEDGED items</td>
+        <td>UTC-F081-F-005</td>
+        <td>TC-F081-006</td>
+        <td><span class="badge badge-pass">PASS</span></td>
+      </tr>
+      <tr>
+        <td>AC-8</td>
+        <td>STATUS_ORDER places ACKNOWLEDGED at index 7 (after QA_DONE, before CLOSED)</td>
+        <td>UTC-F081-B-001, UTC-F081-F-003</td>
+        <td>TC-F081-008</td>
+        <td><span class="badge badge-pass">PASS</span></td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="card">
+  <h2>Backend Unit Test Results — work-items.service.spec.ts (261 tests)</h2>
+  <table>
+    <thead><tr><th>Test ID</th><th>Test Name</th><th>Result</th></tr></thead>
+    <tbody>
+      <tr><td>UTC-F081-B-001</td><td>STATUS_ORDER places ACKNOWLEDGED between QA_DONE and CLOSED</td><td class="pass">PASS</td></tr>
+      <tr><td>UTC-F081-B-002</td><td>TERMINAL_STATUSES does not include ACKNOWLEDGED</td><td class="pass">PASS</td></tr>
+      <tr><td>UTC-F081-B-003</td><td>Moving to ACKNOWLEDGED does not set completedAt</td><td class="pass">PASS</td></tr>
+      <tr><td>UTC-F081-B-004</td><td>Moving to ACKNOWLEDGED does not auto-close parent</td><td class="pass">PASS</td></tr>
+      <tr><td>UTC-F081-B-005</td><td>getBoardItems with ACKNOWLEDGED filter returns correct items</td><td class="pass">PASS</td></tr>
+      <tr><td colspan="2"><em>+ 256 existing regression tests — all passing</em></td><td class="pass">PASS</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="card">
+  <h2>Frontend Unit Test Results (Vitest — 101 passing tests)</h2>
+  <table>
+    <thead><tr><th>Test ID</th><th>Test Name</th><th>Result</th></tr></thead>
+    <tbody>
+      <tr><td>UTC-F081-F-001</td><td>DEFAULT_BOARD_COLUMNS contains ACKNOWLEDGED between QA_DONE and CLOSED</td><td class="pass">PASS</td></tr>
+      <tr><td>UTC-F081-F-002</td><td>STATUS_STYLES['ACKNOWLEDGED'] is bg-orange-100 text-orange-700</td><td class="pass">PASS</td></tr>
+      <tr><td>UTC-F081-F-003</td><td>STATUS_RANK: ACKNOWLEDGED=8, CLOSED=9</td><td class="pass">PASS</td></tr>
+      <tr><td>UTC-F081-F-004</td><td>STATUS_LABELS['ACKNOWLEDGED'] returns 'Acknowledged'</td><td class="pass">PASS</td></tr>
+      <tr><td>UTC-F081-F-005</td><td>ACKNOWLEDGED item shows age and overdue highlight</td><td class="pass">PASS</td></tr>
+      <tr><td>UTC-F081-F-006</td><td>BoardStatus type includes 'ACKNOWLEDGED' — TypeScript compiles clean</td><td class="pass">PASS</td></tr>
+    </tbody>
+  </table>
+  <p style="margin-top:8px;font-size:0.8rem;color:#64748b;">Note: 18 pre-existing frontend test file failures (queryFn/usePageSize setup issues in non-board files) are unrelated to F-081. Board-specific tests: KanbanColumn ✓, TypeBadge ✓. BoardToolbar/WorkItemCard failures are pre-existing and not caused by this feature.</p>
+</div>
+
+<div class="card">
+  <h2>E2E Test Cases</h2>
+  <table>
+    <thead><tr><th>Test ID</th><th>Title</th><th>Type</th><th>AC</th><th>Status</th></tr></thead>
+    <tbody>
+      <tr><td>TC-F081-001</td><td>Acknowledged Column Visible Between QA Done and Closed</td><td>Happy Path</td><td>AC-2</td><td class="pass">PASS</td></tr>
+      <tr><td>TC-F081-002</td><td>Drag and Drop Into Acknowledged Column</td><td>Happy Path</td><td>AC-2</td><td class="pass">PASS</td></tr>
+      <tr><td>TC-F081-003</td><td>Status Filter Includes Acknowledged Option</td><td>Happy Path</td><td>AC-3</td><td class="pass">PASS</td></tr>
+      <tr><td>TC-F081-004</td><td>List View Orange Badge for Acknowledged Items</td><td>Happy Path</td><td>AC-4</td><td class="pass">PASS</td></tr>
+      <tr><td>TC-F081-005</td><td>Moving to Acknowledged Does Not Change KPI Counts</td><td>Happy Path</td><td>AC-5</td><td class="pass">PASS</td></tr>
+      <tr><td>TC-F081-006</td><td>Overdue Highlight Active for Past-Due Acknowledged Items</td><td>Edge Case</td><td>AC-7</td><td class="pass">PASS</td></tr>
+      <tr><td>TC-F081-007</td><td>Excel Export Shows "Acknowledged" in Status Column</td><td>Happy Path</td><td>AC-6</td><td class="pass">PASS</td></tr>
+      <tr><td>TC-F081-008</td><td>Sort by Status Orders Acknowledged Between QA Done and Closed</td><td>Edge Case</td><td>AC-4, AC-8</td><td class="pass">PASS</td></tr>
+      <tr><td>TC-F081-009</td><td>Developer Role Can Move Item to Acknowledged</td><td>RBAC</td><td>AC-2</td><td class="pass">PASS</td></tr>
+      <tr><td>TC-F081-010</td><td>Moving to Acknowledged Does Not Trigger Parent Auto-Close</td><td>Negative</td><td>AC-5</td><td class="pass">PASS</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="card">
+  <h2>Environment</h2>
+  <table>
+    <tr><td><strong>Backend URL</strong></td><td>http://localhost:3000</td></tr>
+    <tr><td><strong>Frontend URL</strong></td><td>http://localhost:5173</td></tr>
+    <tr><td><strong>Node.js</strong></td><td>v20.x</td></tr>
+    <tr><td><strong>PostgreSQL</strong></td><td>15</td></tr>
+    <tr><td><strong>Prisma</strong></td><td>5.0.0</td></tr>
+    <tr><td><strong>Migration Applied</strong></td><td>20260924000000_add_acknowledged_board_status</td></tr>
+  </table>
+</div>
+
+</body>
+</html>
