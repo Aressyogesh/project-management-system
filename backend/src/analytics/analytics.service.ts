@@ -258,7 +258,7 @@ export class AnalyticsService {
     // Sprint Reliability: items that have entered IN_QA / Total Assigned (non-EPIC, non-BLOCKED) * 10
     // Cards in QA_DONE or CLOSED moved forward from IN_QA — score unaffected, still counted.
     // Cards pulled back below IN_QA (to IN_REVIEW or IN_PROGRESS) — recalculate: status leaves the set.
-    const QA_OR_BEYOND = new Set<BoardStatus>([BoardStatus.IN_QA, BoardStatus.QA_DONE, BoardStatus.CLOSED]);
+    const QA_OR_BEYOND = new Set<BoardStatus>([BoardStatus.IN_QA, BoardStatus.QA_DONE, BoardStatus.ACKNOWLEDGED, BoardStatus.CLOSED]);
     const srBase = allAssignedItems.filter(
       (i) => i.type !== WorkItemType.EPIC && i.status !== BoardStatus.BLOCKED,
     );
@@ -304,7 +304,7 @@ export class AnalyticsService {
     // Internal Rework Ratio: tasks dragged from IN_QA → IN_PROGRESS (qaReopenCount > 0) / total completed
     // Only IN_QA→IN_PROGRESS moves count as rework per Excel spec. General reopenCount (any backward move)
     // is NOT used here — that would overcount moves from IN_REVIEW, QA_DONE, etc.
-    const DONE_STAGES = new Set<BoardStatus>([BoardStatus.QA_DONE, BoardStatus.CLOSED]);
+    const DONE_STAGES = new Set<BoardStatus>([BoardStatus.QA_DONE, BoardStatus.ACKNOWLEDGED, BoardStatus.CLOSED]);
     const qaReopenedTaskCount = allAssignedItems.filter((i) => i.qaReopenCount > 0).length;
     const totalCompleted = allAssignedItems.filter((i) => DONE_STAGES.has(i.status)).length;
     const internalReworkRatio = computeReworkRatio(qaReopenedTaskCount, totalCompleted);
@@ -576,7 +576,7 @@ export class AnalyticsService {
           this.prisma.workItem.count({
             where: {
               assigneeId: user.id,
-              status: { in: [BoardStatus.QA_DONE, BoardStatus.CLOSED] },
+              status: { in: [BoardStatus.QA_DONE, BoardStatus.ACKNOWLEDGED, BoardStatus.CLOSED] },
               projectId: { in: activeProjectIds },
               ...(dateFilter ? { completedAt: dateFilter } : {}),
             },
@@ -668,11 +668,11 @@ export class AnalyticsService {
       const breakdown = TYPES.map((type) => {
         const items = p.workItems.filter((w) => w.type === type);
         const total = items.length;
-        const done = items.filter((w) => w.status === BoardStatus.QA_DONE || w.status === BoardStatus.CLOSED).length;
+        const done = items.filter((w) => w.status === BoardStatus.QA_DONE || w.status === BoardStatus.ACKNOWLEDGED || w.status === BoardStatus.CLOSED).length;
         return { type, total, done, completePct: total > 0 ? Math.round((done / total) * 100) : 0 };
       });
       const totalAll = p.workItems.length;
-      const doneAll = p.workItems.filter((w) => w.status === BoardStatus.QA_DONE || w.status === BoardStatus.CLOSED).length;
+      const doneAll = p.workItems.filter((w) => w.status === BoardStatus.QA_DONE || w.status === BoardStatus.ACKNOWLEDGED || w.status === BoardStatus.CLOSED).length;
       return {
         id: p.id,
         name: p.name,
@@ -686,12 +686,28 @@ export class AnalyticsService {
     });
   }
 
-  async getBugsReport(period: string, projectId?: string) {
+  async getBugsReport(period: string, projectId?: string, requestingUserId?: string, isAdmin = true, managedBusinessUnitId?: string | null) {
     const { start, end } = periodToRange(period);
 
-    const activeProjectIds = projectId
-      ? [projectId]
-      : (await this.prisma.project.findMany({ where: { status: 'ACTIVE' }, select: { id: true } })).map((p) => p.id);
+    let activeProjectIds: string[];
+    if (managedBusinessUnitId) {
+      const buProjectIds = await this.getBuProjectIds(managedBusinessUnitId);
+      activeProjectIds = projectId ? buProjectIds.filter((id) => id === projectId) : buProjectIds;
+      if (activeProjectIds.length === 0) return { severity: [], classification: [] };
+    } else if (isAdmin || !requestingUserId) {
+      activeProjectIds = projectId
+        ? [projectId]
+        : (await this.prisma.project.findMany({ where: { status: 'ACTIVE' }, select: { id: true } })).map((p) => p.id);
+    } else {
+      const managedIds = await this.getManagedProjectIds(requestingUserId);
+      if (managedIds.length > 0) {
+        activeProjectIds = projectId ? managedIds.filter((id) => id === projectId) : managedIds;
+      } else {
+        const memberIds = await this.getMemberProjectIds(requestingUserId);
+        activeProjectIds = projectId ? memberIds.filter((id) => id === projectId) : memberIds;
+      }
+      if (activeProjectIds.length === 0) return { severity: [], classification: [] };
+    }
 
     const bugs = await this.prisma.workItem.findMany({
       where: {
@@ -1144,7 +1160,7 @@ export class AnalyticsService {
           where: {
             assigneeId: { not: null },
             type: { not: WorkItemType.EPIC },
-            status: { notIn: [BoardStatus.QA_DONE, BoardStatus.CLOSED] },
+            status: { notIn: [BoardStatus.QA_DONE, BoardStatus.ACKNOWLEDGED, BoardStatus.CLOSED] },
             ...(scopedProjectIds !== undefined ? { projectId: { in: scopedProjectIds } } : {}),
             OR: [
               // Both dates set and overlap with the period
@@ -1464,12 +1480,25 @@ export class AnalyticsService {
     statusFilter?: 'done';
     completedOnly?: boolean;
     noDateFilter?: boolean;
+    requestingUserId?: string;
+    isAdmin?: boolean;
+    managedBusinessUnitId?: string | null;
   }) {
     const { start, end } = periodToRange(params.period);
 
-    const projectIds = params.projectId
-      ? [params.projectId]
-      : (await this.prisma.project.findMany({ where: { status: 'ACTIVE' }, select: { id: true } })).map((p) => p.id);
+    let projectIds: string[];
+    if (params.projectId) {
+      projectIds = [params.projectId];
+    } else if (params.managedBusinessUnitId) {
+      projectIds = await this.getBuProjectIds(params.managedBusinessUnitId);
+    } else if (params.isAdmin || !params.requestingUserId) {
+      projectIds = (await this.prisma.project.findMany({ where: { status: 'ACTIVE' }, select: { id: true } })).map((p) => p.id);
+    } else {
+      const managedIds = await this.getManagedProjectIds(params.requestingUserId);
+      projectIds = managedIds.length > 0
+        ? managedIds
+        : await this.getMemberProjectIds(params.requestingUserId);
+    }
 
     const dateFilter = params.noDateFilter
       ? {}
@@ -1478,7 +1507,7 @@ export class AnalyticsService {
         : { createdAt: { gte: start, lt: end } };
 
     const statusFilter = params.statusFilter === 'done'
-      ? { status: { in: [BoardStatus.QA_DONE, BoardStatus.CLOSED] } }
+      ? { status: { in: [BoardStatus.QA_DONE, BoardStatus.ACKNOWLEDGED, BoardStatus.CLOSED] } }
       : {};
 
     return this.prisma.workItem.findMany({
