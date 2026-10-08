@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><title>Code Review — F-016 Milestone Progress Tracking</title>
+<style>
+  body{font-family:Arial,sans-serif;margin:32px;color:#1a1a1a}
+  h1{color:#1d4ed8}h2{color:#374151;border-bottom:1px solid #e5e7eb;padding-bottom:6px}
+  table{border-collapse:collapse;width:100%;margin-bottom:24px}
+  th,td{border:1px solid #d1d5db;padding:8px 12px;text-align:left}
+  th{background:#f3f4f6;font-weight:600}
+  .pass{color:#16a34a;font-weight:600}.na{color:#6b7280}
+  .verdict{background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:16px;margin-bottom:24px}
+</style>
+</head>
+<body>
+<h1>Code Review Report — F-016: Milestone Progress Tracking</h1>
+<p><strong>Reviewer:</strong> Claude Sonnet 4.6 &nbsp;|&nbsp; <strong>Date:</strong> 2026-05-27</p>
+
+<div class="verdict"><strong>Verdict: <span class="pass">APPROVED</span></strong> — No blocking issues found.</div>
+
+<h2>Review Checklist</h2>
+<table>
+  <tr><th>Category</th><th>Item</th><th>Status</th></tr>
+  <tr><td>CR-1 Correctness</td><td>Logic matches all ACs — progressPercent formula correct (round, divide-by-zero guard)</td><td><span class="pass">PASS</span></td></tr>
+  <tr><td>CR-1 Correctness</td><td>Edge case: totalTasks === 0 returns 0, no divide-by-zero</td><td><span class="pass">PASS</span></td></tr>
+  <tr><td>CR-1 Correctness</td><td>Only COMPLETED tasks counted; IN_PROGRESS/NOT_STARTED/ON_REVIEW excluded</td><td><span class="pass">PASS</span></td></tr>
+  <tr><td>CR-2 Naming</td><td>doneTasks, totalTasks, completedTasks, progressPercent — all intention-revealing</td><td><span class="pass">PASS</span></td></tr>
+  <tr><td>CR-3 SOLID</td><td>Single responsibility — progress computation stays in service, not controller</td><td><span class="pass">PASS</span></td></tr>
+  <tr><td>CR-4 Quality</td><td>Single Prisma query per request (no N+1) — _count and filtered tasks in one findMany</td><td><span class="pass">PASS</span></td></tr>
+  <tr><td>CR-4 Quality</td><td>No stored column — progress derived on-the-fly, always consistent with task state</td><td><span class="pass">PASS</span></td></tr>
+  <tr><td>CR-5 API Design</td><td>Additive change — no existing fields removed; backward-compatible</td><td><span class="pass">PASS</span></td></tr>
+  <tr><td>CR-6 Tests</td><td>AAA pattern followed in all 5 new unit tests</td><td><span class="pass">PASS</span></td></tr>
+  <tr><td>CR-6 Tests</td><td>resetAllMocks() used; existing tests updated for new findAll shape</td><td><span class="pass">PASS</span></td></tr>
+  <tr><td>CR-7 Performance</td><td>One DB query per GET milestones request — no additional round-trips</td><td><span class="pass">PASS</span></td></tr>
+  <tr><td>CR-8 Standards</td><td>TypeScript strict — map destructuring typed correctly</td><td><span class="pass">PASS</span></td></tr>
+</table>
+</body>
+</html>

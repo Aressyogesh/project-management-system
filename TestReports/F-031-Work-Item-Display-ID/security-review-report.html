@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<title>Security Review — F-031 Work Item Display ID</title>
+<style>
+  body{font-family:Segoe UI,Arial,sans-serif;margin:0;background:#f4f6fb;color:#222}
+  .header{background:linear-gradient(135deg,#b45309,#d97706);color:#fff;padding:32px 40px}
+  .header h1{margin:0 0 6px;font-size:1.6rem}
+  .header p{margin:0;opacity:.85;font-size:.9rem}
+  .container{max-width:960px;margin:32px auto;padding:0 24px}
+  .card{background:#fff;border-radius:12px;box-shadow:0 2px 12px rgba(0,0,0,.08);padding:28px;margin-bottom:24px}
+  .card h2{margin:0 0 18px;font-size:1.1rem;color:#b45309;border-bottom:2px solid #fef3c7;padding-bottom:8px}
+  table{width:100%;border-collapse:collapse}
+  th{background:#fffbeb;text-align:left;padding:10px 14px;font-size:.8rem;color:#b45309;border-bottom:2px solid #fef3c7}
+  td{padding:10px 14px;font-size:.85rem;border-bottom:1px solid #f3f4f6}
+  tr:last-child td{border-bottom:none}
+  .badge{display:inline-block;padding:3px 10px;border-radius:99px;font-size:.75rem;font-weight:700}
+  .badge-pass{background:#dcfce7;color:#16a34a}
+  .badge-na{background:#f3f4f6;color:#6b7280}
+  .verdict{font-size:1.2rem;font-weight:700;color:#16a34a;border:2px solid #dcfce7;border-radius:8px;padding:12px 24px;display:inline-block;background:#f0fdf4}
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>Security Review Report — F-031: Work Item Display ID</h1>
+  <p>Reviewer: Claude Code &nbsp;|&nbsp; Date: 2026-06-03 &nbsp;|&nbsp; Standards: OWASP Top 10, OWASP API Top 10</p>
+</div>
+<div class="container">
+
+  <div class="card">
+    <h2>OWASP Web Top 10</h2>
+    <table>
+      <thead><tr><th>Risk</th><th>Applicable</th><th>Status</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td>A01 — Broken Access Control</td><td>Yes</td><td><span class="badge badge-pass">PASS</span></td><td>JwtAuthGuard + ProjectRoleGuard already on all work-item endpoints. No new endpoints added.</td></tr>
+        <tr><td>A02 — Cryptographic Failures</td><td>No</td><td><span class="badge badge-na">N/A</span></td><td>displayId is a non-sensitive alphanumeric identifier. No cryptographic operations involved.</td></tr>
+        <tr><td>A03 — Injection</td><td>Yes</td><td><span class="badge badge-pass">PASS</span></td><td>Prisma ORM parameterises all queries. displayId is generated server-side; no user input used in ID generation.</td></tr>
+        <tr><td>A04 — Insecure Design</td><td>Yes</td><td><span class="badge badge-pass">PASS</span></td><td>ID is auto-generated — users cannot supply or manipulate it. DTO whitelist strips any displayId field sent by client.</td></tr>
+        <tr><td>A05 — Security Misconfiguration</td><td>No</td><td><span class="badge badge-na">N/A</span></td><td>No new routes, headers, or configs introduced.</td></tr>
+        <tr><td>A06 — Vulnerable Components</td><td>No</td><td><span class="badge badge-na">N/A</span></td><td>No new packages added.</td></tr>
+        <tr><td>A07 — Auth Failures</td><td>No</td><td><span class="badge badge-na">N/A</span></td><td>Auth infrastructure unchanged.</td></tr>
+        <tr><td>A08 — Integrity Failures</td><td>No</td><td><span class="badge badge-na">N/A</span></td><td>Not applicable to this feature.</td></tr>
+        <tr><td>A09 — Logging &amp; Monitoring</td><td>Yes</td><td><span class="badge badge-pass">PASS</span></td><td>Existing activity log records work item creation with title. displayId is included in the item record.</td></tr>
+        <tr><td>A10 — SSRF</td><td>No</td><td><span class="badge badge-na">N/A</span></td><td>No outbound HTTP calls made.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <h2>OWASP API Security Top 10</h2>
+    <table>
+      <thead><tr><th>Risk</th><th>Status</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td>API01 — Broken Object Level Auth</td><td><span class="badge badge-pass">PASS</span></td><td>Project ownership validated via existing guards before any work item is created or retrieved.</td></tr>
+        <tr><td>API02 — Broken Authentication</td><td><span class="badge badge-pass">PASS</span></td><td>All endpoints require valid JWT. No public endpoints added.</td></tr>
+        <tr><td>API03 — Broken Object Property Level Auth</td><td><span class="badge badge-pass">PASS</span></td><td>displayId is not a sensitive field. It is safe to expose in all authenticated responses.</td></tr>
+        <tr><td>API04 — Unrestricted Resource Consumption</td><td><span class="badge badge-pass">PASS</span></td><td>Counter increment is a single atomic DB update — minimal overhead per request.</td></tr>
+        <tr><td>API05 — Broken Function Level Auth</td><td><span class="badge badge-pass">PASS</span></td><td>No new admin functions. Existing role guards unchanged.</td></tr>
+        <tr><td>API06 — Unrestricted Access to Sensitive Flows</td><td><span class="badge badge-pass">PASS</span></td><td>ID generation is server-side only; not a sensitive business flow.</td></tr>
+        <tr><td>API07 — SSRF</td><td><span class="badge badge-na">N/A</span></td><td>Not applicable.</td></tr>
+        <tr><td>API08 — Security Misconfiguration</td><td><span class="badge badge-pass">PASS</span></td><td>No debug info exposed; existing config unchanged.</td></tr>
+        <tr><td>API09 — Improper Inventory Management</td><td><span class="badge badge-pass">PASS</span></td><td>No undocumented endpoints. API contract defined in REQ-F-031.</td></tr>
+        <tr><td>API10 — Unsafe API Consumption</td><td><span class="badge badge-na">N/A</span></td><td>No third-party API calls.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <h2>Feature-Specific Security Checks</h2>
+    <table>
+      <thead><tr><th>Check</th><th>Status</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td>displayId cannot be set by user input</td><td><span class="badge badge-pass">PASS</span></td><td>CreateWorkItemDto and UpdateWorkItemDto do not expose a displayId field; NestJS ValidationPipe (whitelist) strips unknown props</td></tr>
+        <tr><td>Counter increment is atomic (no race condition)</td><td><span class="badge badge-pass">PASS</span></td><td>prisma.$transaction wraps counter update + item create. PostgreSQL row-level lock on UPDATE prevents duplicate IDs.</td></tr>
+        <tr><td>No PII in displayId</td><td><span class="badge badge-pass">PASS</span></td><td>displayId is derived from project name (not user data) plus a sequential integer.</td></tr>
+        <tr><td>Frontend does not allow editing displayId</td><td><span class="badge badge-pass">PASS</span></td><td>DisplayId is rendered as a read-only span in both WorkItemCard and WorkItemModal.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <h2>Dependency Audit</h2>
+    <p style="font-size:.9rem;color:#555">No new dependencies were added for this feature. Existing dependency audit results apply.</p>
+    <p style="font-size:.85rem;color:#888">Critical CVEs: 0 &nbsp;|&nbsp; High CVEs: 0 &nbsp;|&nbsp; Moderate: see existing audit</p>
+  </div>
+
+  <div class="card">
+    <h2>Verdict</h2>
+    <p class="verdict">&#10003; Cleared — No security issues found</p>
+    <p style="margin-top:14px;font-size:.9rem;color:#555">All OWASP Top 10 and API Top 10 checks pass or are not applicable. No CRITICAL or HIGH findings. No new attack surface introduced.</p>
+    <p style="font-size:.85rem;color:#888">Signed off: Claude Code &nbsp;|&nbsp; 2026-06-03</p>
+  </div>
+
+</div>
+</body>
+</html>

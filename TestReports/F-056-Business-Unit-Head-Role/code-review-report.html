@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Code Review Report — F-056 Business Unit Head Role</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', Arial, sans-serif; background: #f4f6fb; color: #1e293b; padding: 32px; }
+    .container { max-width: 1100px; margin: auto; }
+    h1 { font-size: 1.6rem; font-weight: 700; margin-bottom: 4px; }
+    .meta { font-size: 0.85rem; color: #64748b; margin-bottom: 28px; }
+    .badge { display: inline-block; padding: 3px 12px; border-radius: 999px; font-size: 0.78rem; font-weight: 600; }
+    .badge-pass { background: #dcfce7; color: #166534; }
+    .badge-warn { background: #fef9c3; color: #92400e; }
+    .badge-fail { background: #fee2e2; color: #991b1b; }
+    .summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 28px; }
+    .summary-card { background: #fff; border-radius: 12px; padding: 18px; text-align: center; box-shadow: 0 1px 4px rgba(0,0,0,.08); }
+    .summary-card .num { font-size: 2rem; font-weight: 700; }
+    .summary-card .lbl { font-size: 0.78rem; color: #64748b; margin-top: 4px; }
+    .num-pass { color: #16a34a; }
+    .num-warn { color: #d97706; }
+    .num-fail { color: #dc2626; }
+    .section { background: #fff; border-radius: 12px; box-shadow: 0 1px 4px rgba(0,0,0,.08); margin-bottom: 24px; overflow: hidden; }
+    .section-header { padding: 14px 20px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; display: flex; align-items: center; justify-content: space-between; }
+    .section-header h2 { font-size: 0.95rem; font-weight: 600; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+    th { background: #f1f5f9; text-align: left; padding: 10px 16px; font-weight: 600; color: #475569; border-bottom: 1px solid #e2e8f0; }
+    td { padding: 10px 16px; border-bottom: 1px solid #f1f5f9; vertical-align: top; }
+    tr:last-child td { border-bottom: none; }
+    .finding { background: #fffbeb; border-left: 3px solid #f59e0b; padding: 10px 14px; margin: 8px 0; border-radius: 4px; font-size: 0.82rem; }
+    .footer { text-align: center; font-size: 0.78rem; color: #94a3b8; margin-top: 32px; }
+  </style>
+</head>
+<body>
+<div class="container">
+  <h1>Code Review Report</h1>
+  <div class="meta">F-056 — Business Unit Head Role &nbsp;|&nbsp; Reviewer: Claude Sonnet 4.6 &nbsp;|&nbsp; Date: 2026-07-02 &nbsp;|&nbsp; Overall: <span class="badge badge-pass">PASS</span></div>
+
+  <div class="summary-grid">
+    <div class="summary-card"><div class="num num-pass">8</div><div class="lbl">Checks Total</div></div>
+    <div class="summary-card"><div class="num num-pass">8</div><div class="lbl">Passed</div></div>
+    <div class="summary-card"><div class="num num-warn">0</div><div class="lbl">Warnings</div></div>
+    <div class="summary-card"><div class="num num-fail">0</div><div class="lbl">Failed</div></div>
+  </div>
+
+  <div class="section">
+    <div class="section-header"><h2>CR-1: Code Style &amp; Conventions</h2><span class="badge badge-pass">PASS</span></div>
+    <table>
+      <tr><th width="60">ID</th><th>Criteria</th><th width="100">Result</th><th>Notes</th></tr>
+      <tr><td>CR-1.1</td><td>TypeScript strict types used throughout</td><td><span class="badge badge-pass">PASS</span></td><td>All new fields typed. <code>SystemRole</code> union extended correctly, <code>managedBusinessUnitId?: string | null</code> used consistently in DTOs and frontend types.</td></tr>
+      <tr><td>CR-1.2</td><td>No <code>any</code> escape hatches introduced</td><td><span class="badge badge-pass">PASS</span></td><td>Only <code>any</code> usage is in pre-existing shift mapping <code>(s: any)</code> which is unchanged.</td></tr>
+      <tr><td>CR-1.3</td><td>Naming conventions consistent with codebase</td><td><span class="badge badge-pass">PASS</span></td><td><code>managedBusinessUnitId</code>, <code>managedBuId</code> params, <code>isBuHeadView</code> flags — all consistent with existing patterns.</td></tr>
+    </table>
+  </div>
+
+  <div class="section">
+    <div class="section-header"><h2>CR-2: Architecture &amp; Design</h2><span class="badge badge-pass">PASS</span></div>
+    <table>
+      <tr><th width="60">ID</th><th>Criteria</th><th width="100">Result</th><th>Notes</th></tr>
+      <tr><td>CR-2.1</td><td>BU scoping follows existing data-access patterns</td><td><span class="badge badge-pass">PASS</span></td><td>BU_HEAD scoping uses the User → Department → BusinessUnit chain via <code>department.businessUnitId</code>, matching the existing schema relationships. No direct FK from User to BusinessUnit was introduced (correctly avoided).</td></tr>
+      <tr><td>CR-2.2</td><td>JWT strategy enhancement is minimal and safe</td><td><span class="badge badge-pass">PASS</span></td><td><code>managedBusinessUnitId</code> added to <code>validate()</code> select in <code>jwt.strategy.ts</code>. Field is fetched once per request alongside existing user fields — no extra DB round-trip.</td></tr>
+      <tr><td>CR-2.3</td><td>Dashboard stats use a clean private helper</td><td><span class="badge badge-pass">PASS</span></td><td><code>buildProjectsProgress(where)</code> private helper extracted to avoid duplication between BU_HEAD and Admin/SU paths. Correct separation of concerns.</td></tr>
+    </table>
+  </div>
+
+  <div class="section">
+    <div class="section-header"><h2>CR-3: Logic &amp; Correctness</h2><span class="badge badge-pass">PASS</span></div>
+    <table>
+      <tr><th width="60">ID</th><th>Criteria</th><th width="100">Result</th><th>Notes</th></tr>
+      <tr><td>CR-3.1</td><td>BU_HEAD validation enforced on create and update</td><td><span class="badge badge-pass">PASS</span></td><td><code>users.service.ts</code> throws <code>UnprocessableEntityException</code> (422) when <code>systemRole === BU_HEAD</code> without <code>managedBusinessUnitId</code>. Also clears the field when role changes away from BU_HEAD.</td></tr>
+      <tr><td>CR-3.2</td><td>Leave scoping correctly restricts BU_HEAD</td><td><span class="badge badge-pass">PASS</span></td><td><code>assertCanManage()</code> in <code>leave-requests.service.ts</code> checks <code>leave.user.department.businessUnitId === managedBuId</code> and throws 403 for cross-BU access. Approve/reject/list all pass the scoped ID through.</td></tr>
+      <tr><td>CR-3.3</td><td>Frontend validation clears managed BU when role changes</td><td><span class="badge badge-pass">PASS</span></td><td><code>UserFormModal.tsx</code> onChange for System Role dropdown calls <code>setManagedBusinessUnitId('')</code> when role is not BU_HEAD, preventing stale data.</td></tr>
+      <tr><td>CR-3.4</td><td>Update mutation sends <code>null</code> (not undefined) to clear managed BU</td><td><span class="badge badge-pass">PASS</span></td><td>For non-BU_HEAD roles, <code>managedBusinessUnitId: null</code> is sent explicitly in the update payload so the backend can clear it. Create uses <code>undefined</code> (omits the field), which is correct.</td></tr>
+    </table>
+  </div>
+
+  <div class="section">
+    <div class="section-header"><h2>CR-4: Error Handling</h2><span class="badge badge-pass">PASS</span></div>
+    <table>
+      <tr><th width="60">ID</th><th>Criteria</th><th width="100">Result</th><th>Notes</th></tr>
+      <tr><td>CR-4.1</td><td>Correct HTTP status codes for BU_HEAD-specific errors</td><td><span class="badge badge-pass">PASS</span></td><td>Missing managed BU → 422 Unprocessable Entity (business rule violation). Cross-BU leave access → 403 Forbidden. Both are semantically correct.</td></tr>
+    </table>
+  </div>
+
+  <div class="section">
+    <div class="section-header"><h2>CR-5: Database / Prisma</h2><span class="badge badge-pass">PASS</span></div>
+    <table>
+      <tr><th width="60">ID</th><th>Criteria</th><th width="100">Result</th><th>Notes</th></tr>
+      <tr><td>CR-5.1</td><td>Migration SQL is correct and non-destructive</td><td><span class="badge badge-pass">PASS</span></td><td>Migration adds <code>BU_HEAD</code> to enum, adds nullable <code>managedBusinessUnitId</code> column with FK and ON DELETE SET NULL. No breaking changes to existing rows.</td></tr>
+      <tr><td>CR-5.2</td><td>Relation named distinctly to avoid conflicts</td><td><span class="badge badge-pass">PASS</span></td><td>Named relation <code>"ManagedBusinessUnit"</code> used on both sides to disambiguate from the BusinessUnit ↔ Department relation.</td></tr>
+    </table>
+  </div>
+
+  <div class="section">
+    <div class="section-header"><h2>CR-6: Frontend UI Consistency</h2><span class="badge badge-pass">PASS</span></div>
+    <table>
+      <tr><th width="60">ID</th><th>Criteria</th><th width="100">Result</th><th>Notes</th></tr>
+      <tr><td>CR-6.1</td><td>Managed BU dropdown uses same styling as existing selects</td><td><span class="badge badge-pass">PASS</span></td><td>Uses the <code>sel()</code> helper function already defined in <code>UserFormModal.tsx</code>, matching Business Unit and Department selects.</td></tr>
+      <tr><td>CR-6.2</td><td>Sidebar BU_HEAD exclusions correct</td><td><span class="badge badge-pass">PASS</span></td><td>BU_HEAD cannot see <code>/business-units</code>, <code>/departments</code>, <code>/clients</code>, <code>/org-structure</code>, <code>/activity</code>. Can see Leaves Management and Announcements. Matches requirements.</td></tr>
+    </table>
+  </div>
+
+  <div class="section">
+    <div class="section-header"><h2>CR-7: Test Coverage</h2><span class="badge badge-pass">PASS</span></div>
+    <table>
+      <tr><th width="60">ID</th><th>Criteria</th><th width="100">Result</th><th>Notes</th></tr>
+      <tr><td>CR-7.1</td><td>Existing tests updated for new service signatures</td><td><span class="badge badge-pass">PASS</span></td><td>40 backend tests pass. <code>users.service.spec.ts</code>, <code>dashboard.service.spec.ts</code>, <code>auth.service.spec.ts</code> all PASS. No regressions.</td></tr>
+      <tr><td>CR-7.2</td><td>New unit test specs authored per PROCEDURE.md</td><td><span class="badge badge-pass">PASS</span></td><td>UTC-F056-B-001 through B-010 (backend) and F-001 through F-005 (frontend) authored in <code>Unit Test Cases/F-056-Business-Unit-Head-Role/</code>.</td></tr>
+    </table>
+  </div>
+
+  <div class="section">
+    <div class="section-header"><h2>CR-8: Documentation</h2><span class="badge badge-pass">PASS</span></div>
+    <table>
+      <tr><th width="60">ID</th><th>Criteria</th><th width="100">Result</th><th>Notes</th></tr>
+      <tr><td>CR-8.1</td><td>Requirements document complete</td><td><span class="badge badge-pass">PASS</span></td><td>REQ-F-056 contains BR-1 through BR-11, AC-1 through AC-14, DB schema design, and API contracts.</td></tr>
+      <tr><td>CR-8.2</td><td>E2E test cases authored</td><td><span class="badge badge-pass">PASS</span></td><td>15 E2E test cases covering happy path, negative, RBAC, regression, and UI scenarios.</td></tr>
+    </table>
+  </div>
+
+  <div class="footer">Generated by Claude Sonnet 4.6 &nbsp;|&nbsp; F-056 Business Unit Head Role &nbsp;|&nbsp; 2026-07-02</div>
+</div>
+</body>
+</html>

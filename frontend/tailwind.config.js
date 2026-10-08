@@ -5,17 +5,24 @@ export default {
     extend: {
       colors: {
         primary: {
-          50:  '#f5f3ff',
-          100: '#ede9fe',
-          500: '#7c3aed',
-          600: '#6d28d9',
-          700: '#5b21b6',
+          50:  '#eff6ff',
+          100: '#dbeafe',
+          300: '#93c5fd',
+          500: '#1a74c4',
+          600: '#1060A3',
+          700: '#0d4f85',
         },
       },
       fontFamily: {
         sans: ['Inter', 'ui-sans-serif', 'system-ui'],
       },
+      keyframes: {
+        'fade-in': { from: { opacity: '0', transform: 'translateY(8px)' }, to: { opacity: '1', transform: 'translateY(0)' } },
+      },
+      animation: {
+        'fade-in': 'fade-in 0.2s ease-out',
+      },
     },
   },
-  plugins: [],
+  plugins: [require('@tailwindcss/typography')],
 };

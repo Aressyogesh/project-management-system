@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><title>Code Review — F-018 Employee Allocation Calendar View</title>
+<style>
+  body{font-family:Arial,sans-serif;margin:32px;color:#1a1a1a}
+  h1{color:#1d4ed8}h2{color:#374151;border-bottom:1px solid #e5e7eb;padding-bottom:6px}
+  table{border-collapse:collapse;width:100%;margin-bottom:24px}
+  th,td{border:1px solid #d1d5db;padding:8px 12px;text-align:left}
+  th{background:#f3f4f6;font-weight:600}
+  .pass{color:#16a34a;font-weight:600}.na{color:#6b7280}
+  .badge-pass{background:#dcfce7;color:#15803d;padding:2px 8px;border-radius:4px;font-size:13px}
+  .badge-na{background:#f3f4f6;color:#6b7280;padding:2px 8px;border-radius:4px;font-size:13px}
+  .verdict{background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:16px;margin-bottom:24px}
+</style>
+</head>
+<body>
+<h1>Code Review Report — F-018: Employee Allocation Calendar View</h1>
+<p><strong>Reviewer:</strong> Claude Sonnet 4.6 &nbsp;|&nbsp; <strong>Date:</strong> 2026-05-27</p>
+
+<div class="verdict"><strong>Verdict: <span class="pass">APPROVED</span></strong> — No blocking issues found.</div>
+
+<h2>Review Checklist</h2>
+<table>
+  <tr><th>Category</th><th>Item</th><th>Status</th></tr>
+  <tr><td>CR-1 Correctness</td><td>buildCalendarWeeks() correctly computes ISO week-aligned grid (Mon=0 offset) for any month/year combination including leap years</td><td><span class="badge-pass">PASS</span></td></tr>
+  <tr><td>CR-1 Correctness</td><td>toLocalDateStr() produces YYYY-MM-DD using local year/month/day — avoids UTC offset shifting the date</td><td><span class="badge-pass">PASS</span></td></tr>
+  <tr><td>CR-1 Correctness</td><td>byDate memo correctly strips the time portion from the API date string (alloc.date.split('T')[0]) before grouping</td><td><span class="badge-pass">PASS</span></td></tr>
+  <tr><td>CR-1 Correctness</td><td>dayColor() threshold: green &lt; 6h, yellow 6 ≤ h &lt; 8, red ≥ 8h — matches BR-4 spec</td><td><span class="badge-pass">PASS</span></td></tr>
+  <tr><td>CR-1 Correctness</td><td>Progress bar width capped at 100% using Math.min(100, ...) — prevents overflow on over-allocated days</td><td><span class="badge-pass">PASS</span></td></tr>
+  <tr><td>CR-2 Auth / RBAC</td><td>isPrivileged correctly checks systemRole SUPER_USER or ADMIN from JWT-sourced auth store</td><td><span class="badge-pass">PASS</span></td></tr>
+  <tr><td>CR-2 Auth / RBAC</td><td>Non-privileged users cannot change selectedUserId — dropdown not rendered, state always defaults to own user.id</td><td><span class="badge-pass">PASS</span></td></tr>
+  <tr><td>CR-2 Auth / RBAC</td><td>Users query (for dropdown) is only fired when isPrivileged is true (enabled flag)</td><td><span class="badge-pass">PASS</span></td></tr>
+  <tr><td>CR-3 Data Fetching</td><td>allocations query key includes [selectedUserId, from, to] — invalidates and re-fetches on any of these changes</td><td><span class="badge-pass">PASS</span></td></tr>
+  <tr><td>CR-3 Data Fetching</td><td>Query disabled (enabled: !!selectedUserId) when no user is selected — prevents empty-userId API call</td><td><span class="badge-pass">PASS</span></td></tr>
+  <tr><td>CR-4 Navigation</td><td>prevMonth() and nextMonth() correctly handle year boundary (Dec→Jan and Jan→Dec wrap)</td><td><span class="badge-pass">PASS</span></td></tr>
+  <tr><td>CR-4 Navigation</td><td>goToday() resets both viewYear and viewMonth to current date's year/month</td><td><span class="badge-pass">PASS</span></td></tr>
+  <tr><td>CR-5 UI</td><td>Today's date highlighted with bg-primary-600 circle; non-today uses text-gray-500</td><td><span class="badge-pass">PASS</span></td></tr>
+  <tr><td>CR-5 UI</td><td>Weekend columns (di ≥ 5) have distinct background (bg-gray-50/60)</td><td><span class="badge-pass">PASS</span></td></tr>
+  <tr><td>CR-5 UI</td><td>Task chips capped at 3 with "+N more" label — prevents tall cells from overflowing layout</td><td><span class="badge-pass">PASS</span></td></tr>
+  <tr><td>CR-5 UI</td><td>Colour legend shown in calendar header (green/yellow/red)</td><td><span class="badge-pass">PASS</span></td></tr>
+  <tr><td>CR-6 Routing</td><td>Route /allocations added to App.tsx with AllocationCalendarPage component</td><td><span class="badge-pass">PASS</span></td></tr>
+  <tr><td>CR-6 Routing</td><td>Sidebar nav item "Allocations" added at /allocations with icon</td><td><span class="badge-pass">PASS</span></td></tr>
+  <tr><td>CR-7 Quality</td><td>Pure helper functions (buildCalendarWeeks, toLocalDateStr, dayColor, hoursBarColor) exported for unit testing — 14/14 tests pass</td><td><span class="badge-pass">PASS</span></td></tr>
+  <tr><td>CR-7 Quality</td><td>useMemo on byDate grouping prevents re-computation on every render</td><td><span class="badge-pass">PASS</span></td></tr>
+  <tr><td>CR-8 Standards</td><td>TypeScript strict; no implicit any; imports typed from taskAllocation.types.ts</td><td><span class="badge-pass">PASS</span></td></tr>
+  <tr><td>CR-9 Backend</td><td>No new backend required — uses existing GET /task-allocations/user/:userId?from=&amp;to= from F-017</td><td><span class="badge-pass">PASS</span></td></tr>
+  <tr><td>CR-10 Migration</td><td>No schema migration required</td><td><span class="badge-pass">PASS</span></td></tr>
+</table>
+</body>
+</html>

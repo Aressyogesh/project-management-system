@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Code Review Report — F-029 Kanban Board Enhancements</title>
+<style>
+  body { font-family: 'Segoe UI', Arial, sans-serif; margin: 0; background: #f8fafc; color: #1e293b; }
+  header { background: #0f766e; color: white; padding: 24px 32px; }
+  header h1 { margin: 0 0 4px; font-size: 22px; }
+  header p { margin: 0; opacity: .8; font-size: 13px; }
+  .container { max-width: 1100px; margin: 32px auto; padding: 0 24px; }
+  .card { background: white; border-radius: 10px; box-shadow: 0 1px 4px rgba(0,0,0,.08); margin-bottom: 24px; overflow: hidden; }
+  .card-header { background: #f0fdf4; padding: 14px 20px; font-weight: 600; font-size: 15px; border-bottom: 1px solid #d1fae5; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { background: #f8fafc; text-align: left; padding: 10px 14px; font-weight: 600; border-bottom: 2px solid #e2e8f0; }
+  td { padding: 10px 14px; border-bottom: 1px solid #f1f5f9; vertical-align: top; }
+  tr:last-child td { border: none; }
+  .pass { color: #16a34a; font-weight: 600; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 600; }
+  .badge-pass { background: #dcfce7; color: #16a34a; }
+  .badge-warn { background: #fef9c3; color: #a16207; }
+  .badge-na { background: #f1f5f9; color: #64748b; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Code Review Report — F-029: Kanban Board Enhancements</h1>
+  <p>Reviewer: Claude Sonnet 4.6 &nbsp;|&nbsp; Date: 2026-06-01 &nbsp;|&nbsp; Branch: feature/F-029-kanban-board-enhancements</p>
+</header>
+<div class="container">
+
+  <div class="card">
+    <div class="card-header">CR-1: Code Correctness</div>
+    <table>
+      <thead><tr><th>Check</th><th>Finding</th><th>Status</th></tr></thead>
+      <tbody>
+        <tr><td>BoardStatus enum extended correctly</td><td>READY_FOR_QA and IN_QA added; QA kept for backward compat. STATUS_ORDER in work-items.service reflects new order.</td><td><span class="badge badge-pass">PASS</span></td></tr>
+        <tr><td>TestCasesService CRUD correct</td><td>All four operations use correct Prisma methods; cascade delete covered by schema onDelete: Cascade.</td><td><span class="badge badge-pass">PASS</span></td></tr>
+        <tr><td>BoardColumnConfig upsert logic</td><td>Uses prisma.upsert with unique([projectId, status]) — correct; no duplicate rows possible.</td><td><span class="badge badge-pass">PASS</span></td></tr>
+        <tr><td>milestoneId filter in work-items.service</td><td>Optional chaining guard `filters.milestoneId &&` prevents undefined from reaching the query.</td><td><span class="badge badge-pass">PASS</span></td></tr>
+        <tr><td>useBoard backlog translation</td><td>backlog: 'product' → sprintId: 'backlog'; backlog key stripped from apiFilters before API call.</td><td><span class="badge badge-pass">PASS</span></td></tr>
+        <tr><td>AddMemberModal department filter</td><td>Fixed: u.department?.id (not u.departmentId) — correct for User type structure.</td><td><span class="badge badge-pass">PASS</span></td></tr>
+        <tr><td>GlobalProgressBar logic</td><td>active = fetching + mutating > 0; correct opacity class toggling.</td><td><span class="badge badge-pass">PASS</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <div class="card-header">CR-2: TypeScript / Type Safety</div>
+    <table>
+      <thead><tr><th>Check</th><th>Finding</th><th>Status</th></tr></thead>
+      <tbody>
+        <tr><td>tsc --noEmit passes</td><td>No TypeScript errors after all 6 group commits.</td><td><span class="badge badge-pass">PASS</span></td></tr>
+        <tr><td>BoardStatus type includes new values</td><td>board.types.ts updated with READY_FOR_QA | IN_QA.</td><td><span class="badge badge-pass">PASS</span></td></tr>
+        <tr><td>WorkItem.definitionOfDone typed</td><td>string | null | undefined — matches DB nullable.</td><td><span class="badge badge-pass">PASS</span></td></tr>
+        <tr><td>TestCase interface matches backend</td><td>All fields declared; TestCaseStatus union type defined.</td><td><span class="badge badge-pass">PASS</span></td></tr>
+        <tr><td>BoardFilters extended for backlog/milestoneId</td><td>BoardFiltersQuery in boardApi.ts includes milestoneId? and backlog? optional fields.</td><td><span class="badge badge-pass">PASS</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <div class="card-header">CR-3: Naming and Readability</div>
+    <table>
+      <thead><tr><th>Check</th><th>Finding</th><th>Status</th></tr></thead>
+      <tbody>
+        <tr><td>Consistent naming across layers</td><td>READY_FOR_QA used consistently in enum, frontend type, and DEFAULT_BOARD_COLUMNS.</td><td><span class="badge badge-pass">PASS</span></td></tr>
+        <tr><td>Deprecated alias documented</td><td>BOARD_COLUMNS alias marked @deprecated with comment in board.types.ts.</td><td><span class="badge badge-pass">PASS</span></td></tr>
+        <tr><td>Component naming descriptive</td><td>GlobalProgressBar, TestCasesPanel, EditColumnLabelsModal — all self-explanatory.</td><td><span class="badge badge-pass">PASS</span></td></tr>
+        <tr><td>No magic strings</td><td>TC_STATUS_CONFIG, DEFAULT_BOARD_COLUMNS, ROLE_OPTIONS — all extracted as constants.</td><td><span class="badge badge-pass">PASS</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <div class="card-header">CR-4: Error Handling</div>
+    <table>
+      <thead><tr><th>Check</th><th>Finding</th><th>Status</th></tr></thead>
+      <tbody>
+        <tr><td>Mutation error handling in AddMemberModal</td><td>onError handler surfaces error message via state variable; displayed to user.</td><td><span class="badge badge-pass">PASS</span></td></tr>
+        <tr><td>Test case API errors handled</td><td>TestCasesPanel catches mutation errors and shows inline error message.</td><td><span class="badge badge-pass">PASS</span></td></tr>
+        <tr><td>Form validation before submit</td><td>AddMemberModal validates selectedUserIds.size > 0 before firing mutation.</td><td><span class="badge badge-pass">PASS</span></td></tr>
+        <tr><td>Backend service errors propagate</td><td>NestJS services let Prisma exceptions bubble; controller layer returns appropriate HTTP status via NestJS exception filters.</td><td><span class="badge badge-pass">PASS</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <div class="card-header">CR-5: Performance</div>
+    <table>
+      <thead><tr><th>Check</th><th>Finding</th><th>Status</th></tr></thead>
+      <tbody>
+        <tr><td>No redundant re-renders from GlobalProgressBar</td><td>useIsFetching/useIsMutating are read-only selectors; component re-renders only when count changes 0→1 or 1→0.</td><td><span class="badge badge-pass">PASS</span></td></tr>
+        <tr><td>Department users filtered in JS not extra API call</td><td>All active users fetched once (limit 500); deptUsers computed from in-memory filter. Acceptable for org sizes up to ~500 users.</td><td><span class="badge badge-pass">PASS</span></td></tr>
+        <tr><td>BoardColumnConfig loaded once per board page</td><td>React Query caches by queryKey ['board-column-configs', projectId].</td><td><span class="badge badge-pass">PASS</span></td></tr>
+        <tr><td>addTeamMut sequential calls</td><td>Team members added sequentially (for-await loop). Acceptable for typical batch sizes (&lt;50). Could be parallelised with Promise.all if needed.</td><td><span class="badge badge-warn">NOTE</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <div class="card-header">CR-6: DB / Prisma Quality</div>
+    <table>
+      <thead><tr><th>Check</th><th>Finding</th><th>Status</th></tr></thead>
+      <tbody>
+        <tr><td>Cascade deletes defined</td><td>TestCase.workItemId has onDelete: Cascade; BoardColumnConfig.projectId has onDelete: Cascade.</td><td><span class="badge badge-pass">PASS</span></td></tr>
+        <tr><td>Unique constraints correct</td><td>@@unique([projectId, status]) on BoardColumnConfig prevents duplicate configs per column.</td><td><span class="badge badge-pass">PASS</span></td></tr>
+        <tr><td>Indexes on foreign keys</td><td>@@index([workItemId]) on TestCase and @@index([projectId]) on BoardColumnConfig added.</td><td><span class="badge badge-pass">PASS</span></td></tr>
+        <tr><td>No N+1 queries introduced</td><td>TestCasesService.findByWorkItem uses single findMany; BoardColumnConfigsService.getByProject uses single findMany.</td><td><span class="badge badge-pass">PASS</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <div class="card-header">CR-7: Tests Quality</div>
+    <table>
+      <thead><tr><th>Check</th><th>Finding</th><th>Status</th></tr></thead>
+      <tbody>
+        <tr><td>10 backend unit test specs defined (Arrange/Act/Assert)</td><td>All follow AAA pattern with clear mock setup.</td><td><span class="badge badge-pass">PASS</span></td></tr>
+        <tr><td>10 frontend unit test specs defined</td><td>Cover all new hooks, components, and integration points.</td><td><span class="badge badge-pass">PASS</span></td></tr>
+        <tr><td>22 E2E test cases covering happy + negative + RBAC</td><td>All 13 ACs covered; negative and RBAC paths included.</td><td><span class="badge badge-pass">PASS</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <div class="card-header">CR-8: Architecture & Patterns</div>
+    <table>
+      <thead><tr><th>Check</th><th>Finding</th><th>Status</th></tr></thead>
+      <tbody>
+        <tr><td>New NestJS modules follow existing pattern</td><td>TestCasesModule and BoardColumnConfigsModule follow Module/Service/Controller/DTO structure matching existing features.</td><td><span class="badge badge-pass">PASS</span></td></tr>
+        <tr><td>Frontend feature separation respected</td><td>Board-specific files stay in features/board; project files in features/projects; shared layout in components/layout.</td><td><span class="badge badge-pass">PASS</span></td></tr>
+        <tr><td>API client pattern consistent</td><td>testCasesApi.ts and boardColumnConfigsApi.ts use same apiClient pattern as all other api files.</td><td><span class="badge badge-pass">PASS</span></td></tr>
+        <tr><td>React Query invalidation on mutation</td><td>All mutations invalidate the appropriate queryKeys on success.</td><td><span class="badge badge-pass">PASS</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <div class="card-header">Overall Verdict</div>
+    <table>
+      <thead><tr><th>Category</th><th>Result</th></tr></thead>
+      <tbody>
+        <tr><td>CR-1 Correctness</td><td><span class="badge badge-pass">PASS</span></td></tr>
+        <tr><td>CR-2 Type Safety</td><td><span class="badge badge-pass">PASS</span></td></tr>
+        <tr><td>CR-3 Naming</td><td><span class="badge badge-pass">PASS</span></td></tr>
+        <tr><td>CR-4 Error Handling</td><td><span class="badge badge-pass">PASS</span></td></tr>
+        <tr><td>CR-5 Performance</td><td><span class="badge badge-pass">PASS</span> <small>(1 note on sequential team adds)</small></td></tr>
+        <tr><td>CR-6 DB Quality</td><td><span class="badge badge-pass">PASS</span></td></tr>
+        <tr><td>CR-7 Tests</td><td><span class="badge badge-pass">PASS</span></td></tr>
+        <tr><td>CR-8 Architecture</td><td><span class="badge badge-pass">PASS</span></td></tr>
+        <tr><td><strong>OVERALL</strong></td><td><span class="badge badge-pass">APPROVED</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+</div>
+</body>
+</html>

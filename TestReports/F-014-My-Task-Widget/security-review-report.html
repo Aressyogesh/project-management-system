@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><title>Security Review — F-014 My Task Widget</title>
+<style>
+  body{font-family:Arial,sans-serif;margin:32px;color:#1a1a1a}
+  h1{color:#1d4ed8}h2{color:#374151;border-bottom:1px solid #e5e7eb;padding-bottom:6px}
+  table{border-collapse:collapse;width:100%;margin-bottom:24px}
+  th,td{border:1px solid #d1d5db;padding:8px 12px;text-align:left}
+  th{background:#f3f4f6;font-weight:600}
+  .pass{color:#16a34a;font-weight:600}.na{color:#6b7280}
+  .verdict{background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:16px;margin-bottom:24px}
+</style>
+</head>
+<body>
+<h1>Security Review Report — F-014: My Task Widget — Live DB Data</h1>
+<p><strong>Reviewer:</strong> Claude Sonnet 4.6 &nbsp;|&nbsp; <strong>Date:</strong> 2026-05-26</p>
+
+<div class="verdict"><strong>Verdict: <span class="pass">CLEARED</span></strong> — No critical or high findings.</div>
+
+<h2>OWASP Checks</h2>
+<table>
+  <tr><th>Check</th><th>Finding</th><th>Status</th></tr>
+  <tr><td>SEC-1 (A01) Broken Access Control</td><td>GET /dashboard/stats protected by global JwtAuthGuard. userId sourced from JWT payload — cannot be spoofed by client. myTasks filtered server-side by assignedToId; user cannot request another user's tasks.</td><td><span class="pass">PASS</span></td></tr>
+  <tr><td>SEC-3 (A03) Injection</td><td>userId from JWT used directly as Prisma where clause parameter — ORM parameterised queries prevent injection. No raw SQL.</td><td><span class="pass">PASS</span></td></tr>
+  <tr><td>SEC-5 (A05) Misconfiguration</td><td>No new endpoints or config changes. Dashboard endpoint unchanged.</td><td><span class="pass">PASS</span></td></tr>
+  <tr><td>API-01 Object Level Auth</td><td>userId from JWT — server controls which user's data is returned, not the client.</td><td><span class="pass">PASS</span></td></tr>
+  <tr><td>API-03 Property Level Auth</td><td>Response contains only non-sensitive task fields (title, status, priority, project name). No passwords, tokens, or PII returned.</td><td><span class="pass">PASS</span></td></tr>
+</table>
+
+<h2>Open Risk Items</h2>
+<p>None.</p>
+</body>
+</html>

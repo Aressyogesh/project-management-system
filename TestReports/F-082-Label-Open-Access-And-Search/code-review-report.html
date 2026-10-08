@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Code Review Report — F-082 Label Open Access and Label Search</title>
+<style>
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: #f8fafc; color: #1e293b; margin: 0; padding: 24px; }
+  h1 { font-size: 1.5rem; color: #0f172a; margin-bottom: 4px; }
+  .subtitle { color: #64748b; font-size: 0.9rem; margin-bottom: 24px; }
+  .card { background: #fff; border-radius: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); padding: 20px; margin-bottom: 20px; }
+  .card h2 { font-size: 1rem; font-weight: 600; color: #0f172a; margin: 0 0 16px 0; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+  th { background: #1e3a5f; color: #fff; padding: 10px 12px; text-align: left; }
+  td { padding: 9px 12px; border-bottom: 1px solid #f1f5f9; vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  .pass { color: #16a34a; font-weight: 600; }
+  .na   { color: #94a3b8; font-weight: 600; }
+  .badge-approved { display: inline-block; background: #dcfce7; color: #16a34a; padding: 4px 16px; border-radius: 999px; font-weight: 700; font-size: 0.85rem; }
+  .verdict-box { background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 16px; margin-top: 16px; }
+  code { background: #f1f5f9; padding: 1px 5px; border-radius: 3px; font-size: 0.82rem; }
+</style>
+</head>
+<body>
+
+<h1>Code Review Report — F-082: Label Open Access and Label Search</h1>
+<div class="subtitle">Reviewer: Claude Code (AI) &nbsp;|&nbsp; Date: 2026-09-24 &nbsp;|&nbsp; Standard: CR-1 through CR-8</div>
+
+<div class="card">
+  <h2>Files Changed</h2>
+  <table>
+    <thead><tr><th>File</th><th>Change</th></tr></thead>
+    <tbody>
+      <tr><td><code>backend/src/work-items/work-items.service.ts</code></td><td>Add <code>labels: { has: filters.search }</code> as third OR arm in search filter</td></tr>
+      <tr><td><code>frontend/src/features/board/components/WorkItemModal.tsx</code></td><td>Remove <code>canEditSidebar</code> gate from Labels sidebar (edit mode); add Labels field + state to CreateWorkItemModal (create mode)</td></tr>
+      <tr><td><code>frontend/src/features/board/components/ListView.tsx</code></td><td>Add Labels column to Excel export (HEADERS, cells, !cols)</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="card">
+  <h2>CR-1 — Correctness</h2>
+  <table>
+    <thead><tr><th>Item</th><th>Status</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td>Label search OR arm uses <code>has</code> — correct Prisma operator for <code>String[]</code></td><td class="pass">PASS</td><td>Prisma <code>has</code> performs an exact-match contains check on PostgreSQL text arrays. Appropriate for label lookup.</td></tr>
+      <tr><td>Existing title / displayId search arms untouched</td><td class="pass">PASS</td><td>No regression to existing search behaviour. OR clause is purely additive.</td></tr>
+      <tr><td>Edit-mode label UI: both × and + Add label now always rendered</td><td class="pass">PASS</td><td>Three <code>canEditSidebar</code> conditions correctly removed. Empty-label fallback now shows unconditionally when <code>labels.length === 0</code>.</td></tr>
+      <tr><td>Create-mode: label state initialised, reset on <code>resetForNewItem</code>, and included in mutate payload</td><td class="pass">PASS</td><td><code>createLabels</code> and <code>labelInput</code> both reset to <code>[]</code> / <code>''</code>. Payload includes <code>labels: createLabels.length &gt; 0 ? createLabels : undefined</code> — correct sentinel.</td></tr>
+      <tr><td>Duplicate label guard in create modal</td><td class="pass">PASS</td><td><code>!createLabels.includes(trimmed)</code> prevents duplicate chips on Enter and on Add button click.</td></tr>
+      <tr><td>Excel HEADERS length 13 — !ref uses <code>HEADERS.length - 1</code></td><td class="pass">PASS</td><td><code>!ref</code> dynamically derives last column from HEADERS length — no manual update needed.</td></tr>
+      <tr><td>Labels cell: null-safe <code>(item.labels ?? []) as string[]</code></td><td class="pass">PASS</td><td>Handles items with <code>null</code> or missing labels without runtime error.</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="card">
+  <h2>CR-2 — Code Style and Consistency</h2>
+  <table>
+    <thead><tr><th>Item</th><th>Status</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td>Backend change follows existing spread-and-OR pattern</td><td class="pass">PASS</td><td>Identical style to existing title and displayId arms.</td></tr>
+      <tr><td>Frontend label chips in create modal match edit-mode chip style</td><td class="pass">PASS</td><td>Same <code>bg-blue-50 text-blue-700 rounded-full border border-blue-200</code> classes used in both modes.</td></tr>
+      <tr><td>Label input uses existing <code>inputCls</code> variable</td><td class="pass">PASS</td><td>Consistent with other form inputs in the create modal.</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="card">
+  <h2>CR-3 — Edge Cases</h2>
+  <table>
+    <thead><tr><th>Item</th><th>Status</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td>Empty search — label arm absent</td><td class="pass">PASS</td><td>The entire <code>...(filters.search && { OR: [...] })</code> block is skipped when <code>search</code> is falsy.</td></tr>
+      <tr><td>Work item with no labels — export cell empty</td><td class="pass">PASS</td><td><code>[].join(', ')</code> returns <code>''</code> — correct empty cell.</td></tr>
+      <tr><td>Enter key in label input prevents form submit</td><td class="pass">PASS</td><td><code>e.preventDefault()</code> called in <code>onKeyDown</code> for Enter key.</td></tr>
+      <tr><td>Label with whitespace-only input not added</td><td class="pass">PASS</td><td><code>trimmed = labelInput.trim()</code> — falsy guard prevents empty chips.</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="card">
+  <h2>CR-4 — Performance</h2>
+  <table>
+    <thead><tr><th>Item</th><th>Status</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td>Backend: <code>labels has</code> uses PostgreSQL GIN index if present; otherwise sequential array scan</td><td class="pass">PASS</td><td>No index on labels currently. For the expected item counts in this project this is acceptable. Future optimisation: <code>@@index([labels])</code> if needed.</td></tr>
+      <tr><td>No additional DB queries introduced</td><td class="pass">PASS</td><td>Single <code>findMany</code> call unchanged — label arm is just another OR predicate.</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="card">
+  <h2>CR-5 — Security</h2>
+  <table>
+    <thead><tr><th>Item</th><th>Status</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td>Label search input passed to Prisma <code>has</code> — no raw SQL</td><td class="pass">PASS</td><td>Prisma parameterises all inputs. No injection risk.</td></tr>
+      <tr><td>Label add/remove still goes through existing PATCH endpoint protected by JwtAuthGuard + ProjectRoleGuard</td><td class="pass">PASS</td><td>Frontend RBAC gate removed from UI only; backend auth unchanged.</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="card">
+  <h2>CR-6 — Test Coverage</h2>
+  <table>
+    <thead><tr><th>Item</th><th>Status</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td>Backend unit test specs written for search OR arms (UTC-F082-B-001 through B-004)</td><td class="pass">PASS</td><td>Covers label search, existing title search, no-search case, and audit log for non-PM role.</td></tr>
+      <tr><td>Frontend unit test specs written for create modal and edit modal (UTC-F082-F-001 through F-009)</td><td class="pass">PASS</td><td>Covers chip add/remove, submit payload, Excel export headers and cell values.</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="card">
+  <h2>CR-7 — Breaking Changes</h2>
+  <table>
+    <thead><tr><th>Item</th><th>Status</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td>No DB schema change</td><td class="pass">PASS</td><td><code>labels String[]</code> already exists — no migration required.</td></tr>
+      <tr><td>No API contract change</td><td class="pass">PASS</td><td>Existing <code>POST /work-items</code> and <code>PATCH /work-items/:id</code> DTOs already accept <code>labels</code>. No new endpoints.</td></tr>
+      <tr><td>Excel column shift — Labels added as rightmost column</td><td class="pass">PASS</td><td>No existing column positions changed. Consumers relying on column order by index are unaffected for columns 1–12.</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="card">
+  <h2>CR-8 — Documentation</h2>
+  <table>
+    <thead><tr><th>Item</th><th>Status</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td>Requirements doc written (REQ-F-082)</td><td class="pass">PASS</td><td>Business rules, ACs, API contract, schema note all present.</td></tr>
+      <tr><td>Unit test case specs written (UTC-F-082)</td><td class="pass">PASS</td><td>9 specs covering backend and frontend.</td></tr>
+      <tr><td>E2E test case specs written (TC-F-082)</td><td class="pass">PASS</td><td>10 scenarios — happy path, RBAC, regression, negative.</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="card">
+  <h2>Open Issues</h2>
+  <p style="color:#16a34a;font-weight:600;">None — no open issues.</p>
+</div>
+
+<div class="verdict-box">
+  <strong>Verdict:</strong> <span class="badge-approved">Approved</span>
+  <p style="margin:8px 0 0;font-size:0.85rem;color:#166534;">All 8 code review checks pass. Changes are minimal and surgical: one backend OR arm added, three frontend conditional renders removed, two state variables added, one Excel column appended. No regressions introduced. Feature is ready to ship.</p>
+  <p style="margin:4px 0 0;font-size:0.8rem;color:#64748b;">Reviewer: Claude Code &nbsp;|&nbsp; Date: 2026-09-24</p>
+</div>
+
+</body>
+</html>

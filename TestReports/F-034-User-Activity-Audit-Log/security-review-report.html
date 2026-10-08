@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<title>Security Review Report — F-034 User Activity Audit Log</title>
+<style>
+  body{font-family:system-ui,sans-serif;margin:0;padding:24px;background:#f8fafc;color:#1e293b}
+  h1{font-size:1.4rem;font-weight:700;margin-bottom:4px}
+  .meta{color:#64748b;font-size:.85rem;margin-bottom:24px}
+  table{width:100%;border-collapse:collapse;background:#fff;border-radius:10px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.08)}
+  th{background:#1e293b;color:#fff;padding:10px 14px;text-align:left;font-size:.82rem;text-transform:uppercase;letter-spacing:.04em}
+  td{padding:10px 14px;font-size:.88rem;border-bottom:1px solid #f1f5f9;vertical-align:top}
+  tr:last-child td{border-bottom:none}
+  .pass{background:#dcfce7;color:#166534;padding:2px 10px;border-radius:99px;font-size:.78rem;font-weight:600}
+  .na{background:#f1f5f9;color:#64748b;padding:2px 10px;border-radius:99px;font-size:.78rem;font-weight:600}
+  .summary{display:flex;gap:16px;margin-bottom:20px}
+  .chip{background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:12px 20px;font-size:.85rem;box-shadow:0 1px 3px rgba(0,0,0,.05)}
+  .chip b{display:block;font-size:1.4rem;font-weight:700;color:#0f172a}
+</style>
+</head>
+<body>
+<h1>Security Review Report</h1>
+<div class="meta">F-034 — User Activity Audit Log &nbsp;|&nbsp; OWASP Top 10 &nbsp;|&nbsp; Date: 2026-06-03</div>
+
+<div class="summary">
+  <div class="chip"><b>11</b> Checks</div>
+  <div class="chip"><b style="color:#166534">9</b> Passed</div>
+  <div class="chip"><b style="color:#64748b">2</b> N/A</div>
+</div>
+
+<table>
+  <thead><tr><th>#</th><th>OWASP Category</th><th>Finding</th><th>Status</th></tr></thead>
+  <tbody>
+    <tr><td>SEC-1</td><td>Broken Access Control</td><td>EMPLOYEE callers have userId forcibly set to their own ID — they cannot query other users' logs by passing a different userId. Admin/SuperUser can query all logs. Audit log table itself has no public write endpoint.</td><td><span class="pass">PASS</span></td></tr>
+    <tr><td>SEC-2</td><td>Cryptographic Failures</td><td>Audit logs contain no sensitive data (no passwords, no tokens). entityTitle stores display-safe strings (name, displayId). Metadata stores action context (status names, role names).</td><td><span class="pass">PASS</span></td></tr>
+    <tr><td>SEC-3</td><td>Injection</td><td>All query parameters passed through Prisma parameterised queries. Date strings parsed with `new Date()` — invalid dates produce NaN which Prisma rejects safely. No raw SQL in the audit log service.</td><td><span class="pass">PASS</span></td></tr>
+    <tr><td>SEC-4</td><td>Insecure Design</td><td>Audit logs are append-only — no DELETE or UPDATE endpoint exists for audit_logs. The only write path is via internal service call (not exposed as REST). Cascade delete on userId preserves referential integrity when a user is removed.</td><td><span class="pass">PASS</span></td></tr>
+    <tr><td>SEC-5</td><td>Security Misconfiguration</td><td>AuditLogsController is protected by the global JwtAuthGuard (no @Public() decorator). All audit log reads require a valid JWT token.</td><td><span class="pass">PASS</span></td></tr>
+    <tr><td>SEC-6</td><td>Vulnerable Components</td><td>No new npm packages added. Uses existing Prisma, NestJS, and React Query infrastructure.</td><td><span class="pass">PASS</span></td></tr>
+    <tr><td>SEC-7</td><td>Auth Failures</td><td>Login event is logged after JWT generation — even if logging fails (best-effort), the auth response is still returned. A logging failure does not prevent login or token issuance.</td><td><span class="pass">PASS</span></td></tr>
+    <tr><td>SEC-8</td><td>Software Integrity</td><td>No new external scripts or CDN resources added. All assets bundled via Vite.</td><td><span class="pass">PASS</span></td></tr>
+    <tr><td>SEC-9</td><td>Logging / Monitoring</td><td>Audit log write failures are logged at WARN level via NestJS Logger — visible in server logs. The audit log itself IS the monitoring surface for this feature.</td><td><span class="pass">PASS</span></td></tr>
+    <tr><td>SEC-10</td><td>SSRF</td><td>No outbound HTTP calls triggered. Audit logging is purely DB-bound.</td><td><span class="na">N/A</span></td></tr>
+    <tr><td>SEC-11</td><td>XSS</td><td>React escapes all rendered strings (entityTitle, user.fullName, metadata values). No dangerouslySetInnerHTML usage in ActivityLogPage. Status change metadata rendered via String() cast.</td><td><span class="na">N/A</span></td></tr>
+  </tbody>
+</table>
+</body>
+</html>

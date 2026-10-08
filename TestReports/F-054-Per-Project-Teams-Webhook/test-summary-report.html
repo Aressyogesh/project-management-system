@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Test Summary — F-054 Per-Project Teams Webhook</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; margin: 0; padding: 24px; background: #f9fafb; color: #111827; }
+  h1 { font-size: 1.25rem; font-weight: 700; margin-bottom: 4px; }
+  .meta { font-size: 0.8rem; color: #6b7280; margin-bottom: 24px; }
+  table { width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.07); margin-bottom: 20px; }
+  th { background: #1e293b; color: white; text-align: left; padding: 10px 14px; font-size: 0.78rem; font-weight: 600; }
+  td { padding: 10px 14px; font-size: 0.82rem; border-bottom: 1px solid #f1f5f9; }
+  tr:last-child td { border-bottom: none; }
+  .pass { color: #16a34a; font-weight: 600; }
+  .pending { color: #d97706; font-weight: 600; }
+  h2 { font-size: 0.95rem; font-weight: 600; margin: 24px 0 10px; }
+  .summary-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 24px; }
+  .card { background: white; border-radius: 8px; padding: 16px; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.07); }
+  .card-num { font-size: 1.8rem; font-weight: 700; }
+  .card-label { font-size: 0.75rem; color: #6b7280; margin-top: 4px; }
+  .green { color: #16a34a; }
+  .yellow { color: #d97706; }
+</style>
+</head>
+<body>
+<h1>Test Summary — F-054 Per-Project Teams Webhook Configuration</h1>
+<p class="meta">Date: 2026-07-15 &nbsp;|&nbsp; Branch: feature/F-054-per-project-teams-webhook</p>
+
+<div class="summary-grid">
+  <div class="card"><div class="card-num green">7</div><div class="card-label">Unit Tests Passed</div></div>
+  <div class="card"><div class="card-num yellow">11</div><div class="card-label">Unit Test Specs (UTC)</div></div>
+  <div class="card"><div class="card-num yellow">10</div><div class="card-label">E2E Test Cases (TC)</div></div>
+</div>
+
+<h2>Automated Test Results</h2>
+<table>
+  <thead><tr><th>Layer</th><th>Suite</th><th>Total</th><th>Passed</th><th>Failed</th></tr></thead>
+  <tbody>
+    <tr>
+      <td>Unit (Backend)</td>
+      <td>projects.service.spec.ts</td>
+      <td>7</td>
+      <td class="pass">7</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <td>Unit (Frontend)</td>
+      <td>TypeScript compilation check</td>
+      <td>—</td>
+      <td class="pass">0 errors</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <td><strong>Total</strong></td>
+      <td></td>
+      <td><strong>7</strong></td>
+      <td class="pass"><strong>7</strong></td>
+      <td><strong>0</strong></td>
+    </tr>
+  </tbody>
+</table>
+
+<h2>Manual Test Status</h2>
+<table>
+  <thead><tr><th>TC#</th><th>Scenario</th><th>Status</th></tr></thead>
+  <tbody>
+    <tr><td>TC-F-054-01</td><td>Project Manager saves Teams webhook URL</td><td class="pending">PENDING (local verification)</td></tr>
+    <tr><td>TC-F-054-02</td><td>Project Manager clears Teams webhook URL</td><td class="pending">PENDING</td></tr>
+    <tr><td>TC-F-054-03</td><td>Admin saves webhook for any project</td><td class="pending">PENDING</td></tr>
+    <tr><td>TC-F-054-04</td><td>Developer cannot see Integrations section</td><td class="pending">PENDING</td></tr>
+    <tr><td>TC-F-054-05</td><td>PATCH 403 for Developer via API</td><td class="pending">PENDING</td></tr>
+    <tr><td>TC-F-054-06</td><td>PATCH 400 for non-HTTPS URL</td><td class="pending">PENDING</td></tr>
+    <tr><td>TC-F-054-07</td><td>Task Assigned AP payload includes teamsWebhookUrl</td><td class="pending">PENDING</td></tr>
+    <tr><td>TC-F-054-08</td><td>Bug Created AP payload includes teamsWebhookUrl</td><td class="pending">PENDING</td></tr>
+    <tr><td>TC-F-054-09</td><td>Sprint Started AP payload includes teamsWebhookUrl</td><td class="pending">PENDING</td></tr>
+    <tr><td>TC-F-054-10</td><td>teamsWebhookUrl persists across page reload</td><td class="pending">PENDING</td></tr>
+  </tbody>
+</table>
+
+<h2>Reports</h2>
+<table>
+  <thead><tr><th>Report</th><th>Path</th></tr></thead>
+  <tbody>
+    <tr><td>Code Review</td><td>TestReports/F-054-Per-Project-Teams-Webhook/code-review-report.html</td></tr>
+    <tr><td>Security Review</td><td>TestReports/F-054-Per-Project-Teams-Webhook/security-review-report.html</td></tr>
+    <tr><td>Test Summary</td><td>TestReports/F-054-Per-Project-Teams-Webhook/test-summary-report.html</td></tr>
+  </tbody>
+</table>
+</body>
+</html>

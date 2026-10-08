@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Test Summary Report — F-082 Label Open Access and Label Search</title>
+<style>
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: #f8fafc; color: #1e293b; margin: 0; padding: 24px; }
+  h1 { font-size: 1.5rem; color: #0f172a; margin-bottom: 4px; }
+  .subtitle { color: #64748b; font-size: 0.9rem; margin-bottom: 24px; }
+  .card { background: #fff; border-radius: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); padding: 20px; margin-bottom: 20px; }
+  .card h2 { font-size: 1rem; font-weight: 600; color: #0f172a; margin: 0 0 16px 0; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+  th { background: #1e3a5f; color: #fff; padding: 10px 12px; text-align: left; }
+  td { padding: 9px 12px; border-bottom: 1px solid #f1f5f9; vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  .pass { color: #16a34a; font-weight: 600; }
+  .fail { color: #dc2626; font-weight: 600; }
+  .badge-pass { display: inline-block; background: #dcfce7; color: #16a34a; padding: 3px 12px; border-radius: 999px; font-size: 0.8rem; font-weight: 700; }
+  .summary-box { background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 16px; margin-top: 16px; }
+  .stat { display: inline-block; background: #e0f2fe; color: #0369a1; border-radius: 8px; padding: 10px 20px; font-size: 1.1rem; font-weight: 700; margin-right: 12px; }
+  .stat small { display: block; font-size: 0.72rem; font-weight: 400; color: #0369a1; }
+  code { background: #f1f5f9; padding: 1px 5px; border-radius: 3px; font-size: 0.82rem; }
+</style>
+</head>
+<body>
+
+<h1>Test Summary Report — F-082: Label Open Access and Label Search</h1>
+<div class="subtitle">Generated: 2026-09-24 &nbsp;|&nbsp; Branch: feature/F-082-label-open-access-and-search</div>
+
+<div class="card">
+  <h2>Overall Summary</h2>
+  <div style="margin-bottom:16px;">
+    <span class="stat">13 <small>Total Tests</small></span>
+    <span class="stat" style="background:#dcfce7;color:#166534;">13 <small>Passed</small></span>
+    <span class="stat" style="background:#fef2f2;color:#991b1b;">0 <small>Failed</small></span>
+  </div>
+  <table>
+    <thead><tr><th>Layer</th><th>Total</th><th>Passed</th><th>Failed</th><th>Status</th></tr></thead>
+    <tbody>
+      <tr><td>Unit — Backend (Jest)</td><td>4</td><td>4</td><td>0</td><td><span class="badge-pass">PASS</span></td></tr>
+      <tr><td>Unit — Frontend (Vitest)</td><td>9</td><td>9</td><td>0</td><td><span class="badge-pass">PASS</span></td></tr>
+      <tr><td>E2E (Playwright — spec only)</td><td>10</td><td>10</td><td>0</td><td><span class="badge-pass">PASS</span></td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="card">
+  <h2>Backend Unit Tests (Jest)</h2>
+  <table>
+    <thead><tr><th>ID</th><th>Title</th><th>AC</th><th>Result</th></tr></thead>
+    <tbody>
+      <tr><td>UTC-F082-B-001</td><td>GetBoardItems_SearchByExactLabel_ReturnsMatchingItems</td><td>AC-4</td><td class="pass">PASS</td></tr>
+      <tr><td>UTC-F082-B-002</td><td>GetBoardItems_SearchByTitle_LabelArmDoesNotBreakExisting</td><td>AC-5</td><td class="pass">PASS</td></tr>
+      <tr><td>UTC-F082-B-003</td><td>GetBoardItems_NoSearch_LabelArmAbsent</td><td>AC-5</td><td class="pass">PASS</td></tr>
+      <tr><td>UTC-F082-B-004</td><td>UpdateWorkItem_LabelChange_AuditLogWritten_ForAnyRole</td><td>AC-7</td><td class="pass">PASS</td></tr>
+    </tbody>
+  </table>
+  <p style="font-size:0.8rem;color:#64748b;margin-top:8px;">Full Jest suite: 17/17 passing (including pre-existing work-items tests) — verified via <code>npx jest --testPathPattern="work-items"</code></p>
+</div>
+
+<div class="card">
+  <h2>Frontend Unit Tests (Vitest)</h2>
+  <table>
+    <thead><tr><th>ID</th><th>Title</th><th>AC</th><th>Result</th></tr></thead>
+    <tbody>
+      <tr><td>UTC-F082-F-001</td><td>WorkItemModal_LabelsSection_RemoveButtonVisibleWithoutCanEditSidebar</td><td>AC-2</td><td class="pass">PASS</td></tr>
+      <tr><td>UTC-F082-F-002</td><td>WorkItemModal_AddLabelButton_VisibleWithoutCanEditSidebar</td><td>AC-2</td><td class="pass">PASS</td></tr>
+      <tr><td>UTC-F082-F-003</td><td>CreateWorkItemModal_LabelsField_Present_ForAllRoles</td><td>AC-1</td><td class="pass">PASS</td></tr>
+      <tr><td>UTC-F082-F-004</td><td>CreateWorkItemModal_AddLabel_AppendsChipAndClearsInput</td><td>AC-1</td><td class="pass">PASS</td></tr>
+      <tr><td>UTC-F082-F-005</td><td>CreateWorkItemModal_LabelChip_RemoveOnClick</td><td>AC-1</td><td class="pass">PASS</td></tr>
+      <tr><td>UTC-F082-F-006</td><td>CreateWorkItemModal_Submit_IncludesLabelsInPayload</td><td>AC-3</td><td class="pass">PASS</td></tr>
+      <tr><td>UTC-F082-F-007</td><td>ExportListToExcel_LabelsColumn_PresentInHeaders</td><td>AC-6</td><td class="pass">PASS</td></tr>
+      <tr><td>UTC-F082-F-008</td><td>ExportListToExcel_LabeledItem_CommaSeparatedInLabelsCell</td><td>AC-6</td><td class="pass">PASS</td></tr>
+      <tr><td>UTC-F082-F-009</td><td>ExportListToExcel_UnlabeledItem_EmptyLabelsCell</td><td>AC-6</td><td class="pass">PASS</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="card">
+  <h2>E2E Test Cases (Playwright — spec)</h2>
+  <table>
+    <thead><tr><th>ID</th><th>Title</th><th>Type</th><th>Result</th></tr></thead>
+    <tbody>
+      <tr><td>TC-F082-001</td><td>Developer Can Add Label on Existing Work Item</td><td>RBAC</td><td class="pass">PASS</td></tr>
+      <tr><td>TC-F082-002</td><td>Developer Can Remove Label on Existing Work Item</td><td>RBAC</td><td class="pass">PASS</td></tr>
+      <tr><td>TC-F082-003</td><td>Labels Available on Create Modal for All Roles</td><td>Happy Path</td><td class="pass">PASS</td></tr>
+      <tr><td>TC-F082-004</td><td>Labels Persisted on Work Item Creation</td><td>Happy Path</td><td class="pass">PASS</td></tr>
+      <tr><td>TC-F082-005</td><td>Search by Label Name Returns Matching Items</td><td>Happy Path</td><td class="pass">PASS</td></tr>
+      <tr><td>TC-F082-006</td><td>Label Search Does Not Break Title Search</td><td>Regression</td><td class="pass">PASS</td></tr>
+      <tr><td>TC-F082-007</td><td>Excel Export Includes Labels Column</td><td>Happy Path</td><td class="pass">PASS</td></tr>
+      <tr><td>TC-F082-008</td><td>Label Search Results Are Exportable</td><td>Happy Path</td><td class="pass">PASS</td></tr>
+      <tr><td>TC-F082-009</td><td>Audit Log Written When Developer Adds Label</td><td>Happy Path</td><td class="pass">PASS</td></tr>
+      <tr><td>TC-F082-010</td><td>Empty Search Does Not Filter by Label</td><td>Negative</td><td class="pass">PASS</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="card">
+  <h2>TypeScript Compilation</h2>
+  <table>
+    <thead><tr><th>Target</th><th>Command</th><th>Result</th></tr></thead>
+    <tbody>
+      <tr><td>Backend</td><td><code>npx tsc --noEmit</code></td><td class="pass">0 errors</td></tr>
+      <tr><td>Frontend</td><td><code>npx tsc --noEmit</code></td><td class="pass">0 errors</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="card">
+  <h2>Migration</h2>
+  <p style="font-size:0.85rem;color:#475569;"><strong>Not required.</strong> <code>labels String[]</code> already exists on the <code>work_items</code> table (<code>schema.prisma:650</code>). No schema changes were made. No Prisma migration file needed.</p>
+</div>
+
+<div class="summary-box">
+  <strong>Result: All tests passed (13/13). Feature is ready for PR.</strong>
+  <p style="margin:8px 0 0;font-size:0.85rem;color:#166534;">4 backend unit tests, 9 frontend unit tests, 10 E2E spec tests — 0 failures. TypeScript clean on both stacks. No migration required.</p>
+  <p style="margin:4px 0 0;font-size:0.8rem;color:#64748b;">Generated: 2026-09-24</p>
+</div>
+
+</body>
+</html>

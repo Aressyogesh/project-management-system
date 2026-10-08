@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Code Review Report — F-081 Acknowledged Board Column</title>
+<style>
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: #f8fafc; color: #1e293b; margin: 0; padding: 24px; }
+  h1 { font-size: 1.5rem; color: #0f172a; margin-bottom: 4px; }
+  .subtitle { color: #64748b; font-size: 0.9rem; margin-bottom: 24px; }
+  .card { background: #fff; border-radius: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); padding: 20px; margin-bottom: 20px; }
+  .card h2 { font-size: 1rem; font-weight: 600; color: #0f172a; margin: 0 0 16px 0; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+  th { background: #1e3a5f; color: #fff; padding: 10px 12px; text-align: left; }
+  td { padding: 9px 12px; border-bottom: 1px solid #f1f5f9; vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  .pass { color: #16a34a; font-weight: 600; }
+  .na   { color: #94a3b8; font-weight: 600; }
+  .badge-approved { display: inline-block; background: #dcfce7; color: #16a34a; padding: 4px 16px; border-radius: 999px; font-weight: 700; font-size: 0.85rem; }
+  .verdict-box { background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 16px; margin-top: 16px; }
+</style>
+</head>
+<body>
+
+<h1>Code Review Report — F-081: Acknowledged Board Column</h1>
+<div class="subtitle">Reviewer: Claude Code (AI) &nbsp;|&nbsp; Date: 2026-09-24 &nbsp;|&nbsp; Branch: feature/F-081-acknowledged-board-column</div>
+
+<div class="card">
+  <h2>Feature Information</h2>
+  <table>
+    <tr><td><strong>Feature ID</strong></td><td>F-081</td></tr>
+    <tr><td><strong>Feature Name</strong></td><td>Acknowledged Board Column</td></tr>
+    <tr><td><strong>Files Changed</strong></td><td>
+      backend/prisma/schema.prisma<br/>
+      backend/prisma/migrations/20260924000000_add_acknowledged_board_status/migration.sql<br/>
+      backend/src/work-items/work-items.service.ts<br/>
+      frontend/src/features/board/types/board.types.ts<br/>
+      frontend/src/features/board/components/ListView.tsx
+    </td></tr>
+  </table>
+</div>
+
+<div class="card">
+  <h2>CR-1: Code Correctness &amp; Logic</h2>
+  <table>
+    <thead><tr><th>Check</th><th>Status</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td>Logic matches Acceptance Criteria</td><td class="pass">PASS</td><td>All 8 ACs verified in implementation</td></tr>
+      <tr><td>Business rules correctly implemented</td><td class="pass">PASS</td><td>BR-3 confirmed: ACKNOWLEDGED absent from TERMINAL_STATUSES</td></tr>
+      <tr><td>No off-by-one errors or inverted logic</td><td class="pass">PASS</td><td>STATUS_ORDER index 7 is correct; STATUS_RANK 8/9 correct</td></tr>
+      <tr><td>Edge cases handled</td><td class="pass">PASS</td><td>Fallback in STATUS_STYLES uses default grey — not reached for ACKNOWLEDGED</td></tr>
+      <tr><td>No hardcoded values outside constants</td><td class="pass">PASS</td><td>All values in named constant maps</td></tr>
+      <tr><td>No commented-out dead code</td><td class="pass">PASS</td><td>Clean changes — no dead code introduced</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="card">
+  <h2>CR-2: Naming &amp; Readability</h2>
+  <table>
+    <thead><tr><th>Check</th><th>Status</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td>Intention-revealing names</td><td class="pass">PASS</td><td>ACKNOWLEDGED is self-documenting</td></tr>
+      <tr><td>Constants are UPPER_SNAKE_CASE</td><td class="pass">PASS</td><td>STATUS_ORDER, TERMINAL_STATUSES, DEFAULT_BOARD_COLUMNS — all correct</td></tr>
+      <tr><td>No misleading names</td><td class="pass">PASS</td><td>No ambiguity introduced</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="card">
+  <h2>CR-3: SOLID Principles</h2>
+  <table>
+    <thead><tr><th>Check</th><th>Status</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td>Single Responsibility</td><td class="pass">PASS</td><td>Each constant/map has a single clear purpose</td></tr>
+      <tr><td>Open/Closed</td><td class="pass">PASS</td><td>Enum extension follows additive pattern — no existing logic modified</td></tr>
+      <tr><td>Liskov / Interface Segregation / Dependency Inversion</td><td class="na">N/A</td><td>No new classes or interfaces introduced</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="card">
+  <h2>CR-4: Code Quality &amp; Maintainability</h2>
+  <table>
+    <thead><tr><th>Check</th><th>Status</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td>DRY — no duplicated logic</td><td class="pass">PASS</td><td>Status filter auto-derives from DEFAULT_BOARD_COLUMNS — no duplication</td></tr>
+      <tr><td>No magic numbers</td><td class="pass">PASS</td><td>All values in named maps</td></tr>
+      <tr><td>No empty catch blocks</td><td class="pass">PASS</td><td>No new error handling added — existing patterns unchanged</td></tr>
+      <tr><td>Cyclomatic complexity acceptable</td><td class="pass">PASS</td><td>No new branches introduced — all changes are data declarations</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="card">
+  <h2>CR-5: API &amp; Interface Design</h2>
+  <table>
+    <thead><tr><th>Check</th><th>Status</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td>No new endpoints — existing PATCH /work-items/:id accepts ACKNOWLEDGED via @IsEnum(BoardStatus)</td><td class="pass">PASS</td><td>Auto-validated once enum regenerated</td></tr>
+      <tr><td>Response shapes unchanged</td><td class="pass">PASS</td><td>status field already BoardStatus — no response shape change</td></tr>
+      <tr><td>No sensitive data exposed</td><td class="pass">PASS</td><td>No new data fields introduced</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="card">
+  <h2>CR-6: Test Quality Review</h2>
+  <table>
+    <thead><tr><th>Check</th><th>Status</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td>Tests follow Arrange/Act/Assert</td><td class="pass">PASS</td><td>All 11 unit test specs follow AAA pattern</td></tr>
+      <tr><td>Test names describe behaviour</td><td class="pass">PASS</td><td>MethodName_Scenario_ExpectedBehaviour convention followed</td></tr>
+      <tr><td>No logic inside test bodies</td><td class="pass">PASS</td><td>Simple assertions only</td></tr>
+      <tr><td>All ACs covered by tests</td><td class="pass">PASS</td><td>AC-1 through AC-8 each covered by at least one unit and one E2E test</td></tr>
+      <tr><td>261/261 backend tests pass</td><td class="pass">PASS</td><td>Full regression confirmed</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="card">
+  <h2>CR-7: Performance Awareness</h2>
+  <table>
+    <thead><tr><th>Check</th><th>Status</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td>No N+1 queries</td><td class="pass">PASS</td><td>No new query patterns introduced</td></tr>
+      <tr><td>No unnecessary re-renders</td><td class="pass">PASS</td><td>DEFAULT_BOARD_COLUMNS is a module-level constant — no runtime cost</td></tr>
+      <tr><td>Migration is non-destructive (additive ALTER TYPE)</td><td class="pass">PASS</td><td>PostgreSQL ADD VALUE does not rewrite or lock the table</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="card">
+  <h2>CR-8: Coding Standards &amp; Consistency</h2>
+  <table>
+    <thead><tr><th>Check</th><th>Status</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td>TypeScript compiles with zero errors</td><td class="pass">PASS</td><td>npx tsc --noEmit: no output (clean)</td></tr>
+      <tr><td>Follows project style conventions</td><td class="pass">PASS</td><td>Column entries follow exact same object shape as existing entries</td></tr>
+      <tr><td>No unused imports</td><td class="pass">PASS</td><td>No imports added</td></tr>
+      <tr><td>File structure unchanged</td><td class="pass">PASS</td><td>Changes are additive within existing files only</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="card">
+  <h2>Blocking Issues</h2>
+  <p style="color:#16a34a;font-weight:600;">None — no blocking issues found.</p>
+</div>
+
+<div class="card">
+  <h2>Non-Blocking Observations</h2>
+  <ul style="font-size:0.85rem;color:#475569;">
+    <li>The <code>QA</code> legacy value in <code>BoardStatus</code> enum (schema line 125) is still present but not in <code>DEFAULT_BOARD_COLUMNS</code> — this is pre-existing and out of scope for this feature.</li>
+    <li>Frontend test failures in <code>BoardToolbar.test.tsx</code> and <code>WorkItemCard.test.tsx</code> are pre-existing and unrelated to this feature — they involve missing queryFn and class assertion mismatches introduced before F-081.</li>
+  </ul>
+</div>
+
+<div class="verdict-box">
+  <strong>Verdict:</strong> <span class="badge-approved">Approved</span>
+  <p style="margin:8px 0 0;font-size:0.85rem;color:#166534;">All CR-1 through CR-8 checks pass. No blocking issues. Feature implementation is minimal, correct, and consistent with existing codebase patterns.</p>
+  <p style="margin:4px 0 0;font-size:0.8rem;color:#64748b;">Reviewer: Claude Code &nbsp;|&nbsp; Date: 2026-09-24</p>
+</div>
+
+</body>
+</html>

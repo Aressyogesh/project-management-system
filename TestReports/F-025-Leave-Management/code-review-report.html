@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Code Review — F-025 Leave Management</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f8fafc; color: #1e293b; }
+  .header { background: linear-gradient(135deg,#1e40af,#3b82f6); color: #fff; padding: 32px 40px; }
+  .header h1 { font-size: 24px; font-weight: 700; }
+  .header p { font-size: 14px; opacity: .8; margin-top: 6px; }
+  .badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+  .badge-pass { background: #dcfce7; color: #166534; }
+  .badge-warn { background: #fef9c3; color: #854d0e; }
+  .badge-info { background: #dbeafe; color: #1e40af; }
+  .container { max-width: 1100px; margin: 32px auto; padding: 0 24px; display: flex; flex-direction: column; gap: 24px; }
+  .card { background: #fff; border-radius: 12px; border: 1px solid #e2e8f0; overflow: hidden; }
+  .card-header { background: #f1f5f9; padding: 14px 20px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #e2e8f0; }
+  .card-header h2 { font-size: 15px; font-weight: 600; color: #1e293b; }
+  .card-body { padding: 20px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { background: #f8fafc; text-align: left; padding: 10px 14px; font-weight: 600; color: #64748b; border-bottom: 1px solid #e2e8f0; }
+  td { padding: 10px 14px; border-bottom: 1px solid #f1f5f9; vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  .pass { color: #16a34a; font-weight: 600; }
+  .warn { color: #ca8a04; font-weight: 600; }
+  .na { color: #94a3b8; }
+  .summary-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 16px; }
+  .summary-card { background: #f8fafc; border-radius: 8px; padding: 16px; text-align: center; border: 1px solid #e2e8f0; }
+  .summary-card .num { font-size: 28px; font-weight: 700; }
+  .summary-card .lbl { font-size: 11px; color: #64748b; margin-top: 4px; }
+  .green { color: #16a34a; } .yellow { color: #ca8a04; } .blue { color: #2563eb; }
+  pre { background: #f1f5f9; border-radius: 6px; padding: 12px; font-size: 12px; overflow-x: auto; line-height: 1.5; }
+  .file { font-family: monospace; font-size: 12px; color: #2563eb; }
+  ul { padding-left: 18px; }
+  li { margin-bottom: 6px; font-size: 13px; line-height: 1.6; }
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>Code Review Report — F-025</h1>
+  <p>Leave Management (Apply / Approve / Reject / Cancel + Capacity Integration) &nbsp;|&nbsp; Branch: feature/F-025-leave-management &nbsp;|&nbsp; Date: 2026-05-31</p>
+</div>
+
+<div class="container">
+
+  <!-- Summary -->
+  <div class="card">
+    <div class="card-header"><h2>Review Summary</h2><span class="badge badge-pass">✓ PASSED</span></div>
+    <div class="card-body">
+      <div class="summary-grid">
+        <div class="summary-card"><div class="num green">8</div><div class="lbl">Checks Passed</div></div>
+        <div class="summary-card"><div class="num yellow">0</div><div class="lbl">Warnings</div></div>
+        <div class="summary-card"><div class="num blue">0</div><div class="lbl">Failures</div></div>
+        <div class="summary-card"><div class="num blue">14</div><div class="lbl">Files Changed</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Files Changed -->
+  <div class="card">
+    <div class="card-header"><h2>Files Changed</h2></div>
+    <div class="card-body">
+      <table>
+        <thead><tr><th>File</th><th>Change Type</th><th>Purpose</th></tr></thead>
+        <tbody>
+          <tr><td class="file">backend/prisma/schema.prisma</td><td>Modified</td><td>Added LeaveType &amp; LeaveStatus enums; added LeaveRequest model with @db.Date fields; added User relations for leaveRequests + leaveRequestApprovals</td></tr>
+          <tr><td class="file">backend/src/leave-requests/leave-requests.module.ts</td><td>New</td><td>NestJS module registering LeaveRequestsService + LeaveRequestsController</td></tr>
+          <tr><td class="file">backend/src/leave-requests/leave-requests.service.ts</td><td>New</td><td>Full CRUD: create (overlap check), findAll (RBAC scoping), findOne, approve, reject, cancel with business rule validation</td></tr>
+          <tr><td class="file">backend/src/leave-requests/leave-requests.controller.ts</td><td>New</td><td>REST endpoints: POST, GET, GET/:id, PATCH/:id/approve, PATCH/:id/reject, PATCH/:id/cancel</td></tr>
+          <tr><td class="file">backend/src/leave-requests/dto/</td><td>New</td><td>CreateLeaveRequestDto, ApproveLeaveDto with class-validator decorators</td></tr>
+          <tr><td class="file">backend/src/app.module.ts</td><td>Modified</td><td>Added LeaveRequestsModule import and registration</td></tr>
+          <tr><td class="file">backend/src/analytics/analytics.service.ts</td><td>Modified</td><td>getCapacityReport updated: reads APPROVED LeaveRequest (not LeaveLog); adds work-item partial day detection with hasWorkItem flag</td></tr>
+          <tr><td class="file">backend/src/timesheet-entries/timesheet-entries.service.ts</td><td>Modified</td><td>create() auto-submits (SUBMITTED status); propagates child_time_logged activity to parent work item</td></tr>
+          <tr><td class="file">backend/src/projects/projects.service.ts</td><td>Modified</td><td>findAll() + getSummary() filter by members: { some: { userId } } for non-admin callers (RBAC enforcement)</td></tr>
+          <tr><td class="file">backend/src/projects/projects.controller.ts</td><td>Modified</td><td>Passes req.user.id + req.user.systemRole to findAll and getSummary for RBAC scoping</td></tr>
+          <tr><td class="file">frontend/src/api/leaveApi.ts</td><td>New</td><td>Type definitions (LeaveType, LeaveStatus, LeaveRequest, CreateLeaveRequestDto) + API methods (create, list, getOne, approve, reject, cancel)</td></tr>
+          <tr><td class="file">frontend/src/features/leave/pages/LeavePage.tsx</td><td>New</td><td>Full leave management page: apply modal, approve/reject/cancel actions, RBAC-aware columns, consistent design system (inputCls, Toast, table pattern)</td></tr>
+          <tr><td class="file">frontend/src/features/reports/components/CapacityReportTab.tsx</td><td>Rewritten</td><td>Replaced static STATIC_CAPACITY_DATA with live API query; added hasWorkItem dot; updated legend for approved leave (pink) and partial/work-item (amber)</td></tr>
+          <tr><td class="file">frontend/src/App.tsx</td><td>Modified</td><td>Updated import from features/leaves to features/leave; removed stale ComingSoon import; wired /leave-logs route</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- CR-1: Code Structure -->
+  <div class="card">
+    <div class="card-header"><h2>CR-1: Code Structure &amp; Organisation</h2><span class="badge badge-pass">PASS</span></div>
+    <div class="card-body">
+      <ul>
+        <li>Backend follows existing NestJS module-service-controller pattern; all three files placed under <code>src/leave-requests/</code>.</li>
+        <li>Service methods each handle one concern: create, list, approve, reject, cancel — no mixed responsibilities.</li>
+        <li>Frontend LeavePage is a single file keeping all leave-specific logic co-located; sub-components (ApplyLeaveModal, RejectModal) are local to the file reducing prop-drilling.</li>
+        <li>CapacityReportTab is now a pure data-fetching component — all static mock data removed, live query replaces it cleanly.</li>
+        <li>leaveApi.ts follows the same pattern as existing API modules (clientsApi, departmentsApi) — a plain object with typed async methods.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- CR-2: TypeScript -->
+  <div class="card">
+    <div class="card-header"><h2>CR-2: TypeScript Correctness</h2><span class="badge badge-pass">PASS</span></div>
+    <div class="card-body">
+      <ul>
+        <li><code>npx tsc --noEmit</code> passes with 0 errors across the frontend codebase.</li>
+        <li>All Prisma enum types (LeaveType, LeaveStatus) are mirrored as TypeScript string unions in <code>leaveApi.ts</code>.</li>
+        <li>CapacityReport interface updated to include <code>hasWorkItem?: boolean</code> on CapacityCell — no implicit <code>any</code>.</li>
+        <li>LeavePage uses strict typing for all useState generics; no <code>as any</code> casts.</li>
+        <li>Unused <code>onSaved</code> parameter in WorkItemModal renamed to <code>_onSaved</code> to satisfy <code>noUnusedLocals</code>.</li>
+        <li>Stale <code>ComingSoon</code> import removed from App.tsx — no dead imports.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- CR-3: React Best Practices -->
+  <div class="card">
+    <div class="card-header"><h2>CR-3: React / React Query Best Practices</h2><span class="badge badge-pass">PASS</span></div>
+    <div class="card-body">
+      <ul>
+        <li>All <code>useMutation</code> hooks placed unconditionally before JSX returns — hooks ordering rule respected.</li>
+        <li>Leave list query uses <code>queryKey: ['leave-requests', { status, selectedUser }]</code> — cache-busts correctly when filters change.</li>
+        <li>Approval/rejection/cancel mutations each call <code>queryClient.invalidateQueries(['leave-requests'])</code> on success — stale data is evicted immediately.</li>
+        <li>Capacity report query uses <code>staleTime: 60_000</code> — prevents unnecessary re-fetches on every re-render while keeping data fresh.</li>
+        <li>Toast state is auto-cleared via <code>setTimeout</code> from within the mutation success handler — no leaked timers on unmount for normal flows.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- CR-4: API Contract Compliance -->
+  <div class="card">
+    <div class="card-header"><h2>CR-4: API Contract Compliance</h2><span class="badge badge-pass">PASS</span></div>
+    <div class="card-body">
+      <ul>
+        <li>All six REST endpoints match the contract defined in REQ-F-025: POST /leave-requests, GET /leave-requests, GET /leave-requests/:id, PATCH …/approve, PATCH …/reject, PATCH …/cancel.</li>
+        <li>Frontend <code>leaveApi.ts</code> calls exactly those endpoints with matching payloads.</li>
+        <li><code>totalDays</code> is always computed server-side; the frontend never sends it — avoids client-side tampering.</li>
+        <li>Approve and reject accept an optional <code>approvalNote</code> — matches DTO.</li>
+        <li>List endpoint accepts optional <code>status</code> and <code>userId</code> query params; frontend passes them as Axios params object.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- CR-5: DB Schema -->
+  <div class="card">
+    <div class="card-header"><h2>CR-5: Database Schema Design</h2><span class="badge badge-pass">PASS</span></div>
+    <div class="card-body">
+      <ul>
+        <li>LeaveRequest model uses <code>@db.Date</code> for startDate/endDate — stores date-only value, no spurious time component from UTC conversion.</li>
+        <li>Indexes defined on <code>userId</code>, <code>status</code>, and <code>startDate, endDate</code> — optimal for the overlap check query and admin list queries.</li>
+        <li>Cascading <code>onDelete: Cascade</code> from User — leave records are purged when a user is deleted, no orphaned rows.</li>
+        <li>Two separate named relations (<code>UserLeaveRequests</code>, <code>LeaveRequestApprovals</code>) correctly handle dual FK on User — avoids Prisma ambiguous relation error.</li>
+        <li><code>npx prisma db push</code> applied successfully to local DB.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- CR-6: Accessibility & UX -->
+  <div class="card">
+    <div class="card-header"><h2>CR-6: Accessibility &amp; UX</h2><span class="badge badge-pass">PASS</span></div>
+    <div class="card-body">
+      <ul>
+        <li>LeavePage uses same design tokens as Clients/Departments pages: <code>inputCls</code>, <code>labelCls</code>, <code>bg-gray-50/60</code> thead, <code>px-5 py-3</code> cells — visually consistent application-wide.</li>
+        <li>All form inputs have visible <code>&lt;label&gt;</code> elements via <code>labelCls</code>.</li>
+        <li>Toast feedback uses <code>fixed bottom-6 right-6</code> positioning — non-intrusive, screen-reader compatible text.</li>
+        <li>Empty state includes an SVG calendar icon and descriptive text — matches existing empty-state patterns.</li>
+        <li>Apply modal closes on successful submit; reject modal shows leave summary card above note textarea for context.</li>
+        <li>Capacity report cells show <code>●</code> dot for partial/work-item days and hour count for occupied days — dense information in small cells without text overflow.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- CR-7: RBAC -->
+  <div class="card">
+    <div class="card-header"><h2>CR-7: RBAC &amp; Permission Guards</h2><span class="badge badge-pass">PASS</span></div>
+    <div class="card-body">
+      <ul>
+        <li>Service <code>findAll()</code>: SUPER_USER/ADMIN see all records; EMPLOYEE sees only own (<code>where: { userId }</code>).</li>
+        <li>Service <code>approve()</code>/<code>reject()</code>: throws <code>ForbiddenException</code> if caller's role is not SUPER_USER or ADMIN.</li>
+        <li>Service <code>cancel()</code>: EMPLOYEE can only cancel own PENDING leave; ADMIN can cancel any.</li>
+        <li>Frontend actions (Approve, Reject buttons) are conditionally rendered based on <code>canManage</code> (SUPER_USER/ADMIN) — defence-in-depth.</li>
+        <li>Employee column in admin list view is hidden for non-admin users — reduces information exposure.</li>
+        <li>Projects list RBAC: non-admin users now see only projects where they are members (<code>members: { some: { userId } }</code>) in both findAll and getSummary.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- CR-8: Dead Code -->
+  <div class="card">
+    <div class="card-header"><h2>CR-8: No Dead Code / Unused Imports</h2><span class="badge badge-pass">PASS</span></div>
+    <div class="card-body">
+      <ul>
+        <li>App.tsx stale <code>ComingSoon</code> import removed; old <code>LeavesPage</code> import path corrected to <code>LeavePage</code>.</li>
+        <li>CapacityReportTab: all static mock data constants (STATIC_CAPACITY_DATA, etc.) removed; component now purely data-driven.</li>
+        <li>WorkItemModal: <code>onSaved</code> renamed to <code>_onSaved</code> to suppress noUnusedLocals without changing the prop signature.</li>
+        <li>No unused state variables, query results, or intermediate variables left in any new files.</li>
+        <li>Build output (tsc --noEmit) confirms 0 unused-local errors.</li>
+      </ul>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Security Review Report — F-029 Kanban Board Enhancements</title>
+<style>
+  body { font-family: 'Segoe UI', Arial, sans-serif; margin: 0; background: #f8fafc; color: #1e293b; }
+  header { background: #7c3aed; color: white; padding: 24px 32px; }
+  header h1 { margin: 0 0 4px; font-size: 22px; }
+  header p { margin: 0; opacity: .8; font-size: 13px; }
+  .container { max-width: 1100px; margin: 32px auto; padding: 0 24px; }
+  .card { background: white; border-radius: 10px; box-shadow: 0 1px 4px rgba(0,0,0,.08); margin-bottom: 24px; overflow: hidden; }
+  .card-header { background: #faf5ff; padding: 14px 20px; font-weight: 600; font-size: 15px; border-bottom: 1px solid #e9d5ff; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { background: #f8fafc; text-align: left; padding: 10px 14px; font-weight: 600; border-bottom: 2px solid #e2e8f0; }
+  td { padding: 10px 14px; border-bottom: 1px solid #f1f5f9; vertical-align: top; }
+  tr:last-child td { border: none; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 600; }
+  .badge-pass { background: #dcfce7; color: #16a34a; }
+  .badge-na { background: #f1f5f9; color: #64748b; }
+  .badge-warn { background: #fef9c3; color: #a16207; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Security Review Report — F-029: Kanban Board Enhancements</h1>
+  <p>Reviewer: Claude Sonnet 4.6 &nbsp;|&nbsp; Date: 2026-06-01 &nbsp;|&nbsp; OWASP Top 10 + 1 additional check</p>
+</header>
+<div class="container">
+
+  <div class="card">
+    <div class="card-header">Security Checks (SEC-1 through SEC-11)</div>
+    <table>
+      <thead><tr><th>ID</th><th>Check (OWASP)</th><th>Finding</th><th>Status</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>SEC-1</td>
+          <td>A01: Broken Access Control</td>
+          <td>All new endpoints (board-column-configs, test-cases) are protected by the global JwtAuthGuard. No anonymous access possible. BoardColumnConfig and TestCase operations are scoped to projectId/workItemId — users cannot access items from other projects via these endpoints.</td>
+          <td><span class="badge badge-pass">PASS</span></td>
+        </tr>
+        <tr>
+          <td>SEC-2</td>
+          <td>A02: Cryptographic Failures</td>
+          <td>No new cryptographic operations introduced. All existing JWT/bcrypt mechanisms remain unchanged. Test case data and column config data are not sensitive (no PII, no credentials).</td>
+          <td><span class="badge badge-pass">PASS</span></td>
+        </tr>
+        <tr>
+          <td>SEC-3</td>
+          <td>A03: Injection</td>
+          <td>All DB operations use Prisma ORM with parameterised queries. No raw SQL or string interpolation in DB queries. The milestoneId, workItemId, and projectId route/query params are passed directly to Prisma where clauses — no concatenation into SQL strings.</td>
+          <td><span class="badge badge-pass">PASS</span></td>
+        </tr>
+        <tr>
+          <td>SEC-4</td>
+          <td>A04: Insecure Design</td>
+          <td>Test case creation requires an authenticated userId (from JWT sub claim). Board column label length capped at VarChar(100) in DB and validated via @MaxLength in DTO. Test case fields have appropriate VarChar limits.</td>
+          <td><span class="badge badge-pass">PASS</span></td>
+        </tr>
+        <tr>
+          <td>SEC-5</td>
+          <td>A05: Security Misconfiguration</td>
+          <td>New modules (TestCasesModule, BoardColumnConfigsModule) are registered in AppModule. No new environment variables, no new CORS exceptions, no debug endpoints introduced.</td>
+          <td><span class="badge badge-pass">PASS</span></td>
+        </tr>
+        <tr>
+          <td>SEC-6</td>
+          <td>A06: Vulnerable Components</td>
+          <td>No new npm packages added. Existing react-query, @hello-pangea/dnd, and prisma libraries unchanged.</td>
+          <td><span class="badge badge-pass">PASS</span></td>
+        </tr>
+        <tr>
+          <td>SEC-7</td>
+          <td>A07: Authentication Failures</td>
+          <td>JWT guard is global — all new routes inherit authentication. No public decorators added to new controllers.</td>
+          <td><span class="badge badge-pass">PASS</span></td>
+        </tr>
+        <tr>
+          <td>SEC-8</td>
+          <td>A08: Software Integrity</td>
+          <td>No new build pipeline changes. No new CDN scripts or external resources loaded. GlobalProgressBar uses inline CSS keyframe animation — no external stylesheet.</td>
+          <td><span class="badge badge-pass">PASS</span></td>
+        </tr>
+        <tr>
+          <td>SEC-9</td>
+          <td>A09: Logging Failures</td>
+          <td>NestJS default logger covers incoming requests. No new sensitive data (test steps, bug details) are logged to console.</td>
+          <td><span class="badge badge-pass">PASS</span></td>
+        </tr>
+        <tr>
+          <td>SEC-10</td>
+          <td>A10: SSRF</td>
+          <td>No server-side URL fetching introduced. All new API calls are internal Prisma queries only.</td>
+          <td><span class="badge badge-pass">PASS</span></td>
+        </tr>
+        <tr>
+          <td>SEC-11</td>
+          <td>XSS (Frontend)</td>
+          <td>
+            Test case content (title, steps, actualResult) is rendered via React's JSX (text nodes), not dangerouslySetInnerHTML. Column labels rendered as text. Client names in link hrefs use React router's &lt;Link to={...}&gt; — no raw anchor href interpolation. Board description fields may render rich text via existing mechanism — unchanged in this feature.
+          </td>
+          <td><span class="badge badge-pass">PASS</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <div class="card-header">Data Validation Review</div>
+    <table>
+      <thead><tr><th>Field</th><th>Validation Applied</th><th>Status</th></tr></thead>
+      <tbody>
+        <tr><td>TestCase.title</td><td>@IsString, @MaxLength(300), @IsNotEmpty in DTO</td><td><span class="badge badge-pass">PASS</span></td></tr>
+        <tr><td>TestCase.steps</td><td>@IsString, @MaxLength(3000)</td><td><span class="badge badge-pass">PASS</span></td></tr>
+        <tr><td>TestCase.expectedResult</td><td>@IsString, @MaxLength(1000)</td><td><span class="badge badge-pass">PASS</span></td></tr>
+        <tr><td>TestCase.actualResult</td><td>@IsOptional, @IsString, @MaxLength(1000)</td><td><span class="badge badge-pass">PASS</span></td></tr>
+        <tr><td>TestCase.status</td><td>@IsEnum(TestCaseStatus)</td><td><span class="badge badge-pass">PASS</span></td></tr>
+        <tr><td>BoardColumnConfig.label</td><td>@IsString, @MaxLength(100)</td><td><span class="badge badge-pass">PASS</span></td></tr>
+        <tr><td>BoardColumnConfig.status</td><td>@IsEnum(BoardStatus)</td><td><span class="badge badge-pass">PASS</span></td></tr>
+        <tr><td>WorkItem.definitionOfDone</td><td>@IsOptional, @IsString, @MaxLength(3000)</td><td><span class="badge badge-pass">PASS</span></td></tr>
+        <tr><td>milestoneId query param</td><td>Optional string; used in safe Prisma where clause only</td><td><span class="badge badge-pass">PASS</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <div class="card-header">Overall Security Verdict</div>
+    <table>
+      <thead><tr><th>Area</th><th>Result</th></tr></thead>
+      <tbody>
+        <tr><td>Access Control</td><td><span class="badge badge-pass">PASS</span></td></tr>
+        <tr><td>Injection Prevention</td><td><span class="badge badge-pass">PASS</span></td></tr>
+        <tr><td>XSS Prevention</td><td><span class="badge badge-pass">PASS</span></td></tr>
+        <tr><td>Input Validation</td><td><span class="badge badge-pass">PASS</span></td></tr>
+        <tr><td>Authentication</td><td><span class="badge badge-pass">PASS</span></td></tr>
+        <tr><td>Component Security</td><td><span class="badge badge-pass">PASS</span></td></tr>
+        <tr><td><strong>OVERALL</strong></td><td><span class="badge badge-pass">APPROVED — No security issues found</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>E2E Test Report — F-011 Task Management</title>
+<style>
+  body{font-family:system-ui,sans-serif;margin:0;background:#f8fafc;color:#1e293b}
+  .header{background:#1e3a5f;color:#fff;padding:24px 32px}
+  .header h1{margin:0 0 4px;font-size:1.4rem}.header p{margin:0;opacity:.75;font-size:.875rem}
+  .summary{display:flex;gap:16px;padding:20px 32px;flex-wrap:wrap}
+  .chip{padding:8px 18px;border-radius:999px;font-size:.85rem;font-weight:600}
+  .pass{background:#dcfce7;color:#15803d}.info{background:#e0f2fe;color:#0369a1}
+  table{width:calc(100% - 64px);margin:0 32px 32px;border-collapse:collapse;background:#fff;border-radius:10px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.08)}
+  th{background:#f1f5f9;text-align:left;padding:10px 14px;font-size:.78rem;color:#64748b;text-transform:uppercase;letter-spacing:.05em}
+  td{padding:11px 14px;font-size:.85rem;border-top:1px solid #f1f5f9;vertical-align:top}
+  .badge{display:inline-block;padding:2px 10px;border-radius:999px;font-size:.75rem;font-weight:600}
+  .badge-pass{background:#dcfce7;color:#15803d}
+  code{background:#f1f5f9;padding:1px 5px;border-radius:4px;font-size:.8rem}
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>E2E Test Report — F-011: Task Management</h1>
+  <p>Full-stack scenarios • Generated 2026-05-26</p>
+</div>
+<div class="summary">
+  <span class="chip pass">10 Passed</span>
+  <span class="chip" style="background:#fee2e2;color:#b91c1c">0 Failed</span>
+  <span class="chip info">Env: Local (backend + frontend)</span>
+</div>
+<table>
+  <thead><tr><th>Test ID</th><th>Scenario</th><th>Role</th><th>Result</th><th>Notes</th></tr></thead>
+  <tbody>
+    <tr><td><code>TC-F-011-001</code></td><td>List tasks for a project — tasks grouped by task list</td><td>Any</td><td><span class="badge badge-pass">PASS</span></td><td>GET /projects/:id/tasks returns tasks; UI groups them under correct task list header</td></tr>
+    <tr><td><code>TC-F-011-002</code></td><td>Create task with required fields only</td><td>ADMIN</td><td><span class="badge badge-pass">PASS</span></td><td>POST /tasks returns 201 with NOT_STARTED status and MEDIUM priority defaults</td></tr>
+    <tr><td><code>TC-F-011-003</code></td><td>Create task with all optional fields (milestone, assignee, dates, hours)</td><td>ADMIN</td><td><span class="badge badge-pass">PASS</span></td><td>All fields persisted; task appears with milestone sub-label and assignee avatar</td></tr>
+    <tr><td><code>TC-F-011-004</code></td><td>Create task — taskListId from different project rejected</td><td>ADMIN</td><td><span class="badge badge-pass">PASS</span></td><td>POST returns 400 BadRequest; task not created</td></tr>
+    <tr><td><code>TC-F-011-005</code></td><td>Create task — milestoneId from different project rejected</td><td>ADMIN</td><td><span class="badge badge-pass">PASS</span></td><td>POST returns 400 BadRequest; task not created</td></tr>
+    <tr><td><code>TC-F-011-006</code></td><td>Update task title and status</td><td>ADMIN</td><td><span class="badge badge-pass">PASS</span></td><td>PATCH /tasks/:id returns updated task; UI reflects new title and status badge</td></tr>
+    <tr><td><code>TC-F-011-007</code></td><td>Update task priority to CRITICAL</td><td>ADMIN</td><td><span class="badge badge-pass">PASS</span></td><td>Priority badge changes to CRITICAL colour in task list</td></tr>
+    <tr><td><code>TC-F-011-008</code></td><td>Delete task — task removed from list</td><td>ADMIN</td><td><span class="badge badge-pass">PASS</span></td><td>DELETE /tasks/:id returns 204; task disappears from UI after query invalidation</td></tr>
+    <tr><td><code>TC-F-011-009</code></td><td>EMPLOYEE cannot create or delete tasks</td><td>EMPLOYEE</td><td><span class="badge badge-pass">PASS</span></td><td>"Add Task" button hidden; direct POST/DELETE return 403 Forbidden</td></tr>
+    <tr><td><code>TC-F-011-010</code></td><td>No task lists — Add Task button disabled</td><td>ADMIN</td><td><span class="badge badge-pass">PASS</span></td><td>Button rendered but disabled with tooltip when project has no task lists</td></tr>
+  </tbody>
+</table>
+</body>
+</html>

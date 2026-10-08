@@ -1,0 +1,3 @@
+ALTER TYPE "ShiftType" ADD VALUE IF NOT EXISTS 'CUSTOM';
+
+ALTER TABLE "shifts" DROP CONSTRAINT IF EXISTS "shifts_shiftType_key";

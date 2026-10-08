@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Security Review Report — F-004: User Management</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; margin: 0; padding: 32px; background: #f8fafc; color: #1e293b; }
+  h1 { font-size: 1.5rem; font-weight: 700; margin-bottom: 4px; }
+  .subtitle { color: #64748b; font-size: 0.875rem; margin-bottom: 32px; }
+  .card { background: white; border-radius: 12px; border: 1px solid #e2e8f0; padding: 24px; margin-bottom: 24px; }
+  .card h2 { font-size: 1rem; font-weight: 600; margin: 0 0 16px; }
+  .verdict { display: inline-flex; align-items: center; gap: 8px; padding: 8px 20px; border-radius: 24px; font-size: 0.875rem; font-weight: 600; background: #dcfce7; color: #16a34a; margin-bottom: 24px; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+  th { background: #f8fafc; padding: 10px 14px; text-align: left; font-size: 0.7rem; font-weight: 600; text-transform: uppercase; color: #64748b; border-bottom: 1px solid #e2e8f0; }
+  td { padding: 10px 14px; border-bottom: 1px solid #f1f5f9; }
+  tr:last-child td { border-bottom: none; }
+  .badge { display: inline-flex; padding: 2px 8px; border-radius: 20px; font-size: 0.75rem; font-weight: 500; }
+  .badge.pass { background: #dcfce7; color: #16a34a; }
+  .badge.na { background: #f1f5f9; color: #64748b; }
+  .badge.low { background: #fef9c3; color: #854d0e; }
+</style>
+</head>
+<body>
+<h1>Security Review Report — F-004: User Management</h1>
+<p class="subtitle">Reviewer: Claude Sonnet 4.6 (OWASP) | Date: 2026-05-26</p>
+<div class="verdict">✓ Cleared — 2 LOW risk items tracked</div>
+
+<div class="card">
+  <h2>OWASP Top 10 — Web</h2>
+  <table>
+    <thead><tr><th>Risk</th><th>Name</th><th>Applicable</th><th>Status</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td>A01</td><td>Broken Access Control</td><td>Yes</td><td><span class="badge pass">PASS</span></td><td>@Roles guard at class level; self-deactivation blocked</td></tr>
+      <tr><td>A02</td><td>Cryptographic Failures</td><td>Yes</td><td><span class="badge pass">PASS</span></td><td>bcrypt cost 10; passwordHash excluded from responses</td></tr>
+      <tr><td>A03</td><td>Injection</td><td>Yes</td><td><span class="badge pass">PASS</span></td><td>Prisma parameterised queries; no dangerouslySetInnerHTML</td></tr>
+      <tr><td>A04</td><td>Insecure Design</td><td>Yes</td><td><span class="badge pass">PASS</span></td><td>No workflow bypass; email normalised to lowercase</td></tr>
+      <tr><td>A05</td><td>Security Misconfiguration</td><td>Yes</td><td><span class="badge pass">PASS</span></td><td>CORS locked; uploads outside web root</td></tr>
+      <tr><td>A06</td><td>Vulnerable Components</td><td>Yes</td><td><span class="badge pass">PASS</span></td><td>No new dependencies introduced</td></tr>
+      <tr><td>A07</td><td>Auth Failures</td><td>Yes</td><td><span class="badge pass">PASS</span></td><td>JWT guard inherited from global config</td></tr>
+      <tr><td>A08</td><td>Data Integrity</td><td>Yes</td><td><span class="badge pass">PASS</span></td><td>package-lock.json maintained</td></tr>
+      <tr><td>A09</td><td>Logging &amp; Monitoring</td><td>Yes</td><td><span class="badge pass">PASS</span></td><td>GlobalExceptionFilter logs all errors; no PII in logs</td></tr>
+      <tr><td>A10</td><td>SSRF</td><td>No</td><td><span class="badge na">N/A</span></td><td>No server-side URL fetching</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="card">
+  <h2>OWASP API Security Top 10</h2>
+  <table>
+    <thead><tr><th>Risk</th><th>Status</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td>API01 — Broken Object Level Auth</td><td><span class="badge pass">PASS</span></td><td>findOne called before update; validates existence</td></tr>
+      <tr><td>API02 — Broken Authentication</td><td><span class="badge pass">PASS</span></td><td>All endpoints require JWT</td></tr>
+      <tr><td>API03 — Broken Object Property Level Auth</td><td><span class="badge pass">PASS</span></td><td>USER_SELECT omits passwordHash</td></tr>
+      <tr><td>API04 — Unrestricted Resource Consumption</td><td><span class="badge pass">PASS</span></td><td>Pagination enforced; 2 MB photo limit</td></tr>
+      <tr><td>API05 — Broken Function Level Auth</td><td><span class="badge pass">PASS</span></td><td>EMPLOYEE role blocked at controller level</td></tr>
+      <tr><td>API08 — Security Misconfiguration</td><td><span class="badge pass">PASS</span></td><td>Stack traces stripped in prod via GlobalExceptionFilter</td></tr>
+      <tr><td>API09 — Improper Inventory Management</td><td><span class="badge pass">PASS</span></td><td>All routes declared in controller; Swagger documents them</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="card">
+  <h2>Open Risk Items</h2>
+  <table>
+    <thead><tr><th>Risk</th><th>Severity</th><th>Planned Remediation</th></tr></thead>
+    <tbody>
+      <tr><td>Profile photo served via /api/ prefix — requires ServeStaticModule config</td><td><span class="badge low">LOW</span></td><td>Confirm static file middleware before prod deployment</td></tr>
+      <tr><td>Photo file type validated by size only — MIME type not verified</td><td><span class="badge low">LOW</span></td><td>Add Multer fileFilter to verify MIME type in next iteration</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="card">
+  <h2>Sign-off</h2>
+  <table>
+    <tbody>
+      <tr><td><strong>Reviewer</strong></td><td>Claude Sonnet 4.6</td></tr>
+      <tr><td><strong>Date</strong></td><td>2026-05-26</td></tr>
+      <tr><td><strong>Verdict</strong></td><td>Cleared — No CRITICAL or HIGH findings</td></tr>
+    </tbody>
+  </table>
+</div>
+</body>
+</html>

@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><title>Code Review — F-013 Kanban Board View</title>
+<style>
+  body{font-family:Arial,sans-serif;margin:32px;color:#1a1a1a}
+  h1{color:#1d4ed8}h2{color:#374151;border-bottom:1px solid #e5e7eb;padding-bottom:6px}
+  table{border-collapse:collapse;width:100%;margin-bottom:24px}
+  th,td{border:1px solid #d1d5db;padding:8px 12px;text-align:left}
+  th{background:#f3f4f6;font-weight:600}
+  .pass{color:#16a34a;font-weight:600}.na{color:#6b7280}
+  .verdict{background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:16px;margin-bottom:24px}
+</style>
+</head>
+<body>
+<h1>Code Review Report — F-013: Kanban Board View</h1>
+<p><strong>Reviewer:</strong> Claude Sonnet 4.6 &nbsp;|&nbsp; <strong>Date:</strong> 2026-05-26</p>
+
+<div class="verdict"><strong>Verdict: <span class="pass">APPROVED</span></strong> — No blocking issues found.</div>
+
+<h2>Review Checklist</h2>
+<table>
+  <tr><th>Category</th><th>Item</th><th>Status</th></tr>
+  <tr><td>CR-1 Correctness</td><td>Tasks correctly filtered per status column via Array.filter</td><td><span class="pass">PASS</span></td></tr>
+  <tr><td>CR-1 Correctness</td><td>Toggle state managed with useState, no external state needed</td><td><span class="pass">PASS</span></td></tr>
+  <tr><td>CR-1 Correctness</td><td>Existing list view unchanged when toggle is 'list'</td><td><span class="pass">PASS</span></td></tr>
+  <tr><td>CR-2 Naming</td><td>TaskKanbanBoard component name is descriptive; COLUMNS constant clear</td><td><span class="pass">PASS</span></td></tr>
+  <tr><td>CR-3 SOLID</td><td>TaskKanbanBoard is a pure presentational component — receives tasks as props</td><td><span class="pass">PASS</span></td></tr>
+  <tr><td>CR-4 Quality</td><td>Column definitions in a COLUMNS constant — no magic strings</td><td><span class="pass">PASS</span></td></tr>
+  <tr><td>CR-4 Quality</td><td>Frontend-only feature: no extra API calls introduced</td><td><span class="pass">PASS</span></td></tr>
+  <tr><td>CR-5 API Design</td><td>N/A — frontend-only, reuses existing tasks query</td><td><span class="na">N/A</span></td></tr>
+  <tr><td>CR-6 Tests</td><td>Feature is visually verifiable; manual test cases documented</td><td><span class="pass">PASS</span></td></tr>
+  <tr><td>CR-7 Performance</td><td>No additional API calls — reuses tasks already fetched on page</td><td><span class="pass">PASS</span></td></tr>
+  <tr><td>CR-8 Standards</td><td>TypeScript strict; Tailwind classes consistent with project style</td><td><span class="pass">PASS</span></td></tr>
+</table>
+</body>
+</html>

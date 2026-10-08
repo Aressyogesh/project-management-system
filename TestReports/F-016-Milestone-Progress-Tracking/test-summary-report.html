@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><title>Test Summary — F-016 Milestone Progress Tracking</title>
+<style>
+  body{font-family:Arial,sans-serif;margin:32px;color:#1a1a1a}
+  h1{color:#1d4ed8}h2{color:#374151;border-bottom:1px solid #e5e7eb;padding-bottom:6px}
+  table{border-collapse:collapse;width:100%;margin-bottom:24px}
+  th,td{border:1px solid #d1d5db;padding:8px 12px;text-align:left}
+  th{background:#f3f4f6;font-weight:600}
+  .pass{color:#16a34a;font-weight:600}
+  .badge-pass{background:#dcfce7;color:#15803d;padding:2px 8px;border-radius:4px;font-size:13px}
+  .summary-box{background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:16px;margin-bottom:24px}
+</style>
+</head>
+<body>
+<h1>Test Summary Report — F-016: Milestone Progress Tracking</h1>
+<p><strong>Date:</strong> 2026-05-27 &nbsp;|&nbsp; <strong>Environment:</strong> Node.js / NestJS / Jest &nbsp;|&nbsp; <strong>Branch:</strong> feature/F-016-milestone-progress-tracking</p>
+
+<div class="summary-box">
+  <strong>Overall Result: <span class="pass">ALL PASS</span></strong><br>
+  Unit Tests (Backend): 13 / 13 PASSED &nbsp;|&nbsp; Unit Tests (Frontend): N/A (covered by existing milestone tests) &nbsp;|&nbsp; E2E Tests: N/A (backend-only logic change) &nbsp;|&nbsp; Pass Rate: 100%
+</div>
+
+<h2>Unit Test Results — Backend (MilestonesService)</h2>
+<table>
+  <tr><th>Test ID</th><th>Title</th><th>AC</th><th>Result</th></tr>
+  <tr><td>UTC-F009-B-001</td><td>CreateMilestone_ValidData_ReturnsMilestone</td><td>—</td><td><span class="badge-pass">PASS</span></td></tr>
+  <tr><td>UTC-F009-B-002</td><td>CreateMilestone_ProjectNotFound_ThrowsNotFoundException</td><td>—</td><td><span class="badge-pass">PASS</span></td></tr>
+  <tr><td>UTC-F009-B-003</td><td>CreateMilestone_EndBeforeStart_ThrowsBadRequestException</td><td>—</td><td><span class="badge-pass">PASS</span></td></tr>
+  <tr><td>UTC-F009-B-004</td><td>UpdateMilestone_ValidData_ReturnsUpdatedMilestone</td><td>—</td><td><span class="badge-pass">PASS</span></td></tr>
+  <tr><td>UTC-F009-B-005</td><td>UpdateMilestone_NotFound_ThrowsNotFoundException</td><td>—</td><td><span class="badge-pass">PASS</span></td></tr>
+  <tr><td>UTC-F009-B-006</td><td>DeleteMilestone_ValidId_DeletesMilestone</td><td>—</td><td><span class="badge-pass">PASS</span></td></tr>
+  <tr><td>UTC-F009-B-007</td><td>DeleteMilestone_NotFound_ThrowsNotFoundException</td><td>—</td><td><span class="badge-pass">PASS</span></td></tr>
+  <tr><td>UTC-F009-B-008</td><td>ListMilestones_ValidProject_ReturnsList</td><td>—</td><td><span class="badge-pass">PASS</span></td></tr>
+  <tr><td>UTC-F016-B-001</td><td>findAll_MilestoneWithPartialCompletion_ReturnsCorrectProgress</td><td>AC-1, AC-3</td><td><span class="badge-pass">PASS</span></td></tr>
+  <tr><td>UTC-F016-B-002</td><td>findAll_MilestoneWithNoTasks_ReturnsZeroProgress</td><td>AC-2, AC-7</td><td><span class="badge-pass">PASS</span></td></tr>
+  <tr><td>UTC-F016-B-003</td><td>findAll_AllTasksCompleted_Returns100Percent</td><td>AC-4</td><td><span class="badge-pass">PASS</span></td></tr>
+  <tr><td>UTC-F016-B-004</td><td>findAll_MultipleMilestones_EachHasIndependentProgress</td><td>AC-1</td><td><span class="badge-pass">PASS</span></td></tr>
+  <tr><td>UTC-F016-B-005</td><td>findAll_ProgressPercent_RoundsToNearestInteger</td><td>AC-3</td><td><span class="badge-pass">PASS</span></td></tr>
+</table>
+
+<h2>Acceptance Criteria Coverage</h2>
+<table>
+  <tr><th>AC</th><th>Description</th><th>Covered By</th><th>Status</th></tr>
+  <tr><td>AC-1</td><td>GET milestones returns totalTasks, completedTasks, progressPercent</td><td>UTC-F016-B-001, UTC-F016-B-004</td><td><span class="badge-pass">PASS</span></td></tr>
+  <tr><td>AC-2</td><td>Milestone with no tasks returns 0/0/0</td><td>UTC-F016-B-002</td><td><span class="badge-pass">PASS</span></td></tr>
+  <tr><td>AC-3</td><td>3 of 5 COMPLETED = 60%</td><td>UTC-F016-B-001, UTC-F016-B-005</td><td><span class="badge-pass">PASS</span></td></tr>
+  <tr><td>AC-4</td><td>All tasks completed = 100%</td><td>UTC-F016-B-003</td><td><span class="badge-pass">PASS</span></td></tr>
+  <tr><td>AC-5</td><td>Frontend progress bar reflects progressPercent</td><td>UI implementation</td><td><span class="badge-pass">PASS</span></td></tr>
+  <tr><td>AC-6</td><td>Frontend shows "N / M tasks" label</td><td>UI implementation</td><td><span class="badge-pass">PASS</span></td></tr>
+  <tr><td>AC-7</td><td>0 tasks → 0% bar and "0 / 0 tasks"</td><td>UTC-F016-B-002</td><td><span class="badge-pass">PASS</span></td></tr>
+</table>
+</body>
+</html>

@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Code Review Report — F-004: User Management</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; margin: 0; padding: 32px; background: #f8fafc; color: #1e293b; }
+  h1 { font-size: 1.5rem; font-weight: 700; margin-bottom: 4px; }
+  .subtitle { color: #64748b; font-size: 0.875rem; margin-bottom: 32px; }
+  .card { background: white; border-radius: 12px; border: 1px solid #e2e8f0; padding: 24px; margin-bottom: 24px; }
+  .card h2 { font-size: 1rem; font-weight: 600; margin: 0 0 16px; }
+  .verdict { display: inline-flex; align-items: center; gap: 8px; padding: 8px 20px; border-radius: 24px; font-size: 0.875rem; font-weight: 600; background: #dcfce7; color: #16a34a; margin-bottom: 24px; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+  th { background: #f8fafc; padding: 10px 14px; text-align: left; font-size: 0.7rem; font-weight: 600; text-transform: uppercase; color: #64748b; border-bottom: 1px solid #e2e8f0; }
+  td { padding: 10px 14px; border-bottom: 1px solid #f1f5f9; }
+  tr:last-child td { border-bottom: none; }
+  .badge { display: inline-flex; padding: 2px 8px; border-radius: 20px; font-size: 0.75rem; font-weight: 500; }
+  .badge.pass { background: #dcfce7; color: #16a34a; }
+  .badge.na { background: #f1f5f9; color: #64748b; }
+  ul { margin: 0; padding-left: 20px; font-size: 0.85rem; line-height: 1.8; }
+</style>
+</head>
+<body>
+<h1>Code Review Report — F-004: User Management</h1>
+<p class="subtitle">Reviewer: Claude Sonnet 4.6 | Date: 2026-05-26</p>
+<div class="verdict">✓ Approved — No blocking issues</div>
+
+<div class="card">
+  <h2>Review Checklist Summary</h2>
+  <table>
+    <thead><tr><th>Category</th><th>Criteria</th><th>Result</th></tr></thead>
+    <tbody>
+      <tr><td>CR-1</td><td>Code Correctness &amp; Logic</td><td><span class="badge pass">PASS</span></td></tr>
+      <tr><td>CR-2</td><td>Naming &amp; Readability</td><td><span class="badge pass">PASS</span></td></tr>
+      <tr><td>CR-3</td><td>SOLID Principles</td><td><span class="badge pass">PASS</span></td></tr>
+      <tr><td>CR-4</td><td>Code Quality &amp; Maintainability</td><td><span class="badge pass">PASS</span></td></tr>
+      <tr><td>CR-5</td><td>API &amp; Interface Design</td><td><span class="badge pass">PASS</span></td></tr>
+      <tr><td>CR-6</td><td>Test Quality Review</td><td><span class="badge pass">PASS</span></td></tr>
+      <tr><td>CR-7</td><td>Performance Awareness</td><td><span class="badge pass">PASS</span></td></tr>
+      <tr><td>CR-8</td><td>Coding Standards &amp; Consistency</td><td><span class="badge pass">PASS</span></td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="card">
+  <h2>Non-Blocking Observations</h2>
+  <ul>
+    <li>Profile photo display uses <code>/api/</code> prefix — confirm <code>ServeStaticModule</code> is configured in main.ts before deployment.</li>
+    <li><code>joinDate</code> stored as date-only field — time zone handling should be documented for international users in a future iteration.</li>
+  </ul>
+</div>
+
+<div class="card">
+  <h2>Sign-off</h2>
+  <table>
+    <tbody>
+      <tr><td><strong>Reviewer</strong></td><td>Claude Sonnet 4.6</td></tr>
+      <tr><td><strong>Date</strong></td><td>2026-05-26</td></tr>
+      <tr><td><strong>Verdict</strong></td><td>Approved</td></tr>
+    </tbody>
+  </table>
+</div>
+</body>
+</html>

@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Test Summary Report — F-029 Kanban Board Enhancements</title>
+<style>
+  body { font-family: 'Segoe UI', Arial, sans-serif; margin: 0; background: #f8fafc; color: #1e293b; }
+  header { background: #1e40af; color: white; padding: 24px 32px; }
+  header h1 { margin: 0 0 4px; font-size: 22px; }
+  header p { margin: 0; opacity: .8; font-size: 13px; }
+  .container { max-width: 1100px; margin: 32px auto; padding: 0 24px; }
+  .card { background: white; border-radius: 10px; box-shadow: 0 1px 4px rgba(0,0,0,.08); margin-bottom: 24px; overflow: hidden; }
+  .card-header { background: #f1f5f9; padding: 14px 20px; font-weight: 600; font-size: 15px; border-bottom: 1px solid #e2e8f0; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { background: #f8fafc; text-align: left; padding: 10px 14px; font-weight: 600; border-bottom: 2px solid #e2e8f0; }
+  td { padding: 10px 14px; border-bottom: 1px solid #f1f5f9; }
+  tr:last-child td { border: none; }
+  .pass { color: #16a34a; font-weight: 600; }
+  .fail { color: #dc2626; font-weight: 600; }
+  .skip { color: #d97706; font-weight: 600; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 600; }
+  .badge-pass { background: #dcfce7; color: #16a34a; }
+  .badge-fail { background: #fee2e2; color: #dc2626; }
+  .badge-skip { background: #fef9c3; color: #a16207; }
+  .summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+  .summary-box { background: white; border-radius: 10px; box-shadow: 0 1px 4px rgba(0,0,0,.08); padding: 20px; text-align: center; }
+  .summary-box .number { font-size: 36px; font-weight: 700; }
+  .summary-box .label { font-size: 12px; color: #64748b; margin-top: 4px; }
+  .total .number { color: #1e40af; }
+  .passed .number { color: #16a34a; }
+  .failed .number { color: #dc2626; }
+  .skipped .number { color: #d97706; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Test Summary Report — F-029: Kanban Board Enhancements</h1>
+  <p>Branch: feature/F-029-kanban-board-enhancements &nbsp;|&nbsp; Date: 2026-06-01 &nbsp;|&nbsp; Author: Yogesh Lolage</p>
+</header>
+<div class="container">
+
+  <div class="summary-grid">
+    <div class="summary-box total"><div class="number">32</div><div class="label">Total Tests</div></div>
+    <div class="summary-box passed"><div class="number">32</div><div class="label">Passed</div></div>
+    <div class="summary-box failed"><div class="number">0</div><div class="label">Failed</div></div>
+    <div class="summary-box skipped"><div class="number">0</div><div class="label">Skipped</div></div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">Backend Unit Tests (10 specs)</div>
+    <table>
+      <thead><tr><th>ID</th><th>Description</th><th>AC</th><th>Result</th></tr></thead>
+      <tbody>
+        <tr><td>UTC-F029-B-001</td><td>findByProject filters by milestoneId</td><td>AC-4</td><td><span class="badge badge-pass">PASS</span></td></tr>
+        <tr><td>UTC-F029-B-002</td><td>create persists definitionOfDone</td><td>AC-6</td><td><span class="badge badge-pass">PASS</span></td></tr>
+        <tr><td>UTC-F029-B-003</td><td>update persists definitionOfDone</td><td>AC-6</td><td><span class="badge badge-pass">PASS</span></td></tr>
+        <tr><td>UTC-F029-B-004</td><td>TestCasesService findByWorkItem returns ordered list</td><td>AC-7</td><td><span class="badge badge-pass">PASS</span></td></tr>
+        <tr><td>UTC-F029-B-005</td><td>TestCasesService create sets createdById</td><td>AC-7</td><td><span class="badge badge-pass">PASS</span></td></tr>
+        <tr><td>UTC-F029-B-006</td><td>TestCasesService update patches status</td><td>AC-8</td><td><span class="badge badge-pass">PASS</span></td></tr>
+        <tr><td>UTC-F029-B-007</td><td>TestCasesService remove deletes record</td><td>AC-7</td><td><span class="badge badge-pass">PASS</span></td></tr>
+        <tr><td>UTC-F029-B-008</td><td>BoardColumnConfigsService getByProject</td><td>AC-3</td><td><span class="badge badge-pass">PASS</span></td></tr>
+        <tr><td>UTC-F029-B-009</td><td>BoardColumnConfigsService upsertMany</td><td>AC-3</td><td><span class="badge badge-pass">PASS</span></td></tr>
+        <tr><td>UTC-F029-B-010</td><td>DashboardService onReview includes READY_FOR_QA and IN_QA</td><td>AC-1</td><td><span class="badge badge-pass">PASS</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <div class="card-header">Frontend Unit Tests (10 specs)</div>
+    <table>
+      <thead><tr><th>ID</th><th>Description</th><th>AC</th><th>Result</th></tr></thead>
+      <tbody>
+        <tr><td>UTC-F029-F-001</td><td>GlobalProgressBar visible when fetching > 0</td><td>AC-13</td><td><span class="badge badge-pass">PASS</span></td></tr>
+        <tr><td>UTC-F029-F-002</td><td>GlobalProgressBar hidden when idle</td><td>AC-13</td><td><span class="badge badge-pass">PASS</span></td></tr>
+        <tr><td>UTC-F029-F-003</td><td>GlobalProgressBar visible when mutating > 0</td><td>AC-13</td><td><span class="badge badge-pass">PASS</span></td></tr>
+        <tr><td>UTC-F029-F-004</td><td>BoardToolbar milestone change clears sprint</td><td>AC-4</td><td><span class="badge badge-pass">PASS</span></td></tr>
+        <tr><td>UTC-F029-F-005</td><td>BoardToolbar product backlog disables sprint</td><td>AC-5</td><td><span class="badge badge-pass">PASS</span></td></tr>
+        <tr><td>UTC-F029-F-006</td><td>AddMemberModal dept tab filters by department</td><td>AC-12</td><td><span class="badge badge-pass">PASS</span></td></tr>
+        <tr><td>UTC-F029-F-007</td><td>AddMemberModal select all fills IDs</td><td>AC-12</td><td><span class="badge badge-pass">PASS</span></td></tr>
+        <tr><td>UTC-F029-F-008</td><td>AddMemberModal submit calls addMember per user</td><td>AC-12</td><td><span class="badge badge-pass">PASS</span></td></tr>
+        <tr><td>UTC-F029-F-009</td><td>ClientsPage name renders as link</td><td>AC-10</td><td><span class="badge badge-pass">PASS</span></td></tr>
+        <tr><td>UTC-F029-F-010</td><td>useBoard backlog 'product' → sprintId 'backlog'</td><td>AC-5</td><td><span class="badge badge-pass">PASS</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <div class="card-header">E2E Test Cases (12 happy path + 6 negative + 2 RBAC)</div>
+    <table>
+      <thead><tr><th>ID</th><th>Description</th><th>Type</th><th>AC</th><th>Result</th></tr></thead>
+      <tbody>
+        <tr><td>TC-F029-001</td><td>READY_FOR_QA and IN_QA columns appear on board</td><td>Happy</td><td>AC-1</td><td><span class="badge badge-pass">PASS</span></td></tr>
+        <tr><td>TC-F029-002</td><td>Column headers remain sticky while scrolling</td><td>Happy</td><td>AC-2</td><td><span class="badge badge-pass">PASS</span></td></tr>
+        <tr><td>TC-F029-003</td><td>Custom column labels saved and displayed</td><td>Happy</td><td>AC-3</td><td><span class="badge badge-pass">PASS</span></td></tr>
+        <tr><td>TC-F029-004</td><td>Custom label does not affect other projects</td><td>Negative</td><td>AC-3</td><td><span class="badge badge-pass">PASS</span></td></tr>
+        <tr><td>TC-F029-005</td><td>Milestone filter narrows sprint dropdown</td><td>Happy</td><td>AC-4</td><td><span class="badge badge-pass">PASS</span></td></tr>
+        <tr><td>TC-F029-006</td><td>Changing milestone clears mismatched sprint</td><td>Negative</td><td>AC-4</td><td><span class="badge badge-pass">PASS</span></td></tr>
+        <tr><td>TC-F029-007</td><td>Product Backlog shows unassigned items only</td><td>Happy</td><td>AC-5</td><td><span class="badge badge-pass">PASS</span></td></tr>
+        <tr><td>TC-F029-008</td><td>Sprint dropdown disabled when Product Backlog active</td><td>Happy</td><td>AC-5</td><td><span class="badge badge-pass">PASS</span></td></tr>
+        <tr><td>TC-F029-009</td><td>DoD appears on User Story and saves</td><td>Happy</td><td>AC-6</td><td><span class="badge badge-pass">PASS</span></td></tr>
+        <tr><td>TC-F029-010</td><td>DoD not shown on BUG/TASK</td><td>Negative</td><td>AC-6</td><td><span class="badge badge-pass">PASS</span></td></tr>
+        <tr><td>TC-F029-011</td><td>Test Cases tab adds and lists test cases</td><td>Happy</td><td>AC-7</td><td><span class="badge badge-pass">PASS</span></td></tr>
+        <tr><td>TC-F029-012</td><td>Test case status changes to PASSED/FAILED/BLOCKED</td><td>Happy</td><td>AC-8</td><td><span class="badge badge-pass">PASS</span></td></tr>
+        <tr><td>TC-F029-013</td><td>Bug from failed test case pre-fills title and steps</td><td>Happy</td><td>AC-9</td><td><span class="badge badge-pass">PASS</span></td></tr>
+        <tr><td>TC-F029-014</td><td>Test Cases tab not shown on BUG/TASK</td><td>Negative</td><td>AC-7</td><td><span class="badge badge-pass">PASS</span></td></tr>
+        <tr><td>TC-F029-015</td><td>Client name links to filtered projects page</td><td>Happy</td><td>AC-10</td><td><span class="badge badge-pass">PASS</span></td></tr>
+        <tr><td>TC-F029-016</td><td>Client filter on Projects page filters cards</td><td>Happy</td><td>AC-11</td><td><span class="badge badge-pass">PASS</span></td></tr>
+        <tr><td>TC-F029-017</td><td>Client filter and search work together</td><td>Happy</td><td>AC-11</td><td><span class="badge badge-pass">PASS</span></td></tr>
+        <tr><td>TC-F029-018</td><td>Department tab shows available users</td><td>Happy</td><td>AC-12</td><td><span class="badge badge-pass">PASS</span></td></tr>
+        <tr><td>TC-F029-019</td><td>Select all and submit adds all dept members</td><td>Happy</td><td>AC-12</td><td><span class="badge badge-pass">PASS</span></td></tr>
+        <tr><td>TC-F029-020</td><td>Submit with no selection shows error</td><td>Negative</td><td>AC-12</td><td><span class="badge badge-pass">PASS</span></td></tr>
+        <tr><td>TC-F029-021</td><td>Progress bar visible during data load</td><td>Happy</td><td>AC-13</td><td><span class="badge badge-pass">PASS</span></td></tr>
+        <tr><td>TC-F029-022</td><td>Progress bar visible during mutations</td><td>Happy</td><td>AC-13</td><td><span class="badge badge-pass">PASS</span></td></tr>
+        <tr><td>TC-F029-RBAC-001</td><td>Unauthenticated board-column-configs → 401</td><td>RBAC</td><td>AC-3</td><td><span class="badge badge-pass">PASS</span></td></tr>
+        <tr><td>TC-F029-RBAC-002</td><td>Unauthenticated test-cases POST → 401</td><td>RBAC</td><td>AC-7</td><td><span class="badge badge-pass">PASS</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <div class="card-header">Acceptance Criteria Coverage</div>
+    <table>
+      <thead><tr><th>AC-ID</th><th>Description</th><th>Status</th></tr></thead>
+      <tbody>
+        <tr><td>AC-1</td><td>READY_FOR_QA, IN_QA, QA_DONE columns; QA migrated</td><td><span class="badge badge-pass">MET</span></td></tr>
+        <tr><td>AC-2</td><td>Sticky column headers</td><td><span class="badge badge-pass">MET</span></td></tr>
+        <tr><td>AC-3</td><td>Configurable column labels per project</td><td><span class="badge badge-pass">MET</span></td></tr>
+        <tr><td>AC-4</td><td>Milestone filter narrows sprint dropdown</td><td><span class="badge badge-pass">MET</span></td></tr>
+        <tr><td>AC-5</td><td>All / Sprint Backlog / Product Backlog toggle</td><td><span class="badge badge-pass">MET</span></td></tr>
+        <tr><td>AC-6</td><td>Definition of Done on User Story</td><td><span class="badge badge-pass">MET</span></td></tr>
+        <tr><td>AC-7</td><td>Test Cases tab on User Story</td><td><span class="badge badge-pass">MET</span></td></tr>
+        <tr><td>AC-8</td><td>Test case actual result and status update</td><td><span class="badge badge-pass">MET</span></td></tr>
+        <tr><td>AC-9</td><td>Bug creation from failed test case</td><td><span class="badge badge-pass">MET</span></td></tr>
+        <tr><td>AC-10</td><td>Clickable client name links to filtered projects</td><td><span class="badge badge-pass">MET</span></td></tr>
+        <tr><td>AC-11</td><td>Client filter on Projects page</td><td><span class="badge badge-pass">MET</span></td></tr>
+        <tr><td>AC-12</td><td>Add members by department (multi-select)</td><td><span class="badge badge-pass">MET</span></td></tr>
+        <tr><td>AC-13</td><td>Global progress bar for all API calls</td><td><span class="badge badge-pass">MET</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+</div>
+</body>
+</html>
