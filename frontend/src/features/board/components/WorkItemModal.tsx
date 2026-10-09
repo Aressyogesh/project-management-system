@@ -2043,12 +2043,13 @@ export function WorkItemModal({ item, sprints, members, milestones, canDelete = 
                       >
                         <option value="">— select —</option>
                         <option value="INTERNAL">Development</option>
+                        <option value="QA">QA</option>
                         <option value="UAT">UAT</option>
                         <option value="EXTERNAL">Production</option>
                       </select>
                     ) : (
                       <span className="text-xs text-gray-700">
-                        {bugFlagLocal === 'INTERNAL' ? 'Development' : bugFlagLocal === 'EXTERNAL' ? 'Production' : bugFlagLocal === 'UAT' ? 'UAT' : '—'}
+                        {bugFlagLocal === 'INTERNAL' ? 'Development' : bugFlagLocal === 'QA' ? 'QA' : bugFlagLocal === 'EXTERNAL' ? 'Production' : bugFlagLocal === 'UAT' ? 'UAT' : '—'}
                       </span>
                     )}
                   </SidebarRow>
@@ -2358,6 +2359,10 @@ export function CreateWorkItemModal({
       for (const file of pendingFiles) {
         try { await boardApi.uploadAttachment(created.id, file); } catch { /* non-fatal */ }
       }
+      qc.setQueriesData<WorkItem[]>(
+        { queryKey: ['board', projectId] },
+        (old) => (old ? [...old, created] : old),
+      );
       qc.invalidateQueries({ queryKey: ['board', projectId] });
       const effectiveParent = selectedParentId || parentId;
       if (effectiveParent) {
@@ -2952,6 +2957,7 @@ export function CreateWorkItemModal({
                   >
                     <option value="">— select —</option>
                     <option value="INTERNAL">Development</option>
+                    <option value="QA">QA</option>
                     <option value="UAT">UAT</option>
                     <option value="EXTERNAL">Production</option>
                   </select>
